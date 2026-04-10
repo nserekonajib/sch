@@ -1,5 +1,7 @@
 # requirements.txt
 
+xhtml2pdf==0.2.11
+python-bidi==0.4.2
 Flask
 Flask-Session
 Werkzeug
@@ -11,7 +13,7 @@ storage3
 python-dotenv
 datetime
 reportlab
-xhtml2pdf
+
 PyPDF2
 requests
 qrcode
