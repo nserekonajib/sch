@@ -27,3 +27,4 @@ regex
 beautifulsoup4
 lxml
 cloudinary
+pandas
