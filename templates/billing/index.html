@@ -1,4 +1,4 @@
-<!-- templates/billing/index.html - Billing Dashboard -->
+<!-- templates/billing/index.html - Billing Dashboard with Dynamic Pricing -->
 {% extends "base.html" %}
 
 {% block title %}Billing - Lunserk ERP{% endblock %}
@@ -66,6 +66,30 @@
         background-color: #fee2e2;
         color: #991b1b;
     }
+    .plan-card {
+        transition: all 0.3s ease;
+    }
+    .plan-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .plan-popular {
+        border: 2px solid #ffa500;
+        position: relative;
+    }
+    .plan-popular::before {
+        content: 'POPULAR';
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ffa500;
+        color: white;
+        padding: 2px 12px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: bold;
+    }
 </style>
 {% endblock %}
 
@@ -115,28 +139,58 @@
         </div>
     </div>
 
-    <!-- Pricing Plans -->
+    <!-- Pricing Plans with Dynamic Pricing -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-white rounded-xl shadow-md p-6 text-center">
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">1 Month</h3>
-            <p class="text-3xl font-bold text-orange-500 mb-4">UGX 1,000</p>
+        <!-- 1 Month Plan -->
+        <div class="plan-card bg-white rounded-xl shadow-md p-6 text-center">
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Monthly</h3>
+            <p class="text-3xl font-bold text-orange-500 mb-2">UGX {{ "{:,.0f}".format(price_per_month) }}</p>
+            <p class="text-sm text-gray-500 mb-4">per month</p>
+            <ul class="text-sm text-gray-600 mb-6 space-y-2">
+                <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Full access to all features</li>
+                <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Priority support</li>
+                <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Cancel anytime</li>
+            </ul>
             <button onclick="openPaymentModal(1)" class="w-full btn-gradient py-2 rounded-lg text-white font-medium">
-                Subscribe
+                Subscribe Monthly
             </button>
         </div>
-        <div class="bg-white rounded-xl shadow-md p-6 text-center border-2 border-orange-500">
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">3 Months</h3>
-            <p class="text-3xl font-bold text-orange-500 mb-4">UGX 3,000</p>
-            <p class="text-sm text-green-600 mb-3">Save UGX 0</p>
-            <button onclick="openPaymentModal(3)" class="w-full btn-gradient py-2 rounded-lg text-white font-medium">
-                Subscribe
+
+        <!-- 6 Months Plan (with discount) -->
+        <div class="plan-card bg-white rounded-xl shadow-md p-6 text-center plan-popular">
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">6 Months</h3>
+            <p class="text-3xl font-bold text-orange-500 mb-1">UGX {{ "{:,.0f}".format(price_6_months) }}</p>
+            <p class="text-sm text-gray-500 mb-2">
+                <span class="line-through text-gray-400">UGX {{ "{:,.0f}".format(price_per_month * 6) }}</span>
+                <span class="text-green-600 ml-2">Save {{ (discount_6_months * 100)|round(0)|int }}%</span>
+            </p>
+            <p class="text-xs text-gray-500 mb-4">Effective monthly: UGX {{ "{:,.0f}".format(price_6_months / 6) }}</p>
+            <ul class="text-sm text-gray-600 mb-6 space-y-2">
+                <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Everything in Monthly</li>
+                <li><i class="fas fa-check-circle text-green-500 mr-2"></i> {{ (discount_6_months * 100)|round(0)|int }}% discount</li>
+                <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Best value for medium term</li>
+            </ul>
+            <button onclick="openPaymentModal(6)" class="w-full btn-gradient py-2 rounded-lg text-white font-medium">
+                Subscribe for 6 Months
             </button>
         </div>
-        <div class="bg-white rounded-xl shadow-md p-6 text-center">
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">12 Months</h3>
-            <p class="text-3xl font-bold text-orange-500 mb-4">UGX 12,000</p>
+
+        <!-- 12 Months Plan (with discount) -->
+        <div class="plan-card bg-white rounded-xl shadow-md p-6 text-center">
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Yearly</h3>
+            <p class="text-3xl font-bold text-orange-500 mb-1">UGX {{ "{:,.0f}".format(price_12_months) }}</p>
+            <p class="text-sm text-gray-500 mb-2">
+                <span class="line-through text-gray-400">UGX {{ "{:,.0f}".format(price_per_month * 12) }}</span>
+                <span class="text-green-600 ml-2">Save {{ (discount_12_months * 100)|round(0)|int }}%</span>
+            </p>
+            <p class="text-xs text-gray-500 mb-4">Effective monthly: UGX {{ "{:,.0f}".format(price_12_months / 12) }}</p>
+            <ul class="text-sm text-gray-600 mb-6 space-y-2">
+                <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Everything in Monthly</li>
+                <li><i class="fas fa-check-circle text-green-500 mr-2"></i> {{ (discount_12_months * 100)|round(0)|int }}% discount</li>
+                <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Best value overall</li>
+            </ul>
             <button onclick="openPaymentModal(12)" class="w-full btn-gradient py-2 rounded-lg text-white font-medium">
-                Subscribe
+                Subscribe Yearly
             </button>
         </div>
     </div>
@@ -168,11 +222,11 @@
                                 {{ payment.status|upper }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-500 font-mono">{{ payment.order_tracking_id[:20] if payment.order_tracking_id else 'N/A' }}...</td>
+                        <td class="px-6 py-4 text-sm text-gray-500 font-mono">{{ payment.order_tracking_id[:20] if payment.order_tracking_id else 'N/A' }}...<\/td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="px-6 py-8 text-center text-gray-400">No payment history found</td>
+                        <td colspan="5" class="px-6 py-8 text-center text-gray-400">No payment history found<\/td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -202,6 +256,19 @@
 <script>
     let selectedMonths = 1;
     let paymentIframe = null;
+    let pricePerMonth = {{ price_per_month }};
+    let discount6Months = {{ discount_6_months }};
+    let discount12Months = {{ discount_12_months }};
+
+    function calculatePrice(months) {
+        if (months == 6) {
+            return pricePerMonth * months * (1 - discount6Months);
+        } else if (months == 12) {
+            return pricePerMonth * months * (1 - discount12Months);
+        } else {
+            return pricePerMonth * months;
+        }
+    }
 
     function openPaymentModal(months) {
         selectedMonths = months;

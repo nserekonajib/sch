@@ -63,7 +63,7 @@ from routes.requirements.schoolRequirementsManagement import requirements_bp
 from routes.billing.billingModule import billing_bp
 from routes.dashboard.dashboard import dashboard_bp
 from routes.resultsCard.competenceReportCard import competence_bp
-
+from routes.admin.admin import admin_bp
 
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -96,6 +96,7 @@ app.register_blueprint(message_bp, url_prefix='/send-message')
 app.register_blueprint(requirements_bp, url_prefix='/requirements')
 app.register_blueprint(billing_bp, url_prefix='/billing')
 app.register_blueprint(competence_bp, url_prefix='/competence-report')
+app.register_blueprint(admin_bp, url_prefix='/admin')
 
 
 @app.route('/')

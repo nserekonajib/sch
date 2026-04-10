@@ -1,4 +1,4 @@
-# billingModule.py - Fixed callback handling
+# billingModule.py - Updated with dynamic pricing and discounts
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 from supabase import create_client, Client
 import os
@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import json
 from functools import wraps
 from dotenv import load_dotenv
+
 from routes.billing.pespal import PesaPal
 
 load_dotenv()
@@ -15,6 +16,20 @@ load_dotenv()
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Get pricing from environment variables
+BASE_PRICE = float(os.getenv('SUBSCRIPTION_PRICE'))
+DISCOUNT_6_MONTHS = float(os.getenv('DISCOUNT_6_MONTHS'))
+DISCOUNT_12_MONTHS = float(os.getenv('DISCOUNT_12_MONTHS'))
+
+def calculate_price(months):
+    """Calculate price based on months with discounts"""
+    if months == 6:
+        return BASE_PRICE * months * (1 - DISCOUNT_6_MONTHS)
+    elif months == 12:
+        return BASE_PRICE * months * (1 - DISCOUNT_12_MONTHS)
+    else:
+        return BASE_PRICE * months
 
 billing_bp = Blueprint('billing', __name__, url_prefix='/billing')
 
@@ -47,11 +62,25 @@ def index():
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
+    # Calculate discounted prices for display
+    price_per_month = BASE_PRICE
+    price_6_months = calculate_price(6)
+    price_12_months = calculate_price(12)
+    
     if not institute_id:
-        return render_template('billing/index.html', subscription=None, payments=[])
+        return render_template('billing/index.html', 
+                              subscription=None, 
+                              payments=[],
+                              is_active=False,
+                              days_remaining=0,
+                              price_per_month=price_per_month,
+                              price_6_months=price_6_months,
+                              price_12_months=price_12_months,
+                              discount_6_months=DISCOUNT_6_MONTHS,
+                              discount_12_months=DISCOUNT_12_MONTHS)
     
     try:
-        # Get subscription
+        # Get subscription from organization_billing
         sub_response = supabase.table('organization_billing')\
             .select('*')\
             .eq('institute_id', institute_id)\
@@ -59,7 +88,7 @@ def index():
         
         subscription = sub_response.data[0] if sub_response.data else None
         
-        # Get payment history
+        # Get payment history from payment_transactions
         payments_response = supabase.table('payment_transactions')\
             .select('*')\
             .eq('institute_id', institute_id)\
@@ -84,11 +113,24 @@ def index():
                               payments=payments,
                               is_active=is_active,
                               days_remaining=days_remaining,
-                              institute_id=institute_id)
+                              price_per_month=price_per_month,
+                              price_6_months=price_6_months,
+                              price_12_months=price_12_months,
+                              discount_6_months=DISCOUNT_6_MONTHS,
+                              discount_12_months=DISCOUNT_12_MONTHS)
         
     except Exception as e:
         print(f"Error loading billing page: {e}")
-        return render_template('billing/index.html', subscription=None, payments=[], is_active=False, days_remaining=0)
+        return render_template('billing/index.html', 
+                              subscription=None, 
+                              payments=[], 
+                              is_active=False, 
+                              days_remaining=0,
+                              price_per_month=price_per_month,
+                              price_6_months=price_6_months,
+                              price_12_months=price_12_months,
+                              discount_6_months=DISCOUNT_6_MONTHS,
+                              discount_12_months=DISCOUNT_12_MONTHS)
 
 @billing_bp.route('/initiate-payment', methods=['POST'])
 @login_required
@@ -103,7 +145,13 @@ def initiate_payment():
     try:
         data = request.get_json()
         months = int(data.get('months', 1))
-        amount = months * 1000  # 1000 UGX per month
+        
+        # Only allow 1, 6, or 12 months
+        if months not in [1, 6, 12]:
+            return jsonify({'success': False, 'message': 'Invalid subscription period'}), 400
+        
+        # Calculate amount with discount
+        amount = calculate_price(months)
         
         # Get institute details
         institute_response = supabase.table('institutes')\
@@ -133,7 +181,7 @@ def initiate_payment():
         )
         
         if result and result.get('redirect_url'):
-            # Create payment record
+            # Create payment record in payment_transactions
             payment_id = str(uuid.uuid4())
             payment_data = {
                 'id': payment_id,
@@ -154,7 +202,6 @@ def initiate_payment():
                 'order_tracking_id': result['order_tracking_id']
             })
         else:
-            
             print(f"Failed to initiate payment. PesaPal response: {result}")
             return jsonify({'success': False, 'message': 'Failed to initiate payment'}), 500
             
@@ -200,7 +247,7 @@ def payment_callback():
             institute_id = payment['institute_id']
             months = payment['months']
             
-            # Update or create subscription
+            # Update or create subscription in organization_billing
             current_date = datetime.now().date()
             expiry_date = current_date + timedelta(days=30 * months)
             

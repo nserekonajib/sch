@@ -1,0 +1,789 @@
+<!-- templates/admin/index.html - Fixed with proper number formatting -->
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .filter-bar {
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    .status-active {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .status-expired {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Admin Dashboard</h1>
+        <p class="text-sm text-gray-600">Manage institutions, track payments, and monitor platform revenue</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 mb-8" id="statsContainer">
+        <div class="stat-card bg-white rounded-xl shadow-md p-4 border-l-4 border-orange-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs">Institutions</p>
+                    <p class="text-2xl font-bold text-gray-800" id="totalInstitutions">-</p>
+                </div>
+                <div class="h-10 w-10 bg-orange-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-building text-orange-500 text-lg"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs">Total Users</p>
+                    <p class="text-2xl font-bold text-gray-800" id="totalUsers">-</p>
+                </div>
+                <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-users text-blue-500 text-lg"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs">Total Subs</p>
+                    <p class="text-2xl font-bold text-gray-800" id="totalPayments">-</p>
+                </div>
+                <div class="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-credit-card text-green-500 text-lg"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-4 border-l-4 border-purple-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs">Total Revenue</p>
+                    <p class="text-xl font-bold text-purple-600" id="totalRevenue">UGX 0</p>
+                </div>
+                <div class="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-chart-line text-purple-500 text-lg"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-4 border-l-4 border-yellow-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs">Active Subs</p>
+                    <p class="text-2xl font-bold text-yellow-600" id="activeSubscriptions">-</p>
+                </div>
+                <div class="h-10 w-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-check-circle text-yellow-500 text-lg"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-4 border-l-4 border-red-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs">Month Revenue</p>
+                    <p class="text-xl font-bold text-red-600" id="monthRevenue">UGX 0</p>
+                </div>
+                <div class="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-calendar-alt text-red-500 text-lg"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-4 border-l-4 border-indigo-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs">Price/Month</p>
+                    <p class="text-xl font-bold text-indigo-600">UGX {{ "{:,.0f}".format(subscription_price) }}</p>
+                </div>
+                <div class="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-tag text-indigo-500 text-lg"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow-md p-5">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Monthly Revenue Trend</h3>
+            <div class="chart-container">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-5">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Institution Growth</h3>
+            <div class="chart-container">
+                <canvas id="growthChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <div class="flex flex-wrap items-center gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input type="date" id="startDateFilter" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input type="date" id="endDateFilter" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Search Institution</label>
+                <input type="text" id="searchFilter" placeholder="Search by name or email..." 
+                       class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm w-64">
+            </div>
+            <div class="flex items-end gap-2">
+                <button onclick="loadInstitutions()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+                    <i class="fas fa-search"></i> Apply
+                </button>
+                <button onclick="resetFilters()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50">
+                    <i class="fas fa-undo"></i> Reset
+                </button>
+                <button onclick="openRevenueReportModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                    <i class="fas fa-chart-bar"></i> Revenue Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Institutions Table -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-800">Institutions</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Institution</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subscription</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="institutionsTableBody" class="divide-y divide-gray-200">
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">Loading institutions...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Add Subscription</h3>
+            <button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <form id="paymentForm" class="p-5">
+            <input type="hidden" id="paymentInstituteId">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Plan *</label>
+                <select id="paymentMonths" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="1">1 Month - UGX {{ "{:,.0f}".format(subscription_price) }}</option>
+                    <option value="6">6 Months - UGX {{ "{:,.0f}".format(subscription_price * 6 * (1 - discount_6_months/100)) }} (Save {{ discount_6_months|round(0)|int }}%)</option>
+                    <option value="12">12 Months - UGX {{ "{:,.0f}".format(subscription_price * 12 * (1 - discount_12_months/100)) }} (Save {{ discount_12_months|round(0)|int }}%)</option>
+                </select>
+            </div>
+            <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">Price per month:</span>
+                    <span class="font-medium">UGX {{ "{:,.0f}".format(subscription_price) }}</span>
+                </div>
+                <div class="flex justify-between items-center mt-1">
+                    <span class="text-sm text-gray-600">Selected months:</span>
+                    <span class="font-medium" id="selectedMonths">1</span>
+                </div>
+                <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
+                    <span class="text-sm font-semibold text-gray-800">Total amount:</span>
+                    <span class="text-lg font-bold text-orange-600" id="totalAmount">UGX {{ "{:,.0f}".format(subscription_price) }}</span>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                <textarea id="paymentNotes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium">Add Subscription</button>
+                <button type="button" onclick="closePaymentModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Revenue Report Modal -->
+<div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 my-8 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Revenue Report</h3>
+            <button onclick="closeReportModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-5">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <input type="date" id="reportStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                    <input type="date" id="reportEndDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Institution</label>
+                    <select id="reportInstituteFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <option value="">All Institutions</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-2 mb-6">
+                <button onclick="generateRevenueReport()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+                    <i class="fas fa-chart-line"></i> Generate Report
+                </button>
+                <button onclick="exportRevenueReport()" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium">
+                    <i class="fas fa-file-excel"></i> Export to Excel
+                </button>
+            </div>
+            <div id="reportContent">
+                <div class="text-center py-8 text-gray-400">Select filters and generate report</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="loader"></div>
+        <p class="text-gray-700 mt-4">Processing...</p>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let revenueChart = null;
+    let growthChart = null;
+    let allInstitutions = [];
+    let pricePerMonth = {{ subscription_price }};
+    let discount6Months = {{ discount_6_months }};
+    let discount12Months = {{ discount_12_months }};
+
+    function formatNumber(num) {
+        return new Intl.NumberFormat('en-US').format(num);
+    }
+
+    function calculatePrice(months) {
+        if (months == 6) {
+            return pricePerMonth * months * (1 - discount6Months / 100);
+        } else if (months == 12) {
+            return pricePerMonth * months * (1 - discount12Months / 100);
+        } else {
+            return pricePerMonth * months;
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const response = await fetch('/admin/api/stats');
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('totalInstitutions').textContent = data.stats.total_institutions;
+                document.getElementById('totalUsers').textContent = data.stats.total_users;
+                document.getElementById('totalPayments').textContent = data.stats.total_payments;
+                document.getElementById('totalRevenue').textContent = `UGX ${formatNumber(data.stats.total_revenue)}`;
+                document.getElementById('activeSubscriptions').textContent = data.stats.active_subscriptions;
+                document.getElementById('monthRevenue').textContent = `UGX ${formatNumber(data.stats.month_revenue)}`;
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+
+    async function loadCharts() {
+        try {
+            const response = await fetch('/admin/api/dashboard-chart');
+            const data = await response.json();
+            
+            if (data.success) {
+                const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+                if (revenueChart) revenueChart.destroy();
+                revenueChart = new Chart(revenueCtx, {
+                    type: 'line',
+                    data: {
+                        labels: data.monthly_revenue.map(item => item.month),
+                        datasets: [{
+                            label: 'Revenue (UGX)',
+                            data: data.monthly_revenue.map(item => item.revenue),
+                            borderColor: '#ffa500',
+                            backgroundColor: 'rgba(255, 165, 0, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `UGX ${formatNumber(context.raw)}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                const growthCtx = document.getElementById('growthChart').getContext('2d');
+                if (growthChart) growthChart.destroy();
+                growthChart = new Chart(growthCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.institutions_growth.map(item => item.month),
+                        datasets: [{
+                            label: 'Institutions',
+                            data: data.institutions_growth.map(item => item.count),
+                            backgroundColor: '#10b981',
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading charts:', error);
+        }
+    }
+
+    async function loadInstitutions() {
+        const tbody = document.getElementById('institutionsTableBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center"><div class="loader mx-auto"></div><p class="mt-2">Loading...</p></td></tr>';
+        
+        const search = document.getElementById('searchFilter').value;
+        const startDate = document.getElementById('startDateFilter').value;
+        const endDate = document.getElementById('endDateFilter').value;
+        
+        let url = `/admin/api/institutions?search=${encodeURIComponent(search)}`;
+        if (startDate) url += `&start_date=${startDate}`;
+        if (endDate) url += `&end_date=${endDate}`;
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                allInstitutions = data.institutions;
+                renderInstitutions(allInstitutions);
+                populateInstituteFilter(allInstitutions);
+            } else {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-red-500">Failed to load institutions</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-red-500">Error loading institutions</td></tr>';
+        }
+    }
+
+    function renderInstitutions(institutions) {
+        const tbody = document.getElementById('institutionsTableBody');
+        
+        if (institutions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No institutions found</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = institutions.map(inst => {
+            const today = new Date().toISOString().split('T')[0];
+            const isActive = inst.subscription && inst.subscription.expiry_date >= today;
+            const subStatus = isActive ? 'status-active' : 'status-expired';
+            const subText = inst.subscription ? 
+                `Expires: ${new Date(inst.subscription.expiry_date).toLocaleDateString()}` : 'No subscription';
+            
+            return `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div>
+                            <p class="font-medium text-gray-800">${escapeHtml(inst.institute_name || 'N/A')}</p>
+                            <p class="text-xs text-gray-500">${inst.institute_code || 'N/A'}</p>
+                        </div>
+                     </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${inst.email || 'N/A'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${inst.phone_number || 'N/A'}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${subStatus}">${subText}</span>
+                     </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${new Date(inst.created_at).toLocaleDateString()}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button onclick="openPaymentModal('${inst.id}', '${escapeHtml(inst.institute_name)}')" 
+                                class="text-green-600 hover:text-green-800 mr-2" title="Add Subscription">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </button>
+                        <button onclick="viewInstitutionDetails('${inst.id}')" 
+                                class="text-blue-600 hover:text-blue-800" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                     </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function populateInstituteFilter(institutions) {
+        const select = document.getElementById('reportInstituteFilter');
+        select.innerHTML = '<option value="">All Institutions</option>' + 
+            institutions.map(inst => `<option value="${inst.id}">${escapeHtml(inst.institute_name)}</option>`).join('');
+    }
+
+    function openPaymentModal(instituteId, instituteName) {
+        document.getElementById('paymentInstituteId').value = instituteId;
+        document.getElementById('paymentNotes').value = '';
+        document.getElementById('paymentModal').classList.remove('hidden');
+        document.getElementById('paymentModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        updateTotalAmount();
+    }
+
+    function closePaymentModal() {
+        document.getElementById('paymentModal').classList.add('hidden');
+        document.getElementById('paymentModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function updateTotalAmount() {
+        const months = parseInt(document.getElementById('paymentMonths').value);
+        const total = calculatePrice(months);
+        document.getElementById('totalAmount').textContent = `UGX ${formatNumber(total)}`;
+        document.getElementById('selectedMonths').textContent = months;
+    }
+
+    document.getElementById('paymentMonths').addEventListener('change', updateTotalAmount);
+
+    document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const instituteId = document.getElementById('paymentInstituteId').value;
+        const months = parseInt(document.getElementById('paymentMonths').value);
+        const notes = document.getElementById('paymentNotes').value;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/admin/api/institution/add-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    institute_id: instituteId,
+                    months: months,
+                    notes: notes
+                })
+            });
+            
+            const result = await response.json();
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closePaymentModal();
+                showMessage(result.message, 'success');
+                loadInstitutions();
+                loadStats();
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to add subscription', 'error');
+        }
+    });
+
+    function openRevenueReportModal() {
+        document.getElementById('reportStartDate').value = '';
+        document.getElementById('reportEndDate').value = '';
+        document.getElementById('reportModal').classList.remove('hidden');
+        document.getElementById('reportModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeReportModal() {
+        document.getElementById('reportModal').classList.add('hidden');
+        document.getElementById('reportModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    async function generateRevenueReport() {
+        const startDate = document.getElementById('reportStartDate').value;
+        const endDate = document.getElementById('reportEndDate').value;
+        const instituteId = document.getElementById('reportInstituteFilter').value;
+        
+        const content = document.getElementById('reportContent');
+        content.innerHTML = '<div class="text-center py-8"><div class="loader mx-auto"></div><p>Generating report...</p></div>';
+        
+        try {
+            const response = await fetch('/admin/api/revenue-report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    start_date: startDate,
+                    end_date: endDate,
+                    institute_id: instituteId
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                const subscriptions = result.subscriptions;
+                const summary = result.summary;
+                
+                let html = `
+                    <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-green-50 rounded-lg p-4 text-center">
+                            <p class="text-sm text-gray-600">Total Revenue</p>
+                            <p class="text-2xl font-bold text-green-600">UGX ${formatNumber(summary.total_amount)}</p>
+                        </div>
+                        <div class="bg-blue-50 rounded-lg p-4 text-center">
+                            <p class="text-sm text-gray-600">Total Subscriptions</p>
+                            <p class="text-2xl font-bold text-blue-600">${summary.total_count}</p>
+                        </div>
+                        <div class="bg-orange-50 rounded-lg p-4 text-center">
+                            <p class="text-sm text-gray-600">Price Per Month</p>
+                            <p class="text-2xl font-bold text-orange-600">UGX ${formatNumber(summary.price_per_month)}</p>
+                        </div>
+                    </div>
+                    
+                    <h4 class="font-semibold text-gray-800 mb-3">Monthly Breakdown</h4>
+                    <div class="overflow-x-auto mb-6">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr><th class="px-4 py-2 text-left text-xs font-medium">Month</th>
+                                    <th class="px-4 py-2 text-right text-xs font-medium">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${summary.monthly.map(m => `
+                                    <tr class="border-b">
+                                        <td class="px-4 py-2 text-sm">${m.month}</td>
+                                        <td class="px-4 py-2 text-sm text-right">UGX ${formatNumber(m.amount)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <h4 class="font-semibold text-gray-800 mb-3">Subscriptions by Institution</h4>
+                    <div class="overflow-x-auto mb-6">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr><th class="px-4 py-2 text-left text-xs font-medium">Institution</th>
+                                    <th class="px-4 py-2 text-right text-xs font-medium">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${summary.by_institute.map(i => `
+                                    <tr class="border-b">
+                                        <td class="px-4 py-2 text-sm">${i.institute}</td>
+                                        <td class="px-4 py-2 text-sm text-right">UGX ${formatNumber(i.amount)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <h4 class="font-semibold text-gray-800 mb-3">Subscription History</h4>
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="sticky top-0 bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium">Start Date</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium">Expiry Date</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium">Institution</th>
+                                    <th class="px-4 py-2 text-right text-xs font-medium">Months</th>
+                                    <th class="px-4 py-2 text-right text-xs font-medium">Amount</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${subscriptions.map(sub => `
+                                    <tr class="border-b">
+                                        <td class="px-4 py-2 text-sm">${sub.start_date}</td>
+                                        <td class="px-4 py-2 text-sm">${sub.expiry_date}</td>
+                                        <td class="px-4 py-2 text-sm">${sub.institute_name}</td>
+                                        <td class="px-4 py-2 text-sm text-right">${sub.months}</td>
+                                        <td class="px-4 py-2 text-sm text-right">UGX ${formatNumber(sub.amount)}</td>
+                                        <td class="px-4 py-2 text-sm"><span class="px-2 py-1 rounded-full text-xs ${sub.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${sub.status}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                content.innerHTML = html;
+            } else {
+                content.innerHTML = `<div class="text-center py-8 text-red-500">${result.message}</div>`;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            content.innerHTML = '<div class="text-center py-8 text-red-500">Failed to generate report</div>';
+        }
+    }
+
+    async function exportRevenueReport() {
+        const startDate = document.getElementById('reportStartDate').value;
+        const endDate = document.getElementById('reportEndDate').value;
+        const instituteId = document.getElementById('reportInstituteFilter').value;
+        
+        try {
+            const response = await fetch('/admin/api/export-revenue-excel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    start_date: startDate,
+                    end_date: endDate,
+                    institute_id: instituteId
+                })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `revenue_report_${new Date().toISOString().slice(0, 19)}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showMessage('Report exported successfully', 'success');
+            } else {
+                showMessage('Failed to export report', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Failed to export report', 'error');
+        }
+    }
+
+    function resetFilters() {
+        document.getElementById('startDateFilter').value = '';
+        document.getElementById('endDateFilter').value = '';
+        document.getElementById('searchFilter').value = '';
+        loadInstitutions();
+    }
+
+    function viewInstitutionDetails(id) {
+        showMessage('Feature coming soon', 'info');
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('paymentModal');
+        const reportModal = document.getElementById('reportModal');
+        if (event.target === modal) closePaymentModal();
+        if (event.target === reportModal) closeReportModal();
+    };
+
+    // Initialize
+    loadStats();
+    loadCharts();
+    loadInstitutions();
+</script>
+{% endblock %}
