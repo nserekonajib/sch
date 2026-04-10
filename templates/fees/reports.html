@@ -1,0 +1,947 @@
+<!-- templates/fees/reports.html - Fee Reports Dashboard -->
+{% extends "base.html" %}
+
+{% block title %}Fee Reports - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .report-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .report-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .report-table th, .report-table td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .report-table th {
+        background-color: #f9fafb;
+        font-weight: 600;
+        font-size: 13px;
+        position: sticky;
+        top: 0;
+    }
+    .report-table td {
+        font-size: 13px;
+    }
+    .report-table tbody tr:hover {
+        background-color: #fef3c7;
+    }
+    .summary-card {
+        background: linear-gradient(135deg, #fef9e7 0%, #fff 100%);
+        border-left: 4px solid #ffa500;
+    }
+    .action-btn {
+        transition: all 0.2s;
+    }
+    .action-btn:hover {
+        transform: scale(1.05);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Fee Reports</h1>
+        <p class="text-sm text-gray-600">View and export fee collection reports</p>
+    </div>
+
+    <!-- Report Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Daily Collection Card -->
+        <div class="report-card bg-white rounded-xl shadow-md p-6" onclick="openDailyCollectionModal()">
+            <div class="flex items-center justify-between mb-4">
+                <div class="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-calendar-day text-xl text-orange-500"></i>
+                </div>
+                <i class="fas fa-chevron-right text-gray-300"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-1">Daily Collection</h3>
+            <p class="text-sm text-gray-500">View daily fee collection summary with transaction details</p>
+        </div>
+
+        <!-- Fees Balance Report Card -->
+        <div class="report-card bg-white rounded-xl shadow-md p-6" onclick="openBalanceReportModal()">
+            <div class="flex items-center justify-between mb-4">
+                <div class="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-chart-line text-xl text-green-500"></i>
+                </div>
+                <i class="fas fa-chevron-right text-gray-300"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-1">Fees Balance Report</h3>
+            <p class="text-sm text-gray-500">Student-wise balance report with invoiced, paid, discount amounts</p>
+        </div>
+
+        <!-- General Report Card -->
+        <div class="report-card bg-white rounded-xl shadow-md p-6" onclick="openGeneralReportModal()">
+            <div class="flex items-center justify-between mb-4">
+                <div class="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-chart-pie text-xl text-purple-500"></i>
+                </div>
+                <i class="fas fa-chevron-right text-gray-300"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-1">General Report</h3>
+            <p class="text-sm text-gray-500">Overall fee collection statistics and summary</p>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL 1: DAILY COLLECTION ==================== -->
+<div id="dailyCollectionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 my-8 transform transition-all modal-container">
+        <div class="sticky top-0 bg-white rounded-t-xl border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-calendar-day text-orange-500"></i>
+                Daily Collection Report
+            </h3>
+            <button onclick="closeDailyCollectionModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <!-- Date Filters -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <input type="date" id="dailyStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                    <input type="date" id="dailyEndDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="flex items-end gap-2">
+                    <button onclick="fetchDailyCollection()" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium flex items-center justify-center gap-2">
+                        <i class="fas fa-search"></i> Generate
+                    </button>
+                    <button onclick="exportDailyToExcel()" id="exportDailyBtn" disabled class="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg font-medium flex items-center gap-2 cursor-not-allowed">
+                        <i class="fas fa-file-excel"></i> Export
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Summary Stats -->
+            <div id="dailySummary" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 hidden">
+                <div class="summary-card rounded-lg p-4">
+                    <p class="text-sm text-gray-500">Total Collected</p>
+                    <p class="text-2xl font-bold text-orange-600" id="dailyTotalCollected">UGX 0</p>
+                </div>
+                <div class="summary-card rounded-lg p-4">
+                    <p class="text-sm text-gray-500">Total Transactions</p>
+                    <p class="text-2xl font-bold text-gray-800" id="dailyTotalTransactions">0</p>
+                </div>
+                <div class="summary-card rounded-lg p-4">
+                    <p class="text-sm text-gray-500">Date Range</p>
+                    <p class="text-sm font-semibold text-gray-800" id="dailyDateRange">-</p>
+                </div>
+            </div>
+            
+            <!-- Results Table -->
+            <div id="dailyResults" class="hidden overflow-x-auto">
+                <div class="space-y-6">
+                    <!-- Daily entries will be inserted here -->
+                </div>
+            </div>
+            
+            <div id="dailyLoading" class="text-center py-8 hidden">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+                <p class="text-gray-500">Loading...</p>
+            </div>
+            
+            <div id="dailyEmpty" class="text-center py-8 hidden">
+                <i class="fas fa-inbox text-5xl text-gray-300 mb-3"></i>
+                <p class="text-gray-500">No data found for selected date range</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL 2: BALANCE REPORT ==================== -->
+<div id="balanceReportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-7xl w-full mx-4 my-8 transform transition-all modal-container">
+        <div class="sticky top-0 bg-white rounded-t-xl border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-chart-line text-green-500"></i>
+                Fees Balance Report
+            </h3>
+            <button onclick="closeBalanceReportModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <!-- Filters -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+                    <select id="balanceClass" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">All Classes</option>
+                        {% for class in classes %}
+                        <option value="{{ class.id }}">{{ class.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <input type="date" id="balanceStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                    <input type="date" id="balanceEndDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="flex items-end gap-2">
+                    <button onclick="fetchBalanceReport()" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium flex items-center justify-center gap-2">
+                        <i class="fas fa-search"></i> Generate
+                    </button>
+                    <button onclick="exportBalanceToExcel()" id="exportBalanceBtn" disabled class="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg font-medium flex items-center gap-2 cursor-not-allowed">
+                        <i class="fas fa-file-excel"></i> Export
+                    </button>
+                    <button onclick="sendReminders()" id="sendRemindersBtn" disabled class="px-4 py-2 bg-blue-500 text-white rounded-lg font-medium flex items-center gap-2 opacity-50 cursor-not-allowed">
+                        <i class="fas fa-bell"></i> Send Reminders
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Summary Stats -->
+            <div id="balanceSummary" class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 hidden">
+                <div class="summary-card rounded-lg p-3">
+                    <p class="text-xs text-gray-500">Total Invoiced</p>
+                    <p class="text-lg font-bold text-orange-600" id="balanceTotalInvoiced">UGX 0</p>
+                </div>
+                <div class="summary-card rounded-lg p-3">
+                    <p class="text-xs text-gray-500">Total Paid</p>
+                    <p class="text-lg font-bold text-green-600" id="balanceTotalPaid">UGX 0</p>
+                </div>
+                <div class="summary-card rounded-lg p-3">
+                    <p class="text-xs text-gray-500">Total Discount</p>
+                    <p class="text-lg font-bold text-purple-600" id="balanceTotalDiscount">UGX 0</p>
+                </div>
+                <div class="summary-card rounded-lg p-3">
+                    <p class="text-xs text-gray-500">Total Balance</p>
+                    <p class="text-lg font-bold text-red-600" id="balanceTotalBalance">UGX 0</p>
+                </div>
+                <div class="summary-card rounded-lg p-3">
+                    <p class="text-xs text-gray-500">Students</p>
+                    <p class="text-lg font-bold text-gray-800" id="balanceStudentCount">0</p>
+                </div>
+            </div>
+            
+            <!-- Results Table -->
+            <div id="balanceResults" class="hidden overflow-x-auto">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Student Name</th>
+                            <th>Student ID</th>
+                            <th>Mobile Number</th>
+                            <th>Class</th>
+                            <th class="text-right">Invoiced</th>
+                            <th class="text-right">Paid</th>
+                            <th class="text-right">Discount</th>
+                            <th class="text-right">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="balanceTableBody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="balanceLoading" class="text-center py-8 hidden">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+                <p class="text-gray-500">Loading...</p>
+            </div>
+            
+            <div id="balanceEmpty" class="text-center py-8 hidden">
+                <i class="fas fa-inbox text-5xl text-gray-300 mb-3"></i>
+                <p class="text-gray-500">No data found</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL 3: GENERAL REPORT ==================== -->
+<div id="generalReportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 my-8 transform transition-all modal-container">
+        <div class="sticky top-0 bg-white rounded-t-xl border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-chart-pie text-purple-500"></i>
+                General Report
+            </h3>
+            <button onclick="closeGeneralReportModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <!-- Date Filters -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <input type="date" id="generalStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                    <input type="date" id="generalEndDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="flex items-end">
+                    <button onclick="fetchGeneralReport()" class="w-full px-4 py-2 btn-gradient text-white rounded-lg font-medium flex items-center justify-center gap-2">
+                        <i class="fas fa-search"></i> Generate
+                    </button>
+                </div>
+            </div>
+            
+            <div id="generalLoading" class="text-center py-8 hidden">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+                <p class="text-gray-500">Loading...</p>
+            </div>
+            
+            <div id="generalResults" class="hidden">
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gradient-to-br from-orange-50 to-white rounded-xl p-4 text-center border border-orange-100">
+                        <i class="fas fa-users text-2xl text-orange-500 mb-2"></i>
+                        <p class="text-sm text-gray-500">Total Students</p>
+                        <p class="text-2xl font-bold text-gray-800" id="generalTotalStudents">0</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-blue-50 to-white rounded-xl p-4 text-center border border-blue-100">
+                        <i class="fas fa-file-invoice text-2xl text-blue-500 mb-2"></i>
+                        <p class="text-sm text-gray-500">Total Invoices</p>
+                        <p class="text-2xl font-bold text-gray-800" id="generalTotalInvoices">0</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-green-50 to-white rounded-xl p-4 text-center border border-green-100">
+                        <i class="fas fa-check-circle text-2xl text-green-500 mb-2"></i>
+                        <p class="text-sm text-gray-500">Fully Paid</p>
+                        <p class="text-2xl font-bold text-gray-800" id="generalFullyPaid">0</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-yellow-50 to-white rounded-xl p-4 text-center border border-yellow-100">
+                        <i class="fas fa-chart-line text-2xl text-yellow-500 mb-2"></i>
+                        <p class="text-sm text-gray-500">Partially Paid</p>
+                        <p class="text-2xl font-bold text-gray-800" id="generalPartiallyPaid">0</p>
+                    </div>
+                </div>
+                
+                <!-- Financial Summary -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4">Financial Summary</h4>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                            <span class="text-gray-600">Total Invoiced Amount</span>
+                            <span class="text-xl font-bold text-orange-600" id="generalTotalInvoiced">UGX 0</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                            <span class="text-gray-600">Total Paid Amount</span>
+                            <span class="text-xl font-bold text-green-600" id="generalTotalPaid">UGX 0</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                            <span class="text-gray-600">Total Discount Applied</span>
+                            <span class="text-xl font-bold text-purple-600" id="generalTotalDiscount">UGX 0</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2">
+                            <span class="text-lg font-semibold text-gray-800">Outstanding Balance</span>
+                            <span class="text-2xl font-bold text-red-600" id="generalTotalBalance">UGX 0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="generalEmpty" class="text-center py-8 hidden">
+                <i class="fas fa-inbox text-5xl text-gray-300 mb-3"></i>
+                <p class="text-gray-500">No data found for selected date range</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Details Modal -->
+<div id="transactionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 my-8 transform transition-all modal-container">
+        <div class="sticky top-0 bg-white rounded-t-xl border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-list text-orange-500"></i>
+                Transaction Details - <span id="transactionDate"></span>
+            </h3>
+            <button onclick="closeTransactionModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="p-6">
+            <div class="overflow-x-auto">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Receipt No</th>
+                            <th>Student Name</th>
+                            <th>Student ID</th>
+                            <th class="text-right">Amount</th>
+                            <th>Payment Method</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let currentDailyData = null;
+    let currentBalanceData = null;
+    
+    // Set default dates
+    const today = new Date().toISOString().split('T')[0];
+    const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    
+    document.getElementById('dailyStartDate').value = firstDayOfMonth;
+    document.getElementById('dailyEndDate').value = today;
+    document.getElementById('balanceStartDate').value = firstDayOfMonth;
+    document.getElementById('balanceEndDate').value = today;
+    document.getElementById('generalStartDate').value = firstDayOfMonth;
+    document.getElementById('generalEndDate').value = today;
+    
+    // ==================== DAILY COLLECTION ====================
+    function openDailyCollectionModal() {
+        document.getElementById('dailyCollectionModal').classList.remove('hidden');
+        document.getElementById('dailyCollectionModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        fetchDailyCollection();
+    }
+    
+    function closeDailyCollectionModal() {
+        document.getElementById('dailyCollectionModal').classList.add('hidden');
+        document.getElementById('dailyCollectionModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    async function fetchDailyCollection() {
+        const startDate = document.getElementById('dailyStartDate').value;
+        const endDate = document.getElementById('dailyEndDate').value;
+        
+        if (!startDate || !endDate) {
+            showMessage('Please select both start and end dates', 'error');
+            return;
+        }
+        
+        document.getElementById('dailyLoading').classList.remove('hidden');
+        document.getElementById('dailyResults').classList.add('hidden');
+        document.getElementById('dailySummary').classList.add('hidden');
+        document.getElementById('dailyEmpty').classList.add('hidden');
+        
+        try {
+            const response = await fetch('/fee-reports/daily-collection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ start_date: startDate, end_date: endDate })
+            });
+            
+            const result = await response.json();
+            
+            document.getElementById('dailyLoading').classList.add('hidden');
+            
+            if (result.success && result.data.length > 0) {
+                currentDailyData = result.data;
+                displayDailyCollection(result);
+                document.getElementById('exportDailyBtn').disabled = false;
+                document.getElementById('exportDailyBtn').classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+                document.getElementById('exportDailyBtn').classList.add('btn-gradient', 'text-white');
+            } else {
+                document.getElementById('dailyEmpty').classList.remove('hidden');
+                document.getElementById('exportDailyBtn').disabled = true;
+                document.getElementById('exportDailyBtn').classList.add('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+                document.getElementById('exportDailyBtn').classList.remove('btn-gradient', 'text-white');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('dailyLoading').classList.add('hidden');
+            document.getElementById('dailyEmpty').classList.remove('hidden');
+            showMessage('Failed to load data', 'error');
+        }
+    }
+    
+    function displayDailyCollection(data) {
+        // Update summary
+        document.getElementById('dailyTotalCollected').textContent = `UGX ${data.total_collected.toLocaleString()}`;
+        document.getElementById('dailyTotalTransactions').textContent = data.total_transactions;
+        document.getElementById('dailyDateRange').textContent = `${data.start_date} to ${data.end_date}`;
+        document.getElementById('dailySummary').classList.remove('hidden');
+        
+        // Display daily entries
+        const container = document.getElementById('dailyResults');
+        container.innerHTML = '';
+        
+        data.data.forEach(day => {
+            const dayCard = document.createElement('div');
+            dayCard.className = 'border rounded-lg overflow-hidden mb-4';
+            dayCard.innerHTML = `
+                <div class="bg-gray-50 px-4 py-3 flex justify-between items-center cursor-pointer" onclick="toggleDayDetails('${day.date}')">
+                    <div class="flex items-center gap-4">
+                        <i class="fas fa-calendar-day text-orange-500"></i>
+                        <span class="font-semibold text-gray-800">${day.date}</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm text-gray-600">${day.count} transactions</span>
+                        <span class="font-bold text-orange-600">UGX ${day.total.toLocaleString()}</span>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="chevron-${day.date}"></i>
+                    </div>
+                </div>
+                <div id="details-${day.date}" class="hidden border-t border-gray-200">
+                    <table class="report-table">
+                        <thead>
+                            <tr><th>Receipt No</th><th>Student Name</th><th>Student ID</th><th class="text-right">Amount</th><th>Method</th><th>Notes</th></tr>
+                        </thead>
+                        <tbody>
+                            ${day.transactions.map(t => `
+                                <tr>
+                                    <td>${t.receipt_number}</td>
+                                    <td>${t.student_name}</td>
+                                    <td>${t.student_id}</td>
+                                    <td class="text-right">UGX ${t.amount.toLocaleString()}</td>
+                                    <td>${t.payment_method}</td>
+                                    <td>${t.notes || '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            container.appendChild(dayCard);
+        });
+        
+        document.getElementById('dailyResults').classList.remove('hidden');
+    }
+    
+    function toggleDayDetails(date) {
+        const details = document.getElementById(`details-${date}`);
+        const chevron = document.getElementById(`chevron-${date}`);
+        if (details.classList.contains('hidden')) {
+            details.classList.remove('hidden');
+            chevron.classList.add('rotate-180');
+        } else {
+            details.classList.add('hidden');
+            chevron.classList.remove('rotate-180');
+        }
+    }
+    
+    // ==================== BALANCE REPORT ====================
+    function openBalanceReportModal() {
+        document.getElementById('balanceReportModal').classList.remove('hidden');
+        document.getElementById('balanceReportModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        fetchBalanceReport();
+    }
+    
+    function closeBalanceReportModal() {
+        document.getElementById('balanceReportModal').classList.add('hidden');
+        document.getElementById('balanceReportModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    async function fetchBalanceReport() {
+        const classId = document.getElementById('balanceClass').value;
+        const startDate = document.getElementById('balanceStartDate').value;
+        const endDate = document.getElementById('balanceEndDate').value;
+        
+        document.getElementById('balanceLoading').classList.remove('hidden');
+        document.getElementById('balanceResults').classList.add('hidden');
+        document.getElementById('balanceSummary').classList.add('hidden');
+        document.getElementById('balanceEmpty').classList.add('hidden');
+        
+        try {
+            const response = await fetch('/fee-reports/balance-report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ class_id: classId, start_date: startDate, end_date: endDate })
+            });
+            
+            const result = await response.json();
+            
+            document.getElementById('balanceLoading').classList.add('hidden');
+            
+            if (result.success && result.data.length > 0) {
+                currentBalanceData = result.data;
+                displayBalanceReport(result);
+                document.getElementById('exportBalanceBtn').disabled = false;
+                document.getElementById('exportBalanceBtn').classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+                document.getElementById('exportBalanceBtn').classList.add('btn-gradient', 'text-white');
+                
+                // Enable reminders button if there are students with balance
+                const hasBalance = result.data.some(s => s.balance > 0);
+                if (hasBalance) {
+                    document.getElementById('sendRemindersBtn').disabled = false;
+                    document.getElementById('sendRemindersBtn').classList.remove('opacity-50', 'cursor-not-allowed');
+                    document.getElementById('sendRemindersBtn').classList.add('hover:bg-blue-600');
+                }
+            } else {
+                document.getElementById('balanceEmpty').classList.remove('hidden');
+                document.getElementById('exportBalanceBtn').disabled = true;
+                document.getElementById('sendRemindersBtn').disabled = true;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('balanceLoading').classList.add('hidden');
+            document.getElementById('balanceEmpty').classList.remove('hidden');
+            showMessage('Failed to load data', 'error');
+        }
+    }
+    // Update the displayBalanceReport function to store both ID types
+
+function displayBalanceReport(data) {
+    document.getElementById('balanceTotalInvoiced').textContent = `UGX ${data.summary.total_invoiced.toLocaleString()}`;
+    document.getElementById('balanceTotalPaid').textContent = `UGX ${data.summary.total_paid.toLocaleString()}`;
+    document.getElementById('balanceTotalDiscount').textContent = `UGX ${data.summary.total_discount.toLocaleString()}`;
+    document.getElementById('balanceTotalBalance').textContent = `UGX ${data.summary.total_balance.toLocaleString()}`;
+    document.getElementById('balanceStudentCount').textContent = data.summary.student_count;
+    document.getElementById('balanceSummary').classList.remove('hidden');
+    
+    // Store the data with both student_id (display) and internal_id
+    // We need to fetch the internal IDs separately
+    const tbody = document.getElementById('balanceTableBody');
+    tbody.innerHTML = data.data.map(row => `
+        <tr>
+            <td>${row.date}</td>
+            <td class="font-medium">${row.student_name}</td>
+            <td class="font-mono text-xs">${row.student_id}</td>
+            <td>${row.mobile_number}</td>
+            <td>${row.class}</td>
+            <td class="text-right">UGX ${row.total_invoiced.toLocaleString()}</td>
+            <td class="text-right">UGX ${row.total_paid.toLocaleString()}</td>
+            <td class="text-right">UGX ${row.discount.toLocaleString()}</td>
+            <td class="text-right font-bold ${row.balance > 0 ? 'text-red-600' : 'text-green-600'}">UGX ${row.balance.toLocaleString()}</td>
+        </tr>
+    `).join('');
+    
+    // Store the data - we need to fetch internal IDs for students with balance
+    // Since the balance report only returns display student_id, we'll store them as display IDs
+    // and convert on the backend
+    currentBalanceData = data.data.map(row => ({
+        ...row,
+        student_display_id: row.student_id  // Store the display ID
+    }));
+    
+    document.getElementById('balanceResults').classList.remove('hidden');
+    
+    // Enable/disable reminders button based on whether there are students with balance
+    const hasBalance = currentBalanceData.some(s => s.balance > 0);
+    const remindersBtn = document.getElementById('sendRemindersBtn');
+    if (hasBalance) {
+        remindersBtn.disabled = false;
+        remindersBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        remindersBtn.classList.add('hover:bg-blue-600');
+    } else {
+        remindersBtn.disabled = true;
+        remindersBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        remindersBtn.classList.remove('hover:bg-blue-600');
+    }
+}
+
+// Update the sendReminders function
+async function sendReminders() {
+    if (!currentBalanceData) return;
+    
+    // Get students with balance > 0 using the display IDs
+    const studentsWithBalance = currentBalanceData.filter(s => s.balance > 0);
+    if (studentsWithBalance.length === 0) {
+        showMessage('No students with outstanding balance', 'warning');
+        return;
+    }
+    
+    // Show confirmation with student names
+    const studentNames = studentsWithBalance.map(s => `${s.student_name} (${s.student_display_id})`).join('\n• ');
+    if (!confirm(`Send fee reminders to ${studentsWithBalance.length} students?\n\nStudents:\n• ${studentNames}`)) {
+        return;
+    }
+    
+    const loading = document.getElementById('loadingOverlay');
+    loading.classList.remove('hidden');
+    loading.classList.add('flex');
+    
+    try {
+        // Send the display student IDs - backend will convert to internal UUIDs
+        const studentDisplayIds = studentsWithBalance.map(s => s.student_display_id);
+        
+        const response = await fetch('/fee-reports/send-reminders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ student_ids: studentDisplayIds })
+        });
+        
+        const result = await response.json();
+        
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        
+        if (result.success) {
+            let message = result.message;
+            if (result.failed && result.failed.length > 0) {
+                message += `\nFailed: ${result.failed.length} students`;
+                console.log('Failed reminders:', result.failed);
+            }
+            showMessage(message, result.failed && result.failed.length > 0 ? 'warning' : 'success');
+        } else {
+            showMessage(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        showMessage('Failed to send reminders: ' + error.message, 'error');
+    }
+}
+    // ==================== GENERAL REPORT ====================
+    function openGeneralReportModal() {
+        document.getElementById('generalReportModal').classList.remove('hidden');
+        document.getElementById('generalReportModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        fetchGeneralReport();
+    }
+    
+    function closeGeneralReportModal() {
+        document.getElementById('generalReportModal').classList.add('hidden');
+        document.getElementById('generalReportModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    async function fetchGeneralReport() {
+        const startDate = document.getElementById('generalStartDate').value;
+        const endDate = document.getElementById('generalEndDate').value;
+        
+        document.getElementById('generalLoading').classList.remove('hidden');
+        document.getElementById('generalResults').classList.add('hidden');
+        document.getElementById('generalEmpty').classList.add('hidden');
+        
+        try {
+            const response = await fetch('/fee-reports/general-report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ start_date: startDate, end_date: endDate })
+            });
+            
+            const result = await response.json();
+            
+            document.getElementById('generalLoading').classList.add('hidden');
+            
+            if (result.success) {
+                displayGeneralReport(result.summary);
+                document.getElementById('generalResults').classList.remove('hidden');
+            } else {
+                document.getElementById('generalEmpty').classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('generalLoading').classList.add('hidden');
+            document.getElementById('generalEmpty').classList.remove('hidden');
+            showMessage('Failed to load data', 'error');
+        }
+    }
+    
+    function displayGeneralReport(summary) {
+        document.getElementById('generalTotalStudents').textContent = summary.total_students;
+        document.getElementById('generalTotalInvoices').textContent = summary.total_invoices;
+        document.getElementById('generalFullyPaid').textContent = summary.fully_paid;
+        document.getElementById('generalPartiallyPaid').textContent = summary.partially_paid;
+        document.getElementById('generalTotalInvoiced').textContent = `UGX ${summary.total_invoiced.toLocaleString()}`;
+        document.getElementById('generalTotalPaid').textContent = `UGX ${summary.total_paid.toLocaleString()}`;
+        document.getElementById('generalTotalDiscount').textContent = `UGX ${summary.total_discount.toLocaleString()}`;
+        document.getElementById('generalTotalBalance').textContent = `UGX ${summary.total_balance.toLocaleString()}`;
+    }
+    
+    // ==================== EXPORT FUNCTIONS ====================
+    async function exportDailyToExcel() {
+        if (!currentDailyData) return;
+        
+        const exportData = [];
+        currentDailyData.forEach(day => {
+            day.transactions.forEach(t => {
+                exportData.push({
+                    'Date': day.date,
+                    'Receipt Number': t.receipt_number,
+                    'Student Name': t.student_name,
+                    'Student ID': t.student_id,
+                    'Amount': t.amount,
+                    'Payment Method': t.payment_method,
+                    'Notes': t.notes || ''
+                });
+            });
+        });
+        
+        await exportToExcel(exportData, 'daily_collection_report');
+    }
+    
+    async function exportBalanceToExcel() {
+        if (!currentBalanceData) return;
+        await exportToExcel(currentBalanceData, 'balance_report');
+    }
+    
+    async function exportToExcel(data, filename) {
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/fee-reports/export-excel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ report_type: filename, data: data })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${filename}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showMessage('Export completed successfully', 'success');
+            } else {
+                showMessage('Export failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Export failed', 'error');
+        } finally {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+        }
+    }
+    
+    // ==================== SEND REMINDERS ====================
+    // Update the sendReminders function in reports.html
+
+async function sendReminders() {
+    if (!currentBalanceData) return;
+    
+    // Get students with balance > 0
+    const studentsWithBalance = currentBalanceData.filter(s => s.balance > 0);
+    if (studentsWithBalance.length === 0) {
+        showMessage('No students with outstanding balance', 'warning');
+        return;
+    }
+    
+    // Show confirmation with student names
+    const studentNames = studentsWithBalance.map(s => s.student_name).join('\n• ');
+    if (!confirm(`Send fee reminders to ${studentsWithBalance.length} students?\n\nStudents:\n• ${studentNames}`)) {
+        return;
+    }
+    
+    const loading = document.getElementById('loadingOverlay');
+    loading.classList.remove('hidden');
+    loading.classList.add('flex');
+    
+    try {
+        // Extract student IDs from the balance data
+        const studentIds = studentsWithBalance.map(s => s.student_id);
+        
+        const response = await fetch('/fee-reports/send-reminders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ student_ids: studentIds })
+        });
+        
+        const result = await response.json();
+        
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        
+        if (result.success) {
+            let message = result.message;
+            if (result.failed && result.failed.length > 0) {
+                message += `\nFailed: ${result.failed.length} students`;
+                console.log('Failed reminders:', result.failed);
+            }
+            showMessage(message, result.failed && result.failed.length > 0 ? 'warning' : 'success');
+        } else {
+            showMessage(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        showMessage('Failed to send reminders: ' + error.message, 'error');
+    }
+}
+
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+    
+    // Close modals on outside click
+    window.onclick = function(event) {
+        const modals = ['dailyCollectionModal', 'balanceReportModal', 'generalReportModal', 'transactionModal'];
+        modals.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (event.target === modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = '';
+            }
+        });
+    };
+</script>
+{% endblock %}

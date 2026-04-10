@@ -1,0 +1,338 @@
+<!-- templates/student_list/index.html - Student List Printing -->
+{% extends "base.html" %}
+
+{% block title %}Student List - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .student-row {
+        transition: all 0.2s;
+    }
+    .student-row:hover {
+        background-color: #fff7ed;
+    }
+    .summary-card {
+        transition: all 0.2s;
+    }
+    .summary-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Student List</h1>
+        <p class="text-sm text-gray-600">View and print student lists by class with fees balance</p>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="bg-white rounded-xl shadow-md p-5 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Class *</label>
+                <div class="relative">
+                    <i class="fas fa-chalkboard absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <select id="classSelect" class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">-- Select Class --</option>
+                        {% for class in classes %}
+                        <option value="{{ class.id }}">{{ class.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year</label>
+                <select id="academicYearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="2023">2023</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button onclick="loadStudents()" class="w-full btn-gradient px-4 py-2 rounded-lg text-white font-medium">
+                    <i class="fas fa-search"></i> Load Students
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden text-center py-12">
+        <div class="inline-block">
+            <div class="loader"></div>
+            <p class="text-gray-600 mt-3">Loading students...</p>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div id="summaryContainer" class="hidden grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-xs text-gray-500">Total Students</p>
+            <p class="text-2xl font-bold text-gray-800" id="totalStudents">0</p>
+        </div>
+        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-xs text-gray-500">Male Students</p>
+            <p class="text-2xl font-bold text-blue-600" id="maleCount">0</p>
+        </div>
+        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-xs text-gray-500">Female Students</p>
+            <p class="text-2xl font-bold text-pink-600" id="femaleCount">0</p>
+        </div>
+        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-xs text-gray-500">Total Fees Balance</p>
+            <p class="text-2xl font-bold text-orange-600" id="totalFeesBalance">UGX 0</p>
+        </div>
+    </div>
+
+    <!-- Students Table -->
+    <div id="tableContainer" class="hidden bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-wrap gap-3">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800" id="tableTitle">Student List</h2>
+                <p class="text-sm text-gray-500" id="classInfo">-</p>
+            </div>
+            <button onclick="exportToPDF()" id="exportBtn" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2">
+                <i class="fas fa-file-pdf"></i> Export to PDF
+            </button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">#</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Gender</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Fees Balance (UGX)</th>
+                    </tr>
+                </thead>
+                <tbody id="studentsTableBody" class="divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="6" class="px-4 py-8 text-center text-gray-400">
+                            Select a class to load students
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div id="errorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 text-center transform transition-all modal-container">
+        <div class="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-exclamation-triangle text-2xl text-red-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Error</h3>
+        <p class="text-sm text-gray-600 mb-6" id="errorMessage"></p>
+        <button onclick="closeErrorModal()" class="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">
+            Close
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-5 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mb-3"></div>
+        <p class="text-gray-600 text-sm">Generating PDF...</p>
+    </div>
+</div>
+
+<script>
+    let currentStudents = [];
+    let currentSummary = {};
+    let currentClassName = '';
+    let currentAcademicYear = 2026;
+    
+    document.getElementById('academicYearSelect').addEventListener('change', function() {
+        currentAcademicYear = parseInt(this.value);
+        if (document.getElementById('classSelect').value) {
+            loadStudents();
+        }
+    });
+    
+    async function loadStudents() {
+        const classId = document.getElementById('classSelect').value;
+        
+        if (!classId) {
+            showError('Please select a class');
+            return;
+        }
+        
+        // Show loading
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('summaryContainer').classList.add('hidden');
+        document.getElementById('tableContainer').classList.add('hidden');
+        
+        try {
+            const response = await fetch(`/student-list/api/students?class_id=${classId}&academic_year=${currentAcademicYear}`);
+            const result = await response.json();
+            
+            document.getElementById('loadingState').classList.add('hidden');
+            
+            if (result.success) {
+                currentStudents = result.students;
+                currentSummary = result.summary;
+                
+                // Get class name
+                const classSelect = document.getElementById('classSelect');
+                currentClassName = classSelect.options[classSelect.selectedIndex]?.text || 'Class';
+                
+                displayStudents(currentStudents);
+                displaySummary(currentSummary);
+                
+                document.getElementById('classInfo').textContent = `${currentClassName} | Academic Year: ${currentAcademicYear}`;
+                document.getElementById('summaryContainer').classList.remove('hidden');
+                document.getElementById('tableContainer').classList.remove('hidden');
+            } else {
+                showError(result.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('loadingState').classList.add('hidden');
+            showError('Failed to load students');
+        }
+    }
+    
+    function displayStudents(students) {
+        const tbody = document.getElementById('studentsTableBody');
+        
+        if (students.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-gray-400">
+                        <i class="fas fa-user-graduate text-3xl mb-2 block"></i>
+                        No students found in this class
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = students.map((student, idx) => {
+            const balanceClass = student.fees_balance > 0 ? 'text-red-600 font-semibold' : 'text-green-600';
+            return `
+                <tr class="student-row hover:bg-orange-50">
+                    <td class="px-4 py-3 text-sm text-gray-600">${idx + 1}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${student.student_id}</td>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            ${student.photo_url ? 
+                                `<img src="${student.photo_url}" class="w-8 h-8 rounded-full object-cover">` : 
+                                `<div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                                    <i class="fas fa-user-graduate text-orange-500 text-sm"></i>
+                                </div>`
+                            }
+                            <span class="font-medium text-gray-800">${student.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-center">${student.gender}</td>
+                    <td class="px-4 py-3 text-sm">${student.contact_number}</td>
+                    <td class="px-4 py-3 text-sm text-right ${balanceClass}">UGX ${student.fees_balance.toLocaleString()}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    function displaySummary(summary) {
+        document.getElementById('totalStudents').textContent = summary.total_students || 0;
+        document.getElementById('maleCount').textContent = summary.male_count || 0;
+        document.getElementById('femaleCount').textContent = summary.female_count || 0;
+        document.getElementById('totalFeesBalance').textContent = `UGX ${(summary.total_fees_balance || 0).toLocaleString()}`;
+    }
+    
+    async function exportToPDF() {
+        if (currentStudents.length === 0) {
+            showError('No students to export');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/student-list/api/export-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    students: currentStudents,
+                    class_name: currentClassName,
+                    academic_year: currentAcademicYear,
+                    summary: currentSummary
+                })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `student_list_${currentClassName}_${currentAcademicYear}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                const error = await response.json();
+                showError(error.message || 'Failed to export PDF');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to export PDF');
+        } finally {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+        }
+    }
+    
+    function closeErrorModal() {
+        document.getElementById('errorModal').classList.add('hidden');
+        document.getElementById('errorModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showError(message) {
+        document.getElementById('errorMessage').textContent = message;
+        document.getElementById('errorModal').classList.remove('hidden');
+        document.getElementById('errorModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    window.onclick = function(event) {
+        const errorModal = document.getElementById('errorModal');
+        if (event.target === errorModal) {
+            closeErrorModal();
+        }
+    };
+</script>
+{% endblock %}

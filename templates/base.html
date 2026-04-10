@@ -1,0 +1,912 @@
+<!-- templates/base.html - Main Layout Template with Dynamic User Data -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Lunserk School Management ERP - Complete Education Management System">
+    <meta name="keywords" content="school management, erp, education, lurnserk, lunker">
+    <meta name="author" content="Lunserk Inc.">
+    <title>Lunserk ERP - {% block title %}School Management System{% endblock %}</title>
+    
+    <!-- Tailwind CSS CDN + Font Awesome + Google Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#ffa500',
+                        primaryDark: '#ff8c00',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        * { 
+            font-family: 'Inter', sans-serif; 
+        }
+        
+        /* Custom scrollbar */
+        .sidebar-scroll::-webkit-scrollbar { 
+            width: 4px; 
+        }
+        .sidebar-scroll::-webkit-scrollbar-track { 
+            background: #f1f1f1; 
+            border-radius: 10px; 
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb { 
+            background: #cbd5e1; 
+            border-radius: 10px; 
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover { 
+            background: #94a3b8; 
+        }
+        
+        /* Mobile sidebar transition */
+        .mobile-sidebar { 
+            transition: transform 0.3s ease-in-out; 
+        }
+        .sidebar-hidden { 
+            transform: translateX(-100%); 
+        }
+        
+        /* Desktop sidebar always visible */
+        @media (min-width: 1024px) { 
+            .mobile-sidebar { 
+                transform: translateX(0) !important; 
+            }
+        }
+        
+        /* Navigation item styles */
+        .nav-item {
+            transition: all 0.2s ease;
+        }
+        
+        .nav-item-active {
+            background-color: #ffa50010;
+            color: #ffa500;
+            border-left: 3px solid #ffa500;
+        }
+        
+        /* Alpine.js cloak */
+        [x-cloak] { 
+            display: none !important; 
+        }
+        
+        /* Smooth transitions */
+        .transition-smooth {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Flash message animations */
+        .flash-message {
+            animation: slideInRight 0.3s ease-out;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Flash messages container */
+        .flash-messages-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 380px;
+        }
+        
+        .flash-message {
+            padding: 12px 20px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .flash-message.success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        
+        .flash-message.error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        
+        .flash-message.warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+        
+        .flash-message.info {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 antialiased">
+
+<!-- Flash Messages Container -->
+<div class="flash-messages-container" id="flashMessages">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}">
+                    <div class="flex items-center gap-2">
+                        {% if category == 'success' %}
+                            <i class="fas fa-check-circle"></i>
+                        {% elif category == 'error' %}
+                            <i class="fas fa-exclamation-circle"></i>
+                        {% elif category == 'warning' %}
+                            <i class="fas fa-exclamation-triangle"></i>
+                        {% else %}
+                            <i class="fas fa-info-circle"></i>
+                        {% endif %}
+                        <span>{{ message }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>
+
+<div class="flex h-screen overflow-hidden">
+    <!-- ==================== SIDEBAR ==================== -->
+    <aside id="sidebar" class="mobile-sidebar fixed inset-y-0 left-0 z-30 w-72 bg-white border-r border-gray-200 shadow-xl transform transition-transform duration-300 lg:relative lg:translate-x-0 sidebar-scroll overflow-y-auto">
+        <div class="flex flex-col h-full">
+            <!-- Logo Header -->
+            <div class="flex items-center justify-between px-6 py-6 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
+                <div class="flex items-center space-x-3">
+                    <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-[#ffa500] to-[#ff8c00] flex items-center justify-center shadow-lg">
+                        <i class="fas fa-graduation-cap text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-xl text-gray-800 tracking-tight">Lunserk<span class="text-[#ffa500]">ERP</span></span>
+                        <p class="text-xs text-gray-500 mt-0.5">School Management System</p>
+                    </div>
+                </div>
+                <button id="closeSidebarBtn" class="lg:hidden text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto" x-data="{ 
+                activeMenu: '{{ request.endpoint.split(".")[-1] if request.endpoint else "dashboard" }}',
+                openMenus: {},
+                toggleMenu(menu) {
+                    this.openMenus[menu] = !this.openMenus[menu];
+                }
+            }">
+                <!-- Dashboard -->
+                <a href="{{ url_for('dashboard.index') }}" 
+                   :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'dashboard'}" 
+                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                    <i class="fas fa-tachometer-alt text-lg w-5 group-hover:text-[#ffa500]"></i>
+                    <span class="font-medium">Dashboard</span>
+                </a>
+
+                <a href="{{ url_for('billing.index') }}" 
+                   :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'billing'}" 
+                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                    <i class="fas fa-tachometer-alt text-lg w-5 group-hover:text-[#ffa500]"></i>
+                    <span class="font-medium">Billing</span>
+                </a>
+
+                <!-- General Settings -->
+                <div>
+                    <button @click="toggleMenu('settings')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-sliders-h text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">General Settings</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.settings ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.settings" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="{{ url_for('instituteProfile.profile') }}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Institute Profile</a>
+                        <a href="{{ url_for('fees.index') }}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fees Particulars</a>
+                        <a href="#" @click.prevent="activeMenu = 'fees-structure'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fees Structure</a>
+                        <a href="#" @click.prevent="activeMenu = 'discount-type'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Discount Type</a>
+                        <a href="#" @click.prevent="activeMenu = 'accounts-fees'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Accounts For Fees Invoice</a>
+                        <a href="#" @click.prevent="activeMenu = 'rules-regulations'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Rules & Regulations</a>
+                        <a href="{{ url_for('grading.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Marks Grading</a>
+                        <a href="#" @click.prevent="activeMenu = 'theme-language'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Theme & Language</a>
+                        <a href="#" @click.prevent="activeMenu = 'account-settings'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Account Settings</a>
+                    </div>
+                </div>
+
+                <!-- Classes -->
+                <div>
+                    <button @click="toggleMenu('classes')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-chalkboard text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Classes</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.classes ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.classes" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="{{ url_for('class.index') }}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">All Classes</a>
+                        <a href="{{ url_for('class.create') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">New Class</a>
+                    </div>
+                </div>
+
+                <!-- Subjects -->
+                <div>
+                    <button @click="toggleMenu('subjects')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-book-open text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Subjects</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.subjects ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.subjects" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="{{ url_for('subjects.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Classes With Subjects</a>
+                        <a href="#" @click.prevent="activeMenu = 'assign-subjects'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Assign Subjects</a>
+                    </div>
+                </div>
+
+                <!-- Students -->
+                <div>
+                    <button @click="toggleMenu('students')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-user-graduate text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Students</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.students ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.students" x-cloak class="pl-11 mt-2 space-y-1.5">
+                          <!-- <a href="#" @click.prevent="activeMenu = 'all-students'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">All Students</a> -->
+
+                        <a href="{{url_for('student.index')}}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student Management</a>
+
+                        <!--<a href="#" @click.prevent="activeMenu = 'manage-families'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Families</a>
+                        <a href="#" @click.prevent="activeMenu = 'active-inactive'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Active / Inactive</a>
+                        <a href="#" @click.prevent="activeMenu = 'admission-letter'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Admission Letter</a> -->
+
+
+                        <a href="{{url_for('id.index')}}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student ID Cards</a>
+
+                        <a href="{{url_for('student_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Print Basic List</a>
+
+                        <a href="#" @click.prevent="activeMenu = 'manage-login'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Login</a>
+                        <a href="{{url_for('promote.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Promote Students</a>
+                    </div>
+                </div>
+
+                <!-- Employees -->
+                <div>
+                    <button @click="toggleMenu('employees')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-chalkboard-user text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Employees</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.employees ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.employees" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="{{ url_for('employees.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Employees Management</a>
+
+                        <!--<a href="#"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Add New</a>
+                        <a href="{{url_for('employee_id.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Staff ID Cards</a>
+                        <a href="#" @click.prevent="activeMenu = 'job-letter'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Job Letter</a>
+                        <a href="#" @click.prevent="activeMenu = 'employee-login'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Login</a>-->
+                    </div>
+                </div>
+
+                <!-- Accounts -->
+                <div>
+                    <button @click="toggleMenu('accounts')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-wallet text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Accounts</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.accounts ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.accounts" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="{{url_for('accounts.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Accounts Management</a>
+                        <a href="{{url_for('statements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student Statements</a>
+                         <!--<a href="#" @click.prevent="activeMenu = 'add-expense'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Add Expense</a>
+                        <a href="#" @click.prevent="activeMenu = 'account-statement'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Account Statement</a>-->
+                    </div>
+                </div>
+
+                <!-- Fees -->
+                <div>
+                    <button @click="toggleMenu('fees')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-money-bill-wave text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Fees</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.fees ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.fees" x-cloak class="pl-11 mt-2 space-y-1.5">
+
+                       <a href="{{url_for('sms_settings.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">SMS Settings</a>
+
+                        <a href="{{url_for('collect.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Collect Fees</a>
+
+                         <a href="{{url_for('discount.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Discounts</a>
+
+                      <a href="{{url_for('requirements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Requirements</a>
+
+                        <a href="{{url_for('fee_reports.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fees Report</a>
+                        
+                        <a href="#" @click.prevent="activeMenu = 'delete-fees'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Delete Fees</a>
+                    </div>
+                </div>
+
+                <!-- Salary -->
+                <div>
+                    <button @click="toggleMenu('salary')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-credit-card text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Salary</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.salary ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.salary" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="{{ url_for('payroll.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Pay Salary</a>
+                       <!-- <a href="#" @click.prevent="activeMenu = 'salary-slip'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Paid Slip</a>
+                        <a href="#" @click.prevent="activeMenu = 'salary-sheet'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Sheet</a>
+                        <a href="#" @click.prevent="activeMenu = 'salary-report'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Report</a>-->
+                    </div>
+                </div>
+
+                <!-- Attendance -->
+                <div>
+                    <button @click="toggleMenu('attendance')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-fingerprint text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Attendance</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.attendance ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.attendance" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="{{ url_for('attendance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Students Attendance</a>
+                        <a href="{{ url_for('staff_attendance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Employees Attendance</a>
+                        <!--<a href="#" @click.prevent="activeMenu = 'class-wise-report'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Class wise Report</a>-->
+                        <a href="{{ url_for('attendance_report.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Students Attendance Report</a>
+                        <a href="{{ url_for('staff_attendance_report.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Employees Attendance Report</a>
+                    </div>
+                </div>
+
+                <!-- Timetable 
+                <div>
+                    <button @click="toggleMenu('timetable')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-calendar-alt text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Timetable</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.timetable ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.timetable" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="#" @click.prevent="activeMenu = 'weekdays'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Weekdays</a>
+                        <a href="#" @click.prevent="activeMenu = 'time-periods'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Time Periods</a>
+                        <a href="#" @click.prevent="activeMenu = 'class-rooms'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Class Rooms</a>
+                        <a href="#" @click.prevent="activeMenu = 'create-timetable'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Create Timetable</a>
+                        <a href="#" @click.prevent="activeMenu = 'generate-class'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Generate For Class</a>
+                        <a href="#" @click.prevent="activeMenu = 'generate-teacher'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Generate For Teacher</a>
+                    </div>
+                </div>-->
+
+                <!-- Homework 
+                <a href="#" @click.prevent="activeMenu = 'homework'" 
+                   :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'homework'}" 
+                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                    <i class="fas fa-book text-lg w-5 group-hover:text-[#ffa500]"></i>
+                    <span class="font-medium">Homework</span>
+                </a>-->
+
+                <!-- Behaviour & Skills 
+                <div>
+                    <button @click="toggleMenu('behaviour')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-eye text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Behaviour & Skills</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.behaviour ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.behaviour" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="#" @click.prevent="activeMenu = 'rate-behaviours'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Rate Behaviours</a>
+                        <a href="#" @click.prevent="activeMenu = 'rate-skills'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Rate Skills</a>
+                        <a href="#" @click.prevent="activeMenu = 'observations'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Observations</a>
+                        <a href="#" @click.prevent="activeMenu = 'affective-domain'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Affective Domain Rating Report</a>
+                        <a href="#" @click.prevent="activeMenu = 'psycomotor-domain'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Psycomotor Domain Rating Report</a>
+                    </div>
+                </div>-->
+
+                <!-- Online Store & POS 
+                <div>
+                    <button @click="toggleMenu('store')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-shopping-cart text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Online Store & POS</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.store ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.store" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="#" @click.prevent="activeMenu = 'store-analytics'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Store Analytics</a>
+                        <a href="#" @click.prevent="activeMenu = 'product-categories'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Product Categories</a>
+                        <a href="#" @click.prevent="activeMenu = 'product-tax'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Product Tax</a>
+                        <a href="#" @click.prevent="activeMenu = 'products'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Products</a>
+                        <a href="#" @click.prevent="activeMenu = 'new-order'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">New Order</a>
+                        <a href="#" @click.prevent="activeMenu = 'all-orders'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">All Orders</a>
+                    </div>
+                </div>-->
+
+                <!-- WhatsApp 
+                <a href="#" @click.prevent="activeMenu = 'whatsapp'" 
+                   :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'whatsapp'}" 
+                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                    <i class="fab fa-whatsapp text-lg w-5 group-hover:text-[#ffa500]"></i>
+                    <span class="font-medium">WhatsApp</span>
+                </a>-->
+
+                
+                <a href="{{ url_for('message.index') }}" 
+                   :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'messaging'}" 
+                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                    <i class="fas fa-comment-dots text-lg w-5 group-hover:text-[#ffa500]"></i>
+                    <span class="font-medium">Messaging</span>
+                </a> 
+
+                <!-- SMS Services 
+                <div>
+                    <button @click="toggleMenu('sms')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-envelope text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">SMS Services</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.sms ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.sms" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="#" @click.prevent="activeMenu = 'free-sms'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Free SMS Gateway</a>
+                        <a href="#" @click.prevent="activeMenu = 'branded-sms'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Branded SMS</a>
+                        <a href="#" @click.prevent="activeMenu = 'sms-templates'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">SMS Templates</a>
+                    </div>
+                </div>-->
+
+                <!-- Live Class -->
+                <a href="#" @click.prevent="activeMenu = 'live-class'" 
+                   :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'live-class'}" 
+                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                    <i class="fas fa-video text-lg w-5 group-hover:text-[#ffa500]"></i>
+                    <span class="font-medium">Live Class</span>
+                </a>
+
+                <!-- Question Paper 
+                <div>
+                    <button @click="toggleMenu('question-paper')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-file-alt text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Question Paper</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus['question-paper'] ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus['question-paper']" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="#" @click.prevent="activeMenu = 'subject-chapters'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Subject Chapters</a>
+                        <a href="#" @click.prevent="activeMenu = 'question-bank'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Question Bank</a>
+                        <a href="#" @click.prevent="activeMenu = 'create-paper'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Create Question Paper</a>
+                    </div>
+                </div>-->
+
+                <!-- Exams -->
+                <div>
+                    <button @click="toggleMenu('exams')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-pen-to-square text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Exams</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.exams ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.exams" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="{{ url_for('exams.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Create New Exam</a>
+                        <a href="{{ url_for('exams.marks') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Add / Update Exam Marks</a>
+                        <a href="{{ url_for('results.r') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Result Card</a>
+                         <!--<a href="#" @click.prevent="activeMenu = 'result-sheet'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Result Sheet</a>
+                        <a href="#" @click.prevent="activeMenu = 'exam-schedule'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Exam Schedule</a>
+                        <a href="#" @click.prevent="activeMenu = 'date-sheet'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Date Sheet</a>
+                        <a href="#" @click.prevent="activeMenu = 'blank-award'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Blank Award List</a>-->
+                    </div>
+                </div>
+
+                <!-- Class Tests 
+                <div>
+                    <button @click="toggleMenu('tests')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-clipboard-list text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Class Tests</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.tests ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.tests" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="#" @click.prevent="activeMenu = 'manage-test-marks'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Test Marks</a>
+                        <a href="#" @click.prevent="activeMenu = 'test-result'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Test Result</a>
+                    </div>
+                </div>-->
+
+                <!-- Reports
+                <div>
+                    <button @click="toggleMenu('reports')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-chart-line text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Reports</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.reports ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.reports" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="#" @click.prevent="activeMenu = 'students-report-card'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Students Report Card</a>
+                        <a href="#" @click.prevent="activeMenu = 'students-info'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Students Info Report</a>
+                        <a href="#" @click.prevent="activeMenu = 'parents-info'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Parents Info Report</a>
+                        <a href="#" @click.prevent="activeMenu = 'student-attendance-monthly'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Students Monthly Attendance Report</a>
+                        <a href="#" @click.prevent="activeMenu = 'staff-attendance-monthly'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Staff Monthly Attendance Report</a>
+                        <a href="#" @click.prevent="activeMenu = 'fee-collection'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fee Collection Report</a>
+                        <a href="#" @click.prevent="activeMenu = 'student-progress'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student Progress Report</a>
+                        <a href="#" @click.prevent="activeMenu = 'accounts-report'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Accounts Report</a>
+                        <a href="#" @click.prevent="activeMenu = 'customised-reports'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Customised Reports</a>
+                    </div>
+                </div> -->
+
+                <!-- Certificates -->
+                <div>
+                    <button @click="toggleMenu('certificates')" 
+                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-certificate text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="font-medium">Certificates</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.certificates ? 'rotate-180' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.certificates" x-cloak class="pl-11 mt-2 space-y-1.5">
+                        <a href="#" @click.prevent="activeMenu = 'generate-certificate'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Generate Certificate</a>
+                        <a href="#" @click.prevent="activeMenu = 'certificate-templates'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Certificate Templates</a>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Footer / User Info - Dynamic from session -->
+            <div class="border-t border-gray-200 p-4 bg-gray-50">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-full bg-gradient-to-br from-[#ffa500] to-[#ff8c00] flex items-center justify-center text-white font-bold shadow-md">
+                        {{ user.email[0].upper() if user and user.email else 'U' }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-gray-800 truncate">
+                            {{ user.email.split('@')[0] if user and user.email else 'User' }}
+                        </p>
+                        <p class="text-xs text-gray-500 truncate">
+                            {{ user.email if user and user.email else 'user@example.com' }}
+                        </p>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="text-gray-400 hover:text-red-500 transition-colors" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Navbar -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
+            <div class="flex items-center justify-between px-6 py-4">
+                <div class="flex items-center gap-4">
+                    <button id="openSidebarBtn" class="lg:hidden text-gray-600 hover:text-[#ffa500] text-2xl transition-colors">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="relative hidden md:block">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <input type="text" placeholder="Search student, employee..." 
+                               class="pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl w-80 text-sm focus:outline-none focus:ring-2 focus:ring-[#ffa500] focus:border-transparent transition-all">
+                    </div>
+                </div>
+                <div class="flex items-center gap-5">
+                    <div class="hidden md:flex gap-2">
+                        <a href="#" @click.prevent="activeMenu = 'app-store'" class="flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-gray-800 transition-colors">
+                            <i class="fab fa-apple"></i> App Store
+                        </a>
+                        <a href="#" @click.prevent="activeMenu = 'google-play'" class="flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-gray-800 transition-colors">
+                            <i class="fab fa-google-play"></i> Google Play
+                        </a>
+                    </div>
+                    <button class="relative text-gray-600 hover:text-[#ffa500] transition-colors">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">3</span>
+                    </button>
+                    <div class="flex items-center gap-2 cursor-pointer group">
+                        <div class="h-9 w-9 rounded-full bg-gradient-to-br from-[#ffa500] to-[#ff8c00] flex items-center justify-center text-white font-semibold shadow-md">
+                            {{ user.email[0].upper() if user and user.email else 'U' }}
+                        </div>
+                        <div class="hidden md:block">
+                            <p class="text-sm font-medium text-gray-800 group-hover:text-[#ffa500] transition-colors">
+                                {{ user.email.split('@')[0] if user and user.email else 'User' }}
+                            </p>
+                            <p class="text-xs text-gray-500">Administrator</p>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs text-gray-500 group-hover:text-[#ffa500] transition-colors"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dynamic Content Area -->
+        <main class="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-gray-50 to-gray-100">
+            {% block content %}
+            <!-- Default content if no block is provided -->
+            <div class="flex items-center justify-center h-full">
+                <div class="text-center">
+                    <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md mx-auto">
+                        <div class="h-20 w-20 bg-gradient-to-br from-[#ffa500] to-[#ff8c00] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                            <i class="fas fa-school text-white text-4xl"></i>
+                        </div>
+                        <h1 class="text-2xl font-bold text-gray-800 mb-2">Welcome to Lunserk ERP</h1>
+                        <p class="text-gray-600">Select a module from the sidebar to get started</p>
+                    </div>
+                </div>
+            </div>
+            {% endblock %}
+        </main>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script>
+    // Sidebar toggle functionality
+    const sidebar = document.getElementById('sidebar');
+    const openBtn = document.getElementById('openSidebarBtn');
+    const closeBtn = document.getElementById('closeSidebarBtn');
+    
+    function toggleSidebar(show) { 
+        if (show) {
+            sidebar.classList.remove('sidebar-hidden');
+        } else {
+            sidebar.classList.add('sidebar-hidden');
+        }
+    }
+    
+    if (openBtn) {
+        openBtn.addEventListener('click', () => toggleSidebar(true));
+    }
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => toggleSidebar(false));
+    }
+    
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', function(event) {
+        const isMobile = window.innerWidth < 1024;
+        if (isMobile && sidebar && !sidebar.contains(event.target) && !openBtn?.contains(event.target)) {
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                toggleSidebar(false);
+            }
+        }
+    });
+    
+    // Handle window resize
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            if (window.innerWidth >= 1024) {
+                sidebar.classList.remove('sidebar-hidden');
+            }
+        }, 250);
+    });
+    
+    // Auto-hide flash messages after 5 seconds
+    setTimeout(() => {
+        document.querySelectorAll('.flash-message').forEach(msg => {
+            setTimeout(() => {
+                msg.style.opacity = '0';
+                msg.style.transform = 'translateX(100%)';
+                setTimeout(() => msg.remove(), 300);
+            }, 5000);
+        });
+    }, 100);
+    
+    // Manual flash message removal
+    const flashMessages = document.querySelectorAll('.flash-message');
+    flashMessages.forEach(msg => {
+        setTimeout(() => {
+            msg.style.opacity = '0';
+            msg.style.transform = 'translateX(100%)';
+            setTimeout(() => msg.remove(), 300);
+        }, 5000);
+    });
+
+   // Subscription Check and Overlay
+let subscriptionCheckInterval = null;
+let subscriptionOverlay = null;
+
+// List of paths where overlay should NOT appear
+const excludedPaths = ['/billing', '/billing/', '/billing/index', '/billing/payment-callback'];
+
+function isExcludedPath() {
+    const currentPath = window.location.pathname;
+    return excludedPaths.some(path => currentPath === path || currentPath.startsWith('/billing'));
+}
+
+function checkSubscriptionStatus() {
+    // Don't check on billing pages
+    if (isExcludedPath()) {
+        return;
+    }
+    
+    fetch('/billing/check-subscription')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && !data.is_active) {
+                showSubscriptionOverlay();
+            } else if (data.success && data.is_active && subscriptionOverlay) {
+                hideSubscriptionOverlay();
+            }
+        })
+        .catch(error => console.error('Error checking subscription:', error));
+}
+
+function showSubscriptionOverlay() {
+    // Don't show on billing pages
+    if (isExcludedPath()) {
+        return;
+    }
+    
+    if (subscriptionOverlay) return;
+    
+    subscriptionOverlay = document.createElement('div');
+    subscriptionOverlay.id = 'subscriptionOverlay';
+    subscriptionOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(5px);
+    `;
+    
+    subscriptionOverlay.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 text-center" style="animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);">
+            <div class="h-20 w-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">Subscription Expired</h3>
+            <p class="text-gray-600 mb-4">
+                Your subscription has expired. Please renew to continue accessing the system.
+            </p>
+            <div class="bg-orange-50 rounded-lg p-3 mb-4">
+                <p class="text-sm text-orange-600">
+                    <i class="fas fa-info-circle"></i> 
+                    Renew now for only UGX 1,000 per month
+                </p>
+            </div>
+            <div class="flex gap-3">
+                <a href="/billing" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium text-center">
+                    <i class="fas fa-credit-card"></i> Renew Now
+                </a>
+            </div>
+        </div>
+    `;
+    
+    // Add animation styles if not already present
+    if (!document.querySelector('#subscriptionStyles')) {
+        const style = document.createElement('style');
+        style.id = 'subscriptionStyles';
+        style.textContent = `
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(50px) scale(0.95);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // Add btn-gradient styles if not present
+    if (!document.querySelector('#btnGradientStyles')) {
+        const btnStyle = document.createElement('style');
+        btnStyle.id = 'btnGradientStyles';
+        btnStyle.textContent = `
+            .btn-gradient {
+                background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+                transition: all 0.3s ease;
+            }
+            .btn-gradient:hover {
+                background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+                transform: translateY(-2px);
+            }
+        `;
+        document.head.appendChild(btnStyle);
+    }
+    
+    document.body.appendChild(subscriptionOverlay);
+    document.body.style.overflow = 'hidden';
+}
+
+function hideSubscriptionOverlay() {
+    if (subscriptionOverlay) {
+        subscriptionOverlay.remove();
+        subscriptionOverlay = null;
+        document.body.style.overflow = '';
+    }
+}
+
+// Check subscription on page load and every 5 minutes (but not on billing pages)
+document.addEventListener('DOMContentLoaded', function() {
+    // Only check if not on billing page
+    if (!isExcludedPath()) {
+        checkSubscriptionStatus();
+        subscriptionCheckInterval = setInterval(checkSubscriptionStatus, 5 * 60 * 1000);
+    }
+});
+
+// Also check when the page becomes visible again (user returns from billing)
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && !isExcludedPath()) {
+        checkSubscriptionStatus();
+    }
+});
+
+// Clean up interval on page unload
+window.addEventListener('beforeunload', function() {
+    if (subscriptionCheckInterval) {
+        clearInterval(subscriptionCheckInterval);
+    }
+});
+
+// Optional: Also check when returning from billing page via navigation
+window.addEventListener('pageshow', function() {
+    if (!isExcludedPath()) {
+        checkSubscriptionStatus();
+    }
+});
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

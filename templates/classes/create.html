@@ -1,0 +1,351 @@
+<!-- templates/classes/create.html - Create Class Page -->
+{% extends "base.html" %}
+
+{% block title %}Create New Class - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #374151;
+    }
+    .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        transition: all 0.2s;
+    }
+    .form-input:focus {
+        outline: none;
+        border-color: #ffa500;
+        box-shadow: 0 0 0 3px rgba(255, 165, 0, 0.1);
+    }
+    .section-checkbox {
+        transition: all 0.2s;
+    }
+    .section-checkbox:hover {
+        transform: translateX(4px);
+    }
+    .section-checkbox input:checked + span {
+        background-color: #ffa500;
+        border-color: #ffa500;
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    /* Animated Modal Styles */
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+    .modal-enter-active {
+        animation: slideUp 0.3s ease-out;
+    }
+    .new-section-btn {
+        animation: pulse 2s infinite;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-2">
+            <a href="{{ url_for('class.index') }}" class="text-gray-500 hover:text-orange-500 transition-colors">
+                <i class="fas fa-arrow-left text-xl"></i>
+            </a>
+            <h1 class="text-3xl font-bold text-gray-800">Create New Class</h1>
+        </div>
+        <p class="text-gray-600 ml-9">Add a new class and assign sections to it</p>
+    </div>
+
+    <!-- Create Class Form -->
+    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <form method="POST" id="createClassForm" class="p-8">
+            <!-- Class Name -->
+            <div class="form-group">
+                <label class="form-label">
+                    Class Name <span class="text-red-500">*</span>
+                </label>
+                <input type="text" name="class_name" required
+                       placeholder="e.g., Grade 1, Class 10, Pre-KG"
+                       class="form-input">
+                <p class="text-xs text-gray-500 mt-1">Enter a unique name for this class</p>
+            </div>
+            
+            <!-- Sections Selection -->
+            <div class="form-group">
+                <div class="flex items-center justify-between mb-3">
+                    <label class="form-label">
+                        Assign Sections
+                    </label>
+                    <button type="button" onclick="openSectionModal()" 
+                            class="new-section-btn text-orange-500 hover:text-orange-600 text-sm font-medium flex items-center gap-1 transition-all">
+                        <i class="fas fa-plus-circle"></i>
+                        Create New Section
+                    </button>
+                </div>
+                
+                <div id="sectionsContainer" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {% if sections %}
+                        {% for section in sections %}
+                        <label class="section-checkbox flex items-center gap-2 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-all">
+                            <input type="checkbox" name="sections[]" value="{{ section.id }}" 
+                                   class="w-4 h-4 text-orange-500 rounded focus:ring-orange-500">
+                            <span class="text-gray-700">{{ section.name }}</span>
+                        </label>
+                        {% endfor %}
+                    {% else %}
+                        <div class="col-span-full text-center py-8">
+                            <i class="fas fa-layer-group text-4xl text-gray-300 mb-2"></i>
+                            <p class="text-gray-500">No sections available</p>
+                            <button type="button" onclick="openSectionModal()" 
+                                    class="mt-3 text-orange-500 hover:text-orange-600 text-sm font-medium">
+                                Create your first section
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Select one or more sections for this class</p>
+            </div>
+            
+            <!-- Form Actions -->
+            <div class="flex items-center gap-3 pt-6 border-t border-gray-200">
+                <a href="{{ url_for('class.index') }}" 
+                   class="px-6 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="btn-gradient px-6 py-2.5 rounded-xl text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                    <i class="fas fa-save"></i>
+                    Create Class
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Animated Modal for Creating Section -->
+<div id="sectionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">Create New Section</h3>
+                <button onclick="closeSectionModal()" 
+                        class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Section Name <span class="text-red-500">*</span>
+                </label>
+                <input type="text" id="sectionName" 
+                       placeholder="e.g., A, B, C, I, II, III"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
+                       autocomplete="off">
+                <p class="text-xs text-gray-500 mt-1">Section names like A, B, C or I, II, III are common</p>
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="closeSectionModal()" 
+                        class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all">
+                    Cancel
+                </button>
+                <button onclick="createSection()" 
+                        id="createSectionBtn"
+                        class="flex-1 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-md flex items-center justify-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    Create Section
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Creating section...</p>
+    </div>
+</div>
+
+<script>
+    const modal = document.getElementById('sectionModal');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    
+    function openSectionModal() {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.getElementById('sectionName').focus();
+        // Add animation class
+        modal.querySelector('.modal-container').style.animation = 'none';
+        modal.querySelector('.modal-container').offsetHeight;
+        modal.querySelector('.modal-container').style.animation = 'slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1)';
+    }
+    
+    function closeSectionModal() {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.getElementById('sectionName').value = '';
+    }
+    
+    function createSection() {
+        const sectionName = document.getElementById('sectionName').value.trim().toUpperCase();
+        
+        if (!sectionName) {
+            showFlashMessage('Please enter a section name', 'error');
+            document.getElementById('sectionName').focus();
+            return;
+        }
+        
+        // Show loading
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.classList.add('flex');
+        
+        fetch('/classes/api/sections/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name: sectionName })
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingOverlay.classList.add('hidden');
+            loadingOverlay.classList.remove('flex');
+            
+            if (data.success) {
+                // Add new section to the list
+                const sectionsContainer = document.getElementById('sectionsContainer');
+                const newSectionHtml = `
+                    <label class="section-checkbox flex items-center gap-2 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-all">
+                        <input type="checkbox" name="sections[]" value="${data.section.id}" checked class="w-4 h-4 text-orange-500 rounded focus:ring-orange-500">
+                        <span class="text-gray-700">${data.section.name}</span>
+                    </label>
+                `;
+                
+                // Check if empty state exists
+                if (sectionsContainer.querySelector('.col-span-full')) {
+                    sectionsContainer.innerHTML = newSectionHtml;
+                } else {
+                    sectionsContainer.insertAdjacentHTML('beforeend', newSectionHtml);
+                }
+                
+                showFlashMessage(data.message, 'success');
+                closeSectionModal();
+                
+                // Add a subtle highlight effect to the new section
+                const newLabels = sectionsContainer.querySelectorAll('.section-checkbox');
+                const lastLabel = newLabels[newLabels.length - 1];
+                lastLabel.style.backgroundColor = '#fff7ed';
+                lastLabel.style.borderColor = '#ffa500';
+                setTimeout(() => {
+                    lastLabel.style.backgroundColor = '';
+                    lastLabel.style.borderColor = '';
+                }, 1500);
+                
+            } else {
+                showFlashMessage(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            loadingOverlay.classList.add('hidden');
+            loadingOverlay.classList.remove('flex');
+            showFlashMessage('Error creating section', 'error');
+        });
+    }
+    
+    // Enter key in modal input
+    document.getElementById('sectionName')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            createSection();
+        }
+    });
+    
+    // Close modal when clicking outside
+    modal?.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeSectionModal();
+        }
+    });
+    
+    function showFlashMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+    
+    // Form validation
+    document.getElementById('createClassForm')?.addEventListener('submit', function(e) {
+        const className = this.querySelector('input[name="class_name"]').value.trim();
+        if (!className) {
+            e.preventDefault();
+            showFlashMessage('Please enter a class name', 'error');
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,811 @@
+<!-- templates/students/index.html - Smaller Cards with API Stats -->
+{% extends "base.html" %}
+
+{% block title %}Student Management - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .student-card {
+        transition: all 0.3s ease;
+    }
+    .student-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    .success-checkmark {
+        animation: scaleIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    @keyframes scaleIn {
+        from {
+            transform: scale(0);
+        }
+        to {
+            transform: scale(1);
+        }
+    }
+    .stat-card {
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    .status-badge {
+        padding: 3px 8px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    .status-badge.active {
+        background-color: #10b981;
+        color: white;
+    }
+    .status-badge.inactive {
+        background-color: #ef4444;
+        color: white;
+    }
+    .category-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 12px;
+        font-size: 9px;
+        font-weight: 500;
+    }
+    .category-boarding {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+    .category-day {
+        background-color: #d1fae5;
+        color: #059669;
+    }
+    .file-upload-area {
+        border: 2px dashed #e2e8f0;
+        transition: all 0.3s;
+    }
+    .file-upload-area:hover {
+        border-color: #ffa500;
+        background-color: #fff7ed;
+    }
+    .student-avatar {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Student Management</h1>
+            <p class="text-sm text-gray-600">Manage all students, enrollments, and student information</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="openImportModal()" 
+                    class="px-4 py-2 bg-white border border-orange-500 text-orange-500 rounded-lg text-sm font-medium hover:bg-orange-50 transition-all flex items-center gap-2">
+                <i class="fas fa-upload text-sm"></i>
+                Import
+            </button>
+            <button onclick="openAddModal()" 
+                    class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                <i class="fas fa-plus-circle text-sm"></i>
+                Add Student
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards - Loaded via API -->
+    <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6" id="statsContainer">
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-orange-500">
+            <p class="text-gray-500 text-xs">Total</p>
+            <p class="text-xl font-bold text-gray-800" id="statTotal">-</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-green-500">
+            <p class="text-gray-500 text-xs">Active</p>
+            <p class="text-xl font-bold text-gray-800" id="statActive">-</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-red-500">
+            <p class="text-gray-500 text-xs">Inactive</p>
+            <p class="text-xl font-bold text-gray-800" id="statInactive">-</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-blue-500">
+            <p class="text-gray-500 text-xs">Boarding</p>
+            <p class="text-xl font-bold text-gray-800" id="statBoarding">-</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-purple-500">
+            <p class="text-gray-500 text-xs">Day</p>
+            <p class="text-xl font-bold text-gray-800" id="statDay">-</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-yellow-500">
+            <p class="text-gray-500 text-xs">Classes</p>
+            <p class="text-xl font-bold text-gray-800" id="statClasses">-</p>
+        </div>
+    </div>
+
+    <!-- Search and Filter - Compact -->
+    <div class="bg-white rounded-xl shadow-sm p-3 mb-5">
+        <div class="flex flex-wrap gap-2">
+            <div class="flex-1 min-w-[180px]">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input type="text" id="searchInput" placeholder="Search by name, ID..." 
+                           class="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+            </div>
+            <select id="classFilter" class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+                <option value="">All Classes</option>
+                {% for class in classes %}
+                <option value="{{ class.name }}">{{ class.name }}</option>
+                {% endfor %}
+            </select>
+            <select id="categoryFilter" class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+                <option value="">All Categories</option>
+                <option value="Boarding">Boarding</option>
+                <option value="Day">Day</option>
+            </select>
+            <select id="statusFilter" class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Students Grid - Smaller Cards -->
+    <div id="studentsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        {% for student in students %}
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden student-card hover:shadow-md transition-all" 
+             data-name="{{ student.name|lower }}" 
+             data-id="{{ student.student_id }}" 
+             data-class="{{ student.classes.name if student.classes else '' }}" 
+             data-status="{{ student.status }}"
+             data-category="{{ student.category|lower if student.category else '' }}">
+            <div class="relative">
+                {% if student.photo_url %}
+                <img src="{{ student.photo_url }}" alt="{{ student.name }}" class="w-full h-28 object-cover">
+                {% else %}
+                <div class="w-full h-28 bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center">
+                    <i class="fas fa-user-graduate text-3xl text-orange-400"></i>
+                </div>
+                {% endif %}
+                <div class="absolute top-1 right-1">
+                    <span class="status-badge {% if student.status == 'active' %}active{% else %}inactive{% endif %} text-xs">
+                        {{ 'Active' if student.status == 'active' else 'Inactive' }}
+                    </span>
+                </div>
+            </div>
+            <div class="p-2">
+                <h3 class="text-sm font-semibold text-gray-800 truncate">{{ student.name }}</h3>
+                <p class="text-xs text-orange-500 mb-1">{{ student.student_id }}</p>
+                <div class="flex items-center justify-between mt-1">
+                    <div class="flex items-center gap-1 text-xs text-gray-500">
+                        <i class="fas fa-chalkboard text-orange-400 text-xs"></i>
+                        <span class="truncate max-w-[70px]">{{ student.classes.name if student.classes else 'N/A' }}</span>
+                    </div>
+                    {% if student.category %}
+                    <span class="category-badge {% if student.category == 'Boarding' %}category-boarding{% else %}category-day{% endif %}">
+                        {{ student.category[:3] }}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="flex gap-1 mt-2 pt-1 border-t border-gray-100">
+                    <button onclick="editStudent('{{ student.id }}')" class="flex-1 py-1 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-all">
+                        <i class="fas fa-edit text-xs"></i> Edit
+                    </button>
+                    <button onclick="toggleStatus('{{ student.id }}', '{{ student.status }}')" class="flex-1 py-1 {% if student.status == 'active' %}bg-red-50 text-red-600 hover:bg-red-100{% else %}bg-green-50 text-green-600 hover:bg-green-100{% endif %} rounded text-xs transition-all">
+                        <i class="fas {% if student.status == 'active' %}fa-ban{% else %}fa-check-circle{% endif %} text-xs"></i>
+                        {{ 'Off' if student.status == 'active' else 'On' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-full">
+            <div class="bg-white rounded-xl shadow-sm p-8 text-center">
+                <div class="h-16 w-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-user-graduate text-2xl text-orange-500"></i>
+                </div>
+                <h3 class="text-base font-semibold text-gray-800 mb-1">No Students Yet</h3>
+                <p class="text-xs text-gray-500 mb-3">Get started by adding your first student</p>
+                <button onclick="openAddModal()" class="btn-gradient px-4 py-1.5 rounded-lg text-white text-sm font-medium inline-flex items-center gap-1">
+                    <i class="fas fa-plus-circle text-xs"></i>
+                    Add Student
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add/Edit Student Modal (Compact Version) -->
+<div id="studentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 my-8 transform transition-all modal-container">
+        <div class="sticky top-0 bg-white rounded-t-xl border-b border-gray-200 px-5 py-3 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800" id="modalTitle">Add New Student</h3>
+            <button onclick="closeStudentModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        
+        <form id="studentForm" class="p-5 max-h-[calc(100vh-120px)] overflow-y-auto">
+            <input type="hidden" name="student_id" id="studentId">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Student Information</h4>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Full Name *</label>
+                    <input type="text" name="name" id="studentName" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Gender *</label>
+                    <select name="gender" id="studentGender" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Date of Birth *</label>
+                    <input type="date" name="date_of_birth" id="studentDob" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Nationality *</label>
+                    <select name="nationality" id="studentNationality" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                        <option value="">Select</option>
+                        <option value="Indian">Indian</option>
+                        <option value="Foreign">Foreign</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Address</label>
+                    <textarea name="address" id="studentAddress" rows="2" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Contact Number *</label>
+                    <input type="tel" name="contact_number" id="studentContact" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                    <input type="email" name="email" id="studentEmail" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+                
+                <div class="md:col-span-2 mt-2">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Other Information</h4>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Father's Name</label>
+                    <input type="text" name="father_name" id="studentFather" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Mother's Name</label>
+                    <input type="text" name="mother_name" id="studentMother" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Religion *</label>
+                    <select name="religion" id="studentReligion" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                        <option value="">Select</option>
+                        <option value="Hindu">Hindu</option>
+                        <option value="Muslim">Muslim</option>
+                        <option value="Christian">Christian</option>
+                        <option value="Sikh">Sikh</option>
+                        <option value="Buddhist">Buddhist</option>
+                        <option value="Jain">Jain</option>
+                        <option value="Parsi">Parsi</option>
+                        <option value="Others">Others</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Occupation</label>
+                    <select name="occupation" id="studentOccupation" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                        <option value="">Select</option>
+                        <option value="Farmer">Farmer</option>
+                        <option value="Employee">Employee</option>
+                        <option value="Businessman">Businessman</option>
+                        <option value="Professional">Professional</option>
+                        <option value="Retired">Retired</option>
+                        <option value="Others">Others</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Reason for Admission</label>
+                    <textarea name="reason_for_admission" id="studentReason" rows="2" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">All Parents</label>
+                    <select name="all_parents" id="studentParents" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                        <option value="">Select</option>
+                        <option value="Father">Father</option>
+                        <option value="Mother">Mother</option>
+                        <option value="Grandparents">Grandparents</option>
+                        <option value="Others">Others</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Category *</label>
+                    <select name="category" id="studentCategory" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                        <option value="">Select</option>
+                        <option value="Boarding">Boarding</option>
+                        <option value="Day">Day Scholar</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Select Class *</label>
+                    <select name="class_id" id="studentClass" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                        <option value="">Select</option>
+                        {% for class in classes %}
+                        <option value="{{ class.id }}">{{ class.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Student Photo</label>
+                    <div class="file-upload-area rounded-lg p-2 text-center cursor-pointer" onclick="document.getElementById('photoInput').click()">
+                        <i class="fas fa-camera text-gray-400 text-sm"></i>
+                        <p class="text-xs text-gray-500">Click to upload</p>
+                        <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="previewPhoto(this)">
+                    </div>
+                    <div id="photoPreview" class="mt-2 hidden">
+                        <img id="previewImg" class="w-12 h-12 rounded-full object-cover mx-auto">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 pt-4 mt-4 border-t border-gray-200">
+                <button type="button" onclick="closeStudentModal()" class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 text-sm hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-3 py-1.5 btn-gradient text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1">
+                    <i class="fas fa-save text-xs"></i>
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Import Modal (Compact) -->
+<div id="importModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Import Students</h3>
+            <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        
+        <form id="importForm" enctype="multipart/form-data" class="p-5">
+            <div class="mb-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Select Class *</label>
+                <select name="class_id" id="importClassSelect" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="">Select Class</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Upload File (Excel/CSV)</label>
+                <div class="file-upload-area rounded-lg p-4 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-file-excel text-2xl text-orange-500 mb-1"></i>
+                    <p class="text-xs text-gray-500">Click to upload</p>
+                    <input type="file" id="fileInput" name="file" accept=".xlsx,.csv" class="hidden" onchange="showFileName(this)">
+                </div>
+                <p id="fileName" class="text-xs text-gray-500 mt-1 hidden"></p>
+            </div>
+            
+            <div class="bg-blue-50 rounded-lg p-3 mb-3">
+                <p class="text-xs text-blue-800 font-medium mb-1">File Format:</p>
+                <p class="text-xs text-blue-700">Single column "Name" with student names</p>
+                <a href="{{ url_for('student.download_template') }}" class="text-xs text-blue-600 hover:underline mt-1 inline-block">
+                    <i class="fas fa-download"></i> Download Template
+                </a>
+            </div>
+            
+            <div class="flex gap-2 pt-2">
+                <button type="button" onclick="closeImportModal()" class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 text-sm hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-3 py-1.5 btn-gradient text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1">
+                    <i class="fas fa-upload text-xs"></i>
+                    Import
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-xs w-full mx-4 p-4 text-center transform transition-all modal-container">
+        <div class="success-checkmark">
+            <div class="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i class="fas fa-check-circle text-2xl text-green-500"></i>
+            </div>
+        </div>
+        <h3 class="text-base font-semibold text-gray-800 mb-1" id="successTitle">Success!</h3>
+        <p class="text-xs text-gray-500 mb-3" id="successMessage">Student added successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-4 py-1.5 rounded-lg text-white text-sm font-medium">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-4 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-2"></div>
+        <p class="text-xs text-gray-600">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let currentPhotoBase64 = null;
+    let currentPhotoUrl = null;
+    let classesData = {{ classes|tojson }};
+    let editingStudentId = null;
+    
+    // Fetch and update stats from API
+    async function loadStats() {
+        try {
+            const response = await fetch('/students/stats');
+            const result = await response.json();
+            
+            if (result.success) {
+                const stats = result.stats;
+                document.getElementById('statTotal').textContent = stats.total;
+                document.getElementById('statActive').textContent = stats.active;
+                document.getElementById('statInactive').textContent = stats.inactive;
+                document.getElementById('statBoarding').textContent = stats.boarding;
+                document.getElementById('statDay').textContent = stats.day;
+                document.getElementById('statClasses').textContent = stats.total_classes;
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+    
+    // Load stats on page load
+    loadStats();
+    
+    function openAddModal() {
+        editingStudentId = null;
+        document.getElementById('modalTitle').textContent = 'Add New Student';
+        document.getElementById('studentForm').reset();
+        document.getElementById('photoPreview').classList.add('hidden');
+        currentPhotoBase64 = null;
+        currentPhotoUrl = null;
+        document.getElementById('studentModal').classList.remove('hidden');
+        document.getElementById('studentModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    async function editStudent(studentId) {
+        editingStudentId = studentId;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/students/${studentId}`);
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                const student = result.student;
+                
+                document.getElementById('modalTitle').textContent = 'Edit Student';
+                document.getElementById('studentId').value = student.id;
+                document.getElementById('studentName').value = student.name || '';
+                document.getElementById('studentGender').value = student.gender || '';
+                document.getElementById('studentDob').value = student.date_of_birth || '';
+                document.getElementById('studentNationality').value = student.nationality || '';
+                document.getElementById('studentAddress').value = student.address || '';
+                document.getElementById('studentContact').value = student.contact_number || '';
+                document.getElementById('studentEmail').value = student.email || '';
+                document.getElementById('studentFather').value = student.father_name || '';
+                document.getElementById('studentMother').value = student.mother_name || '';
+                document.getElementById('studentReligion').value = student.religion || '';
+                document.getElementById('studentOccupation').value = student.occupation || '';
+                document.getElementById('studentReason').value = student.reason_for_admission || '';
+                document.getElementById('studentParents').value = student.all_parents || '';
+                document.getElementById('studentCategory').value = student.category || '';
+                document.getElementById('studentClass').value = student.class_id || '';
+                
+                if (student.photo_url) {
+                    currentPhotoUrl = student.photo_url;
+                    document.getElementById('previewImg').src = student.photo_url;
+                    document.getElementById('photoPreview').classList.remove('hidden');
+                }
+                
+                document.getElementById('studentModal').classList.remove('hidden');
+                document.getElementById('studentModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+            } else {
+                openSuccessModal('Error', result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            openSuccessModal('Error', 'Failed to load student data');
+        }
+    }
+    
+    function closeStudentModal() {
+        document.getElementById('studentModal').classList.add('hidden');
+        document.getElementById('studentModal').classList.remove('flex');
+        document.getElementById('studentForm').reset();
+        document.getElementById('photoPreview').classList.add('hidden');
+        currentPhotoBase64 = null;
+        currentPhotoUrl = null;
+        editingStudentId = null;
+        document.body.style.overflow = '';
+    }
+    
+    function openImportModal() {
+        document.getElementById('importModal').classList.remove('hidden');
+        document.getElementById('importModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeImportModal() {
+        document.getElementById('importModal').classList.add('hidden');
+        document.getElementById('importModal').classList.remove('flex');
+        document.getElementById('importForm').reset();
+        document.getElementById('fileName').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    
+    function openSuccessModal(title, message) {
+        document.getElementById('successTitle').textContent = title;
+        document.getElementById('successMessage').textContent = message;
+        document.getElementById('successModal').classList.remove('hidden');
+        document.getElementById('successModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        
+        setTimeout(() => {
+            closeSuccessModal();
+        }, 2000);
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function previewPhoto(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentPhotoBase64 = e.target.result;
+                currentPhotoUrl = null;
+                document.getElementById('previewImg').src = e.target.result;
+                document.getElementById('photoPreview').classList.remove('hidden');
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+    
+    function showFileName(input) {
+        if (input.files && input.files[0]) {
+            const fileName = document.getElementById('fileName');
+            fileName.textContent = `Selected: ${input.files[0].name}`;
+            fileName.classList.remove('hidden');
+        }
+    }
+    
+    document.getElementById('studentForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const formData = new FormData(this);
+        const data = {};
+        formData.forEach((value, key) => {
+            if (value) data[key] = value;
+        });
+        
+        const selectedClass = classesData.find(c => c.id === data.class_id);
+        if (selectedClass) {
+            data.class_name = selectedClass.name;
+        }
+        
+        if (currentPhotoBase64) {
+            data.photo_data = currentPhotoBase64;
+        } else if (currentPhotoUrl) {
+            data.photo_data = currentPhotoUrl;
+        }
+        
+        const url = editingStudentId ? `/students/update/${editingStudentId}` : '/students/add';
+        const method = editingStudentId ? 'PUT' : 'POST';
+        
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeStudentModal();
+                openSuccessModal('Success!', result.message);
+                loadStats(); // Refresh stats
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                openSuccessModal('Error', result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            openSuccessModal('Error', 'Failed to save student');
+        }
+    });
+    
+    document.getElementById('importForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const formData = new FormData(this);
+        
+        try {
+            const response = await fetch('/students/import', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeImportModal();
+                openSuccessModal('Import Successful!', result.message);
+                loadStats(); // Refresh stats
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                openSuccessModal('Import Failed', result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            openSuccessModal('Error', 'Failed to import students');
+        }
+    });
+    
+    async function toggleStatus(studentId, currentStatus) {
+        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/students/${studentId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                openSuccessModal('Status Updated', result.message);
+                loadStats(); // Refresh stats
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                openSuccessModal('Error', result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            openSuccessModal('Error', 'Failed to update status');
+        }
+    }
+    
+    // Search and filter
+    const searchInput = document.getElementById('searchInput');
+    const classFilter = document.getElementById('classFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    
+    function filterStudents() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedClass = classFilter.value;
+        const selectedCategory = categoryFilter.value;
+        const selectedStatus = statusFilter.value;
+        
+        const cards = document.querySelectorAll('#studentsGrid .student-card');
+        
+        cards.forEach(card => {
+            const name = card.dataset.name || '';
+            const studentId = card.dataset.id || '';
+            const studentClass = card.dataset.class || '';
+            const status = card.dataset.status || '';
+            const category = card.dataset.category || '';
+            
+            let show = true;
+            
+            if (searchTerm && !name.includes(searchTerm) && !studentId.includes(searchTerm)) {
+                show = false;
+            }
+            if (selectedClass && studentClass !== selectedClass) {
+                show = false;
+            }
+            if (selectedCategory && category !== selectedCategory.toLowerCase()) {
+                show = false;
+            }
+            if (selectedStatus && status !== selectedStatus) {
+                show = false;
+            }
+            
+            card.style.display = show ? '' : 'none';
+        });
+    }
+    
+    if (searchInput) searchInput.addEventListener('input', filterStudents);
+    if (classFilter) classFilter.addEventListener('change', filterStudents);
+    if (categoryFilter) categoryFilter.addEventListener('change', filterStudents);
+    if (statusFilter) statusFilter.addEventListener('change', filterStudents);
+    
+    window.onclick = function(event) {
+        const studentModal = document.getElementById('studentModal');
+        const importModal = document.getElementById('importModal');
+        const successModal = document.getElementById('successModal');
+        
+        if (event.target === studentModal) closeStudentModal();
+        if (event.target === importModal) closeImportModal();
+        if (event.target === successModal) closeSuccessModal();
+    };
+    
+    setTimeout(filterStudents, 100);
+</script>
+{% endblock %}

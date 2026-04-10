@@ -1,0 +1,350 @@
+<!-- templates/requirements/index.html - Requirements Management Dashboard with Loader -->
+{% extends "base.html" %}
+
+{% block title %}Requirements Management - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-card {
+        transition: all 0.3s ease;
+        background: white;
+        border: 1px solid #e5e7eb;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        border-color: #ffa500;
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .icon-bg {
+        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .skeleton {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 8px;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    .stat-card {
+        transition: all 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Requirements Management</h1>
+        <p class="text-sm text-gray-600">Track student non-cash requirements and manage inventory</p>
+    </div>
+
+    <!-- Stats Overview with Skeleton Loaders -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="statsContainer">
+        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-orange-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Active Items</p>
+                    <div class="skeleton h-8 w-16 mt-1" id="totalItemsSkeleton"></div>
+                    <p class="text-2xl font-bold text-gray-800 hidden" id="totalItems">-</p>
+                </div>
+                <div class="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-boxes text-orange-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-green-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Submissions</p>
+                    <div class="skeleton h-8 w-16 mt-1" id="totalSubmissionsSkeleton"></div>
+                    <p class="text-2xl font-bold text-gray-800 hidden" id="totalSubmissions">-</p>
+                </div>
+                <div class="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-blue-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Inventory Items</p>
+                    <div class="skeleton h-8 w-16 mt-1" id="inventoryItemsSkeleton"></div>
+                    <p class="text-2xl font-bold text-gray-800 hidden" id="inventoryItems">-</p>
+                </div>
+                <div class="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-warehouse text-blue-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-purple-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Pending Compliance</p>
+                    <div class="skeleton h-8 w-16 mt-1" id="pendingComplianceSkeleton"></div>
+                    <p class="text-2xl font-bold text-gray-800 hidden" id="pendingCompliance">-</p>
+                </div>
+                <div class="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-clock text-purple-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div class="dashboard-card rounded-xl overflow-hidden">
+            <div class="p-5">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="h-10 w-10 icon-bg rounded-lg flex items-center justify-center">
+                        <i class="fas fa-cubes text-orange-500 text-lg"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-800">Item Management</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Create and manage requirement items like paper, soap, brooms, etc.</p>
+                <a href="{{ url_for('requirements.items_page') }}" class="inline-flex items-center text-orange-500 hover:text-orange-600 text-sm font-medium">
+                    Manage Items <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="dashboard-card rounded-xl overflow-hidden">
+            <div class="p-5">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="h-10 w-10 icon-bg rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chalkboard text-orange-500 text-lg"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-800">Class Requirements</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Assign requirement items to specific classes or all classes.</p>
+                <a href="{{ url_for('requirements.assignments_page') }}" class="inline-flex items-center text-orange-500 hover:text-orange-600 text-sm font-medium">
+                    Manage Assignments <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="dashboard-card rounded-xl overflow-hidden">
+            <div class="p-5">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="h-10 w-10 icon-bg rounded-lg flex items-center justify-center">
+                        <i class="fas fa-user-check text-orange-500 text-lg"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-800">Student Submissions</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Record student submissions and track compliance status.</p>
+                <a href="{{ url_for('requirements.submissions_page') }}" class="inline-flex items-center text-orange-500 hover:text-orange-600 text-sm font-medium">
+                    Record Submissions <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="dashboard-card rounded-xl overflow-hidden">
+            <div class="p-5">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="h-10 w-10 icon-bg rounded-lg flex items-center justify-center">
+                        <i class="fas fa-warehouse text-orange-500 text-lg"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-800">Inventory Management</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Track stock levels, manage usage, and monitor inventory.</p>
+                <a href="{{ url_for('requirements.inventory_page') }}" class="inline-flex items-center text-orange-500 hover:text-orange-600 text-sm font-medium">
+                    Manage Inventory <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="dashboard-card rounded-xl overflow-hidden">
+            <div class="p-5">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="h-10 w-10 icon-bg rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-orange-500 text-lg"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-800">Reports & Analytics</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Generate compliance reports, missing items, and inventory summaries.</p>
+                <a href="{{ url_for('requirements.reports_page') }}" class="inline-flex items-center text-orange-500 hover:text-orange-600 text-sm font-medium">
+                    View Reports <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="dashboard-card rounded-xl overflow-hidden">
+            <div class="p-5">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="h-10 w-10 icon-bg rounded-lg flex items-center justify-center">
+                        <i class="fas fa-cog text-orange-500 text-lg"></i>
+                    </div>
+                    <h3 class="font-semibold text-gray-800">Academic Terms</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Manage academic terms and periods for requirement tracking.</p>
+                <a href="#" class="inline-flex items-center text-gray-400 text-sm font-medium cursor-not-allowed">
+                    Coming Soon <i class="fas fa-clock ml-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity with Loader -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-800">Recent Submissions</h2>
+        </div>
+        <div id="recentSubmissions" class="p-6">
+            <div class="flex flex-col items-center justify-center py-8">
+                <div class="loader mb-4"></div>
+                <p class="text-gray-500">Loading recent submissions...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="loader"></div>
+        <p class="text-gray-700 mt-4">Loading data...</p>
+    </div>
+</div>
+
+<script>
+    async function loadStats() {
+        // Show skeletons
+        const skeletons = ['totalItemsSkeleton', 'totalSubmissionsSkeleton', 'inventoryItemsSkeleton', 'pendingComplianceSkeleton'];
+        skeletons.forEach(id => {
+            const skeleton = document.getElementById(id);
+            const valueEl = document.getElementById(id.replace('Skeleton', ''));
+            if (skeleton) skeleton.classList.remove('hidden');
+            if (valueEl) valueEl.classList.add('hidden');
+        });
+
+        try {
+            // Load items count
+            const itemsRes = await fetch('/requirements/api/items');
+            const itemsData = await itemsRes.json();
+            if (itemsData.success) {
+                updateStatValue('totalItems', itemsData.items.length);
+            }
+
+            // Load inventory stats
+            const invRes = await fetch('/requirements/api/inventory');
+            const invData = await invRes.json();
+            if (invData.success) {
+                updateStatValue('inventoryItems', invData.inventory.length);
+            }
+
+            // Load submissions count
+            const submissionsRes = await fetch('/requirements/api/submissions/count');
+            const submissionsData = await submissionsRes.json();
+            if (submissionsData.success) {
+                updateStatValue('totalSubmissions', submissionsData.count || 0);
+            } else {
+                updateStatValue('totalSubmissions', '--');
+            }
+
+            // Load pending compliance count
+            const pendingRes = await fetch('/requirements/api/reports/pending-count');
+            const pendingData = await pendingRes.json();
+            if (pendingData.success) {
+                updateStatValue('pendingCompliance', pendingData.count || 0);
+            } else {
+                updateStatValue('pendingCompliance', '--');
+            }
+
+        } catch (error) {
+            console.error('Error loading stats:', error);
+            // Set fallback values
+            updateStatValue('totalItems', '--');
+            updateStatValue('totalSubmissions', '--');
+            updateStatValue('inventoryItems', '--');
+            updateStatValue('pendingCompliance', '--');
+        }
+    }
+
+    function updateStatValue(statId, value) {
+        const skeletonId = statId + 'Skeleton';
+        const skeleton = document.getElementById(skeletonId);
+        const valueEl = document.getElementById(statId);
+        
+        if (skeleton) skeleton.classList.add('hidden');
+        if (valueEl) {
+            valueEl.textContent = value;
+            valueEl.classList.remove('hidden');
+        }
+    }
+
+    async function loadRecentSubmissions() {
+        const container = document.getElementById('recentSubmissions');
+        
+        try {
+            const response = await fetch('/requirements/api/submissions/recent');
+            const data = await response.json();
+            
+            if (data.success && data.submissions && data.submissions.length > 0) {
+                container.innerHTML = `
+                    <div class="space-y-3">
+                        ${data.submissions.map(sub => `
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-orange-50 transition-all">
+                                <div>
+                                    <p class="font-medium text-gray-800">${sub.student_name || 'Student'}</p>
+                                    <p class="text-sm text-gray-500">${sub.item_name} - ${sub.quantity_brought} ${sub.unit}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-gray-400">${new Date(sub.date_submitted).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-inbox text-4xl text-gray-300 mb-2"></i>
+                        <p class="text-gray-400">No recent submissions yet</p>
+                        <a href="{{ url_for('requirements.submissions_page') }}" class="inline-block mt-2 text-orange-500 text-sm hover:underline">Record your first submission</a>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading recent submissions:', error);
+            container.innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-exclamation-triangle text-4xl text-red-300 mb-2"></i>
+                    <p class="text-gray-400">Failed to load recent submissions</p>
+                    <button onclick="loadRecentSubmissions()" class="inline-block mt-2 text-orange-500 text-sm hover:underline">Retry</button>
+                </div>
+            `;
+        }
+    }
+
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', () => {
+        loadStats();
+        loadRecentSubmissions();
+    });
+</script>
+{% endblock %}

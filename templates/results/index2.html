@@ -1,0 +1,135 @@
+<!-- templates/results/index.html - Report Card Options -->
+{% extends "base.html" %}
+
+{% block title %}Report Cards - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-card-option {
+        transition: all 0.3s ease;
+        background: white;
+        border: 1px solid #e5e7eb;
+        cursor: pointer;
+    }
+    .report-card-option:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border-color: #ffa500;
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .icon-bg {
+        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+    }
+    .version-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-12">
+    <!-- Page Header -->
+    <div class="text-center mb-12">
+        <h1 class="text-3xl font-bold text-gray-800 mb-3">Report Card Generation</h1>
+        <p class="text-gray-600 max-w-2xl mx-auto">
+            Select the type of report card you want to generate. Choose between Traditional Academic Report Card or Competency-Based Assessment.
+        </p>
+    </div>
+
+    <!-- Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        
+        <!-- Traditional Academic Report Card -->
+        <div class="report-card-option rounded-2xl overflow-hidden" onclick="window.location.href='{{ url_for('results.index') }}'">
+            <div class="p-8 text-center">
+                <div class="icon-bg mx-auto">
+                    <i class="fas fa-scroll text-4xl text-orange-500"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-3">Traditional Academic</h2>
+                <div class="mb-3">
+                    <span class="version-badge">Primary School</span>
+                </div>
+                <p class="text-gray-600 mb-6">
+                    Standard academic report card with subject-wise marks, percentages, grades, and class position. Includes detailed subject comments and overall performance summary.
+                </p>
+                <div class="flex items-center justify-center gap-2 text-sm text-gray-500">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Subject-wise marks</span>
+                    <span class="mx-1">•</span>
+                    <i class="fas fa-percent"></i>
+                    <span>Percentage calculation</span>
+                    <span class="mx-1">•</span>
+                    <i class="fas fa-trophy"></i>
+                    <span>Class position</span>
+                </div>
+                <div class="mt-6">
+                    <span class="inline-flex items-center text-orange-500 font-medium">
+                        Generate Report Card <i class="fas fa-arrow-right ml-2"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Competency-Based Report Card -->
+        <div class="report-card-option rounded-2xl overflow-hidden" onclick="window.location.href='{{ url_for('competence.index') }}'">
+            <div class="p-8 text-center">
+                <div class="icon-bg mx-auto">
+                    <i class="fas fa-clipboard-list text-4xl text-orange-500"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-3">Competency-Based</h2>
+                <div class="mb-3">
+                    <span class="version-badge">Skills Assessment</span>
+                </div>
+                <p class="text-gray-600 mb-6">
+                    Modern competency-based report card focusing on skill development, learning outcomes, and holistic student growth with detailed competency ratings.
+                </p>
+                <div class="flex items-center justify-center gap-2 text-sm text-gray-500">
+                    <i class="fas fa-star"></i>
+                    <span>Skill mastery</span>
+                    <span class="mx-1">•</span>
+                    <i class="fas fa-chart-simple"></i>
+                    <span>Learning outcomes</span>
+                    <span class="mx-1">•</span>
+                    <i class="fas fa-comment"></i>
+                    <span>Teacher observations</span>
+                </div>
+                <div class="mt-6">
+                    <span class="inline-flex items-center text-orange-500 font-medium">
+                        Generate Report Card <i class="fas fa-arrow-right ml-2"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Additional Info -->
+    <div class="mt-12 text-center">
+        <div class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full">
+            <i class="fas fa-print text-gray-500"></i>
+            <span class="text-sm text-gray-600">Professional print-ready PDF format</span>
+            <i class="fas fa-download text-gray-500 ml-2"></i>
+            <span class="text-sm text-gray-600">Download & share digitally</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

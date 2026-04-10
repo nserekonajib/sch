@@ -1,0 +1,755 @@
+<!-- templates/student_id/index.html - Updated with Print All Button -->
+{% extends "base.html" %}
+
+{% block title %}Student ID Cards - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .id-card {
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #fff 0%, #fef9e7 100%);
+    }
+    .id-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 30px -15px rgba(0, 0, 0, 0.2);
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .qr-code {
+        transition: all 0.3s;
+    }
+    .qr-code:hover {
+        transform: scale(1.1);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .loading-spinner {
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    .color-option {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .color-option:hover {
+        transform: scale(1.1);
+    }
+    .color-option.selected {
+        transform: scale(1.15);
+        box-shadow: 0 0 0 2px white, 0 0 0 4px #ffa500;
+    }
+    .theme-color-input {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid #e5e7eb;
+    }
+    .theme-color-input::-webkit-color-swatch-wrapper {
+        padding: 0;
+    }
+    .theme-color-input::-webkit-color-swatch {
+        border: none;
+        border-radius: 50%;
+    }
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .id-card {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        body {
+            background: white;
+            padding: 0;
+            margin: 0;
+        }
+        .print-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            padding: 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6 no-print">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Student ID Cards</h1>
+        <p class="text-sm text-gray-600">Generate and download student ID cards with QR codes</p>
+    </div>
+
+    <!-- Class Selection Card -->
+    <div class="bg-white rounded-xl shadow-md p-5 mb-6">
+        <div class="flex flex-wrap items-end gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+                <select id="classSelect" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="">-- Select a class --</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Theme Color</label>
+                <div class="flex gap-2 items-center">
+                    <div class="color-option" onclick="selectColor('#ffa500')">
+                        <div class="w-8 h-8 rounded-full bg-orange-500 border-2 border-white shadow"></div>
+                    </div>
+                    <div class="color-option" onclick="selectColor('#3b82f6')">
+                        <div class="w-8 h-8 rounded-full bg-blue-500 border-2 border-white shadow"></div>
+                    </div>
+                    <div class="color-option" onclick="selectColor('#10b981')">
+                        <div class="w-8 h-8 rounded-full bg-green-500 border-2 border-white shadow"></div>
+                    </div>
+                    <div class="color-option" onclick="selectColor('#ef4444')">
+                        <div class="w-8 h-8 rounded-full bg-red-500 border-2 border-white shadow"></div>
+                    </div>
+                    <div class="color-option" onclick="selectColor('#8b5cf6')">
+                        <div class="w-8 h-8 rounded-full bg-purple-500 border-2 border-white shadow"></div>
+                    </div>
+                    <div class="color-option" onclick="selectColor('#ec489a')">
+                        <div class="w-8 h-8 rounded-full bg-pink-500 border-2 border-white shadow"></div>
+                    </div>
+                    <div>
+                        <input type="color" id="customColor" class="theme-color-input" value="#ffa500" onchange="selectColor(this.value)">
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <button onclick="generateIDCards()" 
+                        class="btn-gradient px-6 py-2.5 rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                    <i class="fas fa-id-card"></i>
+                    Generate ID Cards
+                </button>
+            </div>
+            <div>
+                <button id="downloadPdfBtn" onclick="downloadPDF()" disabled
+                        class="px-6 py-2.5 bg-gray-300 text-gray-500 rounded-lg font-medium transition-all flex items-center gap-2 cursor-not-allowed">
+                    <i class="fas fa-download"></i>
+                    Download PDF
+                </button>
+            </div>
+            <div>
+                <button id="printAllBtn" onclick="printAllCards()" disabled
+                        class="px-6 py-2.5 bg-gray-300 text-gray-500 rounded-lg font-medium transition-all flex items-center gap-2 cursor-not-allowed">
+                    <i class="fas fa-print"></i>
+                    Print All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden text-center py-12">
+        <div class="inline-block">
+            <div class="loading-spinner w-12 h-12 border-4 border-orange-200 border-t-orange-500 rounded-full"></div>
+            <p class="text-gray-600 mt-3">Generating ID cards...</p>
+        </div>
+    </div>
+
+    <!-- ID Cards Grid -->
+    <div id="idCardsContainer" class="hidden">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-800">Generated ID Cards</h2>
+            <span id="studentCount" class="text-sm text-gray-500"></span>
+        </div>
+        <div id="idCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 id-card-container">
+            <!-- Cards will be inserted here -->
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="text-center py-12">
+        <div class="h-24 w-24 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-id-card text-4xl text-orange-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">No ID Cards Generated</h3>
+        <p class="text-sm text-gray-500">Select a class and click "Generate ID Cards" to get started</p>
+    </div>
+</div>
+
+<!-- Print Preview Container (Hidden, used for printing) -->
+<div id="printContainer" style="display: none;"></div>
+
+<!-- Preview Modal -->
+<div id="previewModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay no-print">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">ID Card Preview</h3>
+            <button onclick="closePreviewModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div id="previewContent" class="p-6">
+            <!-- Preview content will be inserted here -->
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
+            <button onclick="closePreviewModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Close
+            </button>
+            <button onclick="printCard()" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                <i class="fas fa-print"></i> Print
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 no-print">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let generatedStudents = [];
+    let selectedColor = '#ffa500';
+    
+    function selectColor(color) {
+        selectedColor = color;
+        document.querySelectorAll('.color-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        const colorDivs = document.querySelectorAll('.color-option');
+        for (let div of colorDivs) {
+            const childDiv = div.querySelector('div');
+            if (childDiv && childDiv.classList.contains('bg-orange-500') && color === '#ffa500') {
+                div.classList.add('selected');
+            } else if (childDiv && childDiv.classList.contains('bg-blue-500') && color === '#3b82f6') {
+                div.classList.add('selected');
+            } else if (childDiv && childDiv.classList.contains('bg-green-500') && color === '#10b981') {
+                div.classList.add('selected');
+            } else if (childDiv && childDiv.classList.contains('bg-red-500') && color === '#ef4444') {
+                div.classList.add('selected');
+            } else if (childDiv && childDiv.classList.contains('bg-purple-500') && color === '#8b5cf6') {
+                div.classList.add('selected');
+            } else if (childDiv && childDiv.classList.contains('bg-pink-500') && color === '#ec489a') {
+                div.classList.add('selected');
+            }
+        }
+        document.getElementById('customColor').value = color;
+    }
+    
+    async function generateIDCards() {
+        const classId = document.getElementById('classSelect').value;
+        
+        if (!classId) {
+            showMessage('Please select a class', 'error');
+            return;
+        }
+        
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('idCardsContainer').classList.add('hidden');
+        document.getElementById('emptyState').classList.add('hidden');
+        
+        try {
+            const response = await fetch('/student-id/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    class_id: classId,
+                    theme_color: selectedColor
+                })
+            });
+            
+            const result = await response.json();
+            
+            document.getElementById('loadingState').classList.add('hidden');
+            
+            if (result.success && result.students.length > 0) {
+                generatedStudents = result.students;
+                displayIDCards(result.students);
+                document.getElementById('downloadPdfBtn').disabled = false;
+                document.getElementById('printAllBtn').disabled = false;
+                document.getElementById('downloadPdfBtn').classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+                document.getElementById('printAllBtn').classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+                document.getElementById('downloadPdfBtn').classList.add('btn-gradient', 'text-white');
+                document.getElementById('printAllBtn').classList.add('btn-gradient', 'text-white');
+                document.getElementById('studentCount').textContent = `${result.students.length} students`;
+            } else {
+                showMessage(result.message || 'No students found', 'error');
+                document.getElementById('emptyState').classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('emptyState').classList.remove('hidden');
+            showMessage('Failed to generate ID cards', 'error');
+        }
+    }
+    
+    function displayIDCards(students) {
+        const container = document.getElementById('idCardsGrid');
+        container.innerHTML = '';
+        
+        students.forEach(student => {
+            const card = createIDCardHTML(student);
+            container.innerHTML += card;
+        });
+        
+        document.getElementById('idCardsContainer').classList.remove('hidden');
+    }
+    
+    function createIDCardHTML(student) {
+        const institute = student.institute;
+        const themeColor = student.theme_color || '#ffa500';
+        
+        const photoHtml = student.photo_url 
+            ? `<img src="${student.photo_url}" alt="${student.name}" class="w-20 h-20 rounded-full object-cover border-3 mx-auto" style="border-color: ${themeColor}">`
+            : `<div class="w-20 h-20 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center mx-auto" style="border: 2px solid ${themeColor}">
+                <i class="fas fa-user-graduate text-3xl text-orange-400"></i>
+               </div>`;
+        
+        return `
+            <div class="id-card bg-white rounded-xl shadow-lg overflow-hidden" style="border: 1px solid ${themeColor}">
+                <div class="px-4 py-3 text-white text-center" style="background: ${themeColor}">
+                    <div class="flex items-center justify-center gap-2">
+                        ${institute.logo_url ? `<img src="${institute.logo_url}" class="h-8 w-8 rounded-full object-cover border border-white">` : '<i class="fas fa-school text-white text-lg"></i>'}
+                        <span class="text-white text-xs font-semibold">${institute.institute_name?.substring(0, 20) || 'School'}</span>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div class="text-center">
+                        ${photoHtml}
+                        <h3 class="font-bold text-gray-800 text-base mt-3">${student.name}</h3>
+                        <p class="text-xs font-mono mt-1" style="color: ${themeColor}">${student.student_id}</p>
+                    </div>
+                    
+                    <div class="mt-4 space-y-2 text-sm">
+                        <div class="flex justify-between py-1 border-b border-gray-100">
+                            <span class="text-gray-500">Gender:</span>
+                            <span class="text-gray-700 font-medium">${student.gender || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-gray-100">
+                            <span class="text-gray-500">Nationality:</span>
+                            <span class="text-gray-700 font-medium">${student.nationality || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-gray-100">
+                            <span class="text-gray-500">DOB:</span>
+                            <span class="text-gray-700 font-medium">${student.date_of_birth || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-gray-100">
+                            <span class="text-gray-500">Class:</span>
+                            <span class="text-gray-700 font-medium">${student.class || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span class="text-gray-500">DOA:</span>
+                            <span class="text-gray-700 font-medium">${student.date_of_admission || 'N/A'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                        <div class="qr-code">
+                            ${student.qr_code ? `<img src="${student.qr_code}" class="w-12 h-12" alt="QR Code">` : '<div class="w-12 h-12 bg-gray-100 rounded"></div>'}
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-gray-400">Scan for details</p>
+                            <p class="text-[10px] text-gray-500 mt-1">${institute.phone_number || ''}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-2 text-center">
+                    <button onclick='previewCard(${JSON.stringify(student).replace(/'/g, "\\'")})' class="text-xs hover:underline" style="color: ${themeColor}">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    function printAllCards() {
+        if (generatedStudents.length === 0) return;
+        
+        const printWindow = window.open('', '_blank');
+        const institute = generatedStudents[0].institute;
+        const themeColor = selectedColor;
+        
+        let cardsHtml = '';
+        generatedStudents.forEach(student => {
+            cardsHtml += createPrintCardHTML(student);
+        });
+        
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Student ID Cards - ${institute.institute_name || 'School'}</title>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+                <style>
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }
+                    body {
+                        font-family: Arial, sans-serif;
+                        background: white;
+                        padding: 20px;
+                    }
+                    .print-header {
+                        text-align: center;
+                        margin-bottom: 30px;
+                        padding-bottom: 20px;
+                        border-bottom: 2px solid ${themeColor};
+                    }
+                    .print-header h1 {
+                        color: ${themeColor};
+                        font-size: 24px;
+                        margin-bottom: 5px;
+                    }
+                    .print-header p {
+                        color: #6b7280;
+                        font-size: 12px;
+                    }
+                    .cards-grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 20px;
+                    }
+                    .id-card-print {
+                        border: 2px solid ${themeColor};
+                        border-radius: 16px;
+                        overflow: hidden;
+                        background: white;
+                        break-inside: avoid;
+                        page-break-inside: avoid;
+                    }
+                    .card-header-print {
+                        background: ${themeColor};
+                        padding: 12px;
+                        text-align: center;
+                        color: white;
+                    }
+                    .card-body-print {
+                        padding: 20px;
+                    }
+                    .photo-print {
+                        width: 100px;
+                        height: 100px;
+                        border-radius: 50%;
+                        object-fit: cover;
+                        border: 3px solid ${themeColor};
+                        margin: 0 auto;
+                        display: block;
+                    }
+                    .info-row-print {
+                        display: flex;
+                        justify-content: space-between;
+                        padding: 8px 0;
+                        border-bottom: 1px solid #e5e7eb;
+                    }
+                    .qr-print {
+                        width: 70px;
+                        height: 70px;
+                    }
+                    .signature-print {
+                        background: ${themeColor}10;
+                        padding: 8px;
+                        text-align: center;
+                        font-size: 10px;
+                        color: ${themeColor};
+                    }
+                    @media print {
+                        body {
+                            padding: 0;
+                            margin: 0;
+                        }
+                        .cards-grid {
+                            gap: 15px;
+                        }
+                        .no-print {
+                            display: none;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="print-header no-print">
+                    <h1>${institute.institute_name || 'School'} - Student ID Cards</h1>
+                    <p>Generated on ${new Date().toLocaleString()}</p>
+                </div>
+                <div class="cards-grid">
+                    ${cardsHtml}
+                </div>
+                <div class="no-print" style="text-align: center; margin-top: 30px;">
+                    <button onclick="window.print()" style="padding: 12px 24px; background: ${themeColor}; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                        <i class="fas fa-print"></i> Print All Cards
+                    </button>
+                </div>
+                <script>
+                    window.onload = () => {
+                        setTimeout(() => {
+                            window.print();
+                        }, 500);
+                    };
+                <\/script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
+    
+    function createPrintCardHTML(student) {
+        const institute = student.institute;
+        const themeColor = student.theme_color || '#ffa500';
+        
+        const photoHtml = student.photo_url 
+            ? `<img src="${student.photo_url}" class="photo-print">`
+            : `<div style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #fed7aa, #fed7aa); margin: 0 auto; display: flex; align-items: center; justify-content: center; border: 3px solid ${themeColor};">
+                <i class="fas fa-user-graduate" style="font-size: 40px; color: #ffa500;"></i>
+               </div>`;
+        
+        return `
+            <div class="id-card-print">
+                <div class="card-header-print">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        ${institute.logo_url ? `<img src="${institute.logo_url}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white;">` : '<i class="fas fa-school"></i>'}
+                        <span style="font-weight: bold;">${institute.institute_name?.substring(0, 25) || 'School'}</span>
+                    </div>
+                </div>
+                <div class="card-body-print">
+                    <div style="text-align: center;">
+                        ${photoHtml}
+                        <h3 style="margin: 12px 0 4px 0; font-size: 14px;">${student.name}</h3>
+                        <p style="font-size: 10px; color: ${themeColor};">${student.student_id}</p>
+                    </div>
+                    
+                    <div style="margin-top: 16px;">
+                        <div class="info-row-print">
+                            <span>Gender:</span>
+                            <span><strong>${student.gender || 'N/A'}</strong></span>
+                        </div>
+                        <div class="info-row-print">
+                            <span>Nationality:</span>
+                            <span><strong>${student.nationality || 'N/A'}</strong></span>
+                        </div>
+                        <div class="info-row-print">
+                            <span>DOB:</span>
+                            <span><strong>${student.date_of_birth || 'N/A'}</strong></span>
+                        </div>
+                        <div class="info-row-print">
+                            <span>Class:</span>
+                            <span><strong>${student.class || 'N/A'}</strong></span>
+                        </div>
+                        <div class="info-row-print">
+                            <span>DOA:</span>
+                            <span><strong>${student.date_of_admission || 'N/A'}</strong></span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                        ${student.qr_code ? `<img src="${student.qr_code}" class="qr-print">` : ''}
+                        <div style="text-align: right;">
+                            <p style="font-size: 8px; color: #6b7280;">${institute.address || ''}</p>
+                            <p style="font-size: 9px; color: #6b7280; margin-top: 4px;">${institute.phone_number || ''}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="signature-print">
+                    Authorized Signature
+                </div>
+            </div>
+        `;
+    }
+    
+    async function previewCard(student) {
+        const modal = document.getElementById('previewModal');
+        const previewContent = document.getElementById('previewContent');
+        
+        window.currentPreviewStudent = student;
+        const institute = student.institute;
+        const themeColor = student.theme_color || '#ffa500';
+        
+        const photoHtml = student.photo_url 
+            ? `<img src="${student.photo_url}" class="w-24 h-24 rounded-full object-cover border-3 mx-auto" style="border-color: ${themeColor}">`
+            : `<div class="w-24 h-24 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center mx-auto" style="border: 2px solid ${themeColor}">
+                <i class="fas fa-user-graduate text-4xl text-orange-400"></i>
+               </div>`;
+        
+        previewContent.innerHTML = `
+            <div class="bg-white rounded-xl overflow-hidden max-w-sm mx-auto" style="border: 2px solid ${themeColor}">
+                <div class="px-5 py-3 text-white text-center" style="background: ${themeColor}">
+                    <div class="flex items-center justify-center gap-2">
+                        ${institute.logo_url ? `<img src="${institute.logo_url}" class="h-10 w-10 rounded-full object-cover border-2 border-white">` : '<i class="fas fa-school text-white text-xl"></i>'}
+                        <div>
+                            <p class="text-white text-sm font-bold">${institute.institute_name || 'School'}</p>
+                            <p class="text-white text-[10px] opacity-90">${institute.target_line || 'Education for Excellence'}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-5">
+                    <div class="text-center">
+                        ${photoHtml}
+                        <h3 class="font-bold text-gray-800 text-lg mt-3">${student.name}</h3>
+                        <p class="text-sm font-mono mt-1" style="color: ${themeColor}">${student.student_id}</p>
+                    </div>
+                    
+                    <div class="mt-5 space-y-2 text-sm">
+                        <div class="flex justify-between py-1 border-b border-gray-100">
+                            <span class="text-gray-500">Gender:</span>
+                            <span class="text-gray-800 font-medium">${student.gender || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-gray-100">
+                            <span class="text-gray-500">Nationality:</span>
+                            <span class="text-gray-800 font-medium">${student.nationality || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-gray-100">
+                            <span class="text-gray-500">Date of Birth:</span>
+                            <span class="text-gray-800 font-medium">${student.date_of_birth || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-gray-100">
+                            <span class="text-gray-500">Class:</span>
+                            <span class="text-gray-800 font-medium">${student.class || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span class="text-gray-500">Date of Admission:</span>
+                            <span class="text-gray-800 font-medium">${student.date_of_admission}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
+                        <div class="qr-code">
+                            ${student.qr_code ? `<img src="${student.qr_code}" class="w-16 h-16" alt="QR Code">` : '<div class="w-16 h-16 bg-gray-100 rounded"></div>'}
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-500">${institute.address || ''}</p>
+                            <p class="text-xs text-gray-500 mt-1">${institute.phone_number || ''}</p>
+                            <p class="text-xs text-gray-400 mt-2">Scan QR for verification</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-5 py-2 text-center" style="background: ${themeColor}10">
+                    <p class="text-xs" style="color: ${themeColor}">Authorized Signature</p>
+                </div>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closePreviewModal() {
+        document.getElementById('previewModal').classList.add('hidden');
+        document.getElementById('previewModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function printCard() {
+        if (window.currentPreviewStudent) {
+            printAllCards(); // Reuse the print function for single card
+        }
+    }
+    
+    async function downloadPDF() {
+        if (generatedStudents.length === 0) return;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/student-id/download-pdf', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ students: generatedStudents })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `student_id_cards_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                const error = await response.json();
+                showMessage(error.message || 'Failed to download PDF', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Failed to download PDF', 'error');
+        } finally {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+        }
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+    
+    window.onclick = function(event) {
+        const modal = document.getElementById('previewModal');
+        if (event.target === modal) {
+            closePreviewModal();
+        }
+    };
+    
+    selectColor('#ffa500');
+</script>
+{% endblock %}

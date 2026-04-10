@@ -1,0 +1,221 @@
+<!-- templates/requirements/inventory.html - Inventory Management -->
+{% extends "base.html" %}
+
+{% block title %}Inventory Management - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .inventory-card {
+        transition: all 0.2s;
+    }
+    .inventory-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+    }
+    .low-stock {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    .good-stock {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+ <a href="{{url_for('requirements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Requirements</a>
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Inventory Management</h1>
+        <p class="text-sm text-gray-600">Track stock levels and manage inventory usage</p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="summaryCards">
+        <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-orange-500">
+            <p class="text-gray-500 text-sm">Total Items in Stock</p>
+            <p class="text-2xl font-bold text-gray-800" id="totalItems">-</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-green-500">
+            <p class="text-gray-500 text-sm">Total Received</p>
+            <p class="text-2xl font-bold text-green-600" id="totalReceived">-</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-red-500">
+            <p class="text-gray-500 text-sm">Total Used</p>
+            <p class="text-2xl font-bold text-red-600" id="totalUsed">-</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-blue-500">
+            <p class="text-gray-500 text-sm">Low Stock Alerts</p>
+            <p class="text-2xl font-bold text-blue-600" id="lowStockCount">-</p>
+        </div>
+    </div>
+
+    <!-- Inventory Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="inventoryGrid">
+        <div class="col-span-full text-center py-8 text-gray-400">Loading inventory...</div>
+    </div>
+</div>
+
+<!-- Usage Modal -->
+<div id="usageModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Record Usage</h3>
+            <button onclick="closeUsageModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <form id="usageForm" class="p-5">
+            <input type="hidden" id="usageItemId">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Item</label>
+                <p id="usageItemName" class="text-gray-800 font-medium"></p>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Current Stock</label>
+                <p id="currentStock" class="text-gray-800"></p>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Quantity to Use *</label>
+                <input type="number" id="usageQuantity" step="0.01" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Purpose</label>
+                <textarea id="usagePurpose" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500" placeholder="e.g., Classroom cleaning, Office supplies..."></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium">Record Usage</button>
+                <button type="button" onclick="closeUsageModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let inventory = [];
+
+    async function loadInventory() {
+        const response = await fetch('/requirements/api/inventory');
+        const data = await response.json();
+        if (data.success) {
+            inventory = data.inventory;
+            renderInventory();
+            updateSummary();
+        }
+    }
+
+    function renderInventory() {
+        const container = document.getElementById('inventoryGrid');
+        if (inventory.length === 0) {
+            container.innerHTML = '<div class="col-span-full text-center py-8 text-gray-400">No inventory items found</div>';
+            return;
+        }
+
+        container.innerHTML = inventory.map(item => {
+            const stockClass = item.current_balance < 10 ? 'low-stock' : 'good-stock';
+            return `
+                <div class="inventory-card bg-white rounded-xl shadow-md p-5">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h3 class="font-semibold text-gray-800">${item.name}</h3>
+                            <p class="text-sm text-gray-500">${item.unit}</p>
+                        </div>
+                        <span class="px-2 py-1 rounded-full text-xs ${stockClass}">
+                            Stock: ${item.current_balance}
+                        </span>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Total Received:</span>
+                            <span class="font-medium">${item.total_received}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Total Used:</span>
+                            <span class="font-medium">${item.total_used}</span>
+                        </div>
+                        <div class="flex justify-between pt-2 border-t">
+                            <span class="text-gray-500">Current Balance:</span>
+                            <span class="font-bold text-orange-600">${item.current_balance}</span>
+                        </div>
+                    </div>
+                    <button onclick="openUsageModal('${item.id}', '${item.name}', ${item.current_balance})" 
+                            class="mt-4 w-full btn-gradient py-2 rounded-lg text-white text-sm font-medium ${item.current_balance === 0 ? 'opacity-50 cursor-not-allowed' : ''}"
+                            ${item.current_balance === 0 ? 'disabled' : ''}>
+                        <i class="fas fa-arrow-right"></i> Record Usage
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function updateSummary() {
+        const totalItems = inventory.length;
+        const totalReceived = inventory.reduce((sum, item) => sum + item.total_received, 0);
+        const totalUsed = inventory.reduce((sum, item) => sum + item.total_used, 0);
+        const lowStockCount = inventory.filter(item => item.current_balance < 10).length;
+
+        document.getElementById('totalItems').textContent = totalItems;
+        document.getElementById('totalReceived').textContent = totalReceived;
+        document.getElementById('totalUsed').textContent = totalUsed;
+        document.getElementById('lowStockCount').textContent = lowStockCount;
+    }
+
+    function openUsageModal(itemId, itemName, currentStock) {
+        document.getElementById('usageItemId').value = itemId;
+        document.getElementById('usageItemName').textContent = itemName;
+        document.getElementById('currentStock').textContent = currentStock;
+        document.getElementById('usageQuantity').value = '';
+        document.getElementById('usagePurpose').value = '';
+        document.getElementById('usageModal').classList.remove('hidden');
+        document.getElementById('usageModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeUsageModal() {
+        document.getElementById('usageModal').classList.add('hidden');
+        document.getElementById('usageModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    document.getElementById('usageForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const quantity = parseFloat(document.getElementById('usageQuantity').value);
+        const currentStock = parseFloat(document.getElementById('currentStock').textContent);
+        
+        if (quantity > currentStock) {
+            showMessage(`Cannot use ${quantity}. Only ${currentStock} available.`, 'error');
+            return;
+        }
+
+        const data = {
+            item_id: document.getElementById('usageItemId').value,
+            quantity: quantity,
+            purpose: document.getElementById('usagePurpose').value
+        };
+
+        const response = await fetch('/requirements/api/inventory/use', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if (result.success) {
+            closeUsageModal();
+            loadInventory();
+            showMessage('Usage recorded successfully', 'success');
+        } else {
+            showMessage(result.message, 'error');
+        }
+    });
+
+    loadInventory();
+</script>
+{% endblock %}

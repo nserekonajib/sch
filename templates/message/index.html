@@ -1,0 +1,703 @@
+<!-- templates/message/index.html - Updated with Live Student Search -->
+{% extends "base.html" %}
+
+{% block title %}Send Message - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .recipient-card {
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .recipient-card:hover {
+        background-color: #fff7ed;
+        transform: translateX(4px);
+    }
+    .recipient-card.selected {
+        background-color: #ffedd5;
+        border-left: 3px solid #ffa500;
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .template-badge {
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .template-badge:hover {
+        transform: scale(1.05);
+        background-color: #ffa500 !important;
+        color: white !important;
+    }
+    .char-counter {
+        transition: all 0.2s;
+    }
+    .char-counter.warning {
+        color: #eab308;
+    }
+    .char-counter.danger {
+        color: #ef4444;
+    }
+    .search-result-item {
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .search-result-item:hover {
+        background-color: #fff7ed;
+        transform: translateX(4px);
+    }
+    .search-highlight {
+        background-color: #fef3c7;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Send Message to Parents</h1>
+        <p class="text-sm text-gray-600">Compose and send SMS messages to parents/guardians</p>
+    </div>
+
+    <!-- SMS Status Alert -->
+    {% if sms_settings and not sms_settings.enabled %}
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+        <div class="flex items-center">
+            <i class="fas fa-exclamation-triangle text-yellow-400 mr-3"></i>
+            <span class="text-sm text-yellow-700">SMS is currently disabled. Please enable it in <a href="{{ url_for('sms_settings.index') }}" class="underline font-semibold">SMS Settings</a> to send messages.</span>
+        </div>
+    </div>
+    {% elif sms_settings and (not sms_settings.api_username or not sms_settings.api_key) %}
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+        <div class="flex items-center">
+            <i class="fas fa-exclamation-triangle text-yellow-400 mr-3"></i>
+            <span class="text-sm text-yellow-700">SMS API credentials not configured. Please update your <a href="{{ url_for('sms_settings.index') }}" class="underline font-semibold">SMS Settings</a>.</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Panel - Recipient Selection -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden sticky top-4">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-users text-orange-500"></i>
+                        Select Recipients
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <!-- Apply To Selection -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Send To</label>
+                        <div class="flex gap-3">
+                            <label class="flex items-center gap-2">
+                                <input type="radio" name="apply_to" value="all" class="text-orange-500 focus:ring-orange-500">
+                                <span class="text-sm">All Students</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="radio" name="apply_to" value="class" class="text-orange-500 focus:ring-orange-500">
+                                <span class="text-sm">Specific Class</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="radio" name="apply_to" value="student" class="text-orange-500 focus:ring-orange-500">
+                                <span class="text-sm">Specific Students</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Class Select (hidden by default) -->
+                    <div id="classSelectDiv" class="mb-4 hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+                        <select id="classSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            <option value="">-- Select Class --</option>
+                            {% for class in classes %}
+                            <option value="{{ class.id }}">{{ class.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Live Student Search (hidden by default) -->
+                    <div id="studentSearchDiv" class="mb-4 hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Search Students</label>
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="text" id="studentSearchInput" 
+                                   placeholder="Type to search by name or ID..." 
+                                   class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            <div id="searchResults" class="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg hidden max-h-60 overflow-y-auto"></div>
+                        </div>
+                        <div id="selectedStudentsList" class="mt-3 space-y-2 max-h-40 overflow-y-auto">
+                            <!-- Selected students will appear here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Load Recipients Button (for All and Class) -->
+                    <button onclick="loadRecipients()" id="loadRecipientsBtn" class="w-full btn-gradient py-2 rounded-lg text-white font-medium mt-2">
+                        <i class="fas fa-sync-alt"></i> Load Recipients
+                    </button>
+                    
+                    <!-- Recipients Summary -->
+                    <div id="recipientsSummary" class="mt-4 hidden">
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <p class="text-sm font-medium text-gray-700">Recipients</p>
+                            <p class="text-2xl font-bold text-orange-600" id="recipientCount">0</p>
+                            <p class="text-xs text-gray-500 mt-1" id="recipientList"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel - Message Composition -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-envelope text-orange-500"></i>
+                        Compose Message
+                    </h2>
+                </div>
+                
+                <div class="p-5">
+                    <!-- Templates -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Quick Templates</label>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('general')">
+                                General Announcement
+                            </span>
+                            <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('fee')">
+                                Fee Reminder
+                            </span>
+                            <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('exam')">
+                                Exam Notification
+                            </span>
+                            <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('event')">
+                                School Event
+                            </span>
+                            <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('holiday')">
+                                Holiday Notice
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Message Input -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                        <textarea id="messageText" rows="6" 
+                                  placeholder="Type your message here... Use {student_name} for student name"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
+                        <div class="flex justify-between mt-1">
+                            <p class="text-xs text-gray-500">Use {student_name} to insert student's name</p>
+                            <p id="charCount" class="text-xs text-gray-500 char-counter">0 / 160 characters</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Sender ID -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Sender ID</label>
+                        <input type="text" id="senderId" value="{{ sms_settings.sender_id if sms_settings else 'SCHOOL' }}" 
+                               maxlength="11" placeholder="SCHOOL"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <p class="text-xs text-gray-500 mt-1">Maximum 11 characters. This will appear as the sender name</p>
+                    </div>
+                    
+                    <!-- Preview -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
+                        <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600" id="messagePreview">
+                            Your message preview will appear here
+                        </div>
+                    </div>
+                    
+                    <!-- Send Button -->
+                    <div class="flex gap-3 pt-4 border-t border-gray-200">
+                        <button onclick="sendMessage()" id="sendBtn" disabled
+                                class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium flex items-center justify-center gap-2">
+                            <i class="fas fa-paper-plane"></i>
+                            Send Message
+                        </button>
+                        <button onclick="clearForm()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Message History -->
+            <div class="mt-6 bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gray-50">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-history text-orange-500"></i>
+                        Recent Messages
+                    </h2>
+                </div>
+                <div id="messageHistory" class="p-5 max-h-60 overflow-y-auto">
+                    <div class="text-center py-8 text-gray-400">Loading message history...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 text-center transform transition-all modal-container">
+        <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-check-circle text-3xl text-green-500"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">Message Sent!</h3>
+        <p class="text-gray-600 mb-6" id="successMessage"></p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div id="errorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 text-center transform transition-all modal-container">
+        <div class="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">Error</h3>
+        <p class="text-gray-600 mb-6" id="errorMessage"></p>
+        <button onclick="closeErrorModal()" class="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">
+            Close
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Sending messages...</p>
+    </div>
+</div>
+
+<script>
+    let currentRecipients = [];
+    let selectedStudents = new Map(); // Store selected students
+    let searchTimeout;
+    
+    // Apply To radio change
+    document.querySelectorAll('input[name="apply_to"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const classDiv = document.getElementById('classSelectDiv');
+            const studentSearchDiv = document.getElementById('studentSearchDiv');
+            const loadBtn = document.getElementById('loadRecipientsBtn');
+            
+            classDiv.classList.add('hidden');
+            studentSearchDiv.classList.add('hidden');
+            
+            if (this.value === 'class') {
+                classDiv.classList.remove('hidden');
+                loadBtn.classList.remove('hidden');
+                document.getElementById('recipientsSummary').classList.add('hidden');
+                currentRecipients = [];
+                document.getElementById('sendBtn').disabled = true;
+            } else if (this.value === 'student') {
+                studentSearchDiv.classList.remove('hidden');
+                loadBtn.classList.add('hidden');
+                // Clear selected students
+                selectedStudents.clear();
+                updateSelectedStudentsDisplay();
+            } else {
+                // All students
+                loadBtn.classList.remove('hidden');
+                document.getElementById('recipientsSummary').classList.add('hidden');
+                currentRecipients = [];
+                document.getElementById('sendBtn').disabled = true;
+            }
+        });
+    });
+    
+    // Live search functionality
+    const searchInput = document.getElementById('studentSearchInput');
+    const searchResults = document.getElementById('searchResults');
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const term = this.value.trim();
+        
+        if (term.length < 2) {
+            searchResults.classList.add('hidden');
+            return;
+        }
+        
+        searchTimeout = setTimeout(() => performSearch(term), 300);
+    });
+    
+    async function performSearch(term) {
+        try {
+            const response = await fetch(`/send-message/api/search-students?q=${encodeURIComponent(term)}`);
+            const result = await response.json();
+            
+            if (result.success && result.students.length > 0) {
+                displaySearchResults(result.students, term);
+            } else {
+                searchResults.innerHTML = '<div class="p-3 text-center text-gray-500 text-sm">No students found</div>';
+                searchResults.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+            searchResults.innerHTML = '<div class="p-3 text-center text-red-500 text-sm">Search failed</div>';
+            searchResults.classList.remove('hidden');
+        }
+    }
+    
+    function displaySearchResults(students, searchTerm) {
+        const regex = new RegExp(`(${searchTerm})`, 'gi');
+        
+        searchResults.innerHTML = students.map(student => {
+            const highlightedName = student.name.replace(regex, '<span class="search-highlight">$1</span>');
+            const isSelected = selectedStudents.has(student.id);
+            
+            return `
+                <div class="search-result-item p-3 border-b border-gray-100 ${isSelected ? 'bg-orange-50' : ''}" 
+                     onclick="selectStudent('${student.id}', '${student.name.replace(/'/g, "\\'")}', '${student.student_id}', '${student.phone}')">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">${highlightedName}</p>
+                            <p class="text-xs text-gray-500">${student.student_id} | ${student.class_name}</p>
+                            <p class="text-xs text-gray-400">📱 ${student.phone || 'No phone'}</p>
+                        </div>
+                        ${isSelected ? '<i class="fas fa-check-circle text-green-500"></i>' : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        searchResults.classList.remove('hidden');
+    }
+    
+    function selectStudent(id, name, studentId, phone) {
+        if (!selectedStudents.has(id)) {
+            selectedStudents.set(id, { id, name, student_id: studentId, phone });
+            updateSelectedStudentsDisplay();
+        }
+        
+        // Clear search input and hide results
+        searchInput.value = '';
+        searchResults.classList.add('hidden');
+        
+        // Update recipients
+        updateRecipientsFromSelected();
+    }
+    
+    function removeSelectedStudent(id) {
+        selectedStudents.delete(id);
+        updateSelectedStudentsDisplay();
+        updateRecipientsFromSelected();
+    }
+    
+    function updateSelectedStudentsDisplay() {
+        const container = document.getElementById('selectedStudentsList');
+        
+        if (selectedStudents.size === 0) {
+            container.innerHTML = '<div class="text-center py-4 text-gray-400 text-sm">No students selected. Search and select students above.</div>';
+            return;
+        }
+        
+        container.innerHTML = Array.from(selectedStudents.values()).map(student => `
+            <div class="flex items-center justify-between p-2 bg-orange-50 rounded-lg">
+                <div>
+                    <p class="text-sm font-medium text-gray-800">${student.name}</p>
+                    <p class="text-xs text-gray-500">${student.student_id} | 📱 ${student.phone || 'No phone'}</p>
+                </div>
+                <button onclick="removeSelectedStudent('${student.id}')" class="text-red-400 hover:text-red-600">
+                    <i class="fas fa-times-circle"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+    
+    function updateRecipientsFromSelected() {
+        currentRecipients = Array.from(selectedStudents.values()).map(student => ({
+            id: student.id,
+            name: student.name,
+            student_id: student.student_id,
+            phone: student.phone
+        })).filter(r => r.phone);
+        
+        const count = currentRecipients.length;
+        document.getElementById('recipientCount').textContent = count;
+        
+        const recipientList = currentRecipients.slice(0, 5).map(r => r.name).join(', ');
+        if (count > 5) {
+            document.getElementById('recipientList').innerHTML = `${recipientList} and ${count - 5} more...`;
+        } else {
+            document.getElementById('recipientList').innerHTML = recipientList;
+        }
+        
+        document.getElementById('recipientsSummary').classList.remove('hidden');
+        document.getElementById('sendBtn').disabled = count === 0;
+    }
+    
+    // Close search results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.classList.add('hidden');
+        }
+    });
+    
+    // Character counter
+    document.getElementById('messageText').addEventListener('input', function() {
+        const length = this.value.length;
+        const charCounter = document.getElementById('charCount');
+        charCounter.textContent = `${length} / 160 characters`;
+        
+        if (length > 160) {
+            charCounter.classList.add('danger');
+            charCounter.classList.remove('warning');
+        } else if (length > 140) {
+            charCounter.classList.add('warning');
+            charCounter.classList.remove('danger');
+        } else {
+            charCounter.classList.remove('warning', 'danger');
+        }
+        
+        updatePreview();
+    });
+    
+    function updatePreview() {
+        let message = document.getElementById('messageText').value;
+        const preview = document.getElementById('messagePreview');
+        if (message) {
+            preview.innerHTML = message.replace(/\n/g, '<br>');
+        } else {
+            preview.innerHTML = 'Your message preview will appear here';
+        }
+    }
+    
+    async function loadRecipients() {
+        const applyTo = document.querySelector('input[name="apply_to"]:checked').value;
+        let classId = null;
+        
+        if (applyTo === 'class') {
+            classId = document.getElementById('classSelect').value;
+            if (!classId) {
+                showError('Please select a class');
+                return;
+            }
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/send-message/api/get-recipients', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    apply_to: applyTo,
+                    class_id: classId,
+                    student_ids: []
+                })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                currentRecipients = result.recipients;
+                document.getElementById('recipientCount').textContent = result.count;
+                
+                const recipientList = result.recipients.slice(0, 5).map(r => r.name).join(', ');
+                if (result.count > 5) {
+                    document.getElementById('recipientList').innerHTML = `${recipientList} and ${result.count - 5} more...`;
+                } else {
+                    document.getElementById('recipientList').innerHTML = recipientList;
+                }
+                
+                document.getElementById('recipientsSummary').classList.remove('hidden');
+                document.getElementById('sendBtn').disabled = result.count === 0;
+            } else {
+                showError(result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showError('Failed to load recipients');
+        }
+    }
+    
+    function applyTemplate(type) {
+        let template = '';
+        switch(type) {
+            case 'general':
+                template = `Dear Parent/Guardian,\n\nThis is to inform you about [announcement details].\n\nFor more information, please contact the school office.\n\nThank you.`;
+                break;
+            case 'fee':
+                template = `Dear Parent/Guardian,\n\nThis is a friendly reminder that school fees for {student_name} are due. Please clear the outstanding balance to avoid any inconvenience.\n\nThank you for your cooperation.`;
+                break;
+            case 'exam':
+                template = `Dear Parent/Guardian,\n\nExaminations will begin on [date]. Please ensure {student_name} is well prepared and attends all papers.\n\nBest regards.`;
+                break;
+            case 'event':
+                template = `Dear Parent/Guardian,\n\nYou are cordially invited to the [event name] on [date] at [time]. Your presence will be greatly appreciated.\n\nThank you.`;
+                break;
+            case 'holiday':
+                template = `Dear Parent/Guardian,\n\nThe school will be closed from [start date] to [end date] for [holiday name]. School will resume on [resume date].\n\nHappy Holidays!`;
+                break;
+        }
+        document.getElementById('messageText').value = template;
+        updatePreview();
+    }
+    
+    async function sendMessage() {
+        const message = document.getElementById('messageText').value.trim();
+        const senderId = document.getElementById('senderId').value.trim();
+        
+        if (!message) {
+            showError('Please enter a message');
+            return;
+        }
+        
+        if (currentRecipients.length === 0) {
+            showError('No recipients selected. Please load recipients first.');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/send-message/api/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    recipients: currentRecipients,
+                    message: message,
+                    sender_id: senderId || 'SCHOOL'
+                })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                document.getElementById('successMessage').innerHTML = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                
+                // Clear form
+                clearForm();
+                loadMessageHistory();
+            } else {
+                showError(result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showError('Failed to send message: ' + error.message);
+        }
+    }
+    
+    async function loadMessageHistory() {
+        try {
+            const response = await fetch('/send-message/api/message-history');
+            const result = await response.json();
+            
+            const container = document.getElementById('messageHistory');
+            
+            if (result.success && result.logs.length > 0) {
+                container.innerHTML = result.logs.map(log => `
+                    <div class="border-b border-gray-100 py-3 last:border-0">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-800">${log.message.substring(0, 100)}${log.message.length > 100 ? '...' : ''}</p>
+                                <p class="text-xs text-gray-500 mt-1">Sent to ${log.recipient_count} recipient(s)</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-gray-400">${new Date(log.created_at).toLocaleString()}</p>
+                                <span class="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs mt-1">Sent</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="text-center py-8 text-gray-400">No message history found</div>';
+            }
+        } catch (error) {
+            console.error('Error loading history:', error);
+            document.getElementById('messageHistory').innerHTML = '<div class="text-center py-8 text-gray-400">Failed to load history</div>';
+        }
+    }
+    
+    function clearForm() {
+        document.getElementById('messageText').value = '';
+        document.getElementById('senderId').value = 'SCHOOL';
+        document.getElementById('recipientsSummary').classList.add('hidden');
+        currentRecipients = [];
+        selectedStudents.clear();
+        updateSelectedStudentsDisplay();
+        document.getElementById('sendBtn').disabled = true;
+        updatePreview();
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function closeErrorModal() {
+        document.getElementById('errorModal').classList.add('hidden');
+        document.getElementById('errorModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showError(message) {
+        document.getElementById('errorMessage').innerHTML = message;
+        document.getElementById('errorModal').classList.remove('hidden');
+        document.getElementById('errorModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    window.onclick = function(event) {
+        const successModal = document.getElementById('successModal');
+        const errorModal = document.getElementById('errorModal');
+        if (event.target === successModal) closeSuccessModal();
+        if (event.target === errorModal) closeErrorModal();
+    };
+    
+    // Load message history on page load
+    loadMessageHistory();
+</script>
+{% endblock %}

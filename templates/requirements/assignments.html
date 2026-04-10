@@ -1,0 +1,527 @@
+<!-- templates/requirements/assignments.html - Completely Fixed -->
+{% extends "base.html" %}
+
+{% block title %}Class Requirements - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .assignment-card {
+        transition: all 0.2s;
+    }
+    .assignment-card:hover {
+        background-color: #fff7ed;
+        transform: translateX(4px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .skeleton {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 8px;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    .skeleton-text {
+        height: 16px;
+        margin: 8px 0;
+    }
+    .skeleton-title {
+        height: 24px;
+        width: 60%;
+        margin-bottom: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+ <a href="{{url_for('requirements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Requirements</a>
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Class Requirements</h1>
+            <p class="text-sm text-gray-600">Assign requirement items to classes</p>
+        </div>
+        <button onclick="openAssignmentModal()" class="btn-gradient px-4 py-2 rounded-lg text-white font-medium flex items-center gap-2">
+            <i class="fas fa-plus"></i> Assign Requirement
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Class</label>
+                <select id="classFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">All Classes</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Item</label>
+                <select id="itemFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">All Items</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
+                <select id="termFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">All Terms</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assignments List -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-800">Current Assignments</h2>
+        </div>
+        <div id="assignmentsList" class="divide-y divide-gray-200">
+            <div class="p-8 text-center text-gray-400">Loading assignments...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Assignment Modal -->
+<div id="assignmentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800" id="modalTitle">Assign Requirement</h3>
+            <button onclick="closeAssignmentModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <form id="assignmentForm" class="p-5">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Item *</label>
+                <select id="itemSelect" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="">-- Select Item --</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Apply To</label>
+                <div class="flex gap-4">
+                    <label class="flex items-center">
+                        <input type="radio" name="applyTo" value="all" checked class="mr-2 text-orange-500"> All Classes
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="applyTo" value="specific" class="mr-2 text-orange-500"> Specific Class
+                    </label>
+                </div>
+            </div>
+            <div id="classSelectDiv" class="mb-4 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Class *</label>
+                <select id="classSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="">-- Select Class --</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Quantity Required *</label>
+                <input type="number" id="quantityRequired" step="0.01" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year</label>
+                <select id="academicYear" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                </select>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium">Save</button>
+                <button type="button" onclick="closeAssignmentModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="p-6">
+            <div class="flex items-center justify-center mb-4">
+                <div class="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+                </div>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 text-center mb-2">Delete Assignment</h3>
+            <p class="text-gray-600 text-center mb-6" id="deleteMessage">Are you sure you want to delete this assignment? This action cannot be undone.</p>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all">Cancel</button>
+                <button id="confirmDeleteBtn" class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="loader"></div>
+        <p class="text-gray-700 mt-4" id="loadingMessage">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let items = [];
+    let classes = [];
+    let assignments = [];
+    let terms = [];
+    let assignmentToDelete = null;
+
+    function showLoading(message = 'Processing...') {
+        document.getElementById('loadingMessage').textContent = message;
+        document.getElementById('loadingOverlay').classList.remove('hidden');
+        document.getElementById('loadingOverlay').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        document.getElementById('loadingOverlay').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function showMessage(message, type = 'success') {
+        let messageContainer = document.getElementById('messageContainer');
+        if (!messageContainer) {
+            messageContainer = document.createElement('div');
+            messageContainer.id = 'messageContainer';
+            messageContainer.style.position = 'fixed';
+            messageContainer.style.top = '20px';
+            messageContainer.style.right = '20px';
+            messageContainer.style.zIndex = '9999';
+            document.body.appendChild(messageContainer);
+        }
+        
+        const alertClass = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `${alertClass} text-white px-6 py-3 rounded-lg shadow-lg mb-3 transition-opacity duration-300`;
+        messageDiv.innerHTML = message;
+        messageContainer.appendChild(messageDiv);
+        
+        setTimeout(() => {
+            messageDiv.style.opacity = '0';
+            setTimeout(() => messageDiv.remove(), 300);
+        }, 3000);
+    }
+
+    function openAssignmentModal() {
+        document.getElementById('assignmentModal').classList.remove('hidden');
+        document.getElementById('assignmentModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        document.getElementById('assignmentForm').reset();
+        document.querySelector('input[name="applyTo"][value="all"]').checked = true;
+        document.getElementById('classSelectDiv').classList.add('hidden');
+    }
+
+    function closeAssignmentModal() {
+        document.getElementById('assignmentModal').classList.add('hidden');
+        document.getElementById('assignmentModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function openDeleteModal(assignmentId, assignmentName) {
+        if (!assignmentId || assignmentId === 'null' || assignmentId === 'undefined') {
+            showMessage('Invalid assignment ID', 'error');
+            return;
+        }
+        assignmentToDelete = assignmentId;
+        document.getElementById('deleteMessage').innerHTML = `Are you sure you want to delete the assignment for <strong>${escapeHtml(assignmentName)}</strong>? This action cannot be undone.`;
+        document.getElementById('deleteModal').classList.remove('hidden');
+        document.getElementById('deleteModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.add('hidden');
+        document.getElementById('deleteModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        assignmentToDelete = null;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async function loadData() {
+        showLoading('Loading data...');
+        await Promise.all([loadItems(), loadClasses(), loadAssignments(), loadTerms()]);
+        hideLoading();
+    }
+
+    async function loadItems() {
+        try {
+            const response = await fetch('/requirements/api/items');
+            const data = await response.json();
+            if (data.success) {
+                items = data.items;
+                populateItemSelects();
+            }
+        } catch (error) {
+            console.error('Error loading items:', error);
+            showMessage('Failed to load items', 'error');
+        }
+    }
+
+    async function loadClasses() {
+        try {
+            const response = await fetch('/requirements/api/classes');
+            const data = await response.json();
+            if (data.success) {
+                classes = data.classes;
+                populateClassSelects();
+            }
+        } catch (error) {
+            console.error('Error loading classes:', error);
+            showMessage('Failed to load classes', 'error');
+        }
+    }
+
+    async function loadTerms() {
+        try {
+            const response = await fetch('/requirements/api/terms');
+            const data = await response.json();
+            if (data.success) {
+                terms = data.terms;
+                populateTermFilters();
+            }
+        } catch (error) {
+            console.error('Error loading terms:', error);
+        }
+    }
+
+    async function loadAssignments() {
+        try {
+            const response = await fetch('/requirements/api/assignments');
+            const data = await response.json();
+            if (data.success) {
+                assignments = data.assignments;
+                renderAssignments();
+            }
+        } catch (error) {
+            console.error('Error loading assignments:', error);
+            document.getElementById('assignmentsList').innerHTML = '<div class="p-8 text-center text-red-500">Failed to load assignments</div>';
+        }
+    }
+
+    function populateItemSelects() {
+        const select = document.getElementById('itemSelect');
+        const filter = document.getElementById('itemFilter');
+        if (items.length === 0) {
+            select.innerHTML = '<option value="">-- No items available --</option>';
+            filter.innerHTML = '<option value="">All Items</option>';
+            return;
+        }
+        const options = items.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
+        select.innerHTML = '<option value="">-- Select Item --</option>' + options;
+        filter.innerHTML = '<option value="">All Items</option>' + options;
+    }
+
+    function populateClassSelects() {
+        const select = document.getElementById('classSelect');
+        const filter = document.getElementById('classFilter');
+        if (classes.length === 0) {
+            select.innerHTML = '<option value="">-- No classes available --</option>';
+            filter.innerHTML = '<option value="">All Classes</option>';
+            return;
+        }
+        const options = classes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+        select.innerHTML = '<option value="">-- Select Class --</option>' + options;
+        filter.innerHTML = '<option value="">All Classes</option>' + options;
+    }
+
+    function populateTermFilters() {
+        const filter = document.getElementById('termFilter');
+        if (terms.length === 0) {
+            filter.innerHTML = '<option value="">All Terms</option>';
+            return;
+        }
+        const options = terms.map(t => `<option value="${t.id}">${escapeHtml(t.term_name)} - ${t.academic_year}</option>`).join('');
+        filter.innerHTML = '<option value="">All Terms</option>' + options;
+    }
+
+    function renderAssignments() {
+        const container = document.getElementById('assignmentsList');
+        const classFilter = document.getElementById('classFilter').value;
+        const itemFilter = document.getElementById('itemFilter').value;
+        const termFilter = document.getElementById('termFilter').value;
+
+        let filtered = [...assignments];
+        if (classFilter) filtered = filtered.filter(a => a.class_id === classFilter || a.apply_to_all);
+        if (itemFilter) filtered = filtered.filter(a => a.item_id === itemFilter);
+        if (termFilter) filtered = filtered.filter(a => a.term_id === termFilter);
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="p-8 text-center text-gray-400">No assignments found</div>';
+            return;
+        }
+
+        container.innerHTML = filtered.map(assignment => {
+            const item = items.find(i => i.id === assignment.item_id);
+            const className = assignment.apply_to_all ? 'All Classes' : (classes.find(c => c.id === assignment.class_id)?.name || 'N/A');
+            const assignmentName = `${item?.name || 'N/A'} - ${className}`;
+            return `
+                <div class="assignment-card p-4 flex items-center justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-1">
+                            <span class="font-semibold text-gray-800">${escapeHtml(item?.name || 'N/A')}</span>
+                            <span class="text-xs bg-gray-100 px-2 py-1 rounded">${escapeHtml(item?.unit || 'N/A')}</span>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            <span>Class: <strong>${escapeHtml(className)}</strong></span>
+                            <span class="mx-2">•</span>
+                            <span>Required: <strong>${assignment.quantity_required}</strong></span>
+                        </div>
+                    </div>
+                    <button onclick="openDeleteModal('${assignment.id}', '${escapeHtml(assignmentName)}')" class="text-red-500 hover:text-red-700">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    document.querySelectorAll('input[name="applyTo"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const classDiv = document.getElementById('classSelectDiv');
+            classDiv.classList.toggle('hidden', this.value === 'all');
+        });
+    });
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+        if (assignmentToDelete && assignmentToDelete !== 'null' && assignmentToDelete !== 'undefined') {
+            const deleteId = assignmentToDelete;
+            closeDeleteModal();
+            showLoading('Deleting assignment...');
+            
+            try {
+                const response = await fetch(`/requirements/api/assignments/${deleteId}`, { method: 'DELETE' });
+                const result = await response.json();
+                hideLoading();
+                
+                if (result.success) {
+                    showMessage('Assignment deleted successfully', 'success');
+                    await loadAssignments();
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                hideLoading();
+                showMessage('Error deleting assignment', 'error');
+            }
+            assignmentToDelete = null;
+        } else {
+            showMessage('Invalid assignment selected for deletion', 'error');
+            closeDeleteModal();
+        }
+    });
+
+    document.getElementById('assignmentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const applyTo = document.querySelector('input[name="applyTo"]:checked').value;
+        const itemId = document.getElementById('itemSelect').value;
+        
+        if (!itemId) {
+            showMessage('Please select an item', 'error');
+            return;
+        }
+        
+        const quantity = document.getElementById('quantityRequired').value;
+        if (!quantity || quantity <= 0) {
+            showMessage('Please enter a valid quantity', 'error');
+            return;
+        }
+        
+        const data = {
+            item_id: itemId,
+            quantity_required: parseFloat(quantity),
+            academic_year: parseInt(document.getElementById('academicYear').value),
+            apply_to_all: applyTo === 'all'
+        };
+        
+        if (applyTo === 'specific') {
+            const classId = document.getElementById('classSelect').value;
+            if (!classId) {
+                showMessage('Please select a class', 'error');
+                return;
+            }
+            data.class_id = classId;
+        }
+
+        closeAssignmentModal();
+        showLoading('Creating assignment...');
+
+        try {
+            const response = await fetch('/requirements/api/assignments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            hideLoading();
+            
+            if (result.success) {
+                showMessage('Assignment created successfully', 'success');
+                await loadAssignments();
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            hideLoading();
+            showMessage('Error creating assignment', 'error');
+        }
+    });
+
+    document.getElementById('classFilter').addEventListener('change', () => renderAssignments());
+    document.getElementById('itemFilter').addEventListener('change', () => renderAssignments());
+    document.getElementById('termFilter').addEventListener('change', () => renderAssignments());
+
+    // Initialize
+    loadData();
+</script>
+{% endblock %}

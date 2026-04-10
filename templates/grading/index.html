@@ -1,0 +1,488 @@
+<!-- templates/grading/index.html - Exam Grading Settings (Status as Text Input) -->
+{% extends "base.html" %}
+
+{% block title %}Exam Grading Settings - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .grade-row {
+        transition: all 0.2s;
+        background: white;
+    }
+    .grade-row:hover {
+        background-color: #fff7ed;
+        transform: translateX(4px);
+    }
+    .grade-input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    .grade-input:focus {
+        outline: none;
+        border-color: #ffa500;
+        box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.1);
+    }
+    .remove-btn {
+        transition: all 0.2s;
+    }
+    .remove-btn:hover {
+        transform: scale(1.1);
+    }
+    .status-pass {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .status-fail {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Exam Grading Settings</h1>
+        <p class="text-sm text-gray-600">Configure grade ranges and pass/fail criteria</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Panel - Grading Scale -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-star text-orange-500"></i>
+                        Marks Grading
+                    </h2>
+                </div>
+                
+                <div class="p-5">
+                    <form id="gradingForm">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full">
+                                <thead>
+                                    <tr class="border-b border-gray-200">
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">% From</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">% Upto</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gradesBody">
+                                    {% if grades %}
+                                        {% for grade in grades %}
+                                        <tr class="grade-row border-b border-gray-100">
+                                            <td class="px-3 py-2">
+                                                <input type="text" name="grade_name[]" value="{{ grade.grade_name }}" 
+                                                       class="grade-input w-20 text-center font-semibold" placeholder="e.g., A">
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <input type="number" name="min_percentage[]" value="{{ grade.min_percentage|int }}" 
+                                                       class="grade-input w-24 text-center" step="1" min="0" max="100">
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <input type="number" name="max_percentage[]" value="{{ grade.max_percentage|int }}" 
+                                                       class="grade-input w-24 text-center" step="1" min="0" max="100">
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <input type="text" name="status[]" value="{{ grade.status }}" 
+                                                       class="grade-input w-28 text-center" placeholder="Pass/Fail">
+                                            </td>
+                                            <td class="px-3 py-2 text-center">
+                                                <button type="button" onclick="removeGradeRow(this)" class="remove-btn text-red-400 hover:text-red-600">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr class="grade-row border-b border-gray-100">
+                                            <td class="px-3 py-2">
+                                                <input type="text" name="grade_name[]" class="grade-input w-20 text-center font-semibold" placeholder="e.g., A">
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <input type="number" name="min_percentage[]" class="grade-input w-24 text-center" step="1" min="0" max="100">
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <input type="number" name="max_percentage[]" class="grade-input w-24 text-center" step="1" min="0" max="100">
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <input type="text" name="status[]" class="grade-input w-28 text-center" placeholder="Pass/Fail" value="Pass">
+                                            </td>
+                                            <td class="px-3 py-2 text-center">
+                                                <button type="button" onclick="removeGradeRow(this)" class="remove-btn text-red-400 hover:text-red-600">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="flex gap-3 mt-4">
+                            <button type="button" onclick="addGradeRow()" class="px-4 py-2 border border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50 text-sm flex items-center gap-2">
+                                <i class="fas fa-plus-circle"></i> Add More Option
+                            </button>
+                            <button type="button" onclick="removeLastGradeRow()" class="px-4 py-2 border border-red-300 text-red-500 rounded-lg hover:bg-red-50 text-sm flex items-center gap-2">
+                                <i class="fas fa-minus-circle"></i> Remove
+                            </button>
+                        </div>
+                        
+                        <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+                            <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel - Fail Criteria -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-exclamation-triangle text-orange-500"></i>
+                        Fail Criteria
+                    </h2>
+                </div>
+                
+                <div class="p-5">
+                    <form id="failCriteriaForm">
+                        <div class="mb-6 p-4 bg-yellow-50 rounded-lg">
+                            <p class="text-sm text-gray-700 mb-2">
+                                Student will be marked as <span class="font-bold text-red-600">FAILED</span> in the exams if:
+                            </p>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Overall Percentage ≤
+                            </label>
+                            <div class="flex items-center gap-3">
+                                <input type="number" name="overall_percentage" id="overallPercentage" 
+                                       value="{{ fail_criteria.overall_percentage }}"
+                                       class="grade-input w-32 text-center" step="1" min="0" max="100">
+                                <span class="text-sm text-gray-500">%</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Student fails if overall percentage is equal to or below this value</p>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                OR Subject Percentage ≤
+                            </label>
+                            <div class="flex items-center gap-3">
+                                <input type="number" name="subject_percentage" id="subjectPercentage" 
+                                       value="{{ fail_criteria.subject_percentage }}"
+                                       class="grade-input w-32 text-center" step="1" min="0" max="100">
+                                <span class="text-sm text-gray-500">%</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Student fails if any subject percentage is equal to or below this value</p>
+                        </div>
+                        
+                        <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+                            <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                                <i class="fas fa-save"></i> Update
+                            </button>
+                            <button type="button" onclick="resetToDefault()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                Reset to Default
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 p-5 text-center transform transition-all modal-container">
+        <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-check-circle text-2xl text-green-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-1">Success!</h3>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage">Settings saved successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-5 py-1.5 rounded-lg text-white text-sm font-medium">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-5 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mb-3"></div>
+        <p class="text-gray-600 text-sm">Processing...</p>
+    </div>
+</div>
+
+<script>
+    function addGradeRow() {
+        const tbody = document.getElementById('gradesBody');
+        const newRow = document.createElement('tr');
+        newRow.className = 'grade-row border-b border-gray-100';
+        newRow.innerHTML = `
+            <td class="px-3 py-2">
+                <input type="text" name="grade_name[]" class="grade-input w-20 text-center font-semibold" placeholder="e.g., A">
+            </td>
+            <td class="px-3 py-2">
+                <input type="number" name="min_percentage[]" class="grade-input w-24 text-center" step="1" min="0" max="100">
+            </td>
+            <td class="px-3 py-2">
+                <input type="number" name="max_percentage[]" class="grade-input w-24 text-center" step="1" min="0" max="100">
+            </td>
+            <td class="px-3 py-2">
+                <input type="text" name="status[]" class="grade-input w-28 text-center" placeholder="Pass/Fail" value="Pass">
+            </td>
+            <td class="px-3 py-2 text-center">
+                <button type="button" onclick="removeGradeRow(this)" class="remove-btn text-red-400 hover:text-red-600">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(newRow);
+    }
+    
+    function removeGradeRow(button) {
+        const tbody = document.getElementById('gradesBody');
+        if (tbody.children.length > 1) {
+            button.closest('tr').remove();
+        } else {
+            showMessage('At least one grade is required', 'error');
+        }
+    }
+    
+    function removeLastGradeRow() {
+        const tbody = document.getElementById('gradesBody');
+        if (tbody.children.length > 1) {
+            tbody.removeChild(tbody.lastChild);
+        } else {
+            showMessage('At least one grade is required', 'error');
+        }
+    }
+    
+    document.getElementById('gradingForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const gradeNames = document.querySelectorAll('input[name="grade_name[]"]');
+        const minPercentages = document.querySelectorAll('input[name="min_percentage[]"]');
+        const maxPercentages = document.querySelectorAll('input[name="max_percentage[]"]');
+        const statuses = document.querySelectorAll('input[name="status[]"]');
+        
+        const grades = [];
+        for (let i = 0; i < gradeNames.length; i++) {
+            const gradeName = gradeNames[i].value.trim();
+            if (!gradeName) continue;
+            
+            const minPct = parseFloat(minPercentages[i].value);
+            const maxPct = parseFloat(maxPercentages[i].value);
+            
+            if (isNaN(minPct) || isNaN(maxPct)) continue;
+            
+            grades.push({
+                grade_name: gradeName,
+                min_percentage: minPct,
+                max_percentage: maxPct,
+                status: statuses[i].value.trim() || 'Pass'
+            });
+        }
+        
+        if (grades.length === 0) {
+            showMessage('Please add at least one valid grade', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/exam-grading/api/grades/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ grades: grades })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to save grading settings', 'error');
+        }
+    });
+    
+    document.getElementById('failCriteriaForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const overallPercentage = parseFloat(document.getElementById('overallPercentage').value);
+        const subjectPercentage = parseFloat(document.getElementById('subjectPercentage').value);
+        
+        if (isNaN(overallPercentage) || overallPercentage < 0 || overallPercentage > 100) {
+            showMessage('Overall percentage must be between 0 and 100', 'error');
+            return;
+        }
+        
+        if (isNaN(subjectPercentage) || subjectPercentage < 0 || subjectPercentage > 100) {
+            showMessage('Subject percentage must be between 0 and 100', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/exam-grading/api/fail-criteria/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    overall_percentage: overallPercentage,
+                    subject_percentage: subjectPercentage
+                })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to save fail criteria', 'error');
+        }
+    });
+    
+    async function resetToDefault() {
+        if (confirm('Are you sure you want to reset all grading settings to default? This will overwrite your current settings.')) {
+            const loading = document.getElementById('loadingOverlay');
+            loading.classList.remove('hidden');
+            loading.classList.add('flex');
+            
+            try {
+                const response = await fetch('/exam-grading/api/reset-default', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                
+                if (result.success) {
+                    document.getElementById('successMessage').textContent = result.message;
+                    document.getElementById('successModal').classList.remove('hidden');
+                    document.getElementById('successModal').classList.add('flex');
+                    document.body.style.overflow = 'hidden';
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                showMessage('Failed to reset settings', 'error');
+            }
+        }
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+    
+    window.onclick = function(event) {
+        const modal = document.getElementById('successModal');
+        if (event.target === modal) {
+            closeSuccessModal();
+        }
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,284 @@
+<!-- templates/billing/index.html - Billing Dashboard -->
+{% extends "base.html" %}
+
+{% block title %}Billing - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .subscription-card {
+        transition: all 0.3s ease;
+    }
+    .subscription-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .payment-modal {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .payment-iframe {
+        transition: all 0.3s ease;
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .payment-container {
+        background: white;
+        border-radius: 16px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow: hidden;
+        position: relative;
+    }
+    .status-active {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .status-expired {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Billing & Subscription</h1>
+        <p class="text-sm text-gray-600">Manage your subscription and payment history</p>
+    </div>
+
+    <!-- Subscription Status Card -->
+    <div class="subscription-card bg-white rounded-xl shadow-md overflow-hidden mb-6">
+        <div class="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4">
+            <h2 class="text-white font-semibold text-lg">Subscription Status</h2>
+        </div>
+        <div class="p-6">
+            <div class="flex flex-wrap justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Current Status</p>
+                    <p class="text-2xl font-bold {% if is_active %}text-green-600{% else %}text-red-600{% endif %}">
+                        {{ 'ACTIVE' if is_active else 'EXPIRED' }}
+                    </p>
+                    {% if is_active %}
+                    <p class="text-sm text-gray-600 mt-2">
+                        <i class="fas fa-calendar-check text-green-500"></i> 
+                        Expires in {{ days_remaining }} days
+                    </p>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Expiry Date: {{ subscription.expiry_date if subscription else 'N/A' }}
+                    </p>
+                    {% else %}
+                    <p class="text-sm text-gray-600 mt-2">
+                        <i class="fas fa-exclamation-triangle text-red-500"></i> 
+                        Your subscription has expired. Please renew to continue using the system.
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="mt-4 sm:mt-0">
+                    <button onclick="openPaymentModal(1)" 
+                            class="btn-gradient px-6 py-2 rounded-lg text-white font-medium flex items-center gap-2">
+                        <i class="fas fa-credit-card"></i>
+                        {% if is_active %}Extend Subscription{% else %}Renew Now{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pricing Plans -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow-md p-6 text-center">
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">1 Month</h3>
+            <p class="text-3xl font-bold text-orange-500 mb-4">UGX 1,000</p>
+            <button onclick="openPaymentModal(1)" class="w-full btn-gradient py-2 rounded-lg text-white font-medium">
+                Subscribe
+            </button>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6 text-center border-2 border-orange-500">
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">3 Months</h3>
+            <p class="text-3xl font-bold text-orange-500 mb-4">UGX 3,000</p>
+            <p class="text-sm text-green-600 mb-3">Save UGX 0</p>
+            <button onclick="openPaymentModal(3)" class="w-full btn-gradient py-2 rounded-lg text-white font-medium">
+                Subscribe
+            </button>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6 text-center">
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">12 Months</h3>
+            <p class="text-3xl font-bold text-orange-500 mb-4">UGX 12,000</p>
+            <button onclick="openPaymentModal(12)" class="w-full btn-gradient py-2 rounded-lg text-white font-medium">
+                Subscribe
+            </button>
+        </div>
+    </div>
+
+    <!-- Payment History -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-800">Payment History</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Months</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for payment in payments %}
+                    <tr>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ payment.created_at[:10] if payment.created_at else 'N/A' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-800 font-medium">UGX {{ "{:,.0f}".format(payment.amount) }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ payment.months }} month(s)</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold {% if payment.status == 'completed' %}bg-green-100 text-green-700{% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                                {{ payment.status|upper }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500 font-mono">{{ payment.order_tracking_id[:20] if payment.order_tracking_id else 'N/A' }}...</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-gray-400">No payment history found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div id="paymentModal" class="overlay hidden">
+    <div class="payment-container">
+        <div class="sticky top-0 bg-white border-b border-gray-200 px-5 py-3 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Complete Payment</h3>
+            <button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div id="paymentContent" class="p-5">
+            <div class="text-center py-8">
+                <div class="loader mx-auto mb-4"></div>
+                <p class="text-gray-600">Initializing payment gateway...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedMonths = 1;
+    let paymentIframe = null;
+
+    function openPaymentModal(months) {
+        selectedMonths = months;
+        const modal = document.getElementById('paymentModal');
+        const content = document.getElementById('paymentContent');
+        
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        
+        // Show loading
+        content.innerHTML = `
+            <div class="text-center py-8">
+                <div class="loader mx-auto mb-4"></div>
+                <p class="text-gray-600">Initializing payment gateway...</p>
+            </div>
+        `;
+        
+        // Initiate payment
+        fetch('/billing/initiate-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ months: months })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.redirect_url) {
+                content.innerHTML = `
+                    <iframe 
+                        src="${data.redirect_url}" 
+                        width="100%" 
+                        height="550px" 
+                        frameborder="0" 
+                        scrolling="no" 
+                        allowfullscreen
+                        style="border-radius: 8px;">
+                    </iframe>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-exclamation-circle text-4xl text-red-500 mb-3"></i>
+                        <p class="text-gray-600">Failed to initialize payment. Please try again.</p>
+                        <button onclick="closePaymentModal()" class="mt-4 btn-gradient px-4 py-2 rounded-lg text-white">Close</button>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            content.innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-exclamation-circle text-4xl text-red-500 mb-3"></i>
+                    <p class="text-gray-600">An error occurred. Please try again.</p>
+                    <button onclick="closePaymentModal()" class="mt-4 btn-gradient px-4 py-2 rounded-lg text-white">Close</button>
+                </div>
+            `;
+        });
+    }
+
+    function closePaymentModal() {
+        const modal = document.getElementById('paymentModal');
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+        // Refresh page to update subscription status
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('paymentModal');
+            if (!modal.classList.contains('hidden')) {
+                closePaymentModal();
+            }
+        }
+    });
+</script>
+{% endblock %}

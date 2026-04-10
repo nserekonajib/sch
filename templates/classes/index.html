@@ -1,0 +1,606 @@
+<!-- templates/classes/index.html - Classes List Page with Edit Modal -->
+{% extends "base.html" %}
+
+{% block title %}Classes Management - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .class-card {
+        transition: all 0.3s ease;
+    }
+    .class-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    .section-badge {
+        transition: all 0.2s ease;
+    }
+    .section-badge:hover {
+        transform: scale(1.05);
+        background-color: #ffa500;
+        color: white;
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    /* Modal Animation Styles */
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .section-checkbox {
+        transition: all 0.2s;
+    }
+    .section-checkbox:hover {
+        transform: translateX(4px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Classes Management</h1>
+            <p class="text-gray-600">Manage all classes and sections in your institute</p>
+        </div>
+        <a href="{{ url_for('class.create') }}" 
+           class="btn-gradient px-6 py-3 rounded-xl text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+            <i class="fas fa-plus-circle"></i>
+            Create New Class
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-2xl shadow-md p-6 border-l-4 border-orange-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Classes</p>
+                    <p class="text-3xl font-bold text-gray-800">{{ classes|length }}</p>
+                </div>
+                <div class="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-chalkboard text-orange-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-md p-6 border-l-4 border-green-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Students</p>
+                    <p class="text-3xl font-bold text-gray-800">--</p>
+                </div>
+                <div class="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user-graduate text-green-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-md p-6 border-l-4 border-blue-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Active Classes</p>
+                    <p class="text-3xl font-bold text-gray-800">{{ classes|length }}</p>
+                </div>
+                <div class="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-check-circle text-blue-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-md p-6 border-l-4 border-purple-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Sections</p>
+                    <p class="text-3xl font-bold text-gray-800">{{ sections|length }}</p>
+                </div>
+                <div class="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-layer-group text-purple-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Classes Grid -->
+    {% if classes %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for class in classes %}
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden class-card">
+            <div class="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-white">{{ class.name }}</h3>
+                    <div class="flex gap-2">
+                        <button onclick="openEditModal('{{ class.id }}')" 
+                                class="text-white hover:text-orange-200 transition-colors">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteClass('{{ class.id }}', '{{ class.name }}')" 
+                                class="text-white hover:text-red-200 transition-colors">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="mb-4">
+                    <p class="text-gray-500 text-sm mb-2">Sections</p>
+                    <div class="flex flex-wrap gap-2">
+                        {% if class.sections %}
+                            {% for section in class.sections %}
+                            <span class="section-badge px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
+                                {{ section.name }}
+                            </span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-gray-400 text-sm">No sections assigned</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="pt-4 border-t border-gray-100 flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-sm text-gray-500">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Created: {{ class.created_at[:10] if class.created_at else 'N/A' }}</span>
+                    </div>
+                    <a href="#" class="text-orange-500 hover:text-orange-600 text-sm font-medium">
+                        View Details <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-2xl shadow-lg p-12 text-center">
+        <div class="h-24 w-24 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i class="fas fa-chalkboard text-4xl text-orange-500"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">No Classes Yet</h3>
+        <p class="text-gray-600 mb-6">Get started by creating your first class</p>
+        <a href="{{ url_for('class.create') }}" 
+           class="btn-gradient px-6 py-3 rounded-xl text-white font-semibold inline-flex items-center gap-2 shadow-md hover:shadow-lg transition-all">
+            <i class="fas fa-plus-circle"></i>
+            Create New Class
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Edit Class Modal -->
+<div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 transform transition-all modal-container">
+        <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h3 class="text-xl font-semibold text-gray-800">Edit Class</h3>
+            <button onclick="closeEditModal()" 
+                    class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <input type="hidden" id="editClassId">
+            
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Class Name <span class="text-red-500">*</span>
+                </label>
+                <input type="text" id="editClassName" 
+                       placeholder="e.g., Grade 1, Class 10, Pre-KG"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all">
+            </div>
+            
+            <div class="mb-5">
+                <div class="flex items-center justify-between mb-3">
+                    <label class="text-sm font-medium text-gray-700">
+                        Assign Sections
+                    </label>
+                    <button type="button" onclick="openSectionModalFromEdit()" 
+                            class="text-orange-500 hover:text-orange-600 text-sm font-medium flex items-center gap-1 transition-all">
+                        <i class="fas fa-plus-circle"></i>
+                        Create New Section
+                    </button>
+                </div>
+                
+                <div id="editSectionsContainer" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <!-- Sections will be loaded dynamically -->
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Select one or more sections for this class</p>
+            </div>
+        </div>
+        
+        <div class="border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+            <button onclick="closeEditModal()" 
+                    class="px-6 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all">
+                Cancel
+            </button>
+            <button onclick="saveEditClass()" 
+                    class="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-md flex items-center gap-2">
+                <i class="fas fa-save"></i>
+                Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 transform transition-all">
+        <div class="p-6">
+            <div class="flex items-center justify-center mb-4">
+                <div class="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+                </div>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 text-center mb-2">Delete Class</h3>
+            <p class="text-gray-600 text-center mb-6" id="deleteMessage">Are you sure you want to delete this class? This action cannot be undone.</p>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteModal()" 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all">
+                    Cancel
+                </button>
+                <button id="confirmDeleteBtn" 
+                        class="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Section Modal (Reused) -->
+<div id="sectionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">Create New Section</h3>
+                <button onclick="closeSectionModal()" 
+                        class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Section Name <span class="text-red-500">*</span>
+                </label>
+                <input type="text" id="sectionName" 
+                       placeholder="e.g., A, B, C, I, II, III"
+                       class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
+                       autocomplete="off">
+                <p class="text-xs text-gray-500 mt-1">Section names like A, B, C or I, II, III are common</p>
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="closeSectionModal()" 
+                        class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all">
+                    Cancel
+                </button>
+                <button onclick="createSectionFromModal()" 
+                        class="flex-1 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-md flex items-center justify-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    Create Section
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Processing...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let classToDelete = null;
+    let currentEditClassId = null;
+    
+    // Open Edit Modal
+    function openEditModal(classId) {
+        currentEditClassId = classId;
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.classList.add('flex');
+        
+        fetch(`/classes/api/class/${classId}`)
+            .then(response => response.json())
+            .then(data => {
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+                
+                if (data.success) {
+                    document.getElementById('editClassId').value = classId;
+                    document.getElementById('editClassName').value = data.class.name;
+                    
+                    // Populate sections checkboxes
+                    const container = document.getElementById('editSectionsContainer');
+                    container.innerHTML = '';
+                    
+                    if (data.sections && data.sections.length > 0) {
+                        data.sections.forEach(section => {
+                            const isChecked = data.linked_sections.includes(section.id);
+                            const sectionHtml = `
+                                <label class="section-checkbox flex items-center gap-2 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-orange-50 transition-all">
+                                    <input type="checkbox" name="edit_sections" value="${section.id}" ${isChecked ? 'checked' : ''} 
+                                           class="w-4 h-4 text-orange-500 rounded focus:ring-orange-500">
+                                    <span class="text-gray-700">${section.name}</span>
+                                </label>
+                            `;
+                            container.insertAdjacentHTML('beforeend', sectionHtml);
+                        });
+                    } else {
+                        container.innerHTML = `
+                            <div class="col-span-full text-center py-8">
+                                <i class="fas fa-layer-group text-4xl text-gray-300 mb-2"></i>
+                                <p class="text-gray-500">No sections available</p>
+                                <button type="button" onclick="openSectionModalFromEdit()" 
+                                        class="mt-3 text-orange-500 hover:text-orange-600 text-sm font-medium">
+                                    Create your first section
+                                </button>
+                            </div>
+                        `;
+                    }
+                    
+                    document.getElementById('editModal').classList.remove('hidden');
+                    document.getElementById('editModal').classList.add('flex');
+                } else {
+                    showFlashMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+                showFlashMessage('Error loading class data', 'error');
+            });
+    }
+    
+    // Close Edit Modal
+    function closeEditModal() {
+        document.getElementById('editModal').classList.add('hidden');
+        document.getElementById('editModal').classList.remove('flex');
+        currentEditClassId = null;
+    }
+    
+    // Save Edit Class
+    function saveEditClass() {
+        const classId = document.getElementById('editClassId').value;
+        const className = document.getElementById('editClassName').value.trim();
+        const selectedSections = Array.from(document.querySelectorAll('input[name="edit_sections"]:checked')).map(cb => cb.value);
+        
+        if (!className) {
+            showFlashMessage('Please enter a class name', 'error');
+            return;
+        }
+        
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.classList.add('flex');
+        
+        fetch(`/classes/api/class/${classId}/update`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                class_name: className,
+                sections: selectedSections
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingOverlay.classList.add('hidden');
+            loadingOverlay.classList.remove('flex');
+            
+            if (data.success) {
+                showFlashMessage(data.message, 'success');
+                closeEditModal();
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showFlashMessage(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            loadingOverlay.classList.add('hidden');
+            loadingOverlay.classList.remove('flex');
+            showFlashMessage('Error updating class', 'error');
+        });
+    }
+    
+    // Delete Class Functions
+    function deleteClass(classId, className) {
+        classToDelete = classId;
+        document.getElementById('deleteMessage').innerHTML = `Are you sure you want to delete <strong>${className}</strong>? This action cannot be undone.`;
+        document.getElementById('deleteModal').classList.remove('hidden');
+        document.getElementById('deleteModal').classList.add('flex');
+    }
+    
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.add('hidden');
+        document.getElementById('deleteModal').classList.remove('flex');
+        classToDelete = null;
+    }
+    
+    document.getElementById('confirmDeleteBtn')?.addEventListener('click', function() {
+        if (classToDelete) {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+            
+            fetch(`/classes/${classToDelete}/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+                
+                if (data.success) {
+                    showFlashMessage(data.message, 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showFlashMessage(data.message, 'error');
+                    closeDeleteModal();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+                showFlashMessage('Error deleting class', 'error');
+                closeDeleteModal();
+            });
+        }
+    });
+    
+    // Section Modal Functions
+    let sectionModalCallback = null;
+    
+    function openSectionModalFromEdit() {
+        sectionModalCallback = 'edit';
+        document.getElementById('sectionModal').classList.remove('hidden');
+        document.getElementById('sectionModal').classList.add('flex');
+        document.getElementById('sectionName').focus();
+    }
+    
+    function openSectionModal() {
+        sectionModalCallback = 'create';
+        document.getElementById('sectionModal').classList.remove('hidden');
+        document.getElementById('sectionModal').classList.add('flex');
+        document.getElementById('sectionName').focus();
+    }
+    
+    function closeSectionModal() {
+        document.getElementById('sectionModal').classList.add('hidden');
+        document.getElementById('sectionModal').classList.remove('flex');
+        document.getElementById('sectionName').value = '';
+        sectionModalCallback = null;
+    }
+    
+    function createSectionFromModal() {
+        const sectionName = document.getElementById('sectionName').value.trim().toUpperCase();
+        
+        if (!sectionName) {
+            showFlashMessage('Please enter a section name', 'error');
+            document.getElementById('sectionName').focus();
+            return;
+        }
+        
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.classList.add('flex');
+        
+        fetch('/classes/api/sections/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name: sectionName })
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingOverlay.classList.add('hidden');
+            loadingOverlay.classList.remove('flex');
+            
+            if (data.success) {
+                showFlashMessage(data.message, 'success');
+                closeSectionModal();
+                
+                // If we're in edit mode, reload the edit modal content
+                if (sectionModalCallback === 'edit' && currentEditClassId) {
+                    openEditModal(currentEditClassId);
+                } else if (sectionModalCallback === 'create') {
+                    // If in create page, we need to reload the create form
+                    window.location.reload();
+                }
+            } else {
+                showFlashMessage(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            loadingOverlay.classList.add('hidden');
+            loadingOverlay.classList.remove('flex');
+            showFlashMessage('Error creating section', 'error');
+        });
+    }
+    
+    // Enter key in modal input
+    document.getElementById('sectionName')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            createSectionFromModal();
+        }
+    });
+    
+    // Close modals when clicking outside
+    const editModal = document.getElementById('editModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const sectionModal = document.getElementById('sectionModal');
+    
+    editModal?.addEventListener('click', function(e) {
+        if (e.target === editModal) closeEditModal();
+    });
+    
+    deleteModal?.addEventListener('click', function(e) {
+        if (e.target === deleteModal) closeDeleteModal();
+    });
+    
+    sectionModal?.addEventListener('click', function(e) {
+        if (e.target === sectionModal) closeSectionModal();
+    });
+    
+    function showFlashMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+</script>
+{% endblock %}

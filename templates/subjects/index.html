@@ -1,0 +1,668 @@
+<!-- templates/subjects/index.html - Updated with Teacher Selection -->
+{% extends "base.html" %}
+
+{% block title %}Classes With Subjects - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .class-card {
+        transition: all 0.3s ease;
+        background: white;
+        border: 1px solid #e5e7eb;
+    }
+    .class-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        border-color: #ffa500;
+    }
+    .stat-box {
+        background: #fef3c7;
+        border-radius: 12px;
+        padding: 10px;
+        text-align: center;
+    }
+    .stat-number {
+        font-size: 24px;
+        font-weight: bold;
+        color: #d97706;
+    }
+    .stat-label {
+        font-size: 11px;
+        color: #92400e;
+        margin-top: 4px;
+    }
+    .subject-item {
+        transition: all 0.2s;
+        padding: 8px 12px;
+        border-radius: 8px;
+    }
+    .subject-item:hover {
+        background-color: #fff7ed;
+        transform: translateX(4px);
+    }
+    .subject-marks {
+        font-size: 12px;
+        font-weight: 600;
+        color: #d97706;
+    }
+    .subject-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: #374151;
+    }
+    .teacher-name {
+        font-size: 11px;
+        color: #6b7280;
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .teacher-search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 50;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .teacher-result-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .teacher-result-item:hover {
+        background-color: #fff7ed;
+    }
+    .selected-teacher {
+        background-color: #fef3c7;
+        border: 1px solid #ffa500;
+    }
+    .empty-subjects {
+        text-align: center;
+        padding: 30px 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Classes With Subjects</h1>
+            <p class="text-sm text-gray-600">View and manage subjects assigned to each class</p>
+        </div>
+        <button onclick="openAssignModal()" 
+                class="btn-gradient px-5 py-2.5 rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+            <i class="fas fa-plus-circle"></i>
+            Assign Subjects
+        </button>
+    </div>
+
+    <!-- Classes Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for class_data in classes_data %}
+        {% set total_subjects = class_data.subjects|length %}
+        {% set total_marks = class_data.subjects|sum(attribute='marks') %}
+        <div class="class-card rounded-xl overflow-hidden">
+            <!-- Class Header -->
+            <div class="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3">
+                <h3 class="text-white font-semibold text-lg">{{ class_data.class.name }}</h3>
+            </div>
+            
+            <!-- Statistics Section -->
+            <div class="p-4 border-b border-gray-100">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="stat-box">
+                        <div class="stat-number">{{ total_subjects }}</div>
+                        <div class="stat-label">TOTAL SUBJECTS</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{{ total_marks }}</div>
+                        <div class="stat-label">TOTAL EXAM MARKS</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Subjects List -->
+            <div class="p-4">
+                {% if class_data.subjects %}
+                    <div class="space-y-2">
+                        {% for subject in class_data.subjects %}
+                        <div class="subject-item">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-book text-orange-400 text-xs"></i>
+                                    <span class="subject-name">{{ subject.subjects.name }}</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="subject-marks">{{ subject.marks }} Marks</span>
+                                    <button onclick="deleteSubject('{{ subject.id }}', '{{ subject.subjects.name }}', '{{ class_data.class.name }}')" 
+                                            class="text-red-400 hover:text-red-600 transition-all">
+                                        <i class="fas fa-trash-alt text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            {% if subject.teachers %}
+                            <div class="flex items-center gap-1 mt-1 ml-5">
+                                <i class="fas fa-chalkboard-user text-gray-400 text-xs"></i>
+                                <span class="teacher-name">Teacher: {{ subject.teachers.name }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-subjects">
+                        <i class="fas fa-book-open text-3xl text-gray-300 mb-2"></i>
+                        <p class="text-gray-400 text-sm">No subjects assigned</p>
+                        <button onclick="openAssignModalWithClass('{{ class_data.class.id }}')" 
+                                class="mt-2 text-orange-500 hover:text-orange-600 text-sm">
+                            <i class="fas fa-plus"></i> Add Subjects
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-full">
+            <div class="bg-white rounded-xl shadow-md p-12 text-center">
+                <div class="h-20 w-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-book-open text-3xl text-orange-500"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">No Classes Found</h3>
+                <p class="text-sm text-gray-500">Create classes first to assign subjects</p>
+                <a href="{{ url_for('class.index') }}" class="btn-gradient px-5 py-2 rounded-lg text-white text-sm inline-flex items-center gap-2 mt-4">
+                    <i class="fas fa-plus-circle"></i> Create Class
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Assign Subjects Modal -->
+<div id="assignModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 my-8 transform transition-all modal-container">
+        <div class="sticky top-0 bg-white rounded-t-xl border-b border-gray-200 px-5 py-3 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Assign Subjects</h3>
+            <button onclick="closeAssignModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        
+        <div class="p-5 max-h-[calc(100vh-120px)] overflow-y-auto">
+            <form id="assignSubjectsForm">
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Class <span class="text-red-500">*</span></label>
+                    <select id="classSelect" name="class_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">-- Select Class --</option>
+                        {% for class_data in classes_data %}
+                        <option value="{{ class_data.class.id }}">{{ class_data.class.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="block text-sm font-medium text-gray-700">Subjects & Teachers</label>
+                        <button type="button" onclick="addSubjectRow()" class="text-orange-500 hover:text-orange-600 text-sm flex items-center gap-1">
+                            <i class="fas fa-plus-circle"></i> Add More
+                        </button>
+                    </div>
+                    
+                    <div id="subjectsContainer">
+                        <div class="subject-row grid grid-cols-12 gap-3 mb-4 items-start border-b border-gray-100 pb-3">
+                            <div class="col-span-4">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Subject Name</label>
+                                <input type="text" name="subject_name[]" placeholder="e.g., Mathematics" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            </div>
+                            <div class="col-span-3">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Total Marks</label>
+                                <input type="number" name="marks[]" placeholder="Total marks" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            </div>
+                            <div class="col-span-4">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Assigned Teacher</label>
+                                <div class="relative">
+                                    <input type="text" class="teacher-search w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm" 
+                                           placeholder="Search teacher by name..." autocomplete="off">
+                                    <input type="hidden" name="teacher_id[]" class="teacher-id">
+                                    <div class="teacher-search-results hidden absolute z-10 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto w-full"></div>
+                                </div>
+                                <div class="selected-teacher-display mt-1 hidden">
+                                    <div class="flex items-center justify-between bg-orange-50 p-1 rounded text-xs">
+                                        <span class="teacher-name-display"></span>
+                                        <button type="button" class="clear-teacher text-red-500 hover:text-red-700">
+                                            <i class="fas fa-times-circle"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-span-1 text-center pt-6">
+                                <button type="button" onclick="removeSubjectRow(this)" class="text-red-400 hover:text-red-600">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 pt-4 border-t border-gray-200">
+                    <button type="button" onclick="closeAssignModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Assign Subjects
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-5 text-center transform transition-all modal-container">
+        <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-check-circle text-2xl text-green-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-1" id="successTitle">Success!</h3>
+        <div id="successMessage" class="text-sm text-gray-500 mb-4"></div>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-5 py-1.5 rounded-lg text-white text-sm font-medium">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-5 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mb-3"></div>
+        <p class="text-gray-600 text-sm">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let preSelectedClassId = null;
+    let searchTimeouts = {};
+    
+    function openAssignModal() {
+        preSelectedClassId = null;
+        document.getElementById('assignSubjectsForm').reset();
+        document.getElementById('classSelect').value = '';
+        resetSubjectsContainer();
+        document.getElementById('assignModal').classList.remove('hidden');
+        document.getElementById('assignModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function openAssignModalWithClass(classId) {
+        preSelectedClassId = classId;
+        document.getElementById('assignSubjectsForm').reset();
+        document.getElementById('classSelect').value = classId;
+        resetSubjectsContainer();
+        document.getElementById('assignModal').classList.remove('hidden');
+        document.getElementById('assignModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function resetSubjectsContainer() {
+        const container = document.getElementById('subjectsContainer');
+        container.innerHTML = `
+            <div class="subject-row grid grid-cols-12 gap-3 mb-4 items-start border-b border-gray-100 pb-3">
+                <div class="col-span-4">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Subject Name</label>
+                    <input type="text" name="subject_name[]" placeholder="e.g., Mathematics" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="col-span-3">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Total Marks</label>
+                    <input type="number" name="marks[]" placeholder="Total marks" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="col-span-4">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Assigned Teacher</label>
+                    <div class="relative">
+                        <input type="text" class="teacher-search w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm" 
+                               placeholder="Search teacher by name..." autocomplete="off">
+                        <input type="hidden" name="teacher_id[]" class="teacher-id">
+                        <div class="teacher-search-results hidden absolute z-10 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto w-full"></div>
+                    </div>
+                    <div class="selected-teacher-display mt-1 hidden">
+                        <div class="flex items-center justify-between bg-orange-50 p-1 rounded text-xs">
+                            <span class="teacher-name-display"></span>
+                            <button type="button" class="clear-teacher text-red-500 hover:text-red-700">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-1 text-center pt-6">
+                    <button type="button" onclick="removeSubjectRow(this)" class="text-red-400 hover:text-red-600">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        attachTeacherSearchEvents();
+    }
+    
+    function attachTeacherSearchEvents() {
+        document.querySelectorAll('.teacher-search').forEach(input => {
+            const row = input.closest('.subject-row');
+            const resultsDiv = row.querySelector('.teacher-search-results');
+            const teacherIdInput = row.querySelector('.teacher-id');
+            const displayDiv = row.querySelector('.selected-teacher-display');
+            const teacherNameDisplay = row.querySelector('.teacher-name-display');
+            const clearBtn = row.querySelector('.clear-teacher');
+            
+            input.addEventListener('input', function() {
+                const term = this.value.trim();
+                const rowId = row.querySelector('input[name="subject_name[]"]').value || 'row';
+                
+                clearTimeout(searchTimeouts[rowId]);
+                
+                if (term.length < 2) {
+                    resultsDiv.classList.add('hidden');
+                    return;
+                }
+                
+                searchTimeouts[rowId] = setTimeout(() => searchTeachers(term, resultsDiv, input, teacherIdInput, teacherNameDisplay, displayDiv), 300);
+            });
+            
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    input.value = '';
+                    teacherIdInput.value = '';
+                    displayDiv.classList.add('hidden');
+                    input.focus();
+                });
+            }
+        });
+    }
+    
+    async function searchTeachers(searchTerm, resultsDiv, input, teacherIdInput, teacherNameDisplay, displayDiv) {
+        try {
+            const response = await fetch(`/subjects/api/teachers/search?q=${encodeURIComponent(searchTerm)}`);
+            const data = await response.json();
+            
+            if (data.success && data.teachers.length > 0) {
+                resultsDiv.innerHTML = data.teachers.map(teacher => `
+                    <div class="teacher-result-item flex items-center gap-2 p-2 hover:bg-orange-50 cursor-pointer border-b" data-id="${teacher.id}" data-name="${teacher.name}">
+                        ${teacher.photo_url ? 
+                            `<img src="${teacher.photo_url}" class="w-6 h-6 rounded-full object-cover">` : 
+                            `<div class="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center">
+                                <i class="fas fa-user-tie text-orange-500 text-xs"></i>
+                            </div>`
+                        }
+                        <div>
+                            <p class="text-sm font-medium">${teacher.name}</p>
+                            <p class="text-xs text-gray-500">${teacher.employee_id}</p>
+                        </div>
+                    </div>
+                `).join('');
+                
+                resultsDiv.classList.remove('hidden');
+                
+                resultsDiv.querySelectorAll('.teacher-result-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const teacherId = this.dataset.id;
+                        const teacherName = this.dataset.name;
+                        
+                        input.value = teacherName;
+                        teacherIdInput.value = teacherId;
+                        teacherNameDisplay.textContent = teacherName;
+                        displayDiv.classList.remove('hidden');
+                        resultsDiv.classList.add('hidden');
+                    });
+                });
+            } else {
+                resultsDiv.innerHTML = '<div class="p-2 text-center text-gray-500 text-sm">No teachers found</div>';
+                resultsDiv.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error searching teachers:', error);
+            resultsDiv.innerHTML = '<div class="p-2 text-center text-red-500 text-sm">Error searching</div>';
+            resultsDiv.classList.remove('hidden');
+        }
+    }
+    
+    function addSubjectRow() {
+        const container = document.getElementById('subjectsContainer');
+        const newRow = document.createElement('div');
+        newRow.className = 'subject-row grid grid-cols-12 gap-3 mb-4 items-start border-b border-gray-100 pb-3';
+        newRow.innerHTML = `
+            <div class="col-span-4">
+                <input type="text" name="subject_name[]" placeholder="e.g., Mathematics" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div class="col-span-3">
+                <input type="number" name="marks[]" placeholder="Total marks" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div class="col-span-4">
+                <div class="relative">
+                    <input type="text" class="teacher-search w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm" 
+                           placeholder="Search teacher by name..." autocomplete="off">
+                    <input type="hidden" name="teacher_id[]" class="teacher-id">
+                    <div class="teacher-search-results hidden absolute z-10 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto w-full"></div>
+                </div>
+                <div class="selected-teacher-display mt-1 hidden">
+                    <div class="flex items-center justify-between bg-orange-50 p-1 rounded text-xs">
+                        <span class="teacher-name-display"></span>
+                        <button type="button" class="clear-teacher text-red-500 hover:text-red-700">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-span-1 text-center pt-6">
+                <button type="button" onclick="removeSubjectRow(this)" class="text-red-400 hover:text-red-600">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(newRow);
+        attachTeacherSearchEvents();
+    }
+    
+    function removeSubjectRow(button) {
+        const container = document.getElementById('subjectsContainer');
+        if (container.children.length > 1) {
+            button.closest('.subject-row').remove();
+        } else {
+            showMessage('At least one subject is required', 'error');
+        }
+    }
+    
+    function closeAssignModal() {
+        document.getElementById('assignModal').classList.add('hidden');
+        document.getElementById('assignModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    document.getElementById('assignSubjectsForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const classId = document.getElementById('classSelect').value;
+        if (!classId) {
+            showMessage('Please select a class', 'error');
+            return;
+        }
+        
+        const subjectNames = document.querySelectorAll('input[name="subject_name[]"]');
+        const marks = document.querySelectorAll('input[name="marks[]"]');
+        const teacherIds = document.querySelectorAll('input[name="teacher_id[]"]');
+        
+        const subjects = [];
+        for (let i = 0; i < subjectNames.length; i++) {
+            const name = subjectNames[i].value.trim();
+            const markValue = parseFloat(marks[i].value);
+            const teacherId = teacherIds[i].value;
+            
+            if (name && !isNaN(markValue) && markValue > 0) {
+                if (!teacherId) {
+                    showMessage(`Please select a teacher for "${name}"`, 'error');
+                    return;
+                }
+                subjects.push({ name: name, marks: markValue, teacher_id: teacherId });
+            }
+        }
+        
+        if (subjects.length === 0) {
+            showMessage('Please add at least one valid subject', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/subjects/api/assign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    class_id: classId,
+                    subjects: subjects
+                })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                document.getElementById('successTitle').textContent = 'Subjects Assigned!';
+                document.getElementById('successMessage').innerHTML = `
+                    ${result.message}<br>
+                    ${result.errors ? `<div class="mt-2 text-red-600 text-xs">${result.errors.join('<br>')}</div>` : ''}
+                `;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                
+                closeAssignModal();
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to assign subjects', 'error');
+        }
+    });
+    
+    async function deleteSubject(classSubjectId, subjectName, className) {
+        if (confirm(`Are you sure you want to remove "${subjectName}" from ${className}?`)) {
+            const loading = document.getElementById('loadingOverlay');
+            loading.classList.remove('hidden');
+            loading.classList.add('flex');
+            
+            try {
+                const response = await fetch(`/subjects/api/subject/delete/${classSubjectId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                showMessage('Failed to remove subject', 'error');
+            }
+        }
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+    
+    window.onclick = function(event) {
+        const modal = document.getElementById('assignModal');
+        const successModal = document.getElementById('successModal');
+        if (event.target === modal) closeAssignModal();
+        if (event.target === successModal) closeSuccessModal();
+    };
+    
+    // Initialize teacher search on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        attachTeacherSearchEvents();
+    });
+</script>
+{% endblock %}

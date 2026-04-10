@@ -1,0 +1,503 @@
+<!-- templates/statements/index.html - Updated with better statement display -->
+{% extends "base.html" %}
+
+{% block title %}Student Statements - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .student-card {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .student-card:hover {
+        background-color: #fff7ed;
+        transform: translateX(4px);
+        border-left-color: #ffa500;
+    }
+    .student-card.selected {
+        background-color: #fff7ed;
+        border-left: 3px solid #ffa500;
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .statement-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .statement-table th, .statement-table td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .statement-table th {
+        background-color: #f9fafb;
+        font-weight: 600;
+        font-size: 12px;
+        color: #4b5563;
+        position: sticky;
+        top: 0;
+    }
+    .statement-table td {
+        font-size: 12px;
+    }
+    .statement-table tbody tr:hover {
+        background-color: #fef9e7;
+    }
+    .debit {
+        color: #dc2626;
+        font-weight: 500;
+    }
+    .credit {
+        color: #10b981;
+        font-weight: 500;
+    }
+    .balance-positive {
+        color: #dc2626;
+        font-weight: 600;
+    }
+    .balance-negative {
+        color: #10b981;
+        font-weight: 600;
+    }
+    .balance-zero {
+        color: #6b7280;
+        font-weight: 600;
+    }
+    .summary-card {
+        transition: all 0.2s;
+    }
+    .summary-card:hover {
+        transform: translateY(-2px);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .statement-container {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .type-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 12px;
+        font-size: 9px;
+        font-weight: 500;
+    }
+    .type-invoice {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    .type-payment {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .type-discount {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Student Statements</h1>
+        <p class="text-sm text-gray-600">View complete fee transaction history including invoices, payments, and discounts</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Panel - Student Search -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden sticky top-4">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-search text-orange-500"></i>
+                        Search Student
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Student Name / ID</label>
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="text" id="searchInput" placeholder="Type to search..." 
+                                   class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        </div>
+                    </div>
+                    
+                    <div id="searchResults" class="mt-4 max-h-96 overflow-y-auto">
+                        <p class="text-center text-gray-400 text-sm py-8">Start typing to search for students</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel - Statement -->
+        <div class="lg:col-span-2">
+            <div id="statementPanel" class="hidden">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex justify-between items-center flex-wrap gap-2">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                            <i class="fas fa-file-invoice-dollar text-orange-500"></i>
+                            Fee Statement
+                        </h2>
+                        <div class="flex gap-2">
+                            <button onclick="exportPDF()" id="exportBtn" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2">
+                                <i class="fas fa-download"></i>
+                                Export PDF
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="p-5">
+                        <!-- Student Info -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="text-xs text-gray-500">Student Name</p>
+                                <p class="text-sm font-semibold text-gray-800" id="studentName">-</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Student ID</p>
+                                <p class="text-sm font-semibold text-gray-800" id="studentId">-</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Class</p>
+                                <p class="text-sm font-semibold text-gray-800" id="studentClass">-</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Contact</p>
+                                <p class="text-sm font-semibold text-gray-800" id="studentContact">-</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Date Filters -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">From Date</label>
+                                <input type="date" id="startDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">To Date</label>
+                                <input type="date" id="endDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            </div>
+                        </div>
+                        
+                        <!-- Summary Cards -->
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="summary-card bg-red-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-600">Total Fees (Debit)</p>
+                                <p class="text-lg font-bold text-red-600" id="totalDebits">UGX 0</p>
+                            </div>
+                            <div class="summary-card bg-green-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-600">Total Payments (Credit)</p>
+                                <p class="text-lg font-bold text-green-600" id="totalCredits">UGX 0</p>
+                            </div>
+                            <div class="summary-card bg-orange-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-gray-600">Current Balance</p>
+                                <p class="text-lg font-bold text-orange-600" id="currentBalance">UGX 0</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Statement Table -->
+                        <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+                            <table class="statement-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sticky top-0 bg-gray-50">Date</th>
+                                        <th class="sticky top-0 bg-gray-50">Description</th>
+                                        <th class="sticky top-0 bg-gray-50 text-right">Debit (UGX)</th>
+                                        <th class="sticky top-0 bg-gray-50 text-right">Credit (UGX)</th>
+                                        <th class="sticky top-0 bg-gray-50 text-right">Balance (UGX)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="statementBody">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-gray-400 py-8">Select a student to view statement</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mt-4 text-center text-xs text-gray-400">
+                            <p><i class="fas fa-info-circle"></i> Positive balance means student owes the institution. Negative balance means institution owes the student (credit).</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="noStudentPanel" class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-12 text-center">
+                    <div class="h-20 w-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-file-invoice-dollar text-3xl text-orange-500"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">No Student Selected</h3>
+                    <p class="text-sm text-gray-500">Search and select a student to view their fee statement</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Loading statement...</p>
+    </div>
+</div>
+
+<script>
+    let selectedStudent = null;
+    let currentStatement = [];
+    let currentSummary = null;
+    let searchTimeout;
+    
+    const searchInput = document.getElementById('searchInput');
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const term = this.value.trim();
+        
+        if (term.length < 2) {
+            document.getElementById('searchResults').innerHTML = '<p class="text-center text-gray-400 text-sm py-8">Enter at least 2 characters to search</p>';
+            return;
+        }
+        
+        searchTimeout = setTimeout(() => performSearch(term), 300);
+    });
+    
+    async function performSearch(term) {
+        const resultsDiv = document.getElementById('searchResults');
+        resultsDiv.innerHTML = '<div class="text-center py-8"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div><p class="text-sm text-gray-500 mt-2">Searching...</p></div>';
+        
+        try {
+            const response = await fetch('/statements/search-student', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ search_term: term })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.students.length > 0) {
+                resultsDiv.innerHTML = result.students.map(student => `
+                    <div class="student-card p-3 border-l-2 border-transparent hover:border-orange-500 mb-2 cursor-pointer" 
+                         onclick='selectStudent(${JSON.stringify(student).replace(/'/g, "&#39;")})'>
+                        <p class="font-semibold text-gray-800 text-sm">${escapeHtml(student.name)}</p>
+                        <p class="text-xs text-gray-500">${student.student_id} | ${student.classes?.name || 'N/A'}</p>
+                    </div>
+                `).join('');
+            } else {
+                resultsDiv.innerHTML = '<p class="text-center text-gray-400 text-sm py-8">No students found</p>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            resultsDiv.innerHTML = '<p class="text-center text-red-500 text-sm py-8">Error searching students</p>';
+        }
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    function selectStudent(student) {
+        selectedStudent = student;
+        
+        // Highlight selected student
+        document.querySelectorAll('.student-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        if (event && event.currentTarget) {
+            event.currentTarget.classList.add('selected');
+        }
+        
+        // Show statement panel
+        document.getElementById('statementPanel').classList.remove('hidden');
+        document.getElementById('noStudentPanel').classList.add('hidden');
+        
+        // Update student info
+        document.getElementById('studentName').textContent = student.name;
+        document.getElementById('studentId').textContent = student.student_id;
+        document.getElementById('studentClass').textContent = student.classes?.name || 'N/A';
+        document.getElementById('studentContact').textContent = student.contact_number || 'N/A';
+        
+        // Load statement
+        loadStatement();
+    }
+    
+    // Date filter listeners
+    document.getElementById('startDate').addEventListener('change', loadStatement);
+    document.getElementById('endDate').addEventListener('change', loadStatement);
+    
+    async function loadStatement() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/statements/get-statement', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: selectedStudent.id,
+                    start_date: startDate,
+                    end_date: endDate
+                })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                currentStatement = result.statement;
+                currentSummary = result.summary;
+                displayStatement(result.statement, result.summary);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to load statement', 'error');
+        }
+    }
+    
+    function displayStatement(statement, summary) {
+        const tbody = document.getElementById('statementBody');
+        
+        if (statement.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400 py-8">No transactions found for this period</td></tr>';
+        } else {
+            tbody.innerHTML = statement.map(entry => {
+                let balanceClass = '';
+                if (entry.balance > 0) balanceClass = 'balance-positive';
+                else if (entry.balance < 0) balanceClass = 'balance-negative';
+                else balanceClass = 'balance-zero';
+                
+                let typeBadge = '';
+                if (entry.type === 'invoice') typeBadge = '<span class="type-badge type-invoice ml-2">Invoice</span>';
+                else if (entry.type === 'payment') typeBadge = '<span class="type-badge type-payment ml-2">Payment</span>';
+                else if (entry.type === 'discount') typeBadge = '<span class="type-badge type-discount ml-2">Discount</span>';
+                
+                return `
+                    <tr>
+                        <td class="text-gray-600">${entry.date}</td>
+                        <td class="text-gray-800">${escapeHtml(entry.description)}${typeBadge}</td>
+                        <td class="text-right ${entry.debit > 0 ? 'debit' : ''}">${entry.debit > 0 ? `UGX ${entry.debit.toLocaleString()}` : '-'}</td>
+                        <td class="text-right ${entry.credit > 0 ? 'credit' : ''}">${entry.credit > 0 ? `UGX ${entry.credit.toLocaleString()}` : '-'}</td>
+                        <td class="text-right ${balanceClass}">UGX ${entry.balance.toLocaleString()}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        document.getElementById('totalDebits').textContent = `UGX ${summary.total_debits.toLocaleString()}`;
+        document.getElementById('totalCredits').textContent = `UGX ${summary.total_credits.toLocaleString()}`;
+        
+        let balanceClass = '';
+        if (summary.current_balance > 0) balanceClass = 'text-red-600';
+        else if (summary.current_balance < 0) balanceClass = 'text-green-600';
+        else balanceClass = 'text-gray-600';
+        
+        document.getElementById('currentBalance').innerHTML = `<span class="${balanceClass}">UGX ${summary.current_balance.toLocaleString()}</span>`;
+    }
+    
+    async function exportPDF() {
+        if (!selectedStudent || !currentStatement) {
+            showMessage('No statement data to export', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/statements/export-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student: {
+                        name: selectedStudent.name,
+                        student_id: selectedStudent.student_id,
+                        class: selectedStudent.classes?.name || 'N/A',
+                        contact: selectedStudent.contact_number || 'N/A'
+                    },
+                    statement: currentStatement,
+                    summary: currentSummary,
+                    date_range: {
+                        start_date: document.getElementById('startDate').value,
+                        end_date: document.getElementById('endDate').value
+                    }
+                })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `statement_${selectedStudent.student_id}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showMessage('Statement exported successfully', 'success');
+            } else {
+                const error = await response.json();
+                showMessage(error.message || 'Failed to export PDF', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Failed to export PDF', 'error');
+        } finally {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+        }
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+</script>
+{% endblock %}

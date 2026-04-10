@@ -1,0 +1,436 @@
+<!-- templates/dashboard/index.html - Main Dashboard -->
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    .activity-timeline {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .timeline-item {
+        transition: all 0.2s;
+    }
+    .timeline-item:hover {
+        background-color: #fef3c7;
+        transform: translateX(4px);
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .filter-bar {
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Dashboard</h1>
+        <p class="text-sm text-gray-600">Welcome back! Here's what's happening with your institution today.</p>
+    </div>
+
+    <!-- Date Filter Bar -->
+    <div class="filter-bar">
+        <div class="flex flex-wrap items-center gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input type="date" id="startDate" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input type="date" id="endDate" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div class="flex items-end gap-2">
+                <button onclick="refreshDashboard()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+                    <i class="fas fa-sync-alt"></i> Apply Filter
+                </button>
+                <button onclick="resetDates()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="statsContainer">
+        <div class="stat-card bg-white rounded-xl shadow-md p-6 border-l-4 border-orange-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Students</p>
+                    <p class="text-3xl font-bold text-gray-800" id="totalStudents">-</p>
+                </div>
+                <div class="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user-graduate text-orange-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Employees</p>
+                    <p class="text-3xl font-bold text-gray-800" id="totalEmployees">-</p>
+                </div>
+                <div class="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user-tie text-blue-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Revenue Collected</p>
+                    <p class="text-3xl font-bold text-green-600" id="revenueCollected">UGX 0</p>
+                </div>
+                <div class="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-money-bill-wave text-green-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-6 border-l-4 border-purple-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Net Profit</p>
+                    <p class="text-3xl font-bold text-purple-600" id="netProfit">UGX 0</p>
+                </div>
+                <div class="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-chart-line text-purple-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Income vs Expense Line Chart -->
+        <div class="bg-white rounded-xl shadow-md p-5">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Income vs Expense Trend</h3>
+            <div class="chart-container">
+                <canvas id="incomeExpenseChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Class Distribution Pie Chart -->
+        <div class="bg-white rounded-xl shadow-md p-5">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Student Distribution by Class</h3>
+            <div class="chart-container">
+                <canvas id="classDistributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Student Attendance by Class -->
+        <div class="bg-white rounded-xl shadow-md p-5">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Student Attendance by Class</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr class="border-b">
+                            <th class="text-left py-2">Class</th>
+                            <th class="text-center py-2">Present</th>
+                            <th class="text-center py-2">Absent</th>
+                            <th class="text-right py-2">%</th>
+                        </tr>
+                    </thead>
+                    <tbody id="classAttendanceTable">
+                        <tr><td colspan="4" class="text-center py-4 text-gray-400">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Staff Attendance by Role -->
+        <div class="bg-white rounded-xl shadow-md p-5">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Staff Attendance by Role</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr class="border-b">
+                            <th class="text-left py-2">Role</th>
+                            <th class="text-center py-2">Present</th>
+                            <th class="text-center py-2">Absent</th>
+                            <th class="text-right py-2">%</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staffAttendanceTable">
+                        <tr><td colspan="4" class="text-center py-4 text-gray-400">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h3 class="text-lg font-semibold text-gray-800">Recent Activities</h3>
+        </div>
+        <div id="activitiesList" class="divide-y divide-gray-200">
+            <div class="p-8 text-center text-gray-400">Loading activities...</div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let incomeExpenseChart = null;
+    let classDistributionChart = null;
+
+    // Set default dates (current month)
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+
+    async function refreshDashboard() {
+        await loadStats();
+        await loadIncomeExpenseGraph();
+        await loadClassDistribution();
+        await loadClassAttendance();
+        await loadStaffAttendance();
+        await loadRecentActivities();
+    }
+
+    async function loadStats() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        try {
+            const response = await fetch(`/dashboard/api/stats?start_date=${startDate}&end_date=${endDate}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('totalStudents').textContent = data.stats.total_students;
+                document.getElementById('totalEmployees').textContent = data.stats.total_employees;
+                document.getElementById('revenueCollected').textContent = `UGX ${data.stats.revenue_collected.toLocaleString()}`;
+                document.getElementById('netProfit').textContent = `UGX ${data.stats.total_profit.toLocaleString()}`;
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+
+    async function loadIncomeExpenseGraph() {
+        try {
+            const response = await fetch('/dashboard/api/income-expense-graph');
+            const data = await response.json();
+            
+            if (data.success && data.data.length > 0) {
+                const months = data.data.map(item => item.month);
+                const incomes = data.data.map(item => item.income);
+                const expenses = data.data.map(item => item.expense);
+                
+                if (incomeExpenseChart) {
+                    incomeExpenseChart.destroy();
+                }
+                
+                const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
+                incomeExpenseChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: months,
+                        datasets: [
+                            {
+                                label: 'Income',
+                                data: incomes,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            },
+                            {
+                                label: 'Expense',
+                                data: expenses,
+                                borderColor: '#ef4444',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading graph:', error);
+        }
+    }
+
+    async function loadClassDistribution() {
+        try {
+            const response = await fetch('/dashboard/api/class-distribution');
+            const data = await response.json();
+            
+            if (data.success && data.data.length > 0) {
+                const labels = data.data.map(item => item.name);
+                const counts = data.data.map(item => item.count);
+                
+                if (classDistributionChart) {
+                    classDistributionChart.destroy();
+                }
+                
+                const ctx = document.getElementById('classDistributionChart').getContext('2d');
+                classDistributionChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: counts,
+                            backgroundColor: [
+                                '#ffa500', '#ff8c00', '#ffb347', '#ffcc66',
+                                '#ffd699', '#ffa366', '#ff8c66', '#ffaa66'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                            }
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading class distribution:', error);
+        }
+    }
+
+    async function loadClassAttendance() {
+        try {
+            const response = await fetch('/dashboard/api/class-attendance');
+            const data = await response.json();
+            const tbody = document.getElementById('classAttendanceTable');
+            
+            if (data.success && data.data.length > 0) {
+                tbody.innerHTML = data.data.map(item => `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-2 text-left">${item.class_name}</td>
+                        <td class="py-2 text-center text-green-600">${item.present}</td>
+                        <td class="py-2 text-center text-red-600">${item.absent}</td>
+                        <td class="py-2 text-right font-medium">${item.percentage}%</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No attendance data</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading class attendance:', error);
+        }
+    }
+
+    async function loadStaffAttendance() {
+        try {
+            const response = await fetch('/dashboard/api/staff-attendance');
+            const data = await response.json();
+            const tbody = document.getElementById('staffAttendanceTable');
+            
+            if (data.success && data.data.length > 0) {
+                tbody.innerHTML = data.data.map(item => `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-2 text-left">${item.role}</td>
+                        <td class="py-2 text-center text-green-600">${item.present}</td>
+                        <td class="py-2 text-center text-red-600">${item.absent}</td>
+                        <td class="py-2 text-right font-medium">${item.percentage}%</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No attendance data</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading staff attendance:', error);
+        }
+    }
+
+    async function loadRecentActivities() {
+        try {
+            const response = await fetch('/dashboard/api/recent-activities');
+            const data = await response.json();
+            const container = document.getElementById('activitiesList');
+            
+            if (data.success && data.activities.length > 0) {
+                const colorMap = {
+                    'green': 'bg-green-100 text-green-600',
+                    'blue': 'bg-blue-100 text-blue-600',
+                    'purple': 'bg-purple-100 text-purple-600',
+                    'orange': 'bg-orange-100 text-orange-600'
+                };
+                
+                container.innerHTML = data.activities.map(activity => `
+                    <div class="timeline-item p-4 flex items-center gap-4">
+                        <div class="${colorMap[activity.color] || 'bg-gray-100 text-gray-600'} h-10 w-10 rounded-full flex items-center justify-center">
+                            <i class="fas fa-${activity.icon}"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-800">${activity.title}</p>
+                            <p class="text-sm text-gray-500">${activity.description}</p>
+                        </div>
+                        <div class="text-xs text-gray-400">
+                            ${new Date(activity.time).toLocaleString()}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="p-8 text-center text-gray-400">No recent activities</div>';
+            }
+        } catch (error) {
+            console.error('Error loading activities:', error);
+        }
+    }
+
+    function resetDates() {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+        refreshDashboard();
+    }
+
+    // Load all data on page load
+    refreshDashboard();
+</script>
+{% endblock %}

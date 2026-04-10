@@ -1,0 +1,407 @@
+<!-- templates/exams/index.html - Updated with only Exam Date -->
+{% extends "base.html" %}
+
+{% block title %}Exams - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .status-published {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .status-draft {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+    .filter-bar {
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Exams</h1>
+            <p class="text-sm text-gray-600">Create and manage examinations</p>
+        </div>
+        <button onclick="openCreateModal()" class="btn-gradient px-5 py-2.5 rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+            <i class="fas fa-plus-circle"></i>
+            Create New Exam
+        </button>
+    </div>
+
+    <!-- Date Filter Bar -->
+    <div class="filter-bar">
+        <div class="flex flex-wrap items-center gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+                <input type="date" id="startDateFilter" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+                <input type="date" id="endDateFilter" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div class="flex items-end gap-2">
+                <button onclick="applyDateFilter()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+                    <i class="fas fa-filter"></i> Apply Filter
+                </button>
+                <button onclick="clearDateFilter()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50">
+                    <i class="fas fa-undo"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exams Table -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table id="examsTable" class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Marks</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam Date</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Publish</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="examsTableBody" class="bg-white divide-y divide-gray-200">
+                    <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">Loading exams...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create Exam Modal -->
+<div id="createModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Add New Exam</h3>
+            <button onclick="closeCreateModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <form id="createExamForm" class="p-5">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Examination Name <span class="text-red-500">*</span></label>
+                <input type="text" name="exam_name" required placeholder="e.g., BEGINNING OF TERM (BOT)" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Total Marks <span class="text-red-500">*</span></label>
+                <input type="number" name="total_marks" required step="0.01" placeholder="e.g., 100" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Exam Date <span class="text-red-500">*</span></label>
+                <input type="date" name="exam_date" required 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg text-sm font-medium">
+                    <i class="fas fa-save"></i> Save Exam
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 p-5 text-center transform transition-all modal-container">
+        <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-check-circle text-2xl text-green-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-1">Success!</h3>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage">Exam created successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-5 py-1.5 rounded-lg text-white text-sm font-medium">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-5 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mb-3"></div>
+        <p class="text-gray-600 text-sm">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let allExams = [];
+
+    async function loadExams() {
+        const startDate = document.getElementById('startDateFilter').value;
+        const endDate = document.getElementById('endDateFilter').value;
+        
+        let url = '/exams/api/exams';
+        let params = [];
+        if (startDate) params.push(`start_date=${startDate}`);
+        if (endDate) params.push(`end_date=${endDate}`);
+        if (params.length) url += '?' + params.join('&');
+        
+        const tbody = document.getElementById('examsTableBody');
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center"><div class="loader mx-auto"></div><p class="mt-2">Loading exams...</p></td></tr>';
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                allExams = data.exams;
+                renderExams(allExams);
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-red-500">Failed to load exams</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-red-500">Error loading exams</td></tr>';
+        }
+    }
+
+    function renderExams(exams) {
+        const tbody = document.getElementById('examsTableBody');
+        
+        if (exams.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                        <i class="fas fa-calendar-alt text-3xl mb-2 block"></i>
+                        No exams found
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = exams.map(exam => `
+            <tr>
+                <td class="px-6 py-4 text-sm font-medium text-gray-900">${escapeHtml(exam.exam_name)}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${exam.total_marks || 'N/A'}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${formatDate(exam.exam_date)}</td>
+                <td class="px-6 py-4 text-center">
+                    <button onclick="togglePublish('${exam.id}', ${exam.is_published})" 
+                            class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${exam.is_published ? 'status-published' : 'status-draft'}">
+                        <i class="fas ${exam.is_published ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                        ${exam.is_published ? 'Published' : 'Draft'}
+                    </button>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <div class="flex items-center justify-center gap-2">
+                        <a href="{{ url_for('exams.marks') }}?exam_id=${exam.id}" class="text-blue-600 hover:text-blue-800 transition-colors">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <button onclick="deleteExam('${exam.id}', '${escapeHtml(exam.exam_name)}')" class="text-red-600 hover:text-red-800 transition-colors">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function applyDateFilter() {
+        loadExams();
+    }
+
+    function clearDateFilter() {
+        document.getElementById('startDateFilter').value = '';
+        document.getElementById('endDateFilter').value = '';
+        loadExams();
+    }
+
+    function openCreateModal() {
+        document.getElementById('createModal').classList.remove('hidden');
+        document.getElementById('createModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        // Set default date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.querySelector('input[name="exam_date"]').value = today;
+    }
+    
+    function closeCreateModal() {
+        document.getElementById('createModal').classList.add('hidden');
+        document.getElementById('createModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        document.getElementById('createExamForm').reset();
+    }
+    
+    document.getElementById('createExamForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const data = {};
+        formData.forEach((value, key) => { data[key] = value; });
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/exams/api/exams/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeCreateModal();
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                loadExams(); // Refresh the list
+                setTimeout(() => closeSuccessModal(), 2000);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to create exam', 'error');
+        }
+    });
+    
+    async function togglePublish(examId, currentStatus) {
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/exams/api/exams/${examId}/toggle-publish`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_published: !currentStatus })
+            });
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                showMessage(result.message, 'success');
+                loadExams(); // Refresh the list
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to update status', 'error');
+        }
+    }
+    
+    async function deleteExam(examId, examName) {
+        if (confirm(`Are you sure you want to delete "${examName}"? This will also delete all associated marks.`)) {
+            const loading = document.getElementById('loadingOverlay');
+            loading.classList.remove('hidden');
+            loading.classList.add('flex');
+            
+            try {
+                const response = await fetch(`/exams/api/exams/${examId}`, { method: 'DELETE' });
+                const result = await response.json();
+                
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    loadExams(); // Refresh the list
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                showMessage('Failed to delete exam', 'error');
+            }
+        }
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
+    }
+    
+    window.onclick = function(event) {
+        const modal = document.getElementById('createModal');
+        const successModal = document.getElementById('successModal');
+        if (event.target === modal) closeCreateModal();
+        if (event.target === successModal) closeSuccessModal();
+    };
+    
+    // Load exams on page load
+    loadExams();
+</script>
+{% endblock %}

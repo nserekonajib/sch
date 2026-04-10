@@ -1,0 +1,514 @@
+<!-- templates/promotion/index.html - Student Promotion with Academic Year -->
+{% extends "base.html" %}
+
+{% block title %}Promote Students - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .student-row {
+        transition: all 0.2s;
+    }
+    .student-row:hover {
+        background-color: #fff7ed;
+    }
+    .selected-row {
+        background-color: #ffedd5;
+    }
+    .table-header {
+        background-color: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .search-input {
+        transition: all 0.2s;
+    }
+    .search-input:focus {
+        border-color: #ffa500;
+        box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Promote Students</h1>
+        <p class="text-sm text-gray-600">Move students to the next class level for a specific academic year</p>
+    </div>
+
+    <!-- Search Section -->
+    <div class="bg-white rounded-xl shadow-md p-5 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year</label>
+                <select id="academicYearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Current Class</label>
+                <div class="relative">
+                    <i class="fas fa-chalkboard absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <select id="classFilter" class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">-- Select Class --</option>
+                        {% for class in classes %}
+                        <option value="{{ class.id }}">{{ class.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Search Student</label>
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input type="text" id="searchInput" placeholder="Search by name or ID..." 
+                           class="search-input w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+            </div>
+        </div>
+        <div class="mt-4 flex justify-end">
+            <button onclick="reloadStudents()" class="px-4 py-2 border border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50 transition-all flex items-center gap-2 text-sm">
+                <i class="fas fa-sync-alt"></i>
+                Reload All
+            </button>
+        </div>
+    </div>
+
+    <!-- Students Table -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="table-header">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Current Class</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                            <div class="flex items-center justify-center gap-2">
+                                <span>Select All</span>
+                                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()" 
+                                       class="w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500">
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="studentsTableBody" class="divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="4" class="px-4 py-8 text-center text-gray-400">
+                            <i class="fas fa-users text-3xl mb-2 block"></i>
+                            Select a class to view students
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Promote Section -->
+        <div class="border-t border-gray-200 p-5 bg-gray-50">
+            <div class="flex flex-wrap items-end gap-4">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Promote to Class *</label>
+                    <select id="targetClassSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">-- Select Target Class --</option>
+                        {% for class in classes %}
+                        <option value="{{ class.id }}">{{ class.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <button onclick="promoteStudents()" id="promoteBtn" disabled
+                            class="btn-gradient px-6 py-2 rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                        <i class="fas fa-arrow-right"></i>
+                        Promote Students
+                    </button>
+                </div>
+            </div>
+            <div class="mt-3">
+                <p class="text-xs text-gray-500" id="selectedCount"></p>
+                <p class="text-xs text-amber-600 mt-1">
+                    <i class="fas fa-info-circle"></i> 
+                    Note: Promoting will UPDATE the existing enrollment for the selected academic year (not create duplicate)
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="p-6 text-center">
+            <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check-circle text-3xl text-green-500"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2" id="successTitle">Success!</h3>
+            <div id="successMessage" class="text-gray-600 mb-6"></div>
+            <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium">
+                Continue
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let currentStudents = [];
+    let selectedStudentIds = new Set();
+    let currentClassId = null;
+    let currentAcademicYear = 2026;
+    let searchTimeout;
+    
+    // Academic year change
+    document.getElementById('academicYearSelect').addEventListener('change', function() {
+        currentAcademicYear = parseInt(this.value);
+        if (currentClassId) {
+            loadStudents();
+        }
+    });
+    
+    // Class filter change
+    document.getElementById('classFilter').addEventListener('change', function() {
+        currentClassId = this.value;
+        if (currentClassId) {
+            loadStudents();
+        } else {
+            document.getElementById('studentsTableBody').innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-4 py-8 text-center text-gray-400">
+                        <i class="fas fa-users text-3xl mb-2 block"></i>
+                        Select a class to view students
+                    </td>
+                </tr>
+            `;
+            selectedStudentIds.clear();
+            updateSelectedCount();
+        }
+    });
+    
+    // Search input with debounce
+    document.getElementById('searchInput').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            if (currentClassId) {
+                loadStudents();
+            }
+        }, 300);
+    });
+    
+    async function loadStudents() {
+        if (!currentClassId) return;
+        
+        const searchTerm = document.getElementById('searchInput').value;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            let url = `/promote-students/api/students?class_id=${currentClassId}&academic_year=${currentAcademicYear}`;
+            if (searchTerm) {
+                url += `&search=${encodeURIComponent(searchTerm)}`;
+            }
+            
+            const response = await fetch(url);
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                currentStudents = result.students;
+                displayStudents(currentStudents);
+                
+                // Clear selections
+                selectedStudentIds.clear();
+                document.getElementById('selectAllCheckbox').checked = false;
+                updateSelectedCount();
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to load students', 'error');
+        }
+    }
+    
+    function displayStudents(students) {
+        const tbody = document.getElementById('studentsTableBody');
+        
+        if (students.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-4 py-8 text-center text-gray-400">
+                        <i class="fas fa-user-graduate text-3xl mb-2 block"></i>
+                        No students found in this class for ${currentAcademicYear}
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = students.map(student => `
+            <tr class="student-row ${selectedStudentIds.has(student.id) ? 'selected-row' : ''}" data-student-id="${student.id}">
+                <td class="px-4 py-3 text-sm text-gray-600">${student.student_id}</td>
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                        ${student.photo_url ? 
+                            `<img src="${student.photo_url}" class="w-8 h-8 rounded-full object-cover">` : 
+                            `<div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                                <i class="fas fa-user-graduate text-orange-500 text-sm"></i>
+                            </div>`
+                        }
+                        <span class="font-medium text-gray-800">${student.name}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">${student.current_class} (${currentAcademicYear})</td>
+                <td class="px-4 py-3 text-center">
+                    <input type="checkbox" class="student-checkbox w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500" 
+                           data-student-id="${student.id}" onchange="toggleStudent('${student.id}', this.checked)">
+                </td>
+            </tr>
+        `).join('');
+        
+        // Update checkbox states
+        document.querySelectorAll('.student-checkbox').forEach(cb => {
+            cb.checked = selectedStudentIds.has(cb.dataset.studentId);
+        });
+    }
+    
+    function toggleStudent(studentId, isChecked) {
+        if (isChecked) {
+            selectedStudentIds.add(studentId);
+        } else {
+            selectedStudentIds.delete(studentId);
+        }
+        
+        // Update row styling
+        const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
+        if (row) {
+            if (isChecked) {
+                row.classList.add('selected-row');
+            } else {
+                row.classList.remove('selected-row');
+            }
+        }
+        
+        updateSelectedCount();
+        
+        // Update select all checkbox
+        const selectAll = document.getElementById('selectAllCheckbox');
+        if (selectAll) {
+            selectAll.checked = selectedStudentIds.size === currentStudents.length && currentStudents.length > 0;
+        }
+    }
+    
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAllCheckbox');
+        const isChecked = selectAll.checked;
+        
+        if (isChecked) {
+            // Select all
+            currentStudents.forEach(student => {
+                selectedStudentIds.add(student.id);
+            });
+        } else {
+            // Deselect all
+            selectedStudentIds.clear();
+        }
+        
+        // Update UI
+        displayStudents(currentStudents);
+        updateSelectedCount();
+    }
+    
+    function reloadStudents() {
+        document.getElementById('searchInput').value = '';
+        if (currentClassId) {
+            loadStudents();
+        }
+    }
+    
+    function updateSelectedCount() {
+        const count = selectedStudentIds.size;
+        const selectedText = document.getElementById('selectedCount');
+        const promoteBtn = document.getElementById('promoteBtn');
+        const targetClass = document.getElementById('targetClassSelect').value;
+        
+        if (selectedText) {
+            if (count > 0) {
+                selectedText.textContent = `${count} student(s) selected for promotion to academic year ${currentAcademicYear + 1}?`;
+                selectedText.classList.remove('text-gray-500');
+                selectedText.classList.add('text-orange-600', 'font-medium');
+            } else {
+                selectedText.textContent = 'No students selected';
+                selectedText.classList.add('text-gray-500');
+                selectedText.classList.remove('text-orange-600', 'font-medium');
+            }
+        }
+        
+        // Enable/disable promote button
+        if (promoteBtn) {
+            promoteBtn.disabled = count === 0 || !targetClass;
+            if (count > 0 && targetClass) {
+                promoteBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                promoteBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    }
+    
+    // Monitor target class change
+    document.getElementById('targetClassSelect').addEventListener('change', updateSelectedCount);
+    
+    async function promoteStudents() {
+        const targetClassId = document.getElementById('targetClassSelect').value;
+        
+        if (!targetClassId) {
+            showMessage('Please select a target class', 'error');
+            return;
+        }
+        
+        if (selectedStudentIds.size === 0) {
+            showMessage('Please select students to promote', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/promote-students/api/promote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_ids: Array.from(selectedStudentIds),
+                    new_class_id: targetClassId,
+                    academic_year: currentAcademicYear
+                })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                // Show success modal with details
+                const promotedList = result.promoted.map(p => 
+                    `<div class="text-sm py-1">${p.student_name} → ${p.to_class} (Year: ${p.academic_year})</div>`
+                ).join('');
+                
+                document.getElementById('successTitle').textContent = 'Promotion Successful!';
+                document.getElementById('successMessage').innerHTML = `
+                    ${result.message}<br>
+                    <div class="mt-3 text-left bg-gray-50 p-3 rounded-lg max-h-40 overflow-y-auto">
+                        ${promotedList}
+                    </div>
+                    ${result.errors ? `<div class="mt-2 text-red-600 text-sm">${result.errors.join('<br>')}</div>` : ''}
+                `;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                
+                // Clear selections and reload
+                selectedStudentIds.clear();
+                document.getElementById('selectAllCheckbox').checked = false;
+                updateSelectedCount();
+                
+                // Reload students after a delay
+                setTimeout(() => {
+                    loadStudents();
+                }, 2000);
+            } else {
+                showMessage(result.message || 'Failed to promote students', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to promote students', 'error');
+        }
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+    
+    // Close modal on outside click
+    window.onclick = function(event) {
+        const modal = document.getElementById('successModal');
+        if (event.target === modal) {
+            closeSuccessModal();
+        }
+    };
+</script>
+{% endblock %}

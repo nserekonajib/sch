@@ -1,0 +1,468 @@
+<!-- templates/requirements/reports.html - Reports Dashboard with Date Range -->
+{% extends "base.html" %}
+
+{% block title %}Requirements Reports - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .report-card {
+        transition: all 0.2s;
+    }
+    .report-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+    }
+    .status-pending { background-color: #fef3c7; color: #d97706; }
+    .status-partial { background-color: #fef3c7; color: #d97706; }
+    .status-completed { background-color: #d1fae5; color: #065f46; }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .progress-bar {
+        transition: width 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Requirements Reports</h1>
+        <p class="text-sm text-gray-600">Generate compliance and inventory reports</p>
+    </div>
+
+    <!-- Report Tabs -->
+    <div class="flex flex-wrap gap-2 mb-6">
+        <button onclick="switchReport('compliance')" id="tabCompliance" class="px-5 py-2 rounded-lg font-medium transition-all bg-orange-500 text-white">Student Compliance</button>
+        <button onclick="switchReport('missing')" id="tabMissing" class="px-5 py-2 rounded-lg font-medium transition-all bg-gray-100 text-gray-600">Missing Requirements</button>
+        <button onclick="switchReport('class')" id="tabClass" class="px-5 py-2 rounded-lg font-medium transition-all bg-gray-100 text-gray-600">Class Compliance</button>
+        <button onclick="switchReport('inventory')" id="tabInventory" class="px-5 py-2 rounded-lg font-medium transition-all bg-gray-100 text-gray-600">Inventory Summary</button>
+    </div>
+
+    <!-- Report Filters -->
+    <div id="reportFilters" class="bg-white rounded-xl shadow-md p-5 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                <input type="date" id="startDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                <input type="date" id="endDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+                <select id="classFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="">All Classes</option>
+                </select>
+            </div>
+            <div id="itemFilterDiv">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Item</label>
+                <select id="itemFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="">All Items</option>
+                </select>
+            </div>
+        </div>
+        <div class="mt-4 flex justify-end">
+            <button onclick="loadCurrentReport()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+                <i class="fas fa-chart-line"></i> Generate Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden bg-white rounded-xl shadow-md p-12 text-center">
+        <div class="loader mx-auto"></div>
+        <p class="text-gray-600 mt-4">Generating report...</p>
+        <p class="text-sm text-gray-400 mt-2" id="loadingDetail">Please wait while we fetch your data</p>
+    </div>
+
+    <!-- Report Content -->
+    <div id="reportContent" class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="p-8 text-center text-gray-400">Select filters and generate a report</div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="loader"></div>
+        <p class="text-gray-700 mt-4" id="loadingMessage">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let currentReport = 'compliance';
+    let classes = [];
+    let items = [];
+
+    // Set default dates (current month)
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+
+    function showLoading(message = 'Processing...') {
+        document.getElementById('loadingMessage').textContent = message;
+        document.getElementById('loadingOverlay').classList.remove('hidden');
+        document.getElementById('loadingOverlay').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        document.getElementById('loadingOverlay').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function showReportLoading() {
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('reportContent').classList.add('hidden');
+    }
+
+    function hideReportLoading() {
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('reportContent').classList.remove('hidden');
+    }
+
+    async function loadFilters() {
+        showLoading('Loading filters...');
+        await Promise.all([loadClasses(), loadItems()]);
+        hideLoading();
+    }
+
+    async function loadClasses() {
+        try {
+            const response = await fetch('/requirements/api/classes');
+            const data = await response.json();
+            if (data.success) {
+                classes = data.classes;
+                const select = document.getElementById('classFilter');
+                select.innerHTML = '<option value="">All Classes</option>' + 
+                    classes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+            }
+        } catch (error) {
+            console.error('Error loading classes:', error);
+        }
+    }
+
+    async function loadItems() {
+        try {
+            const response = await fetch('/requirements/api/items');
+            const data = await response.json();
+            if (data.success) {
+                items = data.items;
+                const select = document.getElementById('itemFilter');
+                select.innerHTML = '<option value="">All Items</option>' + 
+                    items.map(i => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('');
+            }
+        } catch (error) {
+            console.error('Error loading items:', error);
+        }
+    }
+
+    async function loadComplianceReport() {
+        const classId = document.getElementById('classFilter').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const url = `/requirements/api/reports/student-compliance?class_id=${classId}&start_date=${startDate}&end_date=${endDate}`;
+        
+        showReportLoading();
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            hideReportLoading();
+            
+            if (data.success && data.report && data.report.length > 0) {
+                let html = `
+                    <div class="overflow-x-auto p-4">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Required</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Brought</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                `;
+                for (const student of data.report) {
+                    for (const item of student.items) {
+                        const statusClass = item.status === 'completed' ? 'status-completed' : (item.status === 'partial' ? 'status-partial' : 'status-pending');
+                        html += `
+                            <tr>
+                                <td class="px-6 py-4 text-sm text-gray-800">${escapeHtml(student.name)}<br><span class="text-xs text-gray-500">${escapeHtml(student.student_id)}</span></td>
+                                <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml(item.item_name)} (${escapeHtml(item.unit)})</td>
+                                <td class="px-6 py-4 text-sm text-right">${item.required}</td>
+                                <td class="px-6 py-4 text-sm text-right">${item.brought}</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-2 py-1 rounded-full text-xs ${statusClass}">${item.status.toUpperCase()}</span>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                }
+                html += `</tbody>点心</div>`;
+                document.getElementById('reportContent').innerHTML = html;
+            } else {
+                document.getElementById('reportContent').innerHTML = '<div class="p-8 text-center text-gray-400"><i class="fas fa-chart-line text-4xl mb-2 block"></i>No data available for the selected filters</div>';
+            }
+        } catch (error) {
+            hideReportLoading();
+            document.getElementById('reportContent').innerHTML = '<div class="p-8 text-center text-red-500">Error loading report. Please try again.</div>';
+        }
+    }
+
+    async function loadMissingReport() {
+        const itemId = document.getElementById('itemFilter').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        if (!itemId) {
+            document.getElementById('reportContent').innerHTML = '<div class="p-8 text-center text-yellow-600"><i class="fas fa-exclamation-triangle text-4xl mb-2 block"></i>Please select an item to see missing requirements</div>';
+            return;
+        }
+        
+        showReportLoading();
+        
+        try {
+            const response = await fetch(`/requirements/api/reports/missing-requirements?item_id=${itemId}&start_date=${startDate}&end_date=${endDate}`);
+            const data = await response.json();
+            hideReportLoading();
+            
+            if (data.success && data.missing && data.missing.length > 0) {
+                let html = `
+                    <div class="overflow-x-auto p-4">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Required</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Brought</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Shortage</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                `;
+                for (const student of data.missing) {
+                    html += `
+                        <tr>
+                            <td class="px-6 py-4 text-sm text-gray-800">${escapeHtml(student.student_name)}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml(student.student_id)}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml(student.class)}</td>
+                            <td class="px-6 py-4 text-sm text-right">${student.required}</td>
+                            <td class="px-6 py-4 text-sm text-right">${student.brought}</td>
+                            <td class="px-6 py-4 text-sm text-right font-bold text-red-600">${student.shortage}</td>
+                        </tr>
+                    `;
+                }
+                html += `</tbody>点心</div>`;
+                document.getElementById('reportContent').innerHTML = html;
+            } else {
+                document.getElementById('reportContent').innerHTML = '<div class="p-8 text-center text-green-600"><i class="fas fa-check-circle text-4xl mb-2 block"></i>All students have completed this requirement!</div>';
+            }
+        } catch (error) {
+            hideReportLoading();
+            document.getElementById('reportContent').innerHTML = '<div class="p-8 text-center text-red-500">Error loading report. Please try again.</div>';
+        }
+    }
+
+    async function loadClassReport() {
+        const classId = document.getElementById('classFilter').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        showReportLoading();
+        
+        try {
+            const response = await fetch(`/requirements/api/reports/class-compliance?class_id=${classId}&start_date=${startDate}&end_date=${endDate}`);
+            const data = await response.json();
+            hideReportLoading();
+            
+            if (data.success && data.classes && data.classes.length > 0) {
+                let html = `
+                    <div class="overflow-x-auto p-4">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class Name</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Students</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Required</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Submitted</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Compliance Rate</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                `;
+                for (const cls of data.classes) {
+                    const complianceClass = cls.compliance_rate >= 80 ? 'status-completed' : (cls.compliance_rate >= 50 ? 'status-partial' : 'status-pending');
+                    html += `
+                        <tr>
+                            <td class="px-6 py-4 text-sm text-gray-800 font-medium">${escapeHtml(cls.class_name)}</td>
+                            <td class="px-6 py-4 text-sm text-right">${cls.total_students}</td>
+                            <td class="px-6 py-4 text-sm text-right">${cls.total_required}</td>
+                            <td class="px-6 py-4 text-sm text-right">${cls.total_submitted}</td>
+                            <td class="px-6 py-4 text-sm text-center font-bold">${cls.compliance_rate}%</td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="px-2 py-1 rounded-full text-xs ${complianceClass}">${cls.status}</span>
+                            </td>
+                        </tr>
+                    `;
+                }
+                html += `</tbody>点心</div>`;
+                document.getElementById('reportContent').innerHTML = html;
+            } else {
+                document.getElementById('reportContent').innerHTML = '<div class="p-8 text-center text-gray-400"><i class="fas fa-chart-pie text-4xl mb-2 block"></i>No class compliance data available for the selected period</div>';
+            }
+        } catch (error) {
+            hideReportLoading();
+            document.getElementById('reportContent').innerHTML = '<div class="p-8 text-center text-red-500">Error loading class compliance report. Please try again.</div>';
+        }
+    }
+
+    async function loadInventoryReport() {
+        showReportLoading();
+        
+        try {
+            const response = await fetch('/requirements/api/inventory');
+            const data = await response.json();
+            hideReportLoading();
+            
+            if (data.success && data.inventory && data.inventory.length > 0) {
+                let html = `
+                    <div class="overflow-x-auto p-4">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Received</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Used</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Current Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                `;
+                for (const item of data.inventory) {
+                    const stockClass = item.current_balance < 10 ? 'text-red-600 font-bold' : '';
+                    html += `
+                        <tr>
+                            <td class="px-6 py-4 text-sm text-gray-800">${escapeHtml(item.name)}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">${escapeHtml(item.unit)}</td>
+                            <td class="px-6 py-4 text-sm text-right">${item.total_received}</td>
+                            <td class="px-6 py-4 text-sm text-right">${item.total_used}</td>
+                            <td class="px-6 py-4 text-sm text-right ${stockClass}">${item.current_balance}</td>
+                        </tr>
+                    `;
+                }
+                html += `</tbody>点心</div>`;
+                document.getElementById('reportContent').innerHTML = html;
+            } else {
+                document.getElementById('reportContent').innerHTML = '<div class="p-8 text-center text-gray-400"><i class="fas fa-warehouse text-4xl mb-2 block"></i>No inventory data available</div>';
+            }
+        } catch (error) {
+            hideReportLoading();
+            document.getElementById('reportContent').innerHTML = '<div class="p-8 text-center text-red-500">Error loading inventory report. Please try again.</div>';
+        }
+    }
+
+    function switchReport(report) {
+        currentReport = report;
+        const tabs = ['compliance', 'missing', 'class', 'inventory'];
+        const itemFilterDiv = document.getElementById('itemFilterDiv');
+        
+        tabs.forEach(t => {
+            const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+            if (btn) {
+                if (t === report) {
+                    btn.classList.add('bg-orange-500', 'text-white');
+                    btn.classList.remove('bg-gray-100', 'text-gray-600');
+                } else {
+                    btn.classList.remove('bg-orange-500', 'text-white');
+                    btn.classList.add('bg-gray-100', 'text-gray-600');
+                }
+            }
+        });
+        
+        // Show/hide item filter for missing report
+        if (itemFilterDiv) {
+            if (report === 'missing') {
+                itemFilterDiv.style.display = 'block';
+            } else {
+                itemFilterDiv.style.display = 'block';
+            }
+        }
+        
+        loadCurrentReport();
+    }
+
+    function loadCurrentReport() {
+        switch(currentReport) {
+            case 'compliance':
+                loadComplianceReport();
+                break;
+            case 'missing':
+                loadMissingReport();
+                break;
+            case 'class':
+                loadClassReport();
+                break;
+            case 'inventory':
+                loadInventoryReport();
+                break;
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Initialize
+    loadFilters();
+</script>
+{% endblock %}

@@ -1,0 +1,523 @@
+<!-- templates/payroll/index.html - Updated to use PDF print -->
+{% extends "base.html" %}
+
+{% block title %}Payroll Management - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .salary-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .salary-table th, .salary-table td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .salary-table th {
+        background-color: #f9fafb;
+        font-weight: 600;
+        font-size: 13px;
+    }
+    .salary-table td {
+        font-size: 13px;
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .status-paid {
+        background-color: #d1fae5;
+        color: #065f46;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        display: inline-block;
+    }
+    .status-pending {
+        background-color: #fef3c7;
+        color: #d97706;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        display: inline-block;
+    }
+    .deductions-input, .bonuses-input {
+        width: 100px;
+        padding: 5px 8px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        text-align: right;
+    }
+    .deductions-input:focus, .bonuses-input:focus {
+        outline: none;
+        border-color: #ffa500;
+        box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.1);
+    }
+    .net-pay {
+        font-weight: bold;
+        color: #059669;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Payroll Management</h1>
+        <p class="text-sm text-gray-600">Process employee salaries with deductions and bonuses</p>
+    </div>
+
+    <!-- Month Selection -->
+    <div class="bg-white rounded-xl shadow-md p-5 mb-6">
+        <div class="flex flex-wrap items-end gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Month</label>
+                <input type="month" id="monthSelect" value="{{ now.strftime('%Y-%m') }}" 
+                       class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div>
+                <button onclick="loadSalaryData()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+                    <i class="fas fa-sync-alt"></i> Load Employees
+                </button>
+            </div>
+            <div>
+                <button onclick="processPayments()" id="payBtn" disabled
+                        class="btn-gradient px-5 py-2 rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                    <i class="fas fa-money-bill-wave"></i>
+                    Process Selected Payments
+                </button>
+            </div>
+            <div>
+                <button onclick="downloadPayrollPDF()" id="downloadPdfBtn" disabled
+                        class="px-5 py-2 bg-gray-300 text-gray-500 rounded-lg font-medium transition-all cursor-not-allowed">
+                    <i class="fas fa-download"></i> Download PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" style="display: block;" class="text-center py-12">
+        <div class="inline-block">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-orange-200 border-t-orange-500"></div>
+            <p class="text-gray-600 mt-3">Loading employees...</p>
+        </div>
+    </div>
+
+    <!-- Employees Table -->
+    <div id="employeesContainer" class="bg-white rounded-xl shadow-md overflow-hidden" style="display: none;">
+        <div class="overflow-x-auto">
+            <table class="salary-table min-w-full">
+                <thead>
+                    <tr>
+                        <th class="w-10">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()" 
+                                   class="w-4 h-4 text-orange-500 rounded">
+                        </th>
+                        <th>Employee ID</th>
+                        <th>Employee Name</th>
+                        <th>Role</th>
+                        <th class="text-right">Gross Salary (UGX)</th>
+                        <th class="text-right">Deductions (UGX)</th>
+                        <th class="text-right">Bonuses (UGX)</th>
+                        <th class="text-right">Net Pay (UGX)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="employeesTableBody">
+                    <!-- Data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="emptyState" class="bg-white rounded-xl shadow-md p-12 text-center" style="display: none;">
+        <div class="h-20 w-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-users text-3xl text-orange-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">No Employees Found</h3>
+        <p class="text-sm text-gray-500">Add employees first to process payroll</p>
+        <a href="{{ url_for('employees.index') }}" class="btn-gradient px-5 py-2 rounded-lg text-white text-sm inline-flex items-center gap-2 mt-4">
+            <i class="fas fa-plus-circle"></i> Add Employee
+        </a>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="p-6 text-center">
+            <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check-circle text-3xl text-green-500"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">Payment Successful!</h3>
+            <div id="successMessage" class="text-gray-600 mb-6"></div>
+            <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium">
+                Continue
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Processing payments...</p>
+    </div>
+</div>
+
+<script>
+    let currentEmployees = [];
+    let selectedEmployeeIds = new Set();
+    let currentMonth = '';
+    
+    function formatRole(role) {
+        if (!role) return 'Staff';
+        return role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    async function loadSalaryData() {
+        currentMonth = document.getElementById('monthSelect').value;
+        
+        document.getElementById('loadingState').style.display = 'block';
+        document.getElementById('employeesContainer').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'none';
+        
+        try {
+            const response = await fetch(`/payroll/api/salary-summary?month=${currentMonth}`);
+            const result = await response.json();
+            
+            document.getElementById('loadingState').style.display = 'none';
+            
+            if (result.success && result.employees) {
+                currentEmployees = result.employees;
+                
+                if (currentEmployees.length === 0) {
+                    document.getElementById('emptyState').style.display = 'block';
+                } else {
+                    displayEmployees(currentEmployees);
+                    document.getElementById('employeesContainer').style.display = 'block';
+                    document.getElementById('downloadPdfBtn').disabled = false;
+                    document.getElementById('downloadPdfBtn').classList.remove('bg-gray-300', 'cursor-not-allowed');
+                    document.getElementById('downloadPdfBtn').classList.add('btn-gradient', 'text-white');
+                }
+            } else {
+                showMessage(result.message || 'Failed to load employees', 'error');
+                document.getElementById('emptyState').style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'block';
+            showMessage('Failed to load salary data: ' + error.message, 'error');
+        }
+    }
+    
+    function displayEmployees(employees) {
+        const tbody = document.getElementById('employeesTableBody');
+        
+        tbody.innerHTML = employees.map(emp => {
+            const roleDisplay = formatRole(emp.role);
+            const netPay = emp.monthly_salary - (emp.deductions || 0) + (emp.bonuses || 0);
+            
+            return `
+                <tr data-employee-id="${emp.id}" data-is-paid="${emp.is_paid}">
+                    <td class="text-center">
+                        <input type="checkbox" class="employee-checkbox w-4 h-4 text-orange-500 rounded" 
+                               data-employee-id="${emp.id}" 
+                               ${emp.is_paid ? 'disabled' : ''}
+                               onchange="toggleEmployee('${emp.id}', this.checked)">
+                    </td>
+                    <td class="text-sm text-gray-600">${emp.employee_id || 'N/A'}</td>
+                    <td class="text-sm font-medium text-gray-800">${emp.name || 'N/A'}</td>
+                    <td class="text-sm text-gray-600">${roleDisplay}</td>
+                    <td class="text-right text-sm text-gray-700">${(emp.monthly_salary || 0).toLocaleString()}</td>
+                    <td class="text-right">
+                        <input type="number" class="deductions-input" data-employee-id="${emp.id}" 
+                               value="${emp.deductions || 0}" step="1000"
+                               ${emp.is_paid ? 'disabled' : ''}
+                               onchange="updateNetPay('${emp.id}')">
+                    </td>
+                    <td class="text-right">
+                        <input type="number" class="bonuses-input" data-employee-id="${emp.id}" 
+                               value="${emp.bonuses || 0}" step="1000"
+                               ${emp.is_paid ? 'disabled' : ''}
+                               onchange="updateNetPay('${emp.id}')">
+                    </td>
+                    <td class="text-right">
+                        <span class="net-pay" id="net-pay-${emp.id}">
+                            ${netPay.toLocaleString()}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        ${emp.is_paid ? '<span class="status-paid">Paid</span>' : '<span class="status-pending">Pending</span>'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        selectedEmployeeIds.clear();
+        const selectAll = document.getElementById('selectAllCheckbox');
+        if (selectAll) selectAll.checked = false;
+        updateSelectAllState();
+    }
+    
+    function updateNetPay(employeeId) {
+        const employee = currentEmployees.find(e => e.id === employeeId);
+        if (!employee) return;
+        
+        const deductionsInput = document.querySelector(`.deductions-input[data-employee-id="${employeeId}"]`);
+        const bonusesInput = document.querySelector(`.bonuses-input[data-employee-id="${employeeId}"]`);
+        
+        const deductions = parseFloat(deductionsInput?.value) || 0;
+        const bonuses = parseFloat(bonusesInput?.value) || 0;
+        
+        employee.deductions = deductions;
+        employee.bonuses = bonuses;
+        
+        const netPay = employee.monthly_salary - deductions + bonuses;
+        document.getElementById(`net-pay-${employeeId}`).textContent = netPay.toLocaleString();
+    }
+    
+    function toggleEmployee(employeeId, isChecked) {
+        if (isChecked) {
+            selectedEmployeeIds.add(employeeId);
+        } else {
+            selectedEmployeeIds.delete(employeeId);
+        }
+        updateSelectAllState();
+    }
+    
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAllCheckbox');
+        const checkboxes = document.querySelectorAll('.employee-checkbox:not(:disabled)');
+        
+        if (selectAll.checked) {
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                selectedEmployeeIds.add(cb.dataset.employeeId);
+            });
+        } else {
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+                selectedEmployeeIds.delete(cb.dataset.employeeId);
+            });
+        }
+    }
+    
+    function updateSelectAllState() {
+        const payBtn = document.getElementById('payBtn');
+        if (payBtn) {
+            payBtn.disabled = selectedEmployeeIds.size === 0;
+        }
+        
+        const selectAll = document.getElementById('selectAllCheckbox');
+        const checkboxes = document.querySelectorAll('.employee-checkbox:not(:disabled)');
+        if (selectAll && checkboxes.length > 0) {
+            selectAll.checked = selectedEmployeeIds.size === checkboxes.length;
+            selectAll.indeterminate = selectedEmployeeIds.size > 0 && selectedEmployeeIds.size < checkboxes.length;
+        }
+    }
+    
+    async function processPayments() {
+        if (selectedEmployeeIds.size === 0) {
+            showMessage('Please select employees to pay', 'error');
+            return;
+        }
+        
+        const payments = [];
+        for (const employeeId of selectedEmployeeIds) {
+            const employee = currentEmployees.find(e => e.id === employeeId);
+            if (employee && !employee.is_paid) {
+                const deductionsInput = document.querySelector(`.deductions-input[data-employee-id="${employeeId}"]`);
+                const bonusesInput = document.querySelector(`.bonuses-input[data-employee-id="${employeeId}"]`);
+                
+                payments.push({
+                    employee_id: employee.id,
+                    name: employee.name,
+                    employee_id_code: employee.employee_id,
+                    monthly_salary: employee.monthly_salary,
+                    deductions: parseFloat(deductionsInput?.value) || 0,
+                    bonuses: parseFloat(bonusesInput?.value) || 0,
+                    payment_method: 'bank_transfer',
+                    notes: `Salary payment for ${currentMonth}`
+                });
+            }
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.style.display = 'flex';
+        
+        try {
+            const response = await fetch('/payroll/api/process-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    payments: payments,
+                    payment_month: currentMonth,
+                    payment_date: new Date().toISOString().split('T')[0]
+                })
+            });
+            
+            const result = await response.json();
+            
+            loading.style.display = 'none';
+            
+            if (result.success) {
+                const paymentsList = result.payments.map(p => `
+                    <div class="text-sm py-1 border-b border-gray-200">
+                        <div class="font-medium">${p.employee_name}</div>
+                        <div class="text-xs text-gray-500">
+                            Gross: UGX ${p.gross_salary.toLocaleString()} | 
+                            Deductions: UGX ${p.deductions.toLocaleString()} | 
+                            Bonuses: UGX ${p.bonuses.toLocaleString()} | 
+                            Net: UGX ${p.net_pay.toLocaleString()}
+                        </div>
+                        <button onclick="printPayslip('${p.receipt_number}')" class="mt-1 text-orange-500 text-xs hover:underline">
+                            <i class="fas fa-print"></i> Print Slip
+                        </button>
+                    </div>
+                `).join('');
+                
+                document.getElementById('successMessage').innerHTML = `
+                    ${result.message}<br>
+                    <div class="mt-3 text-left bg-gray-50 p-3 rounded-lg max-h-40 overflow-y-auto">
+                        ${paymentsList}
+                    </div>
+                    <div class="mt-2 text-sm font-bold">Total Paid: UGX ${result.total_amount.toLocaleString()}</div>
+                    ${result.errors ? `<div class="mt-2 text-red-600 text-sm">${result.errors.join('<br>')}</div>` : ''}
+                `;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                
+                setTimeout(() => loadSalaryData(), 2000);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            loading.style.display = 'none';
+            showMessage('Failed to process payments: ' + error.message, 'error');
+        }
+    }
+    
+    function printPayslip(receiptNumber) {
+        // Open PDF in new window
+        window.open(`/payroll/api/print-payslip/${receiptNumber}`, '_blank');
+    }
+    
+    async function downloadPayrollPDF() {
+        if (currentEmployees.length === 0) return;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.style.display = 'flex';
+        
+        for (const emp of currentEmployees) {
+            const deductionsInput = document.querySelector(`.deductions-input[data-employee-id="${emp.id}"]`);
+            const bonusesInput = document.querySelector(`.bonuses-input[data-employee-id="${emp.id}"]`);
+            if (deductionsInput) emp.deductions = parseFloat(deductionsInput.value) || 0;
+            if (bonusesInput) emp.bonuses = parseFloat(bonusesInput.value) || 0;
+        }
+        
+        try {
+            const response = await fetch('/payroll/api/download-payroll-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employees: currentEmployees,
+                    month: currentMonth
+                })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `payroll_${currentMonth}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showMessage('Payroll PDF downloaded successfully', 'success');
+            } else {
+                const error = await response.json();
+                showMessage(error.message || 'Failed to download PDF', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Failed to download payroll PDF', 'error');
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+    
+    window.onclick = function(event) {
+        const modal = document.getElementById('successModal');
+        if (event.target === modal) {
+            closeSuccessModal();
+        }
+    };
+    
+    loadSalaryData();
+</script>
+{% endblock %}

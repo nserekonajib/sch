@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>St. Charles Lwanga SS - Akashanda | Report Card 2025</title>
+    <!-- Tailwind CSS v3 + Google Fonts for clean typography -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom override for print styles and fine tuning -->
+    <style>
+        @media print {
+            body {
+                background: white;
+                padding: 0.2in;
+                margin: 0;
+                font-size: 12px;
+            }
+            .no-break-inside {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .print-shadow-none {
+                box-shadow: none;
+            }
+            .print-border {
+                border: 1px solid #ccc;
+            }
+            header, footer, .footer-print {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .print-mb-0 {
+                margin-bottom: 0 !important;
+            }
+        }
+        /* custom extra for readability */
+        .table-header-bg {
+            background-color: #1e3a5f;
+        }
+        .subject-row:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .print\:text-black {
+            print-color-adjust: exact;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased p-4 md:p-6">
+
+    <!-- Main Report Card Container: simulates A4 or letter style -->
+    <div class="max-w-5xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden print:shadow-none border border-gray-200">
+        
+        <!-- Header Section with School Details & Crest-like feel -->
+        <div class="bg-gradient-to-r from-blue-900 to-blue-800 text-white px-6 pt-6 pb-4 print:bg-blue-900">
+            <div class="text-center">
+                <h1 class="text-2xl md:text-3xl font-bold uppercase tracking-wide">St Charles Lwanga SS - Akashanda</h1>
+                <p class="text-sm md:text-base font-medium mt-1">Near Akashanda Catholic Parish, Mbarara</p>
+                <p class="text-xs md:text-sm mt-1">P.O BOX: 150, Mbarara | TEL: +256757848094 / 0780298043 / 0740739087</p>
+                <p class="text-xs md:text-sm">Email: stcharleslwangassakashanda@gmail.com | Website: www.stcharlesss.com</p>
+            </div>
+            <div class="border-t border-blue-400 my-3 opacity-50"></div>
+            <div class="text-center">
+                <h2 class="text-xl md:text-2xl font-semibold bg-white/20 inline-block px-6 py-1 rounded-full">TERM ONE REPORT CARD 2025</h2>
+            </div>
+        </div>
+
+        <!-- Student Identification & Basic Info -->
+        <div class="px-6 pt-5 pb-2 border-b border-gray-200 bg-gray-50">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm md:text-base">
+                <div class="flex flex-wrap gap-x-4 gap-y-1">
+                    <span class="font-bold text-gray-700 w-24">NAME:</span>
+                    <span class="text-gray-900 font-medium">KWAGALA JENNIFER</span>
+                    <span class="ml-4 font-bold text-gray-700">GENDER:</span>
+                    <span class="text-gray-900">FEMALE (F)</span>
+                </div>
+                <div class="flex flex-wrap gap-x-4 gap-y-1">
+                    <span class="font-bold text-gray-700 w-24">SECTION:</span>
+                    <span class="text-gray-900">Boarding</span>
+                    <span class="ml-4 font-bold text-gray-700">CLASS:</span>
+                    <span class="text-gray-900">S.1</span>
+                    <span class="ml-4 font-bold text-gray-700">TERM:</span>
+                    <span class="text-gray-900">ONE</span>
+                </div>
+                <div class="flex flex-wrap gap-x-4 gap-y-1">
+                    <span class="font-bold text-gray-700 w-24">House:</span>
+                    <span class="text-gray-900">House 3</span>
+                    <span class="ml-4 font-bold text-gray-700">Age:</span>
+                    <span class="text-gray-900">—</span>
+                    <span class="ml-4 font-bold text-gray-700">Printed on:</span>
+                    <span class="text-gray-900">04/11/2025</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PERFORMANCE RECORDS TABLE (fully matches data given) -->
+        <div class="px-4 md:px-6 py-5 overflow-x-auto no-break-inside">
+            <h3 class="text-lg font-bold text-gray-800 border-l-4 border-blue-700 pl-3 mb-3">📊 PERFORMANCE RECORDS</h3>
+            <table class="min-w-full text-xs md:text-sm border border-gray-300 rounded-lg overflow-hidden">
+                <thead class="bg-blue-800 text-white print:bg-gray-800">
+                    <tr class="text-left">
+                        <th class="px-2 py-2 font-semibold border border-blue-700">Code</th>
+                        <th class="px-2 py-2 font-semibold border border-blue-700">Subject</th>
+                        <th class="px-1 py-2 text-center border border-blue-700">A1</th>
+                        <th class="px-1 py-2 text-center border border-blue-700">A2</th>
+                        <th class="px-1 py-2 text-center border border-blue-700">A3</th>
+                        <th class="px-1 py-2 text-center border border-blue-700">AVG</th>
+                        <th class="px-1 py-2 text-center border border-blue-700">20%</th>
+                        <th class="px-1 py-2 text-center border border-blue-700">80%</th>
+                        <th class="px-1 py-2 text-center border border-blue-700">100%</th>
+                        <th class="px-1 py-2 text-center border border-blue-700">Ident</th>
+                        <th class="px-1 py-2 text-center border border-blue-700">GRADE</th>
+                        <th class="px-2 py-2 border border-blue-700">Remarks/Descriptors</th>
+                        <th class="px-1 py-2 text-center border border-blue-700">TR</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white text-gray-800">
+                    <!-- Data exactly as per image: all 15 subjects -->
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">535</td><td class="px-2 py-1.5 font-medium">Biology</td>
+                        <td class="text-center">2.3</td><td class="text-center">2.0</td><td class="text-center">2.0</td><td class="text-center">2.1</td>
+                        <td class="text-center">14.0</td><td class="text-center">55.0</td><td class="text-center">69.0</td><td class="text-center">2</td>
+                        <td class="text-center font-bold">C</td><td class="px-2">Satisfactory</td><td class="text-center">B.S</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">545</td><td class="px-2 py-1.5 font-medium">Chemistry</td>
+                        <td class="text-center">2.0</td><td class="text-center">2.0</td><td class="text-center">2.0</td><td class="text-center">2.0</td>
+                        <td class="text-center">13.3</td><td class="text-center">66.0</td><td class="text-center">79.3</td><td class="text-center">2</td>
+                        <td class="text-center font-bold">B</td><td class="px-2">Outstanding</td><td class="text-center">N.S</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">112</td><td class="px-2 py-1.5 font-medium">English</td>
+                        <td class="text-center">1.2</td><td class="text-center">2.0</td><td class="text-center">1.6</td><td class="text-center">1.6</td>
+                        <td class="text-center">10.7</td><td class="text-center">55.0</td><td class="text-center">65.7</td><td class="text-center">2</td>
+                        <td class="text-center font-bold">C</td><td class="px-2">Satisfactory</td><td class="text-center">D.J</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">456</td><td class="px-2 py-1.5 font-medium">Mathematics</td>
+                        <td class="text-center">2.0</td><td class="text-center">2.0</td><td class="text-center">3.0</td><td class="text-center">2.3</td>
+                        <td class="text-center">15.5</td><td class="text-center">66.0</td><td class="text-center">81.5</td><td class="text-center">2</td>
+                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">N.E</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">273</td><td class="px-2 py-1.5 font-medium">Geography</td>
+                        <td class="text-center">3.0</td><td class="text-center">2.0</td><td class="text-center">2.0</td><td class="text-center">2.3</td>
+                        <td class="text-center">15.5</td><td class="text-center">56.0</td><td class="text-center">71.5</td><td class="text-center">2</td>
+                        <td class="text-center font-bold">B</td><td class="px-2">Outstanding</td><td class="text-center">N.E</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">241</td><td class="px-2 py-1.5 font-medium">History & Politi</td>
+                        <td class="text-center">3.0</td><td class="text-center">2.0</td><td class="text-center">3.0</td><td class="text-center">2.7</td>
+                        <td class="text-center">17.7</td><td class="text-center">78.0</td><td class="text-center">95.7</td><td class="text-center">3</td>
+                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">B.S</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">535</td><td class="px-2 py-1.5 font-medium">Physics</td>
+                        <td class="text-center">1.3</td><td class="text-center">3.0</td><td class="text-center">1.7</td><td class="text-center">2.0</td>
+                        <td class="text-center">13.3</td><td class="text-center">66.0</td><td class="text-center">79.3</td><td class="text-center">2</td>
+                        <td class="text-center font-bold">B</td><td class="px-2">Outstanding</td><td class="text-center">N.E</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">223</td><td class="px-2 py-1.5 font-medium">Religious Educat</td>
+                        <td class="text-center">1.3</td><td class="text-center">2.2</td><td class="text-center">1.8</td><td class="text-center">1.7</td>
+                        <td class="text-center">17.7</td><td class="text-center">77.0</td><td class="text-center">88.7</td><td class="text-center">3</td>
+                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">B.S</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">336</td><td class="px-2 py-1.5 font-medium">Kiswahili</td>
+                        <td class="text-center">1.2</td><td class="text-center">2.3</td><td class="text-center">1.6</td><td class="text-center">1.6</td>
+                        <td class="text-center">10.4</td><td class="text-center">77.0</td><td class="text-center">87.4</td><td class="text-center">3</td>
+                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">K.A</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">850</td><td class="px-2 py-1.5 font-medium">ICT</td>
+                        <td class="text-center">3.0</td><td class="text-center">2.0</td><td class="text-center">2.5</td><td class="text-center">2.6</td>
+                        <td class="text-center">16.7</td><td class="text-center">66.0</td><td class="text-center">82.7</td><td class="text-center">2</td>
+                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">K.J</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">612</td><td class="px-2 py-1.5 font-medium">Art & Design</td>
+                        <td class="text-center">2.0</td><td class="text-center">2.3</td><td class="text-center">2.2</td><td class="text-center">2.4</td>
+                        <td class="text-center">14.3</td><td class="text-center">45.0</td><td class="text-center">59.3</td><td class="text-center">2</td>
+                        <td class="text-center font-bold text-red-600">D</td><td class="px-2">Basic</td><td class="text-center">W.H</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">527</td><td class="px-2 py-1.5 font-medium">Agriculture</td>
+                        <td class="text-center">1.2</td><td class="text-center">2.2</td><td class="text-center">2.3</td><td class="text-center">1.9</td>
+                        <td class="text-center">12.7</td><td class="text-center">66.0</td><td class="text-center">78.7</td><td class="text-center">2</td>
+                        <td class="text-center font-bold">B</td><td class="px-2">Outstanding</td><td class="text-center">K.D</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">845</td><td class="px-2 py-1.5 font-medium">Entrepreneurship</td>
+                        <td class="text-center">1.5</td><td class="text-center">1.2</td><td class="text-center">1.3</td><td class="text-center">1.3</td>
+                        <td class="text-center">8.9</td><td class="text-center">54.0</td><td class="text-center">62.9</td><td class="text-center">2</td>
+                        <td class="text-center font-bold">C</td><td class="px-2">Satisfactory</td><td class="text-center">N.E</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">208</td><td class="px-2 py-1.5 font-medium">Literature</td>
+                        <td class="text-center">2.3</td><td class="text-center">1.3</td><td class="text-center">1.3</td><td class="text-center">1.6</td>
+                        <td class="text-center">10.9</td><td class="text-center">77.0</td><td class="text-center">87.9</td><td class="text-center">3</td>
+                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">B.S</td>
+                    </tr>
+                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-2 py-1.5 font-mono border">345</td><td class="px-2 py-1.5 font-medium">Runyankore Rukig</td>
+                        <td class="text-center">3.0</td><td class="text-center">2.0</td><td class="text-center">2.4</td><td class="text-center">2.5</td>
+                        <td class="text-center">16.4</td><td class="text-center">55.0</td><td class="text-center">71.4</td><td class="text-center">2</td>
+                        <td class="text-center font-bold">B</td><td class="px-2">Outstanding</td><td class="text-center">B.S</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Overall Averages & Summary Section -->
+        <div class="px-6 pb-3 grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-200 bg-gray-50">
+            <div class="space-y-1">
+                <p class="text-sm"><span class="font-bold">AVERAGE (Overall Identifier):</span> 2</p>
+                <p class="text-sm"><span class="font-bold">Overall Achievement:</span> B</p>
+                <p class="text-sm"><span class="font-bold">Moderate:</span> C</p>
+                <p class="text-sm"><span class="font-bold">Overall grade:</span> D</p>
+            </div>
+            <div class="col-span-2 border-l md:border-l border-gray-300 pl-4">
+                <p class="text-sm font-semibold text-gray-700">Class teacher's comment:</p>
+                <p class="text-sm italic text-gray-800">KWAGALA JENNIFER. You're on the right track. Focus on building on your strengths and addressing areas for improvement.</p>
+                <p class="text-xs text-gray-500 mt-1">— Class Teacher</p>
+            </div>
+        </div>
+
+        <!-- Headteacher's comment & extra signature block -->
+        <div class="px-6 py-3 border-b border-gray-200 flex flex-wrap justify-between items-start gap-3">
+            <div class="w-full md:w-2/3">
+                <p class="font-bold text-gray-800 text-sm">Headteacher's Comment:</p>
+                <div class="border-b border-dashed border-gray-400 mt-1 w-full h-8"></div>
+                <p class="text-xs text-gray-400 mt-1">(Official stamp & signature)</p>
+            </div>
+            <div class="text-right">
+                <p class="text-xs text-gray-500">Printed: 04/11/2025</p>
+            </div>
+        </div>
+
+        <!-- Key to Terms used (Identifiers) -->
+        <div class="px-6 py-4 bg-white border-b border-gray-200">
+            <h4 class="text-md font-bold text-gray-800 mb-2">📖 Key to Terms Used (Identifiers / LOs)</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                <div class="flex items-center gap-2"><span class="font-mono bg-gray-200 px-2 py-0.5 rounded">1 - Basic</span><span class="text-gray-600">Few LOs achieved, not sufficient for overall achievement</span></div>
+                <div class="flex items-center gap-2"><span class="font-mono bg-gray-200 px-2 py-0.5 rounded">2 - Moderate</span><span class="text-gray-600">Many LOs achieved, enough for overall achievement</span></div>
+                <div class="flex items-center gap-2"><span class="font-mono bg-gray-200 px-2 py-0.5 rounded">3 - Outstanding</span><span class="text-gray-600">Most or all LOs achieved for overall achievement</span></div>
+            </div>
+        </div>
+
+        <!-- Date terms and next term info + fees placeholders -->
+        <div class="px-6 py-4 bg-gray-100 flex flex-wrap justify-between items-center text-sm gap-3">
+            <div class="flex space-x-6">
+                <div><span class="font-semibold">TERM ENDED ON:</span> 04/25/2025</div>
+                <div><span class="font-semibold">NEXT TERM BEGINS:</span> 05/23/2025</div>
+            </div>
+            <div class="flex flex-wrap gap-4 text-xs md:text-sm">
+                <div><span class="font-semibold">FEES BALANCE:</span> ___________</div>
+                <div><span class="font-semibold">FEES NEXT TERM:</span> ___________</div>
+                <div><span class="font-semibold">Other Requirement:</span> ___________</div>
+            </div>
+        </div>
+
+        <!-- Footer: official signature lines, additional remark -->
+        <div class="px-6 py-3 text-xs text-gray-500 flex justify-between border-t border-gray-200 print:text-black">
+            <div>St. Charles Lwanga SS - Akashanda || Excellence & Integrity</div>
+            <div>Generated via Academic Management System</div>
+        </div>
+    </div>
+
+    <!-- Print-friendly instruction note (optional but user-friendly) -->
+    <div class="max-w-5xl mx-auto mt-4 text-center text-xs text-gray-500 flex justify-between">
+        <p>📄 Official Report Card — Approved by Administration</p>
+        <button onclick="window.print();" class="bg-blue-700 hover:bg-blue-800 text-white text-xs px-4 py-1.5 rounded-full shadow print:hidden">🖨️ Print Report Card</button>
+    </div>
+</body>
+</html>

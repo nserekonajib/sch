@@ -1,0 +1,413 @@
+<!-- templates/results/index.html - Updated with Class-wise Generation -->
+{% extends "base.html" %}
+
+{% block title %}Generate Report Card - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .tab-active {
+        background-color: #ffa500;
+        color: white;
+    }
+    .tab-inactive {
+        background-color: #f3f4f6;
+        color: #6b7280;
+    }
+    .exam-checkbox {
+        transition: all 0.2s;
+    }
+    .exam-checkbox:hover {
+        transform: scale(1.02);
+        background-color: #fff7ed;
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .progress-bar {
+        transition: width 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Generate Report Card</h1>
+        <p class="text-sm text-gray-600">Generate individual or class-wise report cards</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6">
+        <button onclick="switchTab('single')" id="tabSingle" class="tab-active px-5 py-2 rounded-lg font-medium transition-all">
+            <i class="fas fa-user-graduate"></i> Single Student
+        </button>
+        <button onclick="switchTab('class')" id="tabClass" class="tab-inactive px-5 py-2 rounded-lg font-medium transition-all">
+            <i class="fas fa-users"></i> Entire Class
+        </button>
+    </div>
+
+    <!-- Single Student Tab -->
+    <div id="singleTab">
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Student *</label>
+                    <div class="relative">
+                        <i class="fas fa-user-graduate absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <select id="studentSelect" class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            <option value="">-- Select Student --</option>
+                            {% for student in students %}
+                            <option value="{{ student.id }}">{{ student.name }} ({{ student.student_id }}) - {{ student.classes.name if student.classes else 'N/A' }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
+                    <input type="text" id="termInput" placeholder="e.g., TERM 1" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Year</label>
+                    <select id="yearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="2023">2023</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Class Tab -->
+    <div id="classTab" class="hidden">
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Class *</label>
+                    <div class="relative">
+                        <i class="fas fa-chalkboard absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <select id="classSelect" class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            <option value="">-- Select Class --</option>
+                            {% for class in classes %}
+                            <option value="{{ class.id }}">{{ class.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
+                    <input type="text" id="classTermInput" placeholder="e.g., TERM 1" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Year</label>
+                    <select id="classYearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="2023">2023</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exams Selection -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <i class="fas fa-calendar-alt text-orange-500"></i>
+            Select Exams to Include
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3" id="examsList">
+            {% for exam in exams %}
+            <label class="exam-checkbox flex items-center gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-orange-50 transition-all">
+                <input type="checkbox" class="exam-cb w-4 h-4 text-orange-500 rounded" value="{{ exam.id }}">
+                <span class="text-sm text-gray-700">{{ exam.exam_name }}</span>
+            </label>
+            {% else %}
+            <div class="col-span-full text-center py-4 text-gray-400">No exams available</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Generate Buttons -->
+    <div class="flex justify-center gap-4">
+        <button onclick="generateReportCard()" id="generateBtn" 
+                class="btn-gradient px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-lg">
+            <i class="fas fa-file-pdf"></i>
+            Generate Report Card
+        </button>
+        <button onclick="generateClassReportCard()" id="generateClassBtn" 
+                class="btn-gradient px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-lg hidden">
+            <i class="fas fa-file-pdf"></i>
+            Generate Class Report Cards
+        </button>
+    </div>
+</div>
+
+<!-- Progress Modal -->
+<div id="progressModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 transform transition-all modal-container">
+        <div class="text-center">
+            <div class="loader mx-auto mb-4"></div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2" id="progressTitle">Generating Report Card</h3>
+            <p class="text-sm text-gray-600 mb-3" id="progressMessage">Processing...</p>
+            <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                <div id="progressBar" class="progress-bar bg-orange-500 h-2 rounded-full" style="width: 0%"></div>
+            </div>
+            <p class="text-xs text-gray-400" id="progressDetail">Please wait</p>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div id="errorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 text-center transform transition-all modal-container">
+        <div class="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-exclamation-triangle text-2xl text-red-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Error</h3>
+        <p class="text-sm text-gray-600 mb-6" id="errorMessage"></p>
+        <button onclick="closeErrorModal()" class="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">
+            Close
+        </button>
+    </div>
+</div>
+
+<script>
+    let currentMode = 'single';
+    
+    function switchTab(tab) {
+        currentMode = tab;
+        const singleTab = document.getElementById('singleTab');
+        const classTab = document.getElementById('classTab');
+        const tabSingle = document.getElementById('tabSingle');
+        const tabClass = document.getElementById('tabClass');
+        const generateBtn = document.getElementById('generateBtn');
+        const generateClassBtn = document.getElementById('generateClassBtn');
+        
+        if (tab === 'single') {
+            singleTab.classList.remove('hidden');
+            classTab.classList.add('hidden');
+            tabSingle.classList.add('tab-active');
+            tabSingle.classList.remove('tab-inactive');
+            tabClass.classList.add('tab-inactive');
+            tabClass.classList.remove('tab-active');
+            generateBtn.classList.remove('hidden');
+            generateClassBtn.classList.add('hidden');
+        } else {
+            singleTab.classList.add('hidden');
+            classTab.classList.remove('hidden');
+            tabClass.classList.add('tab-active');
+            tabClass.classList.remove('tab-inactive');
+            tabSingle.classList.add('tab-inactive');
+            tabSingle.classList.remove('tab-active');
+            generateBtn.classList.add('hidden');
+            generateClassBtn.classList.remove('hidden');
+        }
+    }
+    
+    async function generateReportCard() {
+        const studentId = document.getElementById('studentSelect').value;
+        const term = document.getElementById('termInput').value.trim();
+        const year = document.getElementById('yearSelect').value;
+        
+        const selectedExams = [];
+        document.querySelectorAll('.exam-cb:checked').forEach(cb => {
+            selectedExams.push(cb.value);
+        });
+        
+        if (!studentId) {
+            showError('Please select a student');
+            return;
+        }
+        
+        if (selectedExams.length === 0) {
+            showError('Please select at least one exam');
+            return;
+        }
+        
+        if (!term) {
+            showError('Please enter the term');
+            return;
+        }
+        
+        showProgress('Generating Report Card', 'Processing student data...');
+        
+        try {
+            const response = await fetch('/results/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: studentId,
+                    exam_ids: selectedExams,
+                    term: term,
+                    year: year
+                })
+            });
+            
+            if (response.ok) {
+                updateProgress(100, 'Complete!', 'Downloading report card...');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const studentName = document.getElementById('studentSelect').options[document.getElementById('studentSelect').selectedIndex]?.text.split(' (')[0] || 'student';
+                a.download = `report_card_${studentName}_${term}_${year}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                setTimeout(closeProgress, 1500);
+            } else {
+                const error = await response.json();
+                closeProgress();
+                showError(error.message || 'Failed to generate report card');
+            }
+        } catch (error) {
+            closeProgress();
+            showError('Failed to generate report card: ' + error.message);
+        }
+    }
+    
+    async function generateClassReportCard() {
+        const classId = document.getElementById('classSelect').value;
+        const term = document.getElementById('classTermInput').value.trim();
+        const year = document.getElementById('classYearSelect').value;
+        
+        const selectedExams = [];
+        document.querySelectorAll('.exam-cb:checked').forEach(cb => {
+            selectedExams.push(cb.value);
+        });
+        
+        if (!classId) {
+            showError('Please select a class');
+            return;
+        }
+        
+        if (selectedExams.length === 0) {
+            showError('Please select at least one exam');
+            return;
+        }
+        
+        if (!term) {
+            showError('Please enter the term');
+            return;
+        }
+        
+        showProgress('Generating Class Report Cards', 'Processing class data...');
+        
+        try {
+            const response = await fetch('/results/generate-class', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    class_id: classId,
+                    exam_ids: selectedExams,
+                    term: term,
+                    year: year
+                })
+            });
+            
+            if (response.ok) {
+                updateProgress(100, 'Complete!', 'Downloading merged report cards...');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const className = document.getElementById('classSelect').options[document.getElementById('classSelect').selectedIndex]?.text || 'class';
+                a.download = `report_cards_${className}_${term}_${year}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                setTimeout(closeProgress, 1500);
+            } else {
+                const error = await response.json();
+                closeProgress();
+                showError(error.message || 'Failed to generate class report cards');
+            }
+        } catch (error) {
+            closeProgress();
+            showError('Failed to generate class report cards: ' + error.message);
+        }
+    }
+    
+    let progressInterval;
+    
+    function showProgress(title, message) {
+        const modal = document.getElementById('progressModal');
+        document.getElementById('progressTitle').textContent = title;
+        document.getElementById('progressMessage').textContent = message;
+        document.getElementById('progressBar').style.width = '0%';
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        
+        let progress = 0;
+        progressInterval = setInterval(() => {
+            progress += 10;
+            if (progress <= 90) {
+                document.getElementById('progressBar').style.width = progress + '%';
+            }
+        }, 500);
+    }
+    
+    function updateProgress(percent, message, detail) {
+        if (progressInterval) clearInterval(progressInterval);
+        document.getElementById('progressBar').style.width = percent + '%';
+        document.getElementById('progressMessage').textContent = message;
+        document.getElementById('progressDetail').textContent = detail;
+    }
+    
+    function closeProgress() {
+        if (progressInterval) clearInterval(progressInterval);
+        const modal = document.getElementById('progressModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function closeErrorModal() {
+        document.getElementById('errorModal').classList.add('hidden');
+        document.getElementById('errorModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showError(message) {
+        document.getElementById('errorMessage').textContent = message;
+        document.getElementById('errorModal').classList.remove('hidden');
+        document.getElementById('errorModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    window.onclick = function(event) {
+        const errorModal = document.getElementById('errorModal');
+        const progressModal = document.getElementById('progressModal');
+        if (event.target === errorModal) closeErrorModal();
+        if (event.target === progressModal) closeProgress();
+    };
+</script>
+{% endblock %}

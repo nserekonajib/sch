@@ -1,0 +1,407 @@
+<!-- templates/institute/profile.html - Institute Profile Page -->
+{% extends "base.html" %}
+
+{% block title %}Institute Profile - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-card {
+        transition: all 0.3s ease;
+    }
+    .profile-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    .logo-preview {
+        transition: all 0.3s ease;
+    }
+    .logo-preview:hover {
+        transform: scale(1.05);
+    }
+    .upload-area {
+        border: 2px dashed #e2e8f0;
+        transition: all 0.3s ease;
+    }
+    .upload-area:hover {
+        border-color: #ffa500;
+        background-color: #fff7ed;
+    }
+    .form-input:focus {
+        box-shadow: 0 0 0 3px rgba(255, 165, 0, 0.1);
+        border-color: #ffa500;
+    }
+    .section-title {
+        position: relative;
+        display: inline-block;
+    }
+    .section-title:after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 0;
+        width: 50px;
+        height: 3px;
+        background: linear-gradient(90deg, #ffa500, #ff8c00);
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Institute Profile</h1>
+        <p class="text-gray-600">Manage your institute information and branding</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column - Logo Upload Section -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-2xl shadow-lg p-6 profile-card">
+                <div class="text-center">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Institute Logo</h3>
+                    
+                    <!-- Logo Preview -->
+                    <div class="relative inline-block">
+                        <div class="w-40 h-40 mx-auto bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-orange-200 logo-preview">
+                            {% if institute.logo_url %}
+                                <img src="{{ institute.logo_url }}" alt="Institute Logo" class="w-full h-full object-cover">
+                            {% else %}
+                                <div class="text-center">
+                                    <i class="fas fa-school text-6xl text-orange-300"></i>
+                                    <p class="text-xs text-gray-500 mt-2">No Logo</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if institute.logo_url %}
+                            <button onclick="removeLogo()" 
+                                    class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 transition-all shadow-md">
+                                <i class="fas fa-times text-sm"></i>
+                            </button>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Upload Form -->
+                    <form id="logoUploadForm" method="POST" enctype="multipart/form-data" class="mt-6">
+                        <input type="hidden" name="action" value="update_logo">
+                        <div class="upload-area rounded-xl p-6 cursor-pointer text-center" onclick="document.getElementById('logoInput').click()">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-orange-400 mb-2"></i>
+                            <p class="text-sm text-gray-600">Click to upload or drag and drop</p>
+                            <p class="text-xs text-gray-400 mt-1">PNG, JPG, JPEG up to 2MB</p>
+                            <input type="file" id="logoInput" name="logo" accept="image/*" class="hidden" onchange="uploadLogo(this)">
+                        </div>
+                    </form>
+                    
+                    <div class="mt-4 text-center">
+                        <p class="text-xs text-gray-500">
+                            <i class="fas fa-info-circle"></i> Recommended size: 200x200px
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Institute Info Card -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 mt-6 profile-card">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Institute Details</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span class="text-gray-600 text-sm">Institute Code</span>
+                        <span class="font-mono text-sm font-semibold text-orange-600">{{ institute.institute_code }}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span class="text-gray-600 text-sm">Created</span>
+                        <span class="text-sm text-gray-800">{{ institute.created_at[:10] if institute.created_at else 'N/A' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2">
+                        <span class="text-gray-600 text-sm">Last Updated</span>
+                        <span class="text-sm text-gray-800">{{ institute.updated_at[:10] if institute.updated_at else 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column - Profile Form -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl shadow-lg profile-card">
+                <div class="border-b border-gray-200 px-6 py-4">
+                    <h3 class="text-xl font-semibold text-gray-800 section-title">General Information</h3>
+                    <p class="text-sm text-gray-500 mt-2">Update your institute's basic information</p>
+                </div>
+                
+                <form method="POST" action="{{ url_for('instituteProfile.profile') }}" class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Institute Name -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Institute Name <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" name="institute_name" 
+                                   value="{{ institute.institute_name or '' }}"
+                                   placeholder="Enter your institute name"
+                                   class="form-input w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-all">
+                        </div>
+                        
+                        <!-- Target Line / Tagline -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Institute Target Line / Tagline
+                            </label>
+                            <input type="text" name="target_line" 
+                                   value="{{ institute.target_line or '' }}"
+                                   placeholder="e.g., Empowering Minds, Building Futures"
+                                   class="form-input w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-all">
+                        </div>
+                        
+                        <!-- Phone Number -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Phone Number <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-phone text-gray-400 text-sm"></i>
+                                </div>
+                                <input type="tel" name="phone_number" 
+                                       value="{{ institute.phone_number or '' }}"
+                                       placeholder="+1 234 567 8900"
+                                       class="form-input w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-all">
+                            </div>
+                        </div>
+                        
+                        <!-- Email -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Email Address
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-envelope text-gray-400 text-sm"></i>
+                                </div>
+                                <input type="email" name="email" 
+                                       value="{{ institute.email or user_email }}"
+                                       placeholder="admin@institute.com"
+                                       class="form-input w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-all">
+                            </div>
+                        </div>
+                        
+                        <!-- Website -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Website URL
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-globe text-gray-400 text-sm"></i>
+                                </div>
+                                <input type="url" name="website" 
+                                       value="{{ institute.website or '' }}"
+                                       placeholder="https://www.yourinstitute.com"
+                                       class="form-input w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-all">
+                            </div>
+                        </div>
+                        
+                        <!-- Country -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Country <span class="text-red-500">*</span>
+                            </label>
+                            <select name="country" 
+                                    class="form-input w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-all bg-white">
+                                <option value="">Select Country</option>
+                                {% for country in countries %}
+                                    <option value="{{ country }}" {% if institute.country == country %}selected{% endif %}>
+                                        {{ country }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Address -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Address
+                            </label>
+                            <div class="relative">
+                                <div class="absolute top-3 left-3 pointer-events-none">
+                                    <i class="fas fa-map-marker-alt text-gray-400 text-sm"></i>
+                                </div>
+                                <textarea name="address" rows="3" 
+                                          placeholder="Street address, city, state, postal code"
+                                          class="form-input w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500 transition-all resize-none">{{ institute.address or '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="flex items-center justify-end gap-3 mt-8 pt-4 border-t border-gray-200">
+                        <button type="reset" 
+                                class="px-6 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                            <i class="fas fa-save"></i>
+                            Update Profile
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Uploading logo...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Upload logo function
+    function uploadLogo(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            
+            // Validate file type
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+            if (!validTypes.includes(file.type)) {
+                showFlashMessage('Please upload a valid image (PNG, JPG, JPEG)', 'error');
+                return;
+            }
+            
+            // Validate file size (2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                showFlashMessage('File size must be less than 2MB', 'error');
+                return;
+            }
+            
+            // Show loading overlay
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('logo', file);
+            formData.append('action', 'update_logo');
+            
+            // Upload to server
+            fetch('{{ url_for("instituteProfile.profile") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(html => {
+                // Reload page to show updated logo
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showFlashMessage('Error uploading logo', 'error');
+                overlay.classList.remove('flex');
+                overlay.classList.add('hidden');
+            });
+        }
+    }
+    
+    // Remove logo function
+    function removeLogo() {
+        if (confirm('Are you sure you want to remove the institute logo?')) {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            
+            fetch('{{ url_for("instituteProfile.remove_logo") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showFlashMessage('Logo removed successfully', 'success');
+                    window.location.reload();
+                } else {
+                    showFlashMessage(data.message, 'error');
+                }
+                overlay.classList.remove('flex');
+                overlay.classList.add('hidden');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showFlashMessage('Error removing logo', 'error');
+                overlay.classList.remove('flex');
+                overlay.classList.add('hidden');
+            });
+        }
+    }
+    
+    // Helper function to show flash messages
+    function showFlashMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            // Create flash container if not exists
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+    
+    // Preview image before upload
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.querySelector('.logo-preview img');
+                if (preview) {
+                    preview.src = e.target.result;
+                } else {
+                    const container = document.querySelector('.logo-preview');
+                    container.innerHTML = `<img src="${e.target.result}" alt="Preview" class="w-full h-full object-cover">`;
+                }
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+    
+    // Auto-save indicator
+    let saveTimeout;
+    const formInputs = document.querySelectorAll('input, select, textarea');
+    formInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            const saveIndicator = document.querySelector('#saveIndicator');
+            if (saveIndicator) {
+                saveIndicator.classList.remove('hidden');
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    saveIndicator.classList.add('hidden');
+                }, 3000);
+            }
+        });
+    });
+</script>
+{% endblock %}

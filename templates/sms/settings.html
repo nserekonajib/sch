@@ -1,0 +1,353 @@
+<!-- templates/sms/settings.html - SMS Integration Settings -->
+{% extends "base.html" %}
+
+{% block title %}SMS Settings - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-card {
+        transition: all 0.3s ease;
+    }
+    .settings-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 52px;
+        height: 28px;
+    }
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.3s;
+        border-radius: 28px;
+    }
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+    }
+    input:checked + .toggle-slider {
+        background-color: #ffa500;
+    }
+    input:checked + .toggle-slider:before {
+        transform: translateX(24px);
+    }
+    .info-box {
+        background: linear-gradient(135deg, #fef9e7 0%, #fff 100%);
+        border-left: 4px solid #ffa500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">SMS Integration</h1>
+        <p class="text-sm text-gray-600">Configure SMS notifications for fee payments and other communications</p>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6">
+        <!-- SMS Settings Form -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden settings-card">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-sms text-orange-500"></i>
+                    SMS Gateway Configuration
+                </h2>
+            </div>
+            
+            <div class="p-6">
+                <form id="smsSettingsForm">
+                    <!-- Enable SMS Toggle -->
+                    <div class="mb-6 flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div>
+                            <label class="font-semibold text-gray-800">Enable SMS Notifications</label>
+                            <p class="text-xs text-gray-500 mt-1">Turn on/off SMS notifications for fee payments</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="smsEnabled" name="enabled" {% if settings and settings.enabled %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <!-- API Credentials -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">API Username *</label>
+                        <input type="text" id="apiUsername" name="api_username" 
+                               value="{{ settings.api_username if settings else '' }}"
+                               placeholder="Enter your API username"
+                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <p class="text-xs text-gray-500 mt-1">Your CommsSDK API username</p>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">API Key *</label>
+                        <div class="relative">
+                            <input type="password" id="apiKey" name="api_key" 
+                                   value="{{ settings.api_key if settings else '' }}"
+                                   placeholder="Enter your API key"
+                                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-eye" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Your CommsSDK API key</p>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Sender ID</label>
+                        <input type="text" id="senderId" name="sender_id" 
+                               value="{{ settings.sender_id if settings else 'SCHOOL' }}"
+                               placeholder="SCHOOL"
+                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <p class="text-xs text-gray-500 mt-1">Maximum 11 characters. Will appear as sender name</p>
+                    </div>
+                    
+                    <!-- Send on Payment Toggle -->
+                    <div class="mb-6 flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div>
+                            <label class="font-semibold text-gray-800">Send SMS on Payment</label>
+                            <p class="text-xs text-gray-500 mt-1">Automatically send SMS receipt after fee payment</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="sendOnPayment" name="send_on_payment" {% if settings and settings.send_on_payment %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <!-- Info Box -->
+                    <div class="info-box rounded-lg p-4 mb-6">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-info-circle text-orange-500 mt-0.5"></i>
+                            <div>
+                                <p class="text-sm font-semibold text-gray-800 mb-1">How it works</p>
+                                <p class="text-xs text-gray-600">When a fee payment is processed, an SMS will be automatically sent to the student's registered phone number with payment details, receipt number, and remaining balance.</p>
+                                <p class="text-xs text-gray-600 mt-2">Make sure student phone numbers are correctly entered in their profiles.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Test SMS Section -->
+                    <div class="border-t border-gray-200 pt-6 mb-6">
+                        <h3 class="text-md font-semibold text-gray-800 mb-4">Test SMS</h3>
+                        <div class="flex gap-3">
+                            <div class="flex-1">
+                                <input type="tel" id="testPhone" placeholder="Enter phone number (e.g., 256700000000)" 
+                                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            </div>
+                            <button type="button" onclick="sendTestSMS()" 
+                                    class="px-6 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all flex items-center gap-2">
+                                <i class="fas fa-paper-plane"></i>
+                                Send Test
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Test your SMS configuration with a sample message</p>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex gap-3 pt-4 border-t border-gray-200">
+                        <button type="button" onclick="resetForm()" class="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all">
+                            Reset
+                        </button>
+                        <button type="submit" class="flex-1 px-6 py-2.5 btn-gradient text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                            <i class="fas fa-save"></i>
+                            Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- SMS Templates Info -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-envelope-open-text text-orange-500"></i>
+                    SMS Template
+                </h2>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-700 mb-3">Payment confirmation message format:</p>
+                <div class="bg-gray-50 rounded-lg p-4 font-mono text-sm">
+                    <p class="text-gray-800">Payment Received! 🎓</p>
+                    <p class="text-gray-800">Student: [Student Name]</p>
+                    <p class="text-gray-800">Amount: UGX [Amount]</p>
+                    <p class="text-gray-800">Balance: UGX [Balance]</p>
+                    <p class="text-gray-800">Method: [Payment Method]</p>
+                    <p class="text-gray-800">Receipt: [Receipt Number]</p>
+                    <p class="text-gray-800 mt-2">[Institute Name]</p>
+                    <p class="text-gray-800">Thank you for your payment!</p>
+                </div>
+                <p class="text-xs text-gray-500 mt-3">Note: Any notes added during payment will also be included in the SMS</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Processing...</p>
+    </div>
+</div>
+
+<script>
+    function togglePassword() {
+        const passwordInput = document.getElementById('apiKey');
+        const icon = document.getElementById('toggleIcon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+    
+    async function sendTestSMS() {
+        const phone = document.getElementById('testPhone').value.trim();
+        
+        if (!phone) {
+            showMessage('Please enter a phone number', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/sms-settings/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                showMessage(result.message, 'success');
+                document.getElementById('testPhone').value = '';
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to send test SMS', 'error');
+        }
+    }
+    
+    // Save SMS Settings
+    document.getElementById('smsSettingsForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const data = {
+            api_username: document.getElementById('apiUsername').value.trim(),
+            api_key: document.getElementById('apiKey').value.trim(),
+            sender_id: document.getElementById('senderId').value.trim() || 'SCHOOL',
+            enabled: document.getElementById('smsEnabled').checked,
+            send_on_payment: document.getElementById('sendOnPayment').checked
+        };
+        
+        try {
+            const response = await fetch('/sms-settings/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                showMessage(result.message, 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to save settings', 'error');
+        }
+    });
+    
+    function resetForm() {
+        document.getElementById('apiUsername').value = '';
+        document.getElementById('apiKey').value = '';
+        document.getElementById('senderId').value = 'SCHOOL';
+        document.getElementById('smsEnabled').checked = false;
+        document.getElementById('sendOnPayment').checked = true;
+        document.getElementById('testPhone').value = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+</script>
+{% endblock %}

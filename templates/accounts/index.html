@@ -1,0 +1,1017 @@
+<!-- templates/accounts/index.html - Complete with Report Generation -->
+{% extends "base.html" %}
+
+{% block title %}Accounts Management - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .income-row {
+        background-color: #f0fdf4;
+    }
+    .expense-row {
+        background-color: #fef2f2;
+    }
+    .income-badge {
+        background-color: #bbf7d0;
+        color: #166534;
+    }
+    .expense-badge {
+        background-color: #fecaca;
+        color: #991b1b;
+    }
+    .tab-active {
+        background-color: #ffa500;
+        color: white;
+    }
+    .tab-inactive {
+        background-color: #f3f4f6;
+        color: #6b7280;
+    }
+    .tab-inactive:hover {
+        background-color: #e5e7eb;
+    }
+    .report-btn {
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .account-card:hover .report-btn {
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Accounts Management</h1>
+        <p class="text-sm text-gray-600">Manage chart of accounts, income, expenses, and generate reports</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-blue-500">
+            <p class="text-xs text-gray-500">School Fees</p>
+            <p class="text-lg font-bold text-blue-600" id="statSchoolFees">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-green-500">
+            <p class="text-xs text-gray-500">Other Income</p>
+            <p class="text-lg font-bold text-green-600" id="statOtherIncome">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-teal-500">
+            <p class="text-xs text-gray-500">Total Income</p>
+            <p class="text-lg font-bold text-teal-600" id="statTotalIncome">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-red-500">
+            <p class="text-xs text-gray-500">Expenses</p>
+            <p class="text-lg font-bold text-red-600" id="statExpense">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-purple-500">
+            <p class="text-xs text-gray-500">Net Profit</p>
+            <p class="text-lg font-bold text-purple-600" id="statNet">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-yellow-500">
+            <p class="text-xs text-gray-500">Accounts</p>
+            <p class="text-lg font-bold text-yellow-600" id="statAccounts">0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-orange-500">
+            <p class="text-xs text-gray-500">Transactions</p>
+            <p class="text-lg font-bold text-orange-600" id="statTransactions">0</p>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-6 flex gap-2 border-b border-gray-200 flex-wrap">
+        <button onclick="showTab('chart')" id="tabChart" class="px-4 py-2 rounded-t-lg font-medium transition-all tab-active">
+            <i class="fas fa-book"></i> Chart of Accounts
+        </button>
+        <button onclick="showTab('income')" id="tabIncome" class="px-4 py-2 rounded-t-lg font-medium transition-all tab-inactive">
+            <i class="fas fa-plus-circle text-green-600"></i> Income
+        </button>
+        <button onclick="showTab('expense')" id="tabExpense" class="px-4 py-2 rounded-t-lg font-medium transition-all tab-inactive">
+            <i class="fas fa-minus-circle text-red-600"></i> Expenses
+        </button>
+        <button onclick="showTab('transactions')" id="tabTransactions" class="px-4 py-2 rounded-t-lg font-medium transition-all tab-inactive">
+            <i class="fas fa-list"></i> All Transactions
+        </button>
+    </div>
+
+    <!-- Chart of Accounts Tab -->
+    <div id="chartTab" class="tab-content">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex justify-between items-center flex-wrap gap-2">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-book text-orange-500"></i>
+                    Chart of Accounts
+                </h2>
+                <button onclick="openAccountModal()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    New Account
+                </button>
+            </div>
+            <div class="p-5" id="chartOfAccountsContainer">
+                <div class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                    <p class="text-sm text-gray-500 mt-2">Loading accounts...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Income Tab -->
+    <div id="incomeTab" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-plus-circle text-green-600"></i>
+                    Income Transactions
+                </h2>
+                <button onclick="openTransactionModal('income')" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    Add Income
+                </button>
+            </div>
+            <div class="p-5" id="incomeContainer">
+                <div class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                    <p class="text-sm text-gray-500 mt-2">Loading income...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expenses Tab -->
+    <div id="expenseTab" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-minus-circle text-red-600"></i>
+                    Expense Transactions
+                </h2>
+                <button onclick="openTransactionModal('expense')" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    Add Expense
+                </button>
+            </div>
+            <div class="p-5" id="expenseContainer">
+                <div class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                    <p class="text-sm text-gray-500 mt-2">Loading expenses...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Transactions Tab -->
+    <div id="transactionsTab" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-list text-orange-500"></i>
+                    All Transactions
+                </h2>
+            </div>
+            <div class="p-5" id="allTransactionsContainer">
+                <div class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                    <p class="text-sm text-gray-500 mt-2">Loading transactions...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Account Modal -->
+<div id="accountModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Create New Account</h3>
+            <button onclick="closeAccountModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-5">
+            <form id="accountForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Account Name *</label>
+                    <input type="text" id="accountName" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Account Type *</label>
+                    <select id="accountType" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="asset">Asset</option>
+                        <option value="liability">Liability</option>
+                        <option value="equity">Equity</option>
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea id="accountDescription" rows="3" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeAccountModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                        Create Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Modal -->
+<div id="transactionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800" id="transactionModalTitle">Add Income</h3>
+            <button onclick="closeTransactionModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-5">
+            <form id="transactionForm">
+                <input type="hidden" id="transactionType">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Account *</label>
+                    <select id="transactionAccountId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">Select Account</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount (UGX) *</label>
+                    <input type="number" id="transactionAmount" step="0.01" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Transaction Date *</label>
+                    <input type="date" id="transactionDate" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method *</label>
+                    <select id="transactionPaymentMethod" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="cash">Cash</option>
+                        <option value="bank">Bank Transfer</option>
+                        <option value="mobile_money">Mobile Money</option>
+                        <option value="cheque">Cheque</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Reference Number</label>
+                    <input type="text" id="transactionReference" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea id="transactionDescription" rows="2" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeTransactionModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                        Save Transaction
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Report Modal -->
+<div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800" id="reportModalTitle">Account Report</h3>
+            <button onclick="closeReportModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-5">
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <input type="date" id="reportStartDate" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                    <input type="date" id="reportEndDate" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+            </div>
+            
+            <div class="mb-6 flex gap-3">
+                <button onclick="generateReport()" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium flex items-center justify-center gap-2">
+                    <i class="fas fa-chart-line"></i>
+                    Generate Report
+                </button>
+                <button onclick="exportReport('excel')" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-file-excel"></i>
+                    Export Excel
+                </button>
+                <button onclick="exportReport('csv')" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-file-csv"></i>
+                    Export CSV
+                </button>
+            </div>
+            
+            <div id="reportContent" class="max-h-96 overflow-y-auto">
+                <div class="text-center py-8 text-gray-500">Select date range and click Generate Report</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 p-6 text-center transform transition-all modal-container">
+        <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-check-circle text-3xl text-green-500"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">Success!</h3>
+        <p class="text-gray-600 mb-6" id="successMessage">Operation completed successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let currentTab = 'chart';
+    let currentAccountId = null;
+    let currentAccountName = null;
+    
+    // Load dashboard stats
+    async function loadStats() {
+        try {
+            const response = await fetch('/accounts/dashboard/stats');
+            const result = await response.json();
+            
+            if (result.success) {
+                document.getElementById('statSchoolFees').textContent = `UGX ${result.stats.school_fees_collected.toLocaleString()}`;
+                document.getElementById('statOtherIncome').textContent = `UGX ${result.stats.other_income.toLocaleString()}`;
+                document.getElementById('statTotalIncome').textContent = `UGX ${result.stats.total_income.toLocaleString()}`;
+                document.getElementById('statExpense').textContent = `UGX ${result.stats.total_expenses.toLocaleString()}`;
+                document.getElementById('statAccounts').textContent = result.stats.total_accounts;
+                document.getElementById('statTransactions').textContent = result.stats.total_transactions;
+                
+                const netElement = document.getElementById('statNet');
+                netElement.textContent = `UGX ${result.stats.net.toLocaleString()}`;
+                if (result.stats.net >= 0) {
+                    netElement.classList.add('text-green-600');
+                    netElement.classList.remove('text-red-600');
+                } else {
+                    netElement.classList.add('text-red-600');
+                    netElement.classList.remove('text-green-600');
+                }
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+    
+    // Load Chart of Accounts
+    async function loadChartOfAccounts() {
+        try {
+            const response = await fetch('/accounts/chart-of-accounts');
+            const result = await response.json();
+            
+            if (result.success) {
+                const container = document.getElementById('chartOfAccountsContainer');
+                const accounts = result.accounts;
+                
+                let html = '';
+                const typeNames = {
+                    'asset': 'Assets',
+                    'liability': 'Liabilities',
+                    'equity': 'Equity',
+                    'income': 'Income',
+                    'expense': 'Expenses'
+                };
+                
+                for (const [type, typeAccounts] of Object.entries(accounts)) {
+                    if (typeAccounts.length > 0) {
+                        html += `
+                            <div class="mb-6">
+                                <h3 class="text-md font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-200">
+                                    ${typeNames[type] || type.toUpperCase()}
+                                </h3>
+                                <div class="space-y-2">
+                                    ${typeAccounts.map(account => `
+                                        <div class="account-card flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-orange-50 transition-all">
+                                            <div class="flex-1">
+                                                <p class="font-medium text-gray-800">${account.account_name}</p>
+                                                <p class="text-xs text-gray-500">${account.account_code}</p>
+                                                ${account.description ? `<p class="text-xs text-gray-400 mt-1">${account.description}</p>` : ''}
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">${account.account_type}</span>
+                                                <button onclick="openReportModal('${account.id}', '${account.account_name}')" 
+                                                        class="report-btn px-3 py-1 bg-orange-500 text-white rounded-lg text-xs hover:bg-orange-600 transition-all">
+                                                    <i class="fas fa-chart-line"></i> Run Report
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                if (html === '') {
+                    html = '<div class="text-center py-8"><p class="text-gray-500">No accounts created yet. Click "New Account" to get started.</p></div>';
+                }
+                
+                container.innerHTML = html;
+            }
+        } catch (error) {
+            console.error('Error loading accounts:', error);
+            document.getElementById('chartOfAccountsContainer').innerHTML = '<div class="text-center py-8 text-red-500">Error loading accounts</div>';
+        }
+    }
+    
+    // Load income transactions
+    async function loadIncome() {
+        try {
+            const response = await fetch('/accounts/transactions');
+            const result = await response.json();
+            
+            if (result.success) {
+                const income = result.transactions.filter(t => t.type === 'income');
+                const container = document.getElementById('incomeContainer');
+                
+                if (income.length > 0) {
+                    container.innerHTML = `
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead>
+                                    <tr class="bg-gray-50">
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Account</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Amount</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Payment Method</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    ${income.map(trans => `
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 text-sm text-gray-600">${trans.date}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-800">${trans.account_name}</td>
+                                            <td class="px-4 py-3 text-sm text-right text-green-600 font-medium">UGX ${trans.amount.toLocaleString()}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-600 capitalize">${trans.payment_method}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-500">${trans.description || '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">No income records found</p></div>';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading income:', error);
+        }
+    }
+    
+    // Load expense transactions
+    async function loadExpenses() {
+        try {
+            const response = await fetch('/accounts/transactions');
+            const result = await response.json();
+            
+            if (result.success) {
+                const expenses = result.transactions.filter(t => t.type === 'expense');
+                const container = document.getElementById('expenseContainer');
+                
+                if (expenses.length > 0) {
+                    container.innerHTML = `
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead>
+                                    <tr class="bg-gray-50">
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Account</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Amount</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Payment Method</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    ${expenses.map(trans => `
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 text-sm text-gray-600">${trans.date}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-800">${trans.account_name}</td>
+                                            <td class="px-4 py-3 text-sm text-right text-red-600 font-medium">UGX ${trans.amount.toLocaleString()}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-600 capitalize">${trans.payment_method}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-500">${trans.description || '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">No expense records found</p></div>';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading expenses:', error);
+        }
+    }
+    
+    // Load all transactions
+    async function loadAllTransactions() {
+        try {
+            const response = await fetch('/accounts/transactions');
+            const result = await response.json();
+            
+            if (result.success) {
+                const container = document.getElementById('allTransactionsContainer');
+                const transactions = result.transactions;
+                
+                if (transactions.length > 0) {
+                    container.innerHTML = `
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead>
+                                    <tr class="bg-gray-50">
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Type</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Account/Student</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Amount</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Payment Method</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Reference</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    ${transactions.map(trans => `
+                                        <tr class="hover:bg-gray-50 ${trans.type === 'income' ? 'bg-green-50' : trans.type === 'expense' ? 'bg-red-50' : 'bg-blue-50'}">
+                                            <td class="px-4 py-3 text-sm text-gray-600">${trans.date}</td>
+                                            <td class="px-4 py-3 text-sm">
+                                                <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                                    ${trans.type === 'income' ? 'income-badge' : trans.type === 'expense' ? 'expense-badge' : 'bg-blue-100 text-blue-800'}">
+                                                    ${trans.type_label}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-800">${trans.student_name || trans.account_name}</td>
+                                            <td class="px-4 py-3 text-sm text-right ${trans.type === 'income' ? 'text-green-600' : 'text-red-600'} font-medium">
+                                                UGX ${trans.amount.toLocaleString()}
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-600 capitalize">${trans.payment_method}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-500">${trans.reference || '-'}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-500">${trans.description || '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">No transactions found</p></div>';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading transactions:', error);
+        }
+    }
+    
+    // Open Report Modal
+    function openReportModal(accountId, accountName) {
+        currentAccountId = accountId;
+        currentAccountName = accountName;
+        document.getElementById('reportModalTitle').textContent = `Report: ${accountName}`;
+        
+        // Set default date range (current month)
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        document.getElementById('reportStartDate').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('reportEndDate').value = today.toISOString().split('T')[0];
+        
+        document.getElementById('reportContent').innerHTML = '<div class="text-center py-8 text-gray-500">Select date range and click Generate Report</div>';
+        
+        document.getElementById('reportModal').classList.remove('hidden');
+        document.getElementById('reportModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeReportModal() {
+        document.getElementById('reportModal').classList.add('hidden');
+        document.getElementById('reportModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        currentAccountId = null;
+    }
+    
+    // Generate Report
+    async function generateReport() {
+        const startDate = document.getElementById('reportStartDate').value;
+        const endDate = document.getElementById('reportEndDate').value;
+        
+        if (!startDate || !endDate) {
+            showMessage('Please select both start and end dates', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/accounts/account-report/${currentAccountId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ start_date: startDate, end_date: endDate })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                const container = document.getElementById('reportContent');
+                
+                let transactionsHtml = '';
+                result.transactions.forEach(trans => {
+                    transactionsHtml += `
+                        <tr class="border-b border-gray-200">
+                            <td class="px-4 py-2 text-sm text-gray-600">${trans.date}</td>
+                            <td class="px-4 py-2 text-sm text-gray-800">${trans.description || '-'}</td>
+                            <td class="px-4 py-2 text-sm text-gray-500">${trans.reference || '-'}</td>
+                            <td class="px-4 py-2 text-sm text-right ${trans.type === 'credit' ? 'text-green-600' : 'text-red-600'} font-medium">
+                                UGX ${trans.amount.toLocaleString()}
+                            </td>
+                            <td class="px-4 py-2 text-sm text-gray-600 capitalize">${trans.type}</td>
+                        </tr>
+                    `;
+                });
+                
+                container.innerHTML = `
+                    <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <p><strong>Account:</strong> ${result.account.account_name}</p>
+                        <p><strong>Account Code:</strong> ${result.account.account_code}</p>
+                        <p><strong>Account Type:</strong> ${result.account.account_type.toUpperCase()}</p>
+                        <p><strong>Period:</strong> ${result.start_date || 'Start'} to ${result.end_date || 'End'}</p>
+                        <p class="mt-2"><strong>Total ${result.account.account_type === 'income' ? 'Income' : 'Expenses'}:</strong> UGX ${result.total.toLocaleString()}</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Date</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Description</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Reference</th>
+                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500">Amount</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Type</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                ${transactionsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to generate report', 'error');
+        }
+    }
+    
+    // Export Report
+    async function exportReport(format) {
+        const startDate = document.getElementById('reportStartDate').value;
+        const endDate = document.getElementById('reportEndDate').value;
+        
+        if (!startDate || !endDate) {
+            showMessage('Please select date range first', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/accounts/export-report/${currentAccountId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    start_date: startDate, 
+                    end_date: endDate,
+                    format: format
+                })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = response.headers.get('Content-Disposition').split('filename=')[1].replace(/"/g, '');
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showMessage('Report exported successfully', 'success');
+            } else {
+                const error = await response.json();
+                showMessage(error.message || 'Export failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Failed to export report', 'error');
+        } finally {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+        }
+    }
+    
+    // Load accounts for dropdown
+    async function loadAccountsForDropdown(type) {
+        try {
+            const response = await fetch('/accounts/chart-of-accounts');
+            const result = await response.json();
+            
+            if (result.success) {
+                const accounts = result.accounts;
+                const accountType = type === 'income' ? 'income' : 'expense';
+                const availableAccounts = accounts[accountType] || [];
+                
+                const select = document.getElementById('transactionAccountId');
+                select.innerHTML = '<option value="">Select Account</option>';
+                
+                availableAccounts.forEach(account => {
+                    select.innerHTML += `<option value="${account.id}">${account.account_name} (${account.account_code})</option>`;
+                });
+            }
+        } catch (error) {
+            console.error('Error loading accounts:', error);
+        }
+    }
+    
+    // Tab switching
+    function showTab(tab) {
+        currentTab = tab;
+        
+        const tabs = ['chart', 'income', 'expense', 'transactions'];
+        tabs.forEach(t => {
+            const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+            const content = document.getElementById(`${t}Tab`);
+            if (t === tab) {
+                btn.classList.remove('tab-inactive');
+                btn.classList.add('tab-active');
+                content.classList.remove('hidden');
+            } else {
+                btn.classList.remove('tab-active');
+                btn.classList.add('tab-inactive');
+                content.classList.add('hidden');
+            }
+        });
+        
+        if (tab === 'chart') loadChartOfAccounts();
+        else if (tab === 'income') loadIncome();
+        else if (tab === 'expense') loadExpenses();
+        else if (tab === 'transactions') loadAllTransactions();
+    }
+    
+    // Account Modal
+    function openAccountModal() {
+        document.getElementById('accountModal').classList.remove('hidden');
+        document.getElementById('accountModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeAccountModal() {
+        document.getElementById('accountModal').classList.add('hidden');
+        document.getElementById('accountModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        document.getElementById('accountForm').reset();
+    }
+    
+    // Transaction Modal
+    function openTransactionModal(type) {
+        document.getElementById('transactionType').value = type;
+        document.getElementById('transactionModalTitle').textContent = type === 'income' ? 'Add Income' : 'Add Expense';
+        
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('transactionDate').value = today;
+        
+        loadAccountsForDropdown(type);
+        
+        document.getElementById('transactionModal').classList.remove('hidden');
+        document.getElementById('transactionModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeTransactionModal() {
+        document.getElementById('transactionModal').classList.add('hidden');
+        document.getElementById('transactionModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        document.getElementById('transactionForm').reset();
+    }
+    
+    // Form Submissions
+    document.getElementById('accountForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const data = {
+            account_name: document.getElementById('accountName').value,
+            account_type: document.getElementById('accountType').value,
+            description: document.getElementById('accountDescription').value
+        };
+        
+        try {
+            const response = await fetch('/accounts/chart-of-accounts/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeAccountModal();
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                loadStats();
+                loadChartOfAccounts();
+                setTimeout(() => closeSuccessModal(), 2000);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to create account', 'error');
+        }
+    });
+    
+    document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const type = document.getElementById('transactionType').value;
+        const endpoint = type === 'income' ? '/accounts/income/create' : '/accounts/expense/create';
+        
+        const data = {
+            account_id: document.getElementById('transactionAccountId').value,
+            amount: parseFloat(document.getElementById('transactionAmount').value),
+            transaction_date: document.getElementById('transactionDate').value,
+            payment_method: document.getElementById('transactionPaymentMethod').value,
+            reference_number: document.getElementById('transactionReference').value,
+            description: document.getElementById('transactionDescription').value
+        };
+        
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeTransactionModal();
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                loadStats();
+                loadIncome();
+                loadExpenses();
+                loadAllTransactions();
+                setTimeout(() => closeSuccessModal(), 2000);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to save transaction', 'error');
+        }
+    });
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+    
+    // Close modals on outside click
+    window.onclick = function(event) {
+        const accountModal = document.getElementById('accountModal');
+        const transactionModal = document.getElementById('transactionModal');
+        const reportModal = document.getElementById('reportModal');
+        const successModal = document.getElementById('successModal');
+        
+        if (event.target === accountModal) closeAccountModal();
+        if (event.target === transactionModal) closeTransactionModal();
+        if (event.target === reportModal) closeReportModal();
+        if (event.target === successModal) closeSuccessModal();
+    };
+    
+    // Initial load
+    loadStats();
+    loadChartOfAccounts();
+</script>
+{% endblock %}

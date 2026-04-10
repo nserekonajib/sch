@@ -1,0 +1,787 @@
+<!-- templates/staff_attendance/index.html - Fixed with proper role handling -->
+{% extends "base.html" %}
+
+{% block title %}Staff Attendance - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .scanner-container {
+        position: relative;
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    #qr-reader {
+        width: 100%;
+        border: none;
+    }
+    #qr-reader video {
+        width: 100%;
+        border-radius: 16px;
+    }
+    #qr-reader__scan_region {
+        background: #f3f4f6;
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .attendance-card {
+        transition: all 0.2s;
+    }
+    .attendance-card:hover {
+        transform: translateX(4px);
+        background-color: #fef3c7;
+    }
+    .employee-select-card {
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .employee-select-card:hover {
+        background-color: #fff7ed;
+        transform: translateX(4px);
+    }
+    .employee-select-card.selected {
+        background-color: #ffedd5;
+        border-left: 3px solid #ffa500;
+    }
+    .success-check {
+        animation: checkmark 0.5s ease-out;
+    }
+    @keyframes checkmark {
+        0% {
+            transform: scale(0);
+            opacity: 0;
+        }
+        50% {
+            transform: scale(1.2);
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+    .info-box {
+        background-color: #fef3c7;
+        border-left: 4px solid #ffa500;
+    }
+    .tab-active {
+        background-color: #ffa500;
+        color: white;
+    }
+    .tab-inactive {
+        background-color: #f3f4f6;
+        color: #6b7280;
+    }
+    .role-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 500;
+    }
+    .role-teacher { background-color: #fef3c7; color: #d97706; }
+    .role-accountant { background-color: #dbeafe; color: #1e40af; }
+    .role-librarian { background-color: #e0e7ff; color: #4338ca; }
+    .role-secretary { background-color: #fce7f3; color: #be185d; }
+    .role-support_staff { background-color: #d1fae5; color: #065f46; }
+    .role-other { background-color: #f3f4f6; color: #6b7280; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Staff Attendance</h1>
+        <p class="text-sm text-gray-600">Scan QR codes or manually mark staff attendance</p>
+    </div>
+
+    <!-- Institute Info -->
+    {% if institute %}
+    <div class="info-box rounded-lg p-3 mb-6">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-building text-orange-500"></i>
+            <span class="text-sm text-gray-700">Institute Code: <strong class="font-mono">{{ institute.institute_code }}</strong></span>
+            <span class="text-xs text-gray-500 ml-2">(QR codes must contain this code)</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6">
+        <button onclick="switchTab('scanner')" id="tabScanner" class="tab-active px-5 py-2 rounded-lg font-medium transition-all">
+            <i class="fas fa-qrcode"></i> QR Scanner
+        </button>
+        <button onclick="switchTab('manual')" id="tabManual" class="tab-inactive px-5 py-2 rounded-lg font-medium transition-all">
+            <i class="fas fa-user-check"></i> Manual Attendance
+        </button>
+    </div>
+
+    <!-- QR Scanner Tab -->
+    <div id="scannerTab" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Scanner Panel -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-qrcode text-orange-500"></i>
+                        QR Code Scanner
+                    </h2>
+                    <p class="text-xs text-gray-500 mt-1">Position the QR code in front of the camera</p>
+                </div>
+                <div class="p-5">
+                    <div id="qr-reader" class="scanner-container"></div>
+                    <div class="mt-4 text-center">
+                        <button onclick="startScanner()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+                            <i class="fas fa-camera"></i> Start Scanner
+                        </button>
+                        <button onclick="stopScanner()" class="ml-2 px-4 py-2 bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-gray-600">
+                            <i class="fas fa-stop"></i> Stop Scanner
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Panel -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-chart-line text-orange-500"></i>
+                        Today's Stats
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <div class="text-center mb-4">
+                        <p class="text-4xl font-bold text-orange-500" id="todayCount">0</p>
+                        <p class="text-sm text-gray-500">Staff Present</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <p class="text-2xl font-bold text-green-600" id="attendancePercent">0%</p>
+                            <p class="text-xs text-gray-500">Attendance Rate</p>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <p class="text-2xl font-bold text-blue-600" id="weekCount">0</p>
+                            <p class="text-xs text-gray-500">This Week</p>
+                        </div>
+                    </div>
+                    <div id="roleStats" class="space-y-2">
+                        <!-- Role stats will be inserted here -->
+                    </div>
+                    <div class="mt-4 text-center">
+                        <button onclick="refreshStats()" class="text-orange-500 hover:text-orange-600 text-sm">
+                            <i class="fas fa-sync-alt"></i> Refresh Stats
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Attendance Tab -->
+    <div id="manualTab" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Search Panel -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden sticky top-4">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-search text-orange-500"></i>
+                        Find Staff
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Role</label>
+                        <select id="roleFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            <option value="">All Roles</option>
+                            {% for role in roles %}
+                            <option value="{{ role }}">{{ role|replace('_', ' ')|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Search Staff</label>
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="text" id="employeeSearchInput" placeholder="Search by name or ID..." 
+                                   class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="searchEmployees()" class="flex-1 btn-gradient px-3 py-2 rounded-lg text-white text-sm font-medium">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <button onclick="markAllPresent()" class="flex-1 px-3 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600">
+                            <i class="fas fa-check-double"></i> Mark All
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employees List -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gray-50">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                            <i class="fas fa-users text-orange-500"></i>
+                            Staff Members
+                        </h2>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="selectAllEmployees" onchange="toggleSelectAll()" class="w-4 h-4 text-orange-500 rounded">
+                            <label class="text-sm text-gray-600">Select All</label>
+                        </div>
+                    </div>
+                </div>
+                <div id="employeesList" class="p-5 max-h-96 overflow-y-auto">
+                    <div class="text-center py-8">
+                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                        <p class="text-gray-500 mt-2">Loading staff...</p>
+                    </div>
+                </div>
+                <div class="p-4 border-t border-gray-200">
+                    <button onclick="markSelectedPresent()" id="markSelectedBtn" disabled
+                            class="w-full btn-gradient py-2 rounded-lg text-white font-medium">
+                        <i class="fas fa-check-circle"></i> Mark Selected Present
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Attendance List -->
+    <div class="mt-6">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-list text-orange-500"></i>
+                    Today's Attendance Records
+                </h2>
+            </div>
+            <div id="attendanceList" class="p-5 max-h-96 overflow-y-auto">
+                <div class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                    <p class="text-gray-500 mt-2">Loading attendance...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="p-6 text-center">
+            <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 success-check">
+                <i class="fas fa-check-circle text-3xl text-green-500"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2" id="successTitle">Attendance Recorded!</h3>
+            <div id="successMessage" class="text-gray-600 mb-6"></div>
+            <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium">
+                Continue
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div id="errorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="p-6 text-center">
+            <div class="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">Error</h3>
+            <p class="text-gray-600 mb-6" id="errorMessage"></p>
+            <button onclick="closeErrorModal()" class="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Processing...</p>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+    let html5QrCode = null;
+    let isScanning = false;
+    let currentEmployees = [];
+    let selectedEmployeeIds = new Set();
+    let searchTimeout;
+    
+    // Helper function to format role safely
+    function formatRole(role) {
+        if (!role) return 'Staff';
+        return role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    // Tab switching
+    function switchTab(tab) {
+        const scannerTab = document.getElementById('scannerTab');
+        const manualTab = document.getElementById('manualTab');
+        const tabScanner = document.getElementById('tabScanner');
+        const tabManual = document.getElementById('tabManual');
+        
+        if (tab === 'scanner') {
+            scannerTab.classList.remove('hidden');
+            manualTab.classList.add('hidden');
+            tabScanner.classList.add('tab-active');
+            tabScanner.classList.remove('tab-inactive');
+            tabManual.classList.add('tab-inactive');
+            tabManual.classList.remove('tab-active');
+        } else {
+            scannerTab.classList.add('hidden');
+            manualTab.classList.remove('hidden');
+            tabManual.classList.add('tab-active');
+            tabManual.classList.remove('tab-inactive');
+            tabScanner.classList.add('tab-inactive');
+            tabScanner.classList.remove('tab-active');
+            loadEmployees();
+        }
+    }
+    
+    // QR Scanner
+    function startScanner() {
+        if (isScanning) stopScanner();
+        
+        html5QrCode = new Html5Qrcode("qr-reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+        
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanError)
+            .then(() => { isScanning = true; showMessage('Scanner started', 'success'); })
+            .catch((err) => { console.error(err); showMessage('Failed to start camera', 'error'); });
+    }
+    
+    function stopScanner() {
+        if (html5QrCode && isScanning) {
+            html5QrCode.stop().then(() => { isScanning = false; }).catch(err => console.error(err));
+        }
+    }
+    
+    async function onScanSuccess(decodedText) {
+        if (isScanning) await html5QrCode.stop();
+        isScanning = false;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/staff-attendance/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ qr_data: decodedText })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                const roleDisplay = formatRole(result.employee.role);
+                showSuccessModal('Attendance Recorded!', `
+                    <div class="text-left bg-gray-50 p-4 rounded-lg">
+                        <div class="flex items-center gap-3 mb-2">
+                            ${result.employee.photo_url ? `<img src="${result.employee.photo_url}" class="w-12 h-12 rounded-full object-cover">` : 
+                                `<div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                                    <i class="fas fa-user-tie text-orange-500 text-xl"></i>
+                                </div>`}
+                            <div>
+                                <p class="font-semibold text-gray-800">${result.employee.name}</p>
+                                <p class="text-sm text-gray-600">ID: ${result.employee.employee_id}</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">Role: ${roleDisplay}</p>
+                        <p class="text-sm text-gray-600">Time: ${result.employee.check_in_time}</p>
+                    </div>
+                `);
+                loadTodayAttendance();
+                loadStats();
+                if (document.getElementById('manualTab').classList.contains('hidden') === false) loadEmployees();
+            } else {
+                showErrorModal(result.message || 'Failed to record attendance');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showErrorModal('Failed to process scan: ' + (error.message || 'Unknown error'));
+        }
+        
+        setTimeout(() => { 
+            if (html5QrCode && !isScanning) {
+                startScanner(); 
+            }
+        }, 2000);
+    }
+    
+    function onScanError(errorMessage) { console.warn(errorMessage); }
+    
+    // Manual Attendance
+    async function searchEmployees() {
+        const searchTerm = document.getElementById('employeeSearchInput').value;
+        const role = document.getElementById('roleFilter').value;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            let url = `/staff-attendance/employees/search?q=${encodeURIComponent(searchTerm)}`;
+            if (role) url += `&role=${role}`;
+            
+            const response = await fetch(url);
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                currentEmployees = result.employees;
+                displayEmployees(currentEmployees);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showErrorModal('Failed to load staff');
+        }
+    }
+    
+    function getRoleBadgeClass(role) {
+        const roleMap = {
+            'teacher': 'role-teacher',
+            'accountant': 'role-accountant',
+            'librarian': 'role-librarian',
+            'secretary': 'role-secretary',
+            'support_staff': 'role-support_staff',
+            'other': 'role-other'
+        };
+        return roleMap[role] || 'role-other';
+    }
+    
+    function displayEmployees(employees) {
+        const container = document.getElementById('employeesList');
+        
+        if (employees.length === 0) {
+            container.innerHTML = `<div class="text-center py-8"><p class="text-gray-400">No staff found</p></div>`;
+            return;
+        }
+        
+        container.innerHTML = employees.map(employee => `
+            <div class="employee-select-card p-3 border-b border-gray-100 ${selectedEmployeeIds.has(employee.id) ? 'selected' : ''} ${employee.is_present ? 'opacity-50' : ''}">
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" class="employee-checkbox w-4 h-4 text-orange-500 rounded" 
+                           data-employee-id="${employee.id}" ${employee.is_present ? 'disabled' : ''}
+                           ${selectedEmployeeIds.has(employee.id) ? 'checked' : ''}
+                           onchange="toggleEmployeeSelect('${employee.id}', this.checked)">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <p class="font-semibold text-gray-800">${employee.name}</p>
+                            <span class="role-badge ${getRoleBadgeClass(employee.role)}">${formatRole(employee.role)}</span>
+                        </div>
+                        <p class="text-xs text-gray-500">${employee.employee_id}</p>
+                    </div>
+                    ${employee.is_present ? '<span class="text-xs text-green-500"><i class="fas fa-check-circle"></i> Present</span>' : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        updateSelectAllButton();
+    }
+    
+    function toggleEmployeeSelect(employeeId, isChecked) {
+        if (isChecked) selectedEmployeeIds.add(employeeId);
+        else selectedEmployeeIds.delete(employeeId);
+        
+        const row = document.querySelector(`.employee-select-card[data-employee-id="${employeeId}"]`);
+        if (row) {
+            if (isChecked) row.classList.add('selected');
+            else row.classList.remove('selected');
+        }
+        
+        updateSelectAllButton();
+        document.getElementById('markSelectedBtn').disabled = selectedEmployeeIds.size === 0;
+    }
+    
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAllEmployees');
+        const checkboxes = document.querySelectorAll('.employee-checkbox:not(:disabled)');
+        
+        checkboxes.forEach(cb => {
+            const employeeId = cb.dataset.employeeId;
+            if (selectAll.checked) {
+                selectedEmployeeIds.add(employeeId);
+                cb.checked = true;
+                const row = cb.closest('.employee-select-card');
+                if (row) row.classList.add('selected');
+            } else {
+                selectedEmployeeIds.delete(employeeId);
+                cb.checked = false;
+                const row = cb.closest('.employee-select-card');
+                if (row) row.classList.remove('selected');
+            }
+        });
+        
+        document.getElementById('markSelectedBtn').disabled = selectedEmployeeIds.size === 0;
+    }
+    
+    function updateSelectAllButton() {
+        const checkboxes = document.querySelectorAll('.employee-checkbox:not(:disabled)');
+        const selectAll = document.getElementById('selectAllEmployees');
+        if (selectAll) selectAll.checked = checkboxes.length > 0 && selectedEmployeeIds.size === checkboxes.length;
+    }
+    
+    async function markSelectedPresent() {
+        if (selectedEmployeeIds.size === 0) {
+            showErrorModal('Please select staff to mark present');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/staff-attendance/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employee_ids: Array.from(selectedEmployeeIds) })
+            });
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                showSuccessModal('Bulk Attendance', result.message);
+                selectedEmployeeIds.clear();
+                loadEmployees();
+                loadTodayAttendance();
+                loadStats();
+            } else {
+                showErrorModal(result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showErrorModal('Failed to mark attendance');
+        }
+    }
+    
+    async function markAllPresent() {
+        const role = document.getElementById('roleFilter').value;
+        if (!role) {
+            showErrorModal('Please select a role first');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/staff-attendance/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: role })
+            });
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                showSuccessModal('Bulk Attendance', result.message);
+                loadEmployees();
+                loadTodayAttendance();
+                loadStats();
+            } else {
+                showErrorModal(result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showErrorModal('Failed to mark attendance');
+        }
+    }
+    
+    // Common Functions
+    async function loadEmployees() {
+        const searchTerm = document.getElementById('employeeSearchInput').value;
+        const role = document.getElementById('roleFilter').value;
+        
+        let url = `/staff-attendance/employees/search?q=${encodeURIComponent(searchTerm)}`;
+        if (role) url += `&role=${role}`;
+        
+        try {
+            const response = await fetch(url);
+            const result = await response.json();
+            if (result.success) {
+                currentEmployees = result.employees;
+                displayEmployees(currentEmployees);
+            }
+        } catch (error) { console.error(error); }
+    }
+    
+    async function loadTodayAttendance() {
+        try {
+            const response = await fetch('/staff-attendance/today');
+            const result = await response.json();
+            
+            if (result.success) {
+                const container = document.getElementById('attendanceList');
+                if (result.attendance.length === 0) {
+                    container.innerHTML = `<div class="text-center py-8"><i class="fas fa-calendar-day text-4xl text-gray-300 mb-2"></i><p class="text-gray-400">No attendance records for today</p></div>`;
+                    return;
+                }
+                
+                container.innerHTML = result.attendance.map(record => `
+                    <div class="attendance-card p-3 border-b border-gray-100">
+                        <div class="flex items-center gap-3">
+                            ${record.photo_url ? `<img src="${record.photo_url}" class="w-10 h-10 rounded-full object-cover">` :
+                                `<div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                                    <i class="fas fa-user-tie text-orange-500"></i>
+                                </div>`}
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <p class="font-semibold text-gray-800">${record.employee_name}</p>
+                                    <span class="role-badge ${getRoleBadgeClass(record.role)}">${formatRole(record.role)}</span>
+                                </div>
+                                <p class="text-xs text-gray-500">${record.employee_number}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-600">${new Date(record.check_in_time).toLocaleTimeString()}</p>
+                                <p class="text-xs text-green-500"><i class="fas fa-check-circle"></i> Present</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) { console.error(error); }
+    }
+    
+    async function loadStats() {
+        try {
+            const response = await fetch('/staff-attendance/stats');
+            const result = await response.json();
+            if (result.success) {
+                document.getElementById('todayCount').textContent = result.stats.today_count;
+                document.getElementById('attendancePercent').textContent = `${result.stats.attendance_percentage}%`;
+                document.getElementById('weekCount').textContent = result.stats.week_count;
+                
+                // Display role stats
+                const roleStats = result.stats.role_stats || {};
+                const roleStatsHtml = Object.entries(roleStats).map(([role, count]) => `
+                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                        <span class="text-sm text-gray-600">${formatRole(role)}</span>
+                        <span class="text-sm font-semibold text-orange-600">${count}</span>
+                    </div>
+                `).join('');
+                
+                document.getElementById('roleStats').innerHTML = roleStatsHtml || '<p class="text-center text-gray-400 text-sm">No role data</p>';
+            }
+        } catch (error) { console.error(error); }
+    }
+    
+    function refreshStats() { loadStats(); loadTodayAttendance(); showMessage('Stats refreshed', 'success'); }
+    
+    function showSuccessModal(title, message) {
+        document.getElementById('successTitle').textContent = title;
+        document.getElementById('successMessage').innerHTML = message;
+        document.getElementById('successModal').classList.remove('hidden');
+        document.getElementById('successModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function showErrorModal(message) {
+        document.getElementById('errorMessage').innerHTML = message;
+        document.getElementById('errorModal').classList.remove('hidden');
+        document.getElementById('errorModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function closeErrorModal() {
+        document.getElementById('errorModal').classList.add('hidden');
+        document.getElementById('errorModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
+    }
+    
+    // Event Listeners
+    document.getElementById('employeeSearchInput').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(loadEmployees, 300);
+    });
+    document.getElementById('roleFilter').addEventListener('change', loadEmployees);
+    
+    // Initialize
+    window.addEventListener('load', () => {
+        loadTodayAttendance();
+        loadStats();
+        setTimeout(() => startScanner(), 500);
+    });
+    window.addEventListener('beforeunload', () => { if (html5QrCode && isScanning) html5QrCode.stop(); });
+    window.onclick = function(event) {
+        if (event.target === document.getElementById('successModal')) closeSuccessModal();
+        if (event.target === document.getElementById('errorModal')) closeErrorModal();
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,173 @@
+<!-- templates/dashboard.html - Simple Dashboard Page -->
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Welcome Section -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Welcome back, {{ user.email.split('@')[0] if user else 'User' }}! 👋</h1>
+        <p class="text-gray-600">Here's what's happening with your school management system today.</p>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-2xl shadow-sm p-6 hover:shadow-md transition-shadow border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="h-12 w-12 rounded-xl bg-orange-100 flex items-center justify-center">
+                    <i class="fas fa-user-graduate text-orange-600 text-xl"></i>
+                </div>
+                <span class="text-2xl font-bold text-gray-800">1,234</span>
+            </div>
+            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Students</h3>
+            <p class="text-xs text-green-600 mt-2"><i class="fas fa-arrow-up"></i> +12% from last month</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl shadow-sm p-6 hover:shadow-md transition-shadow border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                    <i class="fas fa-chalkboard-user text-blue-600 text-xl"></i>
+                </div>
+                <span class="text-2xl font-bold text-gray-800">89</span>
+            </div>
+            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Staff</h3>
+            <p class="text-xs text-green-600 mt-2"><i class="fas fa-arrow-up"></i> +5 new this month</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl shadow-sm p-6 hover:shadow-md transition-shadow border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center">
+                    <i class="fas fa-chalkboard text-green-600 text-xl"></i>
+                </div>
+                <span class="text-2xl font-bold text-gray-800">24</span>
+            </div>
+            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Active Classes</h3>
+            <p class="text-xs text-gray-500 mt-2">Across all grades</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl shadow-sm p-6 hover:shadow-md transition-shadow border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="h-12 w-12 rounded-xl bg-purple-100 flex items-center justify-center">
+                    <i class="fas fa-money-bill-wave text-purple-600 text-xl"></i>
+                </div>
+                <span class="text-2xl font-bold text-gray-800">₦2.4M</span>
+            </div>
+            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Fees Collected</h3>
+            <p class="text-xs text-green-600 mt-2"><i class="fas fa-arrow-up"></i> +18% from last month</p>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 mb-8">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <a href="#" class="flex flex-col items-center p-4 rounded-xl bg-gray-50 hover:bg-orange-50 transition-colors group">
+                <div class="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center mb-2 group-hover:bg-orange-200 transition-colors">
+                    <i class="fas fa-user-plus text-orange-600 text-lg"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600">Add Student</span>
+            </a>
+            <a href="#" class="flex flex-col items-center p-4 rounded-xl bg-gray-50 hover:bg-orange-50 transition-colors group">
+                <div class="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center mb-2 group-hover:bg-orange-200 transition-colors">
+                    <i class="fas fa-money-bill-wave text-orange-600 text-lg"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600">Collect Fees</span>
+            </a>
+            <a href="#" class="flex flex-col items-center p-4 rounded-xl bg-gray-50 hover:bg-orange-50 transition-colors group">
+                <div class="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center mb-2 group-hover:bg-orange-200 transition-colors">
+                    <i class="fas fa-calendar-check text-orange-600 text-lg"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600">Mark Attendance</span>
+            </a>
+            <a href="#" class="flex flex-col items-center p-4 rounded-xl bg-gray-50 hover:bg-orange-50 transition-colors group">
+                <div class="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center mb-2 group-hover:bg-orange-200 transition-colors">
+                    <i class="fas fa-chart-line text-orange-600 text-lg"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-700 group-hover:text-orange-600">View Reports</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Recent Students</h2>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold">JD</div>
+                        <div>
+                            <p class="font-medium text-gray-800">John Doe</p>
+                            <p class="text-xs text-gray-500">Grade 10 - Section A</p>
+                        </div>
+                    </div>
+                    <span class="text-xs text-green-600">Just added</span>
+                </div>
+                <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold">JS</div>
+                        <div>
+                            <p class="font-medium text-gray-800">Jane Smith</p>
+                            <p class="text-xs text-gray-500">Grade 9 - Section B</p>
+                        </div>
+                    </div>
+                    <span class="text-xs text-gray-500">2 hours ago</span>
+                </div>
+                <div class="flex items-center justify-between py-2">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold">MB</div>
+                        <div>
+                            <p class="font-medium text-gray-800">Mike Brown</p>
+                            <p class="text-xs text-gray-500">Grade 8 - Section A</p>
+                        </div>
+                    </div>
+                    <span class="text-xs text-gray-500">Yesterday</span>
+                </div>
+            </div>
+            <a href="#" class="mt-4 inline-flex items-center text-sm text-orange-600 hover:text-orange-700">
+                View all students <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+        
+        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Upcoming Events</h2>
+            <div class="space-y-4">
+                <div class="flex items-center gap-3 py-2 border-b border-gray-100">
+                    <div class="h-12 w-12 rounded-xl bg-red-100 flex items-center justify-center">
+                        <i class="fas fa-calendar text-red-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-800">Staff Meeting</p>
+                        <p class="text-xs text-gray-500">Tomorrow at 10:00 AM</p>
+                    </div>
+                    <span class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full">Important</span>
+                </div>
+                <div class="flex items-center gap-3 py-2 border-b border-gray-100">
+                    <div class="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                        <i class="fas fa-chalkboard text-blue-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-800">Parent-Teacher Meeting</p>
+                        <p class="text-xs text-gray-500">Friday at 2:00 PM</p>
+                    </div>
+                    <span class="text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full">Upcoming</span>
+                </div>
+                <div class="flex items-center gap-3 py-2">
+                    <div class="h-12 w-12 rounded-xl bg-purple-100 flex items-center justify-center">
+                        <i class="fas fa-trophy text-purple-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-800">Sports Day</p>
+                        <p class="text-xs text-gray-500">Next Monday at 8:00 AM</p>
+                    </div>
+                    <span class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full">Event</span>
+                </div>
+            </div>
+            <a href="#" class="mt-4 inline-flex items-center text-sm text-orange-600 hover:text-orange-700">
+                View calendar <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

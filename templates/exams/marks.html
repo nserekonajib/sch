@@ -1,0 +1,845 @@
+<!-- templates/exams/marks.html - Fully Updated with Exam Total Marks -->
+{% extends "base.html" %}
+
+{% block title %}Add/Update Exam Marks - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .marks-input {
+        width: 80px;
+        text-align: center;
+        padding: 6px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    .marks-input:focus {
+        outline: none;
+        border-color: #ffa500;
+        box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.1);
+    }
+    .marks-table th, .marks-table td {
+        padding: 10px 8px;
+        text-align: center;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .marks-table th {
+        background-color: #f9fafb;
+        font-weight: 600;
+        font-size: 12px;
+        position: sticky;
+        top: 0;
+    }
+    .total-cell {
+        background-color: #fef3c7;
+        font-weight: 600;
+    }
+    .percentage-cell {
+        font-weight: 600;
+    }
+    .high-score {
+        color: #10b981;
+    }
+    .low-score {
+        color: #ef4444;
+    }
+    .tab-active {
+        background-color: #ffa500;
+        color: white;
+    }
+    .tab-inactive {
+        background-color: #f3f4f6;
+        color: #6b7280;
+    }
+    .history-select {
+        transition: all 0.2s;
+    }
+    .historical-view {
+        background-color: #fef3c7;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Add/Update Exam Marks</h1>
+        <p class="text-sm text-gray-600">Enter or update marks for students</p>
+    </div>
+
+    <!-- Version Tabs -->
+    <div class="flex gap-2 mb-6">
+        <button onclick="switchVersion('current')" id="tabCurrent" class="tab-active px-5 py-2 rounded-lg font-medium transition-all">
+            <i class="fas fa-edit"></i> Current Marks
+        </button>
+        <button onclick="switchVersion('historical')" id="tabHistorical" class="tab-inactive px-5 py-2 rounded-lg font-medium transition-all">
+            <i class="fas fa-history"></i> Historical Marks
+        </button>
+    </div>
+
+    <!-- Add this to the marks.html template - a new tab for Marksheet History -->
+<!-- Add this tab after the existing tabs -->
+<button onclick="switchVersion('marksheet')" id="tabMarksheet" class="tab-inactive px-5 py-2 rounded-lg font-medium transition-all">
+    <i class="fas fa-folder-open"></i> Marksheet History
+</button>
+
+<!-- Add this section after the historyDateDiv -->
+<div id="marksheetSelectDiv" class="hidden mt-4">
+    <label class="block text-sm font-medium text-gray-700 mb-2">Select Marksheet</label>
+    <div class="flex gap-2">
+        <select id="marksheetSelect" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            <option value="">-- Select Marksheet --</option>
+        </select>
+        <button onclick="loadMarksheetMarks()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+            <i class="fas fa-eye"></i> View Marksheet
+        </button>
+    </div>
+    <p class="text-xs text-gray-500 mt-1">View complete marksheets from any academic year (students may have been promoted since)</p>
+</div>
+
+    <!-- Filter Section -->
+    <div class="bg-white rounded-xl shadow-md p-5 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year <span class="text-red-500">*</span></label>
+                <select id="academicYearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Exam <span class="text-red-500">*</span></label>
+                <select id="examSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">-- Select Exam --</option>
+                    {% for exam in exams %}
+                    <option value="{{ exam.id }}">{{ exam.exam_name }} ({{ exam.total_marks }} marks)</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Class <span class="text-red-500">*</span></label>
+                <select id="classSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">-- Select Class --</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end gap-2">
+                <button onclick="loadMarks()" class="flex-1 btn-gradient px-4 py-2 rounded-lg text-white font-medium">
+                    <i class="fas fa-search"></i> Load Marks
+                </button>
+            </div>
+        </div>
+        
+        <!-- History Date Selector (hidden by default) -->
+        <div id="historyDateDiv" class="hidden mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Select Historical Date</label>
+            <div class="flex gap-2">
+                <select id="historyDateSelect" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">-- Select Date --</option>
+                </select>
+                <button onclick="loadHistoricalMarks()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                    <i class="fas fa-history"></i> View History
+                </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Select a date to view historical marks as they were on that day</p>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden text-center py-12">
+        <div class="inline-block">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-orange-200 border-t-orange-500"></div>
+            <p class="text-gray-600 mt-3">Loading marks...</p>
+        </div>
+    </div>
+
+    <!-- Marks Table -->
+    <div id="marksContainer" class="hidden">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-wrap gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800" id="examTitle">-</h2>
+                    <p class="text-sm text-gray-500" id="classTitle">-</p>
+                    <p class="text-xs text-gray-400" id="versionLabel">-</p>
+                </div>
+                <div class="flex gap-2" id="actionButtons">
+                    <button onclick="saveMarks()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+                        <i class="fas fa-save"></i> Save All Marks
+                    </button>
+                    <button onclick="exportMarksheet()" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
+                        <i class="fas fa-file-excel"></i> Export Marksheet
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto p-4">
+                <table class="marks-table min-w-full" id="marksTable">
+                    <thead id="tableHeader"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- No Data State -->
+    <div id="noDataState" class="hidden bg-white rounded-xl shadow-md p-12 text-center">
+        <div class="h-20 w-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-chart-line text-3xl text-orange-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">No Data Available</h3>
+        <p class="text-sm text-gray-500">Select an exam and class to load marks</p>
+    </div>
+
+    <!-- Info State -->
+    <div id="infoState" class="hidden bg-yellow-50 rounded-xl p-4 mb-4">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-info-circle text-yellow-600"></i>
+            <span class="text-sm text-yellow-700" id="infoMessage"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 p-5 text-center transform transition-all modal-container">
+        <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-check-circle text-2xl text-green-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-1">Success!</h3>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage">Marks saved successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-5 py-1.5 rounded-lg text-white text-sm font-medium">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-5 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mb-3"></div>
+        <p class="text-gray-600 text-sm">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let currentExamId = null;
+    let currentClassId = null;
+    let currentAcademicYear = 2026;
+    let currentVersion = 'current';
+    let currentHistoryDate = null;
+    let currentSubjects = [];
+    let currentStudents = [];
+    let marksData = {};
+    let currentExamTotalMarks = 0;
+    let currentMarksheetId = null;
+    
+    function switchVersion(version) {
+        currentVersion = version;
+        const tabCurrent = document.getElementById('tabCurrent');
+        const tabHistorical = document.getElementById('tabHistorical');
+        const historyDateDiv = document.getElementById('historyDateDiv');
+        const actionButtons = document.getElementById('actionButtons');
+        
+        if (version === 'current') {
+            tabCurrent.classList.add('tab-active');
+            tabCurrent.classList.remove('tab-inactive');
+            tabHistorical.classList.add('tab-inactive');
+            tabHistorical.classList.remove('tab-active');
+            historyDateDiv.classList.add('hidden');
+            actionButtons.classList.remove('hidden');
+        } else {
+            tabHistorical.classList.add('tab-active');
+            tabHistorical.classList.remove('tab-inactive');
+            tabCurrent.classList.add('tab-inactive');
+            tabCurrent.classList.remove('tab-active');
+            historyDateDiv.classList.remove('hidden');
+            actionButtons.classList.add('hidden');
+            loadHistoryDates();
+        }
+        
+        if (currentExamId && currentClassId) {
+            if (version === 'current') {
+                loadMarks();
+            }
+        }
+    }
+    
+    async function loadHistoryDates() {
+        if (!currentExamId || !currentClassId) return;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/exams/api/marks/history/dates?exam_id=${currentExamId}&class_id=${currentClassId}`);
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success && result.dates && result.dates.length > 0) {
+                const dateSelect = document.getElementById('historyDateSelect');
+                dateSelect.innerHTML = '<option value="">-- Select Date --</option>' + 
+                    result.dates.map(date => `<option value="${date}">${new Date(date).toLocaleDateString()}</option>`).join('');
+            } else {
+                const dateSelect = document.getElementById('historyDateSelect');
+                dateSelect.innerHTML = '<option value="">-- No history available --</option>';
+            }
+        } catch (error) {
+            console.error('Error loading history dates:', error);
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            const dateSelect = document.getElementById('historyDateSelect');
+            dateSelect.innerHTML = '<option value="">-- Error loading dates --</option>';
+        }
+    }
+    
+    async function loadHistoricalMarks() {
+        currentHistoryDate = document.getElementById('historyDateSelect').value;
+        
+        if (!currentHistoryDate) {
+            showMessage('Please select a historical date', 'error');
+            return;
+        }
+        
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('marksContainer').classList.add('hidden');
+        document.getElementById('noDataState').classList.add('hidden');
+        document.getElementById('infoState').classList.add('hidden');
+        
+        try {
+            const response = await fetch(`/exams/api/marks/historical?exam_id=${currentExamId}&class_id=${currentClassId}&academic_year=${currentAcademicYear}&history_date=${currentHistoryDate}`);
+            const result = await response.json();
+            
+            document.getElementById('loadingState').classList.add('hidden');
+            
+            if (result.success && result.students && result.students.length > 0) {
+                currentSubjects = result.subjects;
+                currentStudents = result.students;
+                currentExamTotalMarks = result.exam_total_marks || 0;
+                displayHistoricalMarks(result.students, result.subjects, result.history_date);
+                
+                const examName = document.getElementById('examSelect').options[document.getElementById('examSelect').selectedIndex]?.text;
+                const className = document.getElementById('classSelect').options[document.getElementById('classSelect').selectedIndex]?.text;
+                document.getElementById('examTitle').textContent = examName || 'Exam';
+                document.getElementById('classTitle').textContent = `Class: ${className || 'N/A'}`;
+                document.getElementById('versionLabel').textContent = `Historical Marks (${new Date(result.history_date).toLocaleDateString()}) - Total: ${currentExamTotalMarks} marks`;
+                
+                document.getElementById('marksContainer').classList.remove('hidden');
+            } else {
+                if (result.subjects && result.subjects.length === 0) {
+                    document.getElementById('infoMessage').textContent = 'No subjects assigned to this class. Please assign subjects first.';
+                    document.getElementById('infoState').classList.remove('hidden');
+                } else {
+                    document.getElementById('noDataState').classList.remove('hidden');
+                }
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('noDataState').classList.remove('hidden');
+            showMessage('Failed to load historical marks', 'error');
+        }
+    }
+    
+    async function loadMarks() {
+        currentExamId = document.getElementById('examSelect').value;
+        currentClassId = document.getElementById('classSelect').value;
+        currentAcademicYear = parseInt(document.getElementById('academicYearSelect').value);
+        
+        if (!currentExamId || !currentClassId) {
+            showMessage('Please select exam and class', 'error');
+            return;
+        }
+        
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('marksContainer').classList.add('hidden');
+        document.getElementById('noDataState').classList.add('hidden');
+        document.getElementById('infoState').classList.add('hidden');
+        
+        try {
+            const response = await fetch(`/exams/api/marks?exam_id=${currentExamId}&class_id=${currentClassId}&academic_year=${currentAcademicYear}&version=current`);
+            const result = await response.json();
+            
+            document.getElementById('loadingState').classList.add('hidden');
+            
+            if (result.success && result.students && result.students.length > 0) {
+                currentSubjects = result.subjects;
+                currentStudents = result.students;
+                currentExamTotalMarks = result.exam_total_marks || 0;
+                displayCurrentMarks(result.students, result.subjects);
+                
+                const examName = document.getElementById('examSelect').options[document.getElementById('examSelect').selectedIndex]?.text;
+                const className = document.getElementById('classSelect').options[document.getElementById('classSelect').selectedIndex]?.text;
+                document.getElementById('examTitle').textContent = examName || 'Exam';
+                document.getElementById('classTitle').textContent = `Class: ${className || 'N/A'}`;
+                document.getElementById('versionLabel').textContent = `Current Marks (Editable) - Total: ${currentExamTotalMarks} marks`;
+                
+                document.getElementById('marksContainer').classList.remove('hidden');
+            } else {
+                if (result.subjects && result.subjects.length === 0) {
+                    document.getElementById('infoMessage').textContent = 'No subjects assigned to this class. Please assign subjects first.';
+                    document.getElementById('infoState').classList.remove('hidden');
+                } else {
+                    document.getElementById('noDataState').classList.remove('hidden');
+                }
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('noDataState').classList.remove('hidden');
+            showMessage('Failed to load marks', 'error');
+        }
+    }
+    
+    function displayCurrentMarks(students, subjects) {
+        const thead = document.getElementById('tableHeader');
+        const tbody = document.getElementById('tableBody');
+        
+        let headerHtml = `<tr>
+            <th class="sticky left-0 bg-gray-50">ID</th>
+            <th class="sticky left-0 bg-gray-50">Student Name</th>`;
+        
+        subjects.forEach(subject => {
+            headerHtml += `<th>${subject.name}<br><span class="text-xs text-gray-400">(${subject.max_marks})</span></th>`;
+        });
+        
+        headerHtml += `<th>Total<br><span class="text-xs text-gray-400">(Out of ${currentExamTotalMarks})</span></th>`;
+        headerHtml += `<th>%</th>`;
+        headerHtml += `</tr>`;
+        thead.innerHTML = headerHtml;
+        
+        let bodyHtml = '';
+        students.forEach(student => {
+            bodyHtml += `<tr>`;
+            bodyHtml += `<td class="sticky left-0 bg-white">${student.student_number}</td>`;
+            bodyHtml += `<td class="sticky left-0 bg-white font-medium text-left">${student.student_name}</td>`;
+            
+            let totalObtained = 0;
+            
+            subjects.forEach(subject => {
+                const subjectData = student.subjects.find(s => s.subject_id === subject.id);
+                const obtained = subjectData?.obtained || '';
+                const maxMarks = subject.max_marks;
+                
+                if (obtained && !isNaN(obtained)) {
+                    totalObtained += parseFloat(obtained);
+                }
+                
+                bodyHtml += `<td><input type="number" class="marks-input" data-student-id="${student.student_id}" data-subject-id="${subject.id}" value="${obtained !== null ? obtained : ''}" step="0.5" min="0" max="${maxMarks}" onchange="updateMark(this, '${student.student_id}', '${subject.id}', ${maxMarks})"></td>`;
+            });
+            
+            // Calculate percentage based on EXAM TOTAL MARKS
+            const percentage = currentExamTotalMarks > 0 ? (totalObtained / currentExamTotalMarks * 100).toFixed(1) : 0;
+            const percentageClass = percentage >= 80 ? 'high-score' : (percentage < 50 ? 'low-score' : '');
+            
+            bodyHtml += `<td class="total-cell">${totalObtained} / ${currentExamTotalMarks}</td>`;
+            bodyHtml += `<td class="percentage-cell ${percentageClass}">${percentage}%</td>`;
+            bodyHtml += `</tr>`;
+        });
+        
+        tbody.innerHTML = bodyHtml;
+    }
+    
+    function displayHistoricalMarks(students, subjects, historyDate) {
+        const thead = document.getElementById('tableHeader');
+        const tbody = document.getElementById('tableBody');
+        
+        let headerHtml = `<tr>
+            <th class="sticky left-0 bg-gray-50">ID</th>
+            <th class="sticky left-0 bg-gray-50">Student Name</th>`;
+        
+        subjects.forEach(subject => {
+            headerHtml += `<th>${subject.name}<br><span class="text-xs text-gray-400">(${subject.max_marks})</span></th>`;
+        });
+        
+        headerHtml += `<th>Total<br><span class="text-xs text-gray-400">(Out of ${currentExamTotalMarks})</span></th>`;
+        headerHtml += `<th>%</th>`;
+        headerHtml += `</tr>`;
+        thead.innerHTML = headerHtml;
+        
+        let bodyHtml = '';
+        students.forEach(student => {
+            bodyHtml += `<tr class="historical-view">`;
+            bodyHtml += `<td class="sticky left-0 bg-white">${student.student_number}</td>`;
+            bodyHtml += `<td class="sticky left-0 bg-white font-medium text-left">${student.student_name}</td>`;
+            
+            let totalObtained = 0;
+            
+            subjects.forEach(subject => {
+                const subjectData = student.subjects.find(s => s.subject_id === subject.id);
+                const obtained = subjectData?.obtained || '';
+                
+                if (obtained && !isNaN(obtained)) {
+                    totalObtained += parseFloat(obtained);
+                }
+                
+                bodyHtml += `<td class="text-center">${obtained !== null ? obtained : '-'}</td>`;
+            });
+            
+            // Calculate percentage based on EXAM TOTAL MARKS
+            const percentage = currentExamTotalMarks > 0 ? (totalObtained / currentExamTotalMarks * 100).toFixed(1) : 0;
+            const percentageClass = percentage >= 80 ? 'high-score' : (percentage < 50 ? 'low-score' : '');
+            
+            bodyHtml += `<td class="total-cell">${totalObtained} / ${currentExamTotalMarks}</td>`;
+            bodyHtml += `<td class="percentage-cell ${percentageClass}">${percentage}%</td>`;
+            bodyHtml += `</tr>`;
+        });
+        
+        tbody.innerHTML = bodyHtml;
+    }
+    
+    function updateMark(input, studentId, subjectId, maxMarks) {
+        let value = input.value.trim();
+        if (value === '') {
+            delete marksData[`${studentId}_${subjectId}`];
+            return;
+        }
+        
+        let obtained = parseFloat(value);
+        if (isNaN(obtained)) {
+            showMessage('Please enter a valid number', 'error');
+            input.value = '';
+            return;
+        }
+        
+        if (obtained < 0) {
+            showMessage('Marks cannot be negative', 'error');
+            input.value = '';
+            return;
+        }
+        
+        if (obtained > maxMarks) {
+            showMessage(`Marks cannot exceed ${maxMarks}`, 'error');
+            input.value = maxMarks;
+            obtained = maxMarks;
+        }
+        
+        marksData[`${studentId}_${subjectId}`] = {
+            student_id: studentId,
+            subject_id: subjectId,
+            obtained_marks: obtained
+        };
+    }
+    
+    async function saveMarks() {
+        const marksArray = Object.values(marksData);
+        if (marksArray.length === 0) {
+            showMessage('No changes to save', 'info');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            // If no marksheet_id yet, generate one
+            if (!currentMarksheetId) {
+                const sheetResponse = await fetch('/exams/api/marksheet/generate-id', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        exam_id: currentExamId,
+                        class_id: currentClassId,
+                        academic_year: currentAcademicYear
+                    })
+                });
+                const sheetResult = await sheetResponse.json();
+                if (sheetResult.success) {
+                    currentMarksheetId = sheetResult.marksheet_id;
+                }
+            }
+            
+            const response = await fetch('/exams/api/marks/save-with-marksheet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    exam_id: currentExamId,
+                    class_id: currentClassId,
+                    academic_year: currentAcademicYear,
+                    marksheet_id: currentMarksheetId,
+                    marks: marksArray
+                })
+            });
+            
+            const result = await response.json();
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                document.getElementById('successMessage').innerHTML = `
+                    ${result.message}<br>
+                    <small class="text-gray-500">Marksheet ID: ${result.marksheet_id}</small>
+                `;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                marksData = {};
+                setTimeout(() => loadMarks(), 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to save marks', 'error');
+        }
+    }
+    
+    async function exportMarksheet() {
+        if (!currentExamId || !currentClassId) {
+            showMessage('Please load marks first', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const body = {
+                exam_id: currentExamId,
+                class_id: currentClassId,
+                academic_year: currentAcademicYear,
+                version: currentVersion,
+                exam_total_marks: currentExamTotalMarks
+            };
+            
+            if (currentVersion === 'historical') {
+                body.history_date = currentHistoryDate;
+            }
+            
+            const response = await fetch('/exams/api/marksheet/excel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const examName = document.getElementById('examSelect').options[document.getElementById('examSelect').selectedIndex]?.text || 'exam';
+                const className = document.getElementById('classSelect').options[document.getElementById('classSelect').selectedIndex]?.text || 'class';
+                a.download = `marksheet_${examName}_${className}_${currentAcademicYear}_${currentVersion}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showMessage('Marksheet exported successfully', 'success');
+            } else {
+                const error = await response.json();
+                showMessage(error.message || 'Failed to export', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Failed to export marksheet', 'error');
+        } finally {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+        }
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
+    }
+    
+    window.onclick = function(event) {
+        const modal = document.getElementById('successModal');
+        if (event.target === modal) closeSuccessModal();
+    };
+
+    async function loadMarksheets() {
+    if (!currentExamId) return;
+    
+    const loading = document.getElementById('loadingOverlay');
+    loading.classList.remove('hidden');
+    loading.classList.add('flex');
+    
+    try {
+        const response = await fetch(`/exams/api/marksheets/list?exam_id=${currentExamId}`);
+        const result = await response.json();
+        
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        
+        if (result.success && result.marksheets && result.marksheets.length > 0) {
+            const marksheetSelect = document.getElementById('marksheetSelect');
+            marksheetSelect.innerHTML = '<option value="">-- Select Marksheet --</option>' + 
+                result.marksheets.map(ms => `<option value="${ms.id}">${ms.marksheet_number} - ${ms.exams?.exam_name || 'N/A'} - ${ms.classes?.name || 'N/A'} (${new Date(ms.generated_at).toLocaleDateString()})</option>`).join('');
+        } else {
+            const marksheetSelect = document.getElementById('marksheetSelect');
+            marksheetSelect.innerHTML = '<option value="">-- No marksheets available --</option>';
+        }
+    } catch (error) {
+        console.error('Error loading marksheets:', error);
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+    }
+}
+
+async function loadMarksheetMarks() {
+    const marksheetId = document.getElementById('marksheetSelect').value;
+    
+    if (!marksheetId) {
+        showMessage('Please select a marksheet', 'error');
+        return;
+    }
+    
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('marksContainer').classList.add('hidden');
+    document.getElementById('noDataState').classList.add('hidden');
+    document.getElementById('infoState').classList.add('hidden');
+    
+    try {
+        const response = await fetch(`/exams/api/marks/by-marksheet?marksheet_id=${marksheetId}`);
+        const result = await response.json();
+        
+        document.getElementById('loadingState').classList.add('hidden');
+        
+        if (result.success && result.students && result.students.length > 0) {
+            currentSubjects = result.subjects;
+            currentStudents = result.students;
+            currentExamTotalMarks = result.exam_total_marks;
+            
+            displayMarksheetMarks(result.students, result.subjects, result.marksheet);
+            
+            document.getElementById('examTitle').textContent = result.marksheet.exam_name;
+            document.getElementById('classTitle').textContent = `Class: ${result.marksheet.class_name} (${result.marksheet.academic_year})`;
+            document.getElementById('versionLabel').textContent = `Marksheet: ${result.marksheet.marksheet_number} - Generated: ${new Date(result.marksheet.generated_at).toLocaleString()}`;
+            
+            document.getElementById('marksContainer').classList.remove('hidden');
+            // Hide action buttons for historical marksheets (read-only)
+            document.getElementById('actionButtons').classList.add('hidden');
+        } else {
+            document.getElementById('noDataState').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('noDataState').classList.remove('hidden');
+        showMessage('Failed to load marksheet', 'error');
+    }
+}
+
+function displayMarksheetMarks(students, subjects, marksheet) {
+    const thead = document.getElementById('tableHeader');
+    const tbody = document.getElementById('tableBody');
+    
+    let headerHtml = `<tr>
+        <th class="sticky left-0 bg-gray-50">ID</th>
+        <th class="sticky left-0 bg-gray-50">Student Name</th>`;
+    
+    subjects.forEach(subject => {
+        headerHtml += `<th>${subject.name}<br><span class="text-xs text-gray-400">(${subject.max_marks})</span></th>`;
+    });
+    
+    headerHtml += `<th>Total<br><span class="text-xs text-gray-400">(Out of ${currentExamTotalMarks})</span></th>`;
+    headerHtml += `<th>%</th>`;
+    headerHtml += `</tr>`;
+    thead.innerHTML = headerHtml;
+    
+    let bodyHtml = '';
+    students.forEach(student => {
+        bodyHtml += `<tr class="historical-view">`;
+        bodyHtml += `<td class="sticky left-0 bg-white">${student.student_number}</td>`;
+        bodyHtml += `<td class="sticky left-0 bg-white font-medium text-left">${student.student_name}</td>`;
+        
+        let totalObtained = 0;
+        
+        subjects.forEach(subject => {
+            const subjectData = student.subjects.find(s => s.subject_id === subject.id);
+            const obtained = subjectData?.obtained || '';
+            
+            if (obtained && !isNaN(obtained)) {
+                totalObtained += parseFloat(obtained);
+            }
+            
+            bodyHtml += `<td class="text-center">${obtained !== null ? obtained : '-'}</td>`;
+        });
+        
+        const percentage = currentExamTotalMarks > 0 ? (totalObtained / currentExamTotalMarks * 100).toFixed(1) : 0;
+        const percentageClass = percentage >= 80 ? 'high-score' : (percentage < 50 ? 'low-score' : '');
+        
+        bodyHtml += `<td class="total-cell">${totalObtained} / ${currentExamTotalMarks}</td>`;
+        bodyHtml += `<td class="percentage-cell ${percentageClass}">${percentage}%</td>`;
+        bodyHtml += `</tr>`;
+    });
+    
+    tbody.innerHTML = bodyHtml;
+}
+
+// Update switchVersion to handle marksheet tab
+function switchVersion(version) {
+    currentVersion = version;
+    const tabCurrent = document.getElementById('tabCurrent');
+    const tabHistorical = document.getElementById('tabHistorical');
+    const tabMarksheet = document.getElementById('tabMarksheet');
+    const historyDateDiv = document.getElementById('historyDateDiv');
+    const marksheetSelectDiv = document.getElementById('marksheetSelectDiv');
+    const actionButtons = document.getElementById('actionButtons');
+    
+    // Reset all tabs
+    tabCurrent.classList.remove('tab-active');
+    tabCurrent.classList.add('tab-inactive');
+    tabHistorical.classList.remove('tab-active');
+    tabHistorical.classList.add('tab-inactive');
+    tabMarksheet.classList.remove('tab-active');
+    tabMarksheet.classList.add('tab-inactive');
+    
+    historyDateDiv.classList.add('hidden');
+    marksheetSelectDiv.classList.add('hidden');
+    actionButtons.classList.remove('hidden');
+    
+    if (version === 'current') {
+        tabCurrent.classList.add('tab-active');
+        tabCurrent.classList.remove('tab-inactive');
+        actionButtons.classList.remove('hidden');
+        if (currentExamId && currentClassId) loadMarks();
+    } else if (version === 'historical') {
+        tabHistorical.classList.add('tab-active');
+        tabHistorical.classList.remove('tab-inactive');
+        historyDateDiv.classList.remove('hidden');
+        actionButtons.classList.add('hidden');
+        if (currentExamId && currentClassId) loadHistoryDates();
+    } else if (version === 'marksheet') {
+        tabMarksheet.classList.add('tab-active');
+        tabMarksheet.classList.remove('tab-inactive');
+        marksheetSelectDiv.classList.remove('hidden');
+        actionButtons.classList.add('hidden');
+        if (currentExamId) loadMarksheets();
+    }
+}
+</script>
+{% endblock %}

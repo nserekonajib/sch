@@ -1,0 +1,509 @@
+<!-- templates/attendance_report/index.html - Attendance Report -->
+{% extends "base.html" %}
+
+{% block title %}Attendance Report - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .filter-card {
+        transition: all 0.2s;
+    }
+    .filter-card:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .attendance-table {
+        overflow-x: auto;
+    }
+    .attendance-table table {
+        min-width: 800px;
+    }
+    .attendance-table th {
+        position: sticky;
+        top: 0;
+        background-color: #f9fafb;
+        z-index: 10;
+    }
+    .present-cell {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .absent-cell {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    .summary-card {
+        transition: all 0.2s;
+    }
+    .summary-card:hover {
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Attendance Report</h1>
+        <p class="text-sm text-gray-600">View and export student attendance records</p>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-card bg-white rounded-xl shadow-md p-5 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                <input type="date" id="startDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                <input type="date" id="endDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+                <select id="classFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">All Classes</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Student</label>
+                <select id="studentFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">All Students</option>
+                    {% for student in students %}
+                    <option value="{{ student.id }}">{{ student.name }} ({{ student.student_id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select id="statusFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="all">All</option>
+                    <option value="present">Present Only</option>
+                    <option value="absent">Absent Only</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex gap-3 mt-4">
+            <button onclick="loadReport()" class="btn-gradient px-5 py-2 rounded-lg text-white font-medium flex items-center gap-2">
+                <i class="fas fa-chart-line"></i> Generate Report
+            </button>
+            <button onclick="exportToExcel()" id="exportBtn" disabled
+                    class="px-5 py-2 bg-gray-300 text-gray-500 rounded-lg font-medium flex items-center gap-2 cursor-not-allowed">
+                <i class="fas fa-file-excel"></i> Export to Excel
+            </button>
+            <button onclick="resetFilters()" class="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-undo"></i> Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div id="summaryContainer" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-xs text-gray-500">Total Students</p>
+            <p class="text-2xl font-bold text-gray-800" id="totalStudents">-</p>
+        </div>
+        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-xs text-gray-500">Total Days</p>
+            <p class="text-2xl font-bold text-gray-800" id="totalDays">-</p>
+        </div>
+        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-xs text-gray-500">Total Present</p>
+            <p class="text-2xl font-bold text-green-600" id="totalPresent">-</p>
+        </div>
+        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-xs text-gray-500">Total Absent</p>
+            <p class="text-2xl font-bold text-red-600" id="totalAbsent">-</p>
+        </div>
+        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-xs text-gray-500">Attendance Rate</p>
+            <p class="text-2xl font-bold text-orange-500" id="attendanceRate">-</p>
+        </div>
+        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-xs text-gray-500">Avg Daily</p>
+            <p class="text-2xl font-bold text-blue-600" id="avgDaily">-</p>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden text-center py-12">
+        <div class="inline-block">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-orange-200 border-t-orange-500"></div>
+            <p class="text-gray-600 mt-3">Loading report...</p>
+        </div>
+    </div>
+
+    <!-- Attendance Table -->
+    <div id="tableContainer" class="hidden bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="attendance-table p-4">
+            <table class="min-w-full divide-y divide-gray-200" id="attendanceTable">
+                <thead class="bg-gray-50">
+                    <tr id="tableHeader">
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">Student Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">Student ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Present</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Absent</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance %</th>
+                        <!-- Dynamic date columns will be added here -->
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-gray-200">
+                    <!-- Table rows will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- No Data State -->
+    <div id="noDataState" class="hidden bg-white rounded-xl shadow-md p-12 text-center">
+        <div class="h-20 w-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-chart-line text-3xl text-orange-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">No Data Available</h3>
+        <p class="text-sm text-gray-500">Select filters and click "Generate Report" to view attendance data</p>
+    </div>
+</div>
+
+<!-- Student Details Modal -->
+<div id="studentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800" id="modalTitle">Student Attendance Details</h3>
+            <button onclick="closeStudentModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div id="modalContent" class="p-5 max-h-96 overflow-y-auto">
+            <!-- Modal content will be inserted here -->
+        </div>
+        <div class="px-5 py-4 border-t border-gray-200 flex gap-3">
+            <button onclick="closeStudentModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let currentAttendanceData = [];
+    let currentDateRange = [];
+    let currentSummary = {};
+    
+    // Set default dates to current month
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    
+    async function loadReport() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const classId = document.getElementById('classFilter').value;
+        const studentId = document.getElementById('studentFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        
+        if (!startDate || !endDate) {
+            showMessage('Please select both start and end dates', 'error');
+            return;
+        }
+        
+        // Show loading
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('tableContainer').classList.add('hidden');
+        document.getElementById('noDataState').classList.add('hidden');
+        
+        try {
+            const response = await fetch('/attendance-report/data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    start_date: startDate,
+                    end_date: endDate,
+                    class_id: classId,
+                    student_id: studentId,
+                    status: status
+                })
+            });
+            
+            const result = await response.json();
+            
+            document.getElementById('loadingState').classList.add('hidden');
+            
+            if (result.success && result.attendance.length > 0) {
+                currentAttendanceData = result.attendance;
+                currentDateRange = result.date_range;
+                currentSummary = result.summary;
+                
+                displaySummary(result.summary);
+                displayTable(result.attendance, result.date_range);
+                document.getElementById('exportBtn').disabled = false;
+                document.getElementById('exportBtn').classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+                document.getElementById('exportBtn').classList.add('btn-gradient', 'text-white');
+            } else {
+                document.getElementById('noDataState').classList.remove('hidden');
+                document.getElementById('exportBtn').disabled = true;
+                document.getElementById('exportBtn').classList.add('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+                document.getElementById('exportBtn').classList.remove('btn-gradient', 'text-white');
+                if (result.message) showMessage(result.message, 'info');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('noDataState').classList.remove('hidden');
+            showMessage('Failed to load report', 'error');
+        }
+    }
+    
+    function displaySummary(summary) {
+        document.getElementById('totalStudents').textContent = summary.total_students || 0;
+        document.getElementById('totalDays').textContent = summary.total_days || 0;
+        document.getElementById('totalPresent').textContent = summary.total_present || 0;
+        document.getElementById('totalAbsent').textContent = summary.total_absent || 0;
+        document.getElementById('attendanceRate').textContent = `${summary.attendance_percentage || 0}%`;
+        
+        const avgDaily = summary.total_days > 0 ? Math.round(summary.total_present / summary.total_days) : 0;
+        document.getElementById('avgDaily').textContent = avgDaily;
+    }
+    
+    function displayTable(attendanceData, dateRange) {
+        // Build table header
+        const thead = document.getElementById('tableHeader');
+        let headerHtml = `
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">Student Name</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Present</th>
+            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Absent</th>
+            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance %</th>
+        `;
+        
+        // Add date columns
+        dateRange.forEach(date => {
+            const formattedDate = new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+            headerHtml += `<th class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">${formattedDate}</th>`;
+        });
+        
+        thead.innerHTML = headerHtml;
+        
+        // Build table body
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        
+        attendanceData.forEach(student => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50 cursor-pointer';
+            row.onclick = () => showStudentDetails(student);
+            
+            // Student info cells
+            row.innerHTML = `
+                <td class="px-4 py-3 text-sm text-gray-800 font-medium sticky left-0 bg-white">${student.student_name}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">${student.student_id}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">${student.class_name}</td>
+                <td class="px-4 py-3 text-sm text-center text-green-600 font-medium">${student.present_count}</td>
+                <td class="px-4 py-3 text-sm text-center text-red-600 font-medium">${student.absent_count}</td>
+                <td class="px-4 py-3 text-sm text-center font-bold ${student.percentage >= 75 ? 'text-green-600' : (student.percentage >= 50 ? 'text-orange-500' : 'text-red-600')}">${student.percentage}%</td>
+            `;
+            
+            // Add attendance cells for each date
+            student.attendance.forEach(day => {
+                const cell = document.createElement('td');
+                cell.className = `px-2 py-3 text-center text-sm ${day.status === 'Present' ? 'present-cell' : 'absent-cell'}`;
+                cell.innerHTML = day.status === 'Present' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-times-circle"></i>';
+                row.appendChild(cell);
+            });
+            
+            tbody.appendChild(row);
+        });
+        
+        document.getElementById('tableContainer').classList.remove('hidden');
+    }
+    
+    function showStudentDetails(student) {
+        const modal = document.getElementById('studentModal');
+        const content = document.getElementById('modalContent');
+        
+        let attendanceDetails = '';
+        student.attendance.forEach(day => {
+            const date = new Date(day.date).toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+            attendanceDetails += `
+                <div class="flex justify-between items-center p-2 border-b border-gray-100">
+                    <span class="text-sm text-gray-600">${date}</span>
+                    <span class="text-sm ${day.status === 'Present' ? 'text-green-600' : 'text-red-600'}">
+                        ${day.status === 'Present' ? '<i class="fas fa-check-circle"></i> Present' : '<i class="fas fa-times-circle"></i> Absent'}
+                        ${day.scan_time ? `<br><small class="text-gray-400">${new Date(day.scan_time).toLocaleTimeString()}</small>` : ''}
+                    </span>
+                </div>
+            `;
+        });
+        
+        content.innerHTML = `
+            <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <p class="text-xs text-gray-500">Student Name</p>
+                        <p class="text-sm font-semibold text-gray-800">${student.student_name}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Student ID</p>
+                        <p class="text-sm font-semibold text-gray-800">${student.student_id}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Class</p>
+                        <p class="text-sm text-gray-800">${student.class_name}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Attendance Rate</p>
+                        <p class="text-sm font-bold ${student.percentage >= 75 ? 'text-green-600' : (student.percentage >= 50 ? 'text-orange-500' : 'text-red-600')}">${student.percentage}%</p>
+                    </div>
+                </div>
+            </div>
+            <div class="max-h-64 overflow-y-auto">
+                ${attendanceDetails}
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeStudentModal() {
+        document.getElementById('studentModal').classList.add('hidden');
+        document.getElementById('studentModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    async function exportToExcel() {
+        if (currentAttendanceData.length === 0) return;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        try {
+            const response = await fetch('/attendance-report/export-excel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    attendance: currentAttendanceData,
+                    date_range: currentDateRange,
+                    summary: currentSummary,
+                    start_date: startDate,
+                    end_date: endDate
+                })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `attendance_report_${startDate}_to_${endDate}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showMessage('Report exported successfully', 'success');
+            } else {
+                const error = await response.json();
+                showMessage(error.message || 'Failed to export', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Failed to export report', 'error');
+        } finally {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+        }
+    }
+    
+    function resetFilters() {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+        document.getElementById('classFilter').value = '';
+        document.getElementById('studentFilter').value = '';
+        document.getElementById('statusFilter').value = 'all';
+        loadReport();
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+    
+    // Load initial report
+    loadReport();
+    
+    // Close modal on outside click
+    window.onclick = function(event) {
+        const modal = document.getElementById('studentModal');
+        if (event.target === modal) {
+            closeStudentModal();
+        }
+    };
+</script>
+{% endblock %}

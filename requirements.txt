@@ -1,0 +1,26 @@
+# requirements.txt
+
+Flask
+Flask-Session
+Werkzeug
+supabase
+postgrest
+gotrue
+realtime
+storage3
+python-dotenv
+datetime
+reportlab
+xhtml2pdf
+PyPDF2
+requests
+qrcode
+Pillow
+simplejson
+python-multipart
+itsdangerous
+Jinja2
+MarkupSafe
+regex
+beautifulsoup4
+lxml
