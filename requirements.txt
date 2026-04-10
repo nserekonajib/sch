@@ -26,3 +26,4 @@ MarkupSafe
 regex
 beautifulsoup4
 lxml
+cloudinary
