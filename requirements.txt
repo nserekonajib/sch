@@ -28,3 +28,4 @@ beautifulsoup4
 lxml
 cloudinary
 pandas
+openpyxl
