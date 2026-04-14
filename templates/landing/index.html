@@ -66,7 +66,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.7) 100%);
+            background: linear-gradient(135deg, rgba(30, 42, 58, 0.85) 0%, rgba(45, 62, 80, 0.9) 100%);
             z-index: 1;
         }
         
@@ -164,7 +164,12 @@
             box-shadow: 0 10px 25px -5px rgba(255, 165, 0, 0.3);
         }
         
-        .video-play-btn {
+        /* Play button animation */
+        .play-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             width: 80px;
             height: 80px;
             background: rgba(255, 165, 0, 0.9);
@@ -174,26 +179,21 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            animation: pulse 2s infinite;
+            z-index: 10;
         }
         
-        .video-play-btn:hover {
-            transform: scale(1.1);
-            background: #ffa500;
+        .play-button:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            background: #ff8c00;
         }
         
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7);
-            }
-            70% {
-                box-shadow: 0 0 0 20px rgba(255, 165, 0, 0);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(255, 165, 0, 0);
-            }
+        .play-button i {
+            font-size: 32px;
+            color: white;
+            margin-left: 4px;
         }
         
+        /* Video modal */
         .video-modal {
             position: fixed;
             top: 0;
@@ -201,7 +201,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.95);
-            z-index: 9999;
+            z-index: 1000;
             display: none;
             align-items: center;
             justify-content: center;
@@ -211,18 +211,29 @@
             display: flex;
         }
         
-        .video-modal-content {
+        .video-container {
             position: relative;
-            max-width: 90%;
-            width: 800px;
+            width: 90%;
+            max-width: 1000px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .video-container iframe {
+            width: 100%;
+            height: 560px;
+            border: none;
         }
         
         .close-video {
             position: absolute;
             top: -40px;
             right: 0;
+            background: none;
+            border: none;
             color: white;
-            font-size: 30px;
+            font-size: 28px;
             cursor: pointer;
             transition: all 0.3s;
         }
@@ -230,31 +241,17 @@
         .close-video:hover {
             color: #ffa500;
         }
-
-        .video-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    z-index: -1;
-}
-
-.hero-video {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 177.77vh; /* 16:9 ratio */
-    height: 100vh;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-}
+        
+        @media (max-width: 768px) {
+            .video-container iframe {
+                height: 300px;
+            }
+        }
     </style>
 </head>
 <body class="bg-white">
     <!-- Navigation Bar -->
-    <nav class="bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-50 transition-shadow">
+    <nav class="bg-white shadow-sm sticky top-0 z-50 transition-shadow">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center space-x-2">
@@ -315,28 +312,28 @@
     </nav>
 
     <!-- Hero Section with Video Background -->
-    <section id="home" class="hero-section">
-        <!-- Video Background -->
+    <section id="home" class="hero-section relative">
         <!-- YouTube Video Background -->
-            <div class="video-container">
-                <iframe 
-                    src="https://www.youtube.com/embed/AzSSIliDmf4?autoplay=1&mute=1&loop=1&playlist=AzSSIliDmf4&controls=0&showinfo=0&modestbranding=1"
-                    frameborder="0"
-                    allow="autoplay; fullscreen"
-                    allowfullscreen
-                    class="hero-video">
-                </iframe>
-            </div>
-
-            <div class="hero-overlay"></div>
+        <iframe 
+            class="hero-video"
+            src="https://www.youtube.com/embed/AzSSIliDmf4?autoplay=1&mute=1&loop=1&playlist=AzSSIliDmf4&controls=0&showinfo=0&rel=0&modestbranding=1"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+        </iframe>
+        <div class="hero-overlay"></div>
         
-        <!-- Hero Content -->
+        <!-- Play Button for Video Modal (for unmuted viewing) -->
+        <div class="play-button" id="playVideoBtn">
+            <i class="fas fa-play"></i>
+        </div>
+        
         <div class="hero-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
             <div class="grid lg:grid-cols-2 gap-12 items-center">
                 <div>
                     <div class="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
                         <span class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
-                        <span class="text-white text-sm">Limited Time Offer - 50% OFF for First 100 Schools</span>
+                        <span class="text-white text-sm">Limited Time Offer - 50% OFF</span>
                     </div>
                     <h1 class="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-6 leading-tight">
                         Complete School Management<br>
@@ -350,9 +347,9 @@
                         <a href="/register" class="px-8 py-3 btn-gradient text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all inline-flex items-center gap-2">
                             Start Free Trial <i class="fas fa-arrow-right"></i>
                         </a>
-                        <button onclick="openVideoModal()" class="px-8 py-3 bg-white/10 backdrop-blur-sm border border-white/30 text-white rounded-lg font-semibold hover:bg-white/20 transition-all inline-flex items-center gap-2">
-                            <i class="fas fa-play"></i> Watch Demo
-                        </button>
+                        <a href="#features" class="px-8 py-3 bg-white/10 backdrop-blur-sm border border-white/30 text-white rounded-lg font-semibold hover:bg-white/20 transition-all inline-flex items-center gap-2">
+                            Learn More <i class="fas fa-play"></i>
+                        </a>
                     </div>
                     <div class="flex items-center gap-6 mt-8">
                         <div class="flex -space-x-2">
@@ -365,9 +362,6 @@
                             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center border-2 border-white shadow-md">
                                 <i class="fas fa-chart-line text-white text-xs"></i>
                             </div>
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center border-2 border-white shadow-md">
-                                <i class="fas fa-credit-card text-white text-xs"></i>
-                            </div>
                         </div>
                         <div class="text-white text-sm">
                             <span class="font-bold">2,500+</span> active users
@@ -378,8 +372,6 @@
                     <div class="floating">
                         <img src="{{ url_for('static', filename='dashboard.PNG') }}" alt="Dashboard Preview" class="rounded-2xl shadow-2xl w-full border border-white/20">
                     </div>
-                    <div class="absolute -top-5 -right-5 w-32 h-32 bg-orange-500/20 rounded-full blur-3xl"></div>
-                    <div class="absolute -bottom-5 -left-5 w-40 h-40 bg-orange-400/20 rounded-full blur-3xl"></div>
                 </div>
             </div>
         </div>
@@ -387,14 +379,11 @@
 
     <!-- Video Modal -->
     <div id="videoModal" class="video-modal">
-        <div class="video-modal-content">
-            <button class="close-video" onclick="closeVideoModal()">
+        <div class="video-container">
+            <button class="close-video" id="closeVideoBtn">
                 <i class="fas fa-times"></i>
             </button>
-            <video id="modalVideo" controls style="width: 100%; border-radius: 12px;">
-                <source src="{{ url_for('static', filename='hero.mp4') }}" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
+            <iframe id="videoIframe" src="https://www.youtube.com/embed/AzSSIliDmf4?autoplay=0&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
         </div>
     </div>
 
@@ -566,7 +555,7 @@
                 <!-- Director of Operations -->
                 <div class="text-center">
                     <div class="flex justify-center mb-4">
-                        <img src="{{ url_for('static', filename='3.jpeg') }}" alt="Dr. Ismail Luzze" class="team-photo" onerror="this.src='https://placehold.co/200x200/fef3c7/ffa500?text=Director'">
+                        <img src="{{ url_for('static', filename='3.jpeg') }}" alt="Director of Operations" class="team-photo" onerror="this.src='https://placehold.co/200x200/fef3c7/ffa500?text=Director'">
                     </div>
                     <h3 class="text-xl font-bold text-gray-800 mb-1">Dr. Ismail Luzze</h3>
                     <p class="text-orange-500 font-medium mb-3">Director of Operations</p>
@@ -712,40 +701,6 @@
     </footer>
 
     <script>
-        // Video modal functionality
-        const videoModal = document.getElementById('videoModal');
-        const heroVideo = document.getElementById('heroVideo');
-        const modalVideo = document.getElementById('modalVideo');
-        
-        function openVideoModal() {
-            videoModal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-            // Pause hero video when modal opens
-            if (heroVideo) {
-                heroVideo.pause();
-            }
-        }
-        
-        function closeVideoModal() {
-            videoModal.classList.remove('active');
-            document.body.style.overflow = '';
-            // Stop modal video and resume hero video
-            if (modalVideo) {
-                modalVideo.pause();
-                modalVideo.currentTime = 0;
-            }
-            if (heroVideo) {
-                heroVideo.play();
-            }
-        }
-        
-        // Close modal on escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && videoModal.classList.contains('active')) {
-                closeVideoModal();
-            }
-        });
-        
         // Mobile menu functionality
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
         const closeMenuBtn = document.getElementById('closeMenuBtn');
@@ -800,6 +755,47 @@
                 nav.classList.add('shadow-lg');
             } else {
                 nav.classList.remove('shadow-lg');
+            }
+        });
+        
+        // Video Modal Functionality
+        const playBtn = document.getElementById('playVideoBtn');
+        const videoModal = document.getElementById('videoModal');
+        const closeVideoBtn = document.getElementById('closeVideoBtn');
+        const videoIframe = document.getElementById('videoIframe');
+        
+        function openVideoModal() {
+            videoModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            // Add autoplay to iframe when modal opens
+            videoIframe.src = "https://www.youtube.com/embed/AzSSIliDmf4?autoplay=1&rel=0";
+        }
+        
+        function closeVideoModal() {
+            videoModal.classList.remove('active');
+            document.body.style.overflow = '';
+            // Stop video when modal closes
+            videoIframe.src = "https://www.youtube.com/embed/AzSSIliDmf4?autoplay=0&rel=0";
+        }
+        
+        if (playBtn) {
+            playBtn.addEventListener('click', openVideoModal);
+        }
+        if (closeVideoBtn) {
+            closeVideoBtn.addEventListener('click', closeVideoModal);
+        }
+        
+        // Close modal when clicking outside the video container
+        videoModal.addEventListener('click', function(e) {
+            if (e.target === videoModal) {
+                closeVideoModal();
+            }
+        });
+        
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && videoModal.classList.contains('active')) {
+                closeVideoModal();
             }
         });
     </script>
