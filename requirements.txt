@@ -29,3 +29,4 @@ lxml
 cloudinary
 pandas
 openpyxl
+comms_sdk
