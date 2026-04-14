@@ -230,6 +230,26 @@
         .close-video:hover {
             color: #ffa500;
         }
+
+        .video-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+}
+
+.hero-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 177.77vh; /* 16:9 ratio */
+    height: 100vh;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
     </style>
 </head>
 <body class="bg-white">
@@ -297,11 +317,18 @@
     <!-- Hero Section with Video Background -->
     <section id="home" class="hero-section">
         <!-- Video Background -->
-        <video class="hero-video" autoplay loop muted playsinline id="heroVideo">
-            <source src="{{ url_for('static', filename='hero.mp4') }}" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
-        <div class="hero-overlay"></div>
+        <!-- YouTube Video Background -->
+            <div class="video-container">
+                <iframe 
+                    src="https://www.youtube.com/embed/AzSSIliDmf4?autoplay=1&mute=1&loop=1&playlist=AzSSIliDmf4&controls=0&showinfo=0&modestbranding=1"
+                    frameborder="0"
+                    allow="autoplay; fullscreen"
+                    allowfullscreen
+                    class="hero-video">
+                </iframe>
+            </div>
+
+            <div class="hero-overlay"></div>
         
         <!-- Hero Content -->
         <div class="hero-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
