@@ -1,4 +1,4 @@
-<!-- templates/landing/index.html - Complete Landing Page -->
+<!-- templates/landing/index.html - Complete Landing Page with Video Hero -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,9 +43,36 @@
         }
         
         .hero-section {
-            background: linear-gradient(135deg, #1e2a3a 0%, #2d3e50 100%);
             position: relative;
             overflow: hidden;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        
+        .hero-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+        }
+        
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.7) 100%);
+            z-index: 1;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 2;
         }
         
         .stat-card {
@@ -136,11 +163,78 @@
             transform: scale(1.05);
             box-shadow: 0 10px 25px -5px rgba(255, 165, 0, 0.3);
         }
+        
+        .video-play-btn {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 165, 0, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+        
+        .video-play-btn:hover {
+            transform: scale(1.1);
+            background: #ffa500;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 20px rgba(255, 165, 0, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 165, 0, 0);
+            }
+        }
+        
+        .video-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .video-modal.active {
+            display: flex;
+        }
+        
+        .video-modal-content {
+            position: relative;
+            max-width: 90%;
+            width: 800px;
+        }
+        
+        .close-video {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .close-video:hover {
+            color: #ffa500;
+        }
     </style>
 </head>
 <body class="bg-white">
     <!-- Navigation Bar -->
-    <nav class="bg-white shadow-sm sticky top-0 z-50">
+    <nav class="bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-50 transition-shadow">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center space-x-2">
@@ -200,14 +294,22 @@
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section id="home" class="hero-section py-20 lg:py-28 relative overflow-hidden">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    <!-- Hero Section with Video Background -->
+    <section id="home" class="hero-section">
+        <!-- Video Background -->
+        <video class="hero-video" autoplay loop muted playsinline id="heroVideo">
+            <source src="{{ url_for('static', filename='hero.mp4') }}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="hero-overlay"></div>
+        
+        <!-- Hero Content -->
+        <div class="hero-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
             <div class="grid lg:grid-cols-2 gap-12 items-center">
                 <div>
                     <div class="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
                         <span class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
-                        <span class="text-white text-sm">Limited Time Offer - 50% OFF</span>
+                        <span class="text-white text-sm">Limited Time Offer - 50% OFF for First 100 Schools</span>
                     </div>
                     <h1 class="text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-6 leading-tight">
                         Complete School Management<br>
@@ -221,9 +323,9 @@
                         <a href="/register" class="px-8 py-3 btn-gradient text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all inline-flex items-center gap-2">
                             Start Free Trial <i class="fas fa-arrow-right"></i>
                         </a>
-                        <a href="#features" class="px-8 py-3 bg-white/10 backdrop-blur-sm border border-white/30 text-white rounded-lg font-semibold hover:bg-white/20 transition-all inline-flex items-center gap-2">
-                            Learn More <i class="fas fa-play"></i>
-                        </a>
+                        <button onclick="openVideoModal()" class="px-8 py-3 bg-white/10 backdrop-blur-sm border border-white/30 text-white rounded-lg font-semibold hover:bg-white/20 transition-all inline-flex items-center gap-2">
+                            <i class="fas fa-play"></i> Watch Demo
+                        </button>
                     </div>
                     <div class="flex items-center gap-6 mt-8">
                         <div class="flex -space-x-2">
@@ -236,6 +338,9 @@
                             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center border-2 border-white shadow-md">
                                 <i class="fas fa-chart-line text-white text-xs"></i>
                             </div>
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center border-2 border-white shadow-md">
+                                <i class="fas fa-credit-card text-white text-xs"></i>
+                            </div>
                         </div>
                         <div class="text-white text-sm">
                             <span class="font-bold">2,500+</span> active users
@@ -246,12 +351,25 @@
                     <div class="floating">
                         <img src="{{ url_for('static', filename='dashboard.PNG') }}" alt="Dashboard Preview" class="rounded-2xl shadow-2xl w-full border border-white/20">
                     </div>
-                    <div class="absolute -top-5 -right-5 w-32 h-32 bg-orange-500/20 rounded-full blur-3xl pulse-slow"></div>
-                    <div class="absolute -bottom-5 -left-5 w-40 h-40 bg-orange-400/20 rounded-full blur-3xl pulse-slow"></div>
+                    <div class="absolute -top-5 -right-5 w-32 h-32 bg-orange-500/20 rounded-full blur-3xl"></div>
+                    <div class="absolute -bottom-5 -left-5 w-40 h-40 bg-orange-400/20 rounded-full blur-3xl"></div>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- Video Modal -->
+    <div id="videoModal" class="video-modal">
+        <div class="video-modal-content">
+            <button class="close-video" onclick="closeVideoModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <video id="modalVideo" controls style="width: 100%; border-radius: 12px;">
+                <source src="{{ url_for('static', filename='hero.mp4') }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    </div>
 
     <!-- Features Section -->
     <section id="features" class="py-20 bg-gray-50">
@@ -421,7 +539,7 @@
                 <!-- Director of Operations -->
                 <div class="text-center">
                     <div class="flex justify-center mb-4">
-                        <img src="{{ url_for('static', filename='3.jpeg') }}" alt="Director of Operations" class="team-photo" onerror="this.src='https://placehold.co/200x200/fef3c7/ffa500?text=Director'">
+                        <img src="{{ url_for('static', filename='3.jpeg') }}" alt="Dr. Ismail Luzze" class="team-photo" onerror="this.src='https://placehold.co/200x200/fef3c7/ffa500?text=Director'">
                     </div>
                     <h3 class="text-xl font-bold text-gray-800 mb-1">Dr. Ismail Luzze</h3>
                     <p class="text-orange-500 font-medium mb-3">Director of Operations</p>
@@ -567,6 +685,40 @@
     </footer>
 
     <script>
+        // Video modal functionality
+        const videoModal = document.getElementById('videoModal');
+        const heroVideo = document.getElementById('heroVideo');
+        const modalVideo = document.getElementById('modalVideo');
+        
+        function openVideoModal() {
+            videoModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            // Pause hero video when modal opens
+            if (heroVideo) {
+                heroVideo.pause();
+            }
+        }
+        
+        function closeVideoModal() {
+            videoModal.classList.remove('active');
+            document.body.style.overflow = '';
+            // Stop modal video and resume hero video
+            if (modalVideo) {
+                modalVideo.pause();
+                modalVideo.currentTime = 0;
+            }
+            if (heroVideo) {
+                heroVideo.play();
+            }
+        }
+        
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && videoModal.classList.contains('active')) {
+                closeVideoModal();
+            }
+        });
+        
         // Mobile menu functionality
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
         const closeMenuBtn = document.getElementById('closeMenuBtn');
