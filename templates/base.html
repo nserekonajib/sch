@@ -1,4 +1,4 @@
-<!-- templates/base.html - Main Layout Template with Dynamic User Data -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -50,18 +50,22 @@
             background: #94a3b8; 
         }
         
-        /* Mobile sidebar transition */
+        /* Mobile sidebar transition - FIXED */
         .mobile-sidebar { 
             transition: transform 0.3s ease-in-out; 
+            transform: translateX(-100%);
         }
-        .sidebar-hidden { 
-            transform: translateX(-100%); 
+        .mobile-sidebar.sidebar-visible { 
+            transform: translateX(0); 
         }
         
         /* Desktop sidebar always visible */
         @media (min-width: 1024px) { 
             .mobile-sidebar { 
                 transform: translateX(0) !important; 
+            }
+            .mobile-sidebar.sidebar-visible {
+                transform: translateX(0) !important;
             }
         }
         
@@ -140,6 +144,28 @@
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             color: white;
         }
+
+        /* Mobile overlay backdrop */
+        .sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 25;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        .sidebar-backdrop.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        @media (min-width: 1024px) {
+            .sidebar-backdrop {
+                display: none;
+            }
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -171,8 +197,11 @@
 </div>
 
 <div class="flex h-screen overflow-hidden">
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+    
     <!-- ==================== SIDEBAR ==================== -->
-    <aside id="sidebar" class="mobile-sidebar fixed inset-y-0 left-0 z-30 w-72 bg-white border-r border-gray-200 shadow-xl transform transition-transform duration-300 lg:relative lg:translate-x-0 sidebar-scroll overflow-y-auto">
+    <aside id="sidebar" class="mobile-sidebar fixed inset-y-0 left-0 z-30 w-72 bg-white border-r border-gray-200 shadow-xl sidebar-scroll overflow-y-auto">
         <div class="flex flex-col h-full">
             <!-- Logo Header -->
             <div class="flex items-center justify-between px-6 py-6 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
@@ -689,46 +718,72 @@
 <!-- Scripts -->
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
-    // Sidebar toggle functionality
+    // FIXED: Sidebar toggle functionality for mobile
     const sidebar = document.getElementById('sidebar');
     const openBtn = document.getElementById('openSidebarBtn');
     const closeBtn = document.getElementById('closeSidebarBtn');
+    const backdrop = document.getElementById('sidebarBackdrop');
     
-    function toggleSidebar(show) { 
-        if (show) {
-            sidebar.classList.remove('sidebar-hidden');
-        } else {
-            sidebar.classList.add('sidebar-hidden');
+    function openSidebar() {
+        if (window.innerWidth < 1024) {
+            sidebar.classList.add('sidebar-visible');
+            if (backdrop) backdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+    
+    function closeSidebar() {
+        if (window.innerWidth < 1024) {
+            sidebar.classList.remove('sidebar-visible');
+            if (backdrop) backdrop.classList.remove('active');
+            document.body.style.overflow = '';
         }
     }
     
     if (openBtn) {
-        openBtn.addEventListener('click', () => toggleSidebar(true));
+        openBtn.addEventListener('click', openSidebar);
     }
     if (closeBtn) {
-        closeBtn.addEventListener('click', () => toggleSidebar(false));
+        closeBtn.addEventListener('click', closeSidebar);
+    }
+    if (backdrop) {
+        backdrop.addEventListener('click', closeSidebar);
     }
     
-    // Close sidebar when clicking outside on mobile
+    // Close sidebar when clicking outside on mobile (improved)
     document.addEventListener('click', function(event) {
         const isMobile = window.innerWidth < 1024;
         if (isMobile && sidebar && !sidebar.contains(event.target) && !openBtn?.contains(event.target)) {
-            if (!sidebar.classList.contains('sidebar-hidden')) {
-                toggleSidebar(false);
+            if (sidebar.classList.contains('sidebar-visible')) {
+                closeSidebar();
             }
         }
     });
     
-    // Handle window resize
+    // Handle window resize - ensure sidebar state is correct
     let resizeTimer;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function() {
             if (window.innerWidth >= 1024) {
-                sidebar.classList.remove('sidebar-hidden');
+                // On desktop, remove mobile classes and ensure body scroll is normal
+                sidebar.classList.remove('sidebar-visible');
+                if (backdrop) backdrop.classList.remove('active');
+                document.body.style.overflow = '';
+            } else {
+                // On mobile, make sure sidebar is closed by default
+                sidebar.classList.remove('sidebar-visible');
+                if (backdrop) backdrop.classList.remove('active');
+                document.body.style.overflow = '';
             }
-        }, 250);
+        }, 150);
     });
+    
+    // Ensure sidebar starts hidden on mobile
+    if (window.innerWidth < 1024) {
+        sidebar.classList.remove('sidebar-visible');
+        if (backdrop) backdrop.classList.remove('active');
+    }
     
     // Auto-hide flash messages after 5 seconds
     setTimeout(() => {

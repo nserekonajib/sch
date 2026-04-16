@@ -1,275 +1,354 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>St. Charles Lwanga SS - Akashanda | Report Card 2025</title>
-    <!-- Tailwind CSS v3 + Google Fonts for clean typography -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Custom override for print styles and fine tuning -->
-    <style>
-        @media print {
-            body {
-                background: white;
-                padding: 0.2in;
-                margin: 0;
-                font-size: 12px;
-            }
-            .no-break-inside {
-                break-inside: avoid;
-                page-break-inside: avoid;
-            }
-            .print-shadow-none {
-                box-shadow: none;
-            }
-            .print-border {
-                border: 1px solid #ccc;
-            }
-            header, footer, .footer-print {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            .print-mb-0 {
-                margin-bottom: 0 !important;
-            }
-        }
-        /* custom extra for readability */
-        .table-header-bg {
-            background-color: #1e3a5f;
-        }
-        .subject-row:nth-child(even) {
-            background-color: #f8fafc;
-        }
-        .print\:text-black {
-            print-color-adjust: exact;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Infotrust Property Consultants - SMC Ltd | Affordable Land Uganda</title>
+  <!-- Tailwind CSS v3 + Font Awesome Icons + Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    .gradient-hero {
+      background: linear-gradient(135deg, #0A2F1F 0%, #1B4D2E 100%);
+    }
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.15);
+    }
+    .whatsapp-float {
+      transition: all 0.2s ease;
+    }
+    .whatsapp-float:hover {
+      transform: scale(1.08);
+      background-color: #075e54;
+    }
+    .bg-soft-cream {
+      background-color: #FEF9E6;
+    }
+    .border-leaf {
+      border-left: 4px solid #2B7A4B;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 font-sans antialiased p-4 md:p-6">
+<body class="bg-white text-gray-800">
 
-    <!-- Main Report Card Container: simulates A4 or letter style -->
-    <div class="max-w-5xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden print:shadow-none border border-gray-200">
-        
-        <!-- Header Section with School Details & Crest-like feel -->
-        <div class="bg-gradient-to-r from-blue-900 to-blue-800 text-white px-6 pt-6 pb-4 print:bg-blue-900">
-            <div class="text-center">
-                <h1 class="text-2xl md:text-3xl font-bold uppercase tracking-wide">St Charles Lwanga SS - Akashanda</h1>
-                <p class="text-sm md:text-base font-medium mt-1">Near Akashanda Catholic Parish, Mbarara</p>
-                <p class="text-xs md:text-sm mt-1">P.O BOX: 150, Mbarara | TEL: +256757848094 / 0780298043 / 0740739087</p>
-                <p class="text-xs md:text-sm">Email: stcharleslwangassakashanda@gmail.com | Website: www.stcharlesss.com</p>
-            </div>
-            <div class="border-t border-blue-400 my-3 opacity-50"></div>
-            <div class="text-center">
-                <h2 class="text-xl md:text-2xl font-semibold bg-white/20 inline-block px-6 py-1 rounded-full">TERM ONE REPORT CARD 2025</h2>
-            </div>
-        </div>
+  <!-- Floating WhatsApp & Call CTA (Mobile/Desktop) -->
+  <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+    <a href="https://wa.me/256774322305?text=Hello%20Infotrust%2C%20I'm%20interested%20in%20affordable%20land%20in%20Uganda" 
+       target="_blank" 
+       class="bg-green-600 text-white p-3 rounded-full shadow-xl flex items-center justify-center w-14 h-14 hover:bg-green-700 transition-all duration-200 whatsapp-float"
+       aria-label="WhatsApp">
+      <i class="fab fa-whatsapp text-3xl"></i>
+    </a>
+    <a href="tel:+256774322305" 
+       class="bg-blue-600 text-white p-3 rounded-full shadow-xl flex items-center justify-center w-14 h-14 hover:bg-blue-700 transition-all duration-200"
+       aria-label="Call">
+      <i class="fas fa-phone-alt text-2xl"></i>
+    </a>
+  </div>
 
-        <!-- Student Identification & Basic Info -->
-        <div class="px-6 pt-5 pb-2 border-b border-gray-200 bg-gray-50">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm md:text-base">
-                <div class="flex flex-wrap gap-x-4 gap-y-1">
-                    <span class="font-bold text-gray-700 w-24">NAME:</span>
-                    <span class="text-gray-900 font-medium">KWAGALA JENNIFER</span>
-                    <span class="ml-4 font-bold text-gray-700">GENDER:</span>
-                    <span class="text-gray-900">FEMALE (F)</span>
-                </div>
-                <div class="flex flex-wrap gap-x-4 gap-y-1">
-                    <span class="font-bold text-gray-700 w-24">SECTION:</span>
-                    <span class="text-gray-900">Boarding</span>
-                    <span class="ml-4 font-bold text-gray-700">CLASS:</span>
-                    <span class="text-gray-900">S.1</span>
-                    <span class="ml-4 font-bold text-gray-700">TERM:</span>
-                    <span class="text-gray-900">ONE</span>
-                </div>
-                <div class="flex flex-wrap gap-x-4 gap-y-1">
-                    <span class="font-bold text-gray-700 w-24">House:</span>
-                    <span class="text-gray-900">House 3</span>
-                    <span class="ml-4 font-bold text-gray-700">Age:</span>
-                    <span class="text-gray-900">—</span>
-                    <span class="ml-4 font-bold text-gray-700">Printed on:</span>
-                    <span class="text-gray-900">04/11/2025</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- PERFORMANCE RECORDS TABLE (fully matches data given) -->
-        <div class="px-4 md:px-6 py-5 overflow-x-auto no-break-inside">
-            <h3 class="text-lg font-bold text-gray-800 border-l-4 border-blue-700 pl-3 mb-3">📊 PERFORMANCE RECORDS</h3>
-            <table class="min-w-full text-xs md:text-sm border border-gray-300 rounded-lg overflow-hidden">
-                <thead class="bg-blue-800 text-white print:bg-gray-800">
-                    <tr class="text-left">
-                        <th class="px-2 py-2 font-semibold border border-blue-700">Code</th>
-                        <th class="px-2 py-2 font-semibold border border-blue-700">Subject</th>
-                        <th class="px-1 py-2 text-center border border-blue-700">A1</th>
-                        <th class="px-1 py-2 text-center border border-blue-700">A2</th>
-                        <th class="px-1 py-2 text-center border border-blue-700">A3</th>
-                        <th class="px-1 py-2 text-center border border-blue-700">AVG</th>
-                        <th class="px-1 py-2 text-center border border-blue-700">20%</th>
-                        <th class="px-1 py-2 text-center border border-blue-700">80%</th>
-                        <th class="px-1 py-2 text-center border border-blue-700">100%</th>
-                        <th class="px-1 py-2 text-center border border-blue-700">Ident</th>
-                        <th class="px-1 py-2 text-center border border-blue-700">GRADE</th>
-                        <th class="px-2 py-2 border border-blue-700">Remarks/Descriptors</th>
-                        <th class="px-1 py-2 text-center border border-blue-700">TR</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white text-gray-800">
-                    <!-- Data exactly as per image: all 15 subjects -->
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">535</td><td class="px-2 py-1.5 font-medium">Biology</td>
-                        <td class="text-center">2.3</td><td class="text-center">2.0</td><td class="text-center">2.0</td><td class="text-center">2.1</td>
-                        <td class="text-center">14.0</td><td class="text-center">55.0</td><td class="text-center">69.0</td><td class="text-center">2</td>
-                        <td class="text-center font-bold">C</td><td class="px-2">Satisfactory</td><td class="text-center">B.S</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">545</td><td class="px-2 py-1.5 font-medium">Chemistry</td>
-                        <td class="text-center">2.0</td><td class="text-center">2.0</td><td class="text-center">2.0</td><td class="text-center">2.0</td>
-                        <td class="text-center">13.3</td><td class="text-center">66.0</td><td class="text-center">79.3</td><td class="text-center">2</td>
-                        <td class="text-center font-bold">B</td><td class="px-2">Outstanding</td><td class="text-center">N.S</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">112</td><td class="px-2 py-1.5 font-medium">English</td>
-                        <td class="text-center">1.2</td><td class="text-center">2.0</td><td class="text-center">1.6</td><td class="text-center">1.6</td>
-                        <td class="text-center">10.7</td><td class="text-center">55.0</td><td class="text-center">65.7</td><td class="text-center">2</td>
-                        <td class="text-center font-bold">C</td><td class="px-2">Satisfactory</td><td class="text-center">D.J</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">456</td><td class="px-2 py-1.5 font-medium">Mathematics</td>
-                        <td class="text-center">2.0</td><td class="text-center">2.0</td><td class="text-center">3.0</td><td class="text-center">2.3</td>
-                        <td class="text-center">15.5</td><td class="text-center">66.0</td><td class="text-center">81.5</td><td class="text-center">2</td>
-                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">N.E</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">273</td><td class="px-2 py-1.5 font-medium">Geography</td>
-                        <td class="text-center">3.0</td><td class="text-center">2.0</td><td class="text-center">2.0</td><td class="text-center">2.3</td>
-                        <td class="text-center">15.5</td><td class="text-center">56.0</td><td class="text-center">71.5</td><td class="text-center">2</td>
-                        <td class="text-center font-bold">B</td><td class="px-2">Outstanding</td><td class="text-center">N.E</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">241</td><td class="px-2 py-1.5 font-medium">History & Politi</td>
-                        <td class="text-center">3.0</td><td class="text-center">2.0</td><td class="text-center">3.0</td><td class="text-center">2.7</td>
-                        <td class="text-center">17.7</td><td class="text-center">78.0</td><td class="text-center">95.7</td><td class="text-center">3</td>
-                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">B.S</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">535</td><td class="px-2 py-1.5 font-medium">Physics</td>
-                        <td class="text-center">1.3</td><td class="text-center">3.0</td><td class="text-center">1.7</td><td class="text-center">2.0</td>
-                        <td class="text-center">13.3</td><td class="text-center">66.0</td><td class="text-center">79.3</td><td class="text-center">2</td>
-                        <td class="text-center font-bold">B</td><td class="px-2">Outstanding</td><td class="text-center">N.E</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">223</td><td class="px-2 py-1.5 font-medium">Religious Educat</td>
-                        <td class="text-center">1.3</td><td class="text-center">2.2</td><td class="text-center">1.8</td><td class="text-center">1.7</td>
-                        <td class="text-center">17.7</td><td class="text-center">77.0</td><td class="text-center">88.7</td><td class="text-center">3</td>
-                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">B.S</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">336</td><td class="px-2 py-1.5 font-medium">Kiswahili</td>
-                        <td class="text-center">1.2</td><td class="text-center">2.3</td><td class="text-center">1.6</td><td class="text-center">1.6</td>
-                        <td class="text-center">10.4</td><td class="text-center">77.0</td><td class="text-center">87.4</td><td class="text-center">3</td>
-                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">K.A</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">850</td><td class="px-2 py-1.5 font-medium">ICT</td>
-                        <td class="text-center">3.0</td><td class="text-center">2.0</td><td class="text-center">2.5</td><td class="text-center">2.6</td>
-                        <td class="text-center">16.7</td><td class="text-center">66.0</td><td class="text-center">82.7</td><td class="text-center">2</td>
-                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">K.J</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">612</td><td class="px-2 py-1.5 font-medium">Art & Design</td>
-                        <td class="text-center">2.0</td><td class="text-center">2.3</td><td class="text-center">2.2</td><td class="text-center">2.4</td>
-                        <td class="text-center">14.3</td><td class="text-center">45.0</td><td class="text-center">59.3</td><td class="text-center">2</td>
-                        <td class="text-center font-bold text-red-600">D</td><td class="px-2">Basic</td><td class="text-center">W.H</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">527</td><td class="px-2 py-1.5 font-medium">Agriculture</td>
-                        <td class="text-center">1.2</td><td class="text-center">2.2</td><td class="text-center">2.3</td><td class="text-center">1.9</td>
-                        <td class="text-center">12.7</td><td class="text-center">66.0</td><td class="text-center">78.7</td><td class="text-center">2</td>
-                        <td class="text-center font-bold">B</td><td class="px-2">Outstanding</td><td class="text-center">K.D</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">845</td><td class="px-2 py-1.5 font-medium">Entrepreneurship</td>
-                        <td class="text-center">1.5</td><td class="text-center">1.2</td><td class="text-center">1.3</td><td class="text-center">1.3</td>
-                        <td class="text-center">8.9</td><td class="text-center">54.0</td><td class="text-center">62.9</td><td class="text-center">2</td>
-                        <td class="text-center font-bold">C</td><td class="px-2">Satisfactory</td><td class="text-center">N.E</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">208</td><td class="px-2 py-1.5 font-medium">Literature</td>
-                        <td class="text-center">2.3</td><td class="text-center">1.3</td><td class="text-center">1.3</td><td class="text-center">1.6</td>
-                        <td class="text-center">10.9</td><td class="text-center">77.0</td><td class="text-center">87.9</td><td class="text-center">3</td>
-                        <td class="text-center font-bold text-green-700">A</td><td class="px-2">Exceptional</td><td class="text-center">B.S</td>
-                    </tr>
-                    <tr class="subject-row border-b border-gray-200 hover:bg-gray-50">
-                        <td class="px-2 py-1.5 font-mono border">345</td><td class="px-2 py-1.5 font-medium">Runyankore Rukig</td>
-                        <td class="text-center">3.0</td><td class="text-center">2.0</td><td class="text-center">2.4</td><td class="text-center">2.5</td>
-                        <td class="text-center">16.4</td><td class="text-center">55.0</td><td class="text-center">71.4</td><td class="text-center">2</td>
-                        <td class="text-center font-bold">B</td><td class="px-2">Outstanding</td><td class="text-center">B.S</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Overall Averages & Summary Section -->
-        <div class="px-6 pb-3 grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-200 bg-gray-50">
-            <div class="space-y-1">
-                <p class="text-sm"><span class="font-bold">AVERAGE (Overall Identifier):</span> 2</p>
-                <p class="text-sm"><span class="font-bold">Overall Achievement:</span> B</p>
-                <p class="text-sm"><span class="font-bold">Moderate:</span> C</p>
-                <p class="text-sm"><span class="font-bold">Overall grade:</span> D</p>
-            </div>
-            <div class="col-span-2 border-l md:border-l border-gray-300 pl-4">
-                <p class="text-sm font-semibold text-gray-700">Class teacher's comment:</p>
-                <p class="text-sm italic text-gray-800">KWAGALA JENNIFER. You're on the right track. Focus on building on your strengths and addressing areas for improvement.</p>
-                <p class="text-xs text-gray-500 mt-1">— Class Teacher</p>
-            </div>
-        </div>
-
-        <!-- Headteacher's comment & extra signature block -->
-        <div class="px-6 py-3 border-b border-gray-200 flex flex-wrap justify-between items-start gap-3">
-            <div class="w-full md:w-2/3">
-                <p class="font-bold text-gray-800 text-sm">Headteacher's Comment:</p>
-                <div class="border-b border-dashed border-gray-400 mt-1 w-full h-8"></div>
-                <p class="text-xs text-gray-400 mt-1">(Official stamp & signature)</p>
-            </div>
-            <div class="text-right">
-                <p class="text-xs text-gray-500">Printed: 04/11/2025</p>
-            </div>
-        </div>
-
-        <!-- Key to Terms used (Identifiers) -->
-        <div class="px-6 py-4 bg-white border-b border-gray-200">
-            <h4 class="text-md font-bold text-gray-800 mb-2">📖 Key to Terms Used (Identifiers / LOs)</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                <div class="flex items-center gap-2"><span class="font-mono bg-gray-200 px-2 py-0.5 rounded">1 - Basic</span><span class="text-gray-600">Few LOs achieved, not sufficient for overall achievement</span></div>
-                <div class="flex items-center gap-2"><span class="font-mono bg-gray-200 px-2 py-0.5 rounded">2 - Moderate</span><span class="text-gray-600">Many LOs achieved, enough for overall achievement</span></div>
-                <div class="flex items-center gap-2"><span class="font-mono bg-gray-200 px-2 py-0.5 rounded">3 - Outstanding</span><span class="text-gray-600">Most or all LOs achieved for overall achievement</span></div>
-            </div>
-        </div>
-
-        <!-- Date terms and next term info + fees placeholders -->
-        <div class="px-6 py-4 bg-gray-100 flex flex-wrap justify-between items-center text-sm gap-3">
-            <div class="flex space-x-6">
-                <div><span class="font-semibold">TERM ENDED ON:</span> 04/25/2025</div>
-                <div><span class="font-semibold">NEXT TERM BEGINS:</span> 05/23/2025</div>
-            </div>
-            <div class="flex flex-wrap gap-4 text-xs md:text-sm">
-                <div><span class="font-semibold">FEES BALANCE:</span> ___________</div>
-                <div><span class="font-semibold">FEES NEXT TERM:</span> ___________</div>
-                <div><span class="font-semibold">Other Requirement:</span> ___________</div>
-            </div>
-        </div>
-
-        <!-- Footer: official signature lines, additional remark -->
-        <div class="px-6 py-3 text-xs text-gray-500 flex justify-between border-t border-gray-200 print:text-black">
-            <div>St. Charles Lwanga SS - Akashanda || Excellence & Integrity</div>
-            <div>Generated via Academic Management System</div>
-        </div>
+  <!-- Navigation -->
+  <nav class="bg-white shadow-md sticky top-0 z-40 border-b border-gray-100">
+    <div class="max-w-7xl mx-auto px-5 md:px-8 py-3 flex flex-wrap justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fas fa-home text-emerald-700 text-2xl"></i>
+        <span class="font-bold text-xl tracking-tight text-gray-800">Infotrust<span class="text-emerald-700"> Property</span></span>
+        <span class="hidden md:inline-block text-xs font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full ml-2">SMC Ltd</span>
+      </div>
+      <div class="flex gap-4 md:gap-6 text-sm font-medium">
+        <a href="#home" class="hover:text-emerald-700 transition">Home</a>
+        <a href="#projects" class="hover:text-emerald-700 transition">Projects</a>
+        <a href="#services" class="hover:text-emerald-700 transition">Services</a>
+        <a href="#contact" class="hover:text-emerald-700 transition">Contact</a>
+      </div>
     </div>
+  </nav>
 
-    <!-- Print-friendly instruction note (optional but user-friendly) -->
-    <div class="max-w-5xl mx-auto mt-4 text-center text-xs text-gray-500 flex justify-between">
-        <p>📄 Official Report Card — Approved by Administration</p>
-        <button onclick="window.print();" class="bg-blue-700 hover:bg-blue-800 text-white text-xs px-4 py-1.5 rounded-full shadow print:hidden">🖨️ Print Report Card</button>
+  <!-- Hero Section (Home) -->
+  <section id="home" class="gradient-hero text-white">
+    <div class="max-w-7xl mx-auto px-6 md:px-10 py-16 md:py-24 flex flex-col md:flex-row items-center gap-10">
+      <div class="flex-1 space-y-5">
+        <span class="inline-block bg-white/20 backdrop-blur-sm text-emerald-50 text-sm font-semibold px-4 py-1 rounded-full">🇺🇬 Uganda's Trusted Real Estate</span>
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight">Your Land Journey <br> Starts <span class="text-emerald-300">From 4.5M UGX</span></h1>
+        <p class="text-lg text-gray-100 max-w-lg">Affordable titled land, expert property management & development — empowering humble beginners & diaspora Ugandans to own a piece of Uganda.</p>
+        <div class="flex flex-wrap gap-4 pt-2">
+          <a href="#contact" class="bg-white text-emerald-800 font-semibold px-6 py-3 rounded-xl shadow-md hover:bg-gray-100 transition flex items-center gap-2"><i class="fas fa-map-marker-alt"></i> Book Site Visit</a>
+          <a href="https://wa.me/256709981937?text=I'm%20interested%20in%20land%20along%20Masaka%20Road" target="_blank" class="bg-transparent border-2 border-white text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/10 transition flex items-center gap-2"><i class="fab fa-whatsapp"></i> WhatsApp Us</a>
+        </div>
+        <div class="flex items-center gap-5 text-sm text-emerald-100 pt-3">
+          <span><i class="fas fa-check-circle"></i> Titled Land</span>
+          <span><i class="fas fa-check-circle"></i> Site Visits</span>
+          <span><i class="fas fa-check-circle"></i> Diaspora Support</span>
+        </div>
+      </div>
+      <div class="flex-1 flex justify-center">
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 w-full max-w-sm border border-white/20 shadow-xl">
+          <div class="text-center">
+            <i class="fas fa-landmark text-5xl text-emerald-300 mb-3"></i>
+            <h3 class="text-2xl font-bold">Start from 4.5M UGX</h3>
+            <p class="text-sm opacity-90">Own titled plots around Mpigi & Masaka Road corridor</p>
+            <hr class="my-4 border-white/30">
+            <div class="grid grid-cols-2 gap-3 text-left text-sm">
+              <div><i class="fas fa-road mr-1"></i> Masaka Road</div>
+              <div><i class="fas fa-tree mr-1"></i> Mpigi Green Zone</div>
+              <div><i class="fas fa-file-signature mr-1"></i> Freehold titles</div>
+              <div><i class="fas fa-globe mr-1"></i> Diaspora friendly</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  </section>
+
+  <!-- Key Highlights / Trust Badges -->
+  <div class="bg-soft-cream border-b border-emerald-100">
+    <div class="max-w-7xl mx-auto px-6 py-8 flex flex-wrap justify-between items-center gap-6 text-center md:text-left">
+      <div class="flex items-center gap-3"><i class="fas fa-building text-emerald-700 text-2xl"></i><span class="font-medium">📍 Kiwatule, Emessa Complex</span></div>
+      <div class="flex items-center gap-3"><i class="fas fa-hand-holding-usd text-emerald-700 text-2xl"></i><span class="font-medium">Affordable for beginners</span></div>
+      <div class="flex items-center gap-3"><i class="fab fa-facebook text-emerald-700 text-2xl"></i><a href="#" class="hover:underline font-medium">Follow on Facebook</a></div>
+      <div class="flex items-center gap-3"><i class="fas fa-tiktok text-emerald-700 text-2xl"></i><span class="font-medium">Updates on TikTok</span></div>
+    </div>
+  </div>
+
+  <!-- Projects: Mpigi & Masaka Road Focus -->
+  <section id="projects" class="py-20 px-5 bg-white">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center max-w-2xl mx-auto mb-14">
+        <span class="text-emerald-600 font-semibold tracking-wide">LAND FOR EVERY DREAM</span>
+        <h2 class="text-3xl md:text-4xl font-bold mt-2 text-gray-800">Prime Locations <span class="text-emerald-700">Along Masaka Road</span></h2>
+        <p class="text-gray-500 mt-3">Titled plots near Mpigi town, with easy access to Kampala. Perfect for investment, farming, or building a future home.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Project 1 -->
+        <div class="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-100 card-hover">
+          <div class="h-48 bg-gradient-to-br from-emerald-800 to-emerald-600 flex items-center justify-center text-white">
+            <i class="fas fa-mountain text-6xl opacity-80"></i>
+          </div>
+          <div class="p-5">
+            <div class="flex justify-between items-start">
+              <h3 class="text-xl font-bold">Mpigi Green Valley</h3>
+              <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full">Hot Offer</span>
+            </div>
+            <p class="text-gray-500 text-sm mt-1">Along Masaka Road, 5km from Mpigi town centre</p>
+            <div class="mt-3 flex items-baseline gap-1"><span class="text-2xl font-extrabold">4.5M UGX</span><span class="text-gray-400 text-sm">/plot</span></div>
+            <ul class="mt-4 space-y-2 text-sm text-gray-600">
+              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Surveyed & Registered titles</li>
+              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Access road & nearby schools</li>
+              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Flexible payment plans</li>
+            </ul>
+            <button onclick="openInquiry('Mpigi Green Valley')" class="mt-5 w-full bg-emerald-50 text-emerald-700 font-semibold py-2 rounded-xl hover:bg-emerald-100 transition flex items-center justify-center gap-2"><i class="fas fa-phone-alt"></i> Request site visit</button>
+          </div>
+        </div>
+
+        <!-- Project 2 - Masaka Road Frontier -->
+        <div class="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-100 card-hover">
+          <div class="h-48 bg-gradient-to-br from-amber-700 to-yellow-800 flex items-center justify-center text-white">
+            <i class="fas fa-road text-6xl opacity-80"></i>
+          </div>
+          <div class="p-5">
+            <h3 class="text-xl font-bold">Masaka Road Frontier</h3>
+            <p class="text-gray-500 text-sm mt-1">Near Buwama, high visibility corridor</p>
+            <div class="mt-3 flex items-baseline gap-1"><span class="text-2xl font-extrabold">6.2M UGX</span><span class="text-gray-400 text-sm">/plot</span></div>
+            <ul class="mt-4 space-y-2 text-sm text-gray-600">
+              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Near main tarmac road</li>
+              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Ideal for commercial/residential</li>
+              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Verified land title included</li>
+            </ul>
+            <button onclick="openInquiry('Masaka Road Frontier')" class="mt-5 w-full bg-emerald-50 text-emerald-700 font-semibold py-2 rounded-xl hover:bg-emerald-100 transition"><i class="fas fa-calendar-alt mr-2"></i> Schedule visit</button>
+          </div>
+        </div>
+
+        <!-- Project 3 - Diaspora Special Package -->
+        <div class="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-100 card-hover">
+          <div class="h-48 bg-gradient-to-br from-blue-800 to-indigo-700 flex items-center justify-center text-white">
+            <i class="fas fa-plane-departure text-6xl opacity-80"></i>
+          </div>
+          <div class="p-5">
+            <h3 class="text-xl font-bold">Diaspora Investment Zone</h3>
+            <p class="text-gray-500 text-sm mt-1">Mpigi West - remote purchase & title transfer support</p>
+            <div class="mt-3 flex items-baseline gap-1"><span class="text-2xl font-extrabold">5.9M UGX</span><span class="text-gray-400 text-sm">/plot</span></div>
+            <ul class="mt-4 space-y-2 text-sm text-gray-600">
+              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Digital documentation</li>
+              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Dedicated diaspora manager</li>
+              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Virtual site tour option</li>
+            </ul>
+            <button onclick="openInquiry('Diaspora Investment Zone')" class="mt-5 w-full bg-emerald-50 text-emerald-700 font-semibold py-2 rounded-xl hover:bg-emerald-100 transition"><i class="fab fa-whatsapp mr-2"></i> WhatsApp diaspora team</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Services Section: Property Management, Development & Sales -->
+  <section id="services" class="py-20 px-5 bg-gray-50">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-14">
+        <span class="text-emerald-600 font-semibold">WHAT WE OFFER</span>
+        <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mt-2">Comprehensive <span class="text-emerald-700">Real Estate Solutions</span></h2>
+        <p class="text-gray-500 max-w-2xl mx-auto mt-3">From land acquisition to property management, we guide humble beginners and seasoned investors alike.</p>
+      </div>
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="bg-white p-7 rounded-2xl shadow-md border-l-4 border-l-emerald-500 transition-all hover:shadow-lg">
+          <div class="bg-emerald-100 w-14 h-14 flex items-center justify-center rounded-xl mb-5"><i class="fas fa-map-marked-alt text-emerald-700 text-2xl"></i></div>
+          <h3 class="text-xl font-bold mb-2">Affordable Land Sales</h3>
+          <p class="text-gray-600">Titled plots starting from 4.5M UGX. Focus on Mpigi, Masaka Road corridor. Flexible payment options for first-time buyers.</p>
+        </div>
+        <div class="bg-white p-7 rounded-2xl shadow-md border-l-4 border-l-emerald-500 transition-all hover:shadow-lg">
+          <div class="bg-emerald-100 w-14 h-14 flex items-center justify-center rounded-xl mb-5"><i class="fas fa-building text-emerald-700 text-2xl"></i></div>
+          <h3 class="text-xl font-bold mb-2">Property Management</h3>
+          <p class="text-gray-600">Let us manage your rentals, tenant sourcing, and maintenance. Maximize returns while you focus elsewhere.</p>
+        </div>
+        <div class="bg-white p-7 rounded-2xl shadow-md border-l-4 border-l-emerald-500 transition-all hover:shadow-lg">
+          <div class="bg-emerald-100 w-14 h-14 flex items-center justify-center rounded-xl mb-5"><i class="fas fa-hard-hat text-emerald-700 text-2xl"></i></div>
+          <h3 class="text-xl font-bold mb-2">Development Consultancy</h3>
+          <p class="text-gray-600">Guidance for building your dream home, land subdivision, and feasibility studies for small developers.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Choose & Verification section -->
+  <section class="py-16 px-5 bg-white">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row gap-12 items-center">
+      <div class="flex-1">
+        <img src="https://placehold.co/600x400/EAEFE5/2B7A4B?text=Office+Verification+%26+Site+Visit" alt="Office and land verification" class="rounded-2xl shadow-xl w-full object-cover border border-emerald-100">
+        <p class="text-xs text-center text-gray-400 mt-3">Visit our active office at Emessa Complex, Kiwatule</p>
+      </div>
+      <div class="flex-1 space-y-5">
+        <div class="inline-block bg-emerald-100 text-emerald-800 px-4 py-1 rounded-full text-sm font-semibold">Trust & Transparency</div>
+        <h2 class="text-3xl font-bold">Verify Before You Commit</h2>
+        <p class="text-gray-600">We strongly recommend visiting our registered office for site visits and physical verification of land titles. Infotrust Property Consultants - SMC Ltd ensures full due diligence, with active operations in Kiwatule (Emessa Complex).</p>
+        <ul class="space-y-3">
+          <li class="flex gap-3"><i class="fas fa-check-circle text-emerald-600 text-xl mt-0.5"></i><span>Physical title verification & land survey reports</span></li>
+          <li class="flex gap-3"><i class="fas fa-check-circle text-emerald-600 text-xl mt-0.5"></i><span>Official office location: Emessa Complex, Kiwatule</span></li>
+          <li class="flex gap-3"><i class="fas fa-check-circle text-emerald-600 text-xl mt-0.5"></i><span>Experienced team for diaspora & local buyers</span></li>
+        </ul>
+        <div class="pt-4 flex flex-wrap gap-4">
+          <a href="#contact" class="bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-semibold shadow hover:bg-emerald-800 transition">Schedule office visit</a>
+          <a href="tel:+256709981937" class="border border-emerald-600 text-emerald-700 px-6 py-2.5 rounded-xl font-semibold hover:bg-emerald-50 transition"><i class="fas fa-phone-alt mr-2"></i>Call +256 709 981 937</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact & Office Location -->
+  <section id="contact" class="py-20 px-5 bg-emerald-900 text-white">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl md:text-4xl font-bold">Get in Touch</h2>
+        <p class="text-emerald-100 max-w-lg mx-auto mt-2">Reach out for land inquiries, site visits, or property management needs.</p>
+      </div>
+      <div class="grid md:grid-cols-2 gap-10 items-start">
+        <div class="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/20">
+          <h3 class="text-2xl font-semibold mb-4 flex items-center gap-2"><i class="fas fa-map-pin"></i> Visit Our Office</h3>
+          <p class="text-emerald-50 mb-5"><strong>📍 Infotrust Property Consultants - SMC Ltd</strong><br> Emessa Complex, Kiwatule, Kampala (Opposite TotalEnergies)<br> Former locations: Kamwokya / Ntinda (now fully centralized at Kiwatule)</p>
+          <div class="space-y-3 mt-6">
+            <p><i class="fas fa-phone-alt w-6"></i> Call: <a href="tel:+256774322305" class="hover:underline">+256 774 322 305</a> / <a href="tel:+256709981937" class="hover:underline">+256 709 981 937</a></p>
+            <p><i class="fab fa-whatsapp w-6"></i> WhatsApp: <a href="https://wa.me/256774322305" target="_blank" class="hover:underline">+256 774 322 305</a></p>
+            <p><i class="fab fa-facebook w-6"></i> Facebook: <a href="#" class="hover:underline">@InfotrustPropertyConsultants</a> (Updates on new listings)</p>
+            <p><i class="fab fa-tiktok w-6"></i> TikTok: Property insights & project tours</p>
+          </div>
+        </div>
+        <div class="bg-white/5 rounded-2xl p-6 border border-white/10">
+          <h3 class="text-2xl font-semibold mb-4">Request a Callback</h3>
+          <form id="callbackForm" class="space-y-4">
+            <input type="text" id="nameInput" placeholder="Full Name" class="w-full px-4 py-3 rounded-xl bg-white text-gray-800 placeholder-gray-400 border-0 focus:ring-2 focus:ring-emerald-400" required>
+            <input type="tel" id="phoneInput" placeholder="Phone Number (e.g., 07XX XXX XXX)" class="w-full px-4 py-3 rounded-xl bg-white text-gray-800 placeholder-gray-400 border-0 focus:ring-2 focus:ring-emerald-400" required>
+            <select id="inquirySelect" class="w-full px-4 py-3 rounded-xl bg-white text-gray-800 border-0 focus:ring-2 focus:ring-emerald-400">
+              <option value="Land in Mpigi">Land in Mpigi / Masaka Road (from 4.5M)</option>
+              <option value="Property Management">Property Management</option>
+              <option value="Site Visit Booking">Site Visit Booking</option>
+              <option value="Diaspora Services">Diaspora land services</option>
+            </select>
+            <textarea rows="3" id="msgInput" placeholder="Additional message..." class="w-full px-4 py-3 rounded-xl bg-white text-gray-800 placeholder-gray-400 border-0 focus:ring-2 focus:ring-emerald-400"></textarea>
+            <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 transition w-full font-bold py-3 rounded-xl text-white flex items-center justify-center gap-2"><i class="fas fa-paper-plane"></i> Send & We'll Call You</button>
+            <p class="text-xs text-emerald-200 text-center">Our team responds within 24 hours. Office visits strictly by appointment & verification.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-300 py-10 px-5 border-t border-gray-800">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+      <div class="text-center md:text-left">
+        <div class="flex items-center gap-2 text-white text-xl font-bold"><i class="fas fa-home text-emerald-400"></i> Infotrust Property Consultants <span class="text-sm font-normal text-gray-400">- SMC Ltd</span></div>
+        <p class="text-sm mt-1">Empowering humble beginners & diaspora to own titled land in Uganda.</p>
+        <p class="text-xs text-gray-500 mt-3">© 2025 Infotrust Property Consultants - SMC Ltd. All rights reserved.</p>
+      </div>
+      <div class="flex gap-6 text-2xl">
+        <a href="#" class="hover:text-emerald-400 transition"><i class="fab fa-facebook"></i></a>
+        <a href="#" class="hover:text-emerald-400 transition"><i class="fab fa-tiktok"></i></a>
+        <a href="https://wa.me/256774322305" class="hover:text-emerald-400 transition"><i class="fab fa-whatsapp"></i></a>
+        <a href="tel:+256774322305" class="hover:text-emerald-400 transition"><i class="fas fa-phone"></i></a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // openInquiry for project buttons - fill form or generate WhatsApp message
+    function openInquiry(projectName) {
+      const selectEl = document.getElementById('inquirySelect');
+      if (selectEl) {
+        selectEl.value = "Land in Mpigi";
+        // optional custom message for each project
+        const msgBox = document.getElementById('msgInput');
+        if (msgBox) msgBox.value = `I am interested in the project: ${projectName}. Please contact me for site visit and pricing details.`;
+        document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
+      } else {
+        // fallback direct WhatsApp
+        let whatsappNumber = "256774322305";
+        let text = `Hello Infotrust, I'm interested in ${projectName} (affordable titled land). Please share more details.`;
+        window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
+      }
+    }
+
+    // callback form handler
+    const form = document.getElementById('callbackForm');
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('nameInput').value.trim();
+        const phone = document.getElementById('phoneInput').value.trim();
+        const inquiry = document.getElementById('inquirySelect').value;
+        const message = document.getElementById('msgInput').value;
+        if (!name || !phone) {
+          alert("Please provide your name and phone number so we can assist you.");
+          return;
+        }
+        // prepare WhatsApp or call alert: we can forward to company WhatsApp
+        const whatsappMsg = `*New Inquiry from Website*%0A%0AName: ${name}%0APhone: ${phone}%0AInquiry: ${inquiry}%0AMessage: ${message}%0A%0APlease contact customer.`;
+        const whatsappNumber = "256774322305"; // main line
+        window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMsg}`, '_blank');
+        alert(`Thank you ${name}! We will contact you via ${phone} within few hours. You can also WhatsApp us directly.`);
+        form.reset();
+      });
+    }
+
+    // smooth anchor links for navigation
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        const targetId = this.getAttribute('href');
+        if (targetId === "#" || targetId === "") return;
+        const targetElem = document.querySelector(targetId);
+        if (targetElem) {
+          e.preventDefault();
+          targetElem.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+  </script>
 </body>
 </html>

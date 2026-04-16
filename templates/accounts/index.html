@@ -1,10 +1,11 @@
-<!-- templates/accounts/index.html - Complete with Report Generation -->
+<!-- templates/accounts/index.html - Complete with Report Generation (Fully Responsive) -->
 {% extends "base.html" %}
 
 {% block title %}Accounts Management - Lunserk ERP{% endblock %}
 
 {% block extra_css %}
 <style>
+    /* Base & Utility Styles */
     .stat-card {
         transition: all 0.2s ease;
         cursor: pointer;
@@ -72,61 +73,121 @@
     .account-card:hover .report-btn {
         opacity: 1;
     }
+
+    /* Responsive Table to Card Styles */
+    @media (max-width: 768px) {
+        .responsive-table thead {
+            display: none;
+        }
+        .responsive-table tbody tr {
+            display: block;
+            margin-bottom: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            background: white;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .responsive-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f3f4f6;
+            text-align: right;
+        }
+        .responsive-table tbody td:last-child {
+            border-bottom: none;
+        }
+        .responsive-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-align: left;
+            flex: 1;
+        }
+        .responsive-table tbody td > * {
+            flex: 2;
+            text-align: right;
+        }
+        .responsive-table tbody td .badge-inline {
+            display: inline-block;
+            text-align: center;
+        }
+        /* Adjust amount alignment */
+        .responsive-table tbody td[data-label="Amount"] {
+            font-weight: 600;
+        }
+    }
+
+    /* Small adjustments for very small screens */
+    @media (max-width: 480px) {
+        .stat-card p.text-lg {
+            font-size: 1rem;
+        }
+        .tab-button {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+        }
+        .modal-container {
+            max-width: 95%;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-6">
+<div class="max-w-7xl mx-auto px-4 py-4 sm:py-6">
     <!-- Page Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 mb-1">Accounts Management</h1>
-        <p class="text-sm text-gray-600">Manage chart of accounts, income, expenses, and generate reports</p>
+    <div class="mb-4 sm:mb-6">
+        <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Accounts Management</h1>
+        <p class="text-xs sm:text-sm text-gray-600">Manage chart of accounts, income, expenses, and generate reports</p>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-blue-500">
+    <!-- Stats Cards - Already Responsive Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-3 mb-4 sm:mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-2 sm:p-3 stat-card border-l-4 border-blue-500">
             <p class="text-xs text-gray-500">School Fees</p>
-            <p class="text-lg font-bold text-blue-600" id="statSchoolFees">UGX 0</p>
+            <p class="text-sm sm:text-lg font-bold text-blue-600" id="statSchoolFees">UGX 0</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-green-500">
+        <div class="bg-white rounded-xl shadow-sm p-2 sm:p-3 stat-card border-l-4 border-green-500">
             <p class="text-xs text-gray-500">Other Income</p>
-            <p class="text-lg font-bold text-green-600" id="statOtherIncome">UGX 0</p>
+            <p class="text-sm sm:text-lg font-bold text-green-600" id="statOtherIncome">UGX 0</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-teal-500">
+        <div class="bg-white rounded-xl shadow-sm p-2 sm:p-3 stat-card border-l-4 border-teal-500">
             <p class="text-xs text-gray-500">Total Income</p>
-            <p class="text-lg font-bold text-teal-600" id="statTotalIncome">UGX 0</p>
+            <p class="text-sm sm:text-lg font-bold text-teal-600" id="statTotalIncome">UGX 0</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-red-500">
+        <div class="bg-white rounded-xl shadow-sm p-2 sm:p-3 stat-card border-l-4 border-red-500">
             <p class="text-xs text-gray-500">Expenses</p>
-            <p class="text-lg font-bold text-red-600" id="statExpense">UGX 0</p>
+            <p class="text-sm sm:text-lg font-bold text-red-600" id="statExpense">UGX 0</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-purple-500">
+        <div class="bg-white rounded-xl shadow-sm p-2 sm:p-3 stat-card border-l-4 border-purple-500">
             <p class="text-xs text-gray-500">Net Profit</p>
-            <p class="text-lg font-bold text-purple-600" id="statNet">UGX 0</p>
+            <p class="text-sm sm:text-lg font-bold text-purple-600" id="statNet">UGX 0</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-yellow-500">
+        <div class="bg-white rounded-xl shadow-sm p-2 sm:p-3 stat-card border-l-4 border-yellow-500">
             <p class="text-xs text-gray-500">Accounts</p>
-            <p class="text-lg font-bold text-yellow-600" id="statAccounts">0</p>
+            <p class="text-sm sm:text-lg font-bold text-yellow-600" id="statAccounts">0</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-4 border-orange-500">
+        <div class="bg-white rounded-xl shadow-sm p-2 sm:p-3 stat-card border-l-4 border-orange-500">
             <p class="text-xs text-gray-500">Transactions</p>
-            <p class="text-lg font-bold text-orange-600" id="statTransactions">0</p>
+            <p class="text-sm sm:text-lg font-bold text-orange-600" id="statTransactions">0</p>
         </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="mb-6 flex gap-2 border-b border-gray-200 flex-wrap">
-        <button onclick="showTab('chart')" id="tabChart" class="px-4 py-2 rounded-t-lg font-medium transition-all tab-active">
-            <i class="fas fa-book"></i> Chart of Accounts
+    <!-- Tabs - Responsive Wrap -->
+    <div class="mb-4 sm:mb-6 flex gap-1 sm:gap-2 border-b border-gray-200 flex-wrap">
+        <button onclick="showTab('chart')" id="tabChart" class="tab-button px-3 sm:px-4 py-1.5 sm:py-2 rounded-t-lg font-medium transition-all tab-active text-xs sm:text-sm">
+            <i class="fas fa-book"></i> <span class="hidden xs:inline">Chart of </span>Accounts
         </button>
-        <button onclick="showTab('income')" id="tabIncome" class="px-4 py-2 rounded-t-lg font-medium transition-all tab-inactive">
+        <button onclick="showTab('income')" id="tabIncome" class="tab-button px-3 sm:px-4 py-1.5 sm:py-2 rounded-t-lg font-medium transition-all tab-inactive text-xs sm:text-sm">
             <i class="fas fa-plus-circle text-green-600"></i> Income
         </button>
-        <button onclick="showTab('expense')" id="tabExpense" class="px-4 py-2 rounded-t-lg font-medium transition-all tab-inactive">
+        <button onclick="showTab('expense')" id="tabExpense" class="tab-button px-3 sm:px-4 py-1.5 sm:py-2 rounded-t-lg font-medium transition-all tab-inactive text-xs sm:text-sm">
             <i class="fas fa-minus-circle text-red-600"></i> Expenses
         </button>
-        <button onclick="showTab('transactions')" id="tabTransactions" class="px-4 py-2 rounded-t-lg font-medium transition-all tab-inactive">
+        <button onclick="showTab('transactions')" id="tabTransactions" class="tab-button px-3 sm:px-4 py-1.5 sm:py-2 rounded-t-lg font-medium transition-all tab-inactive text-xs sm:text-sm">
             <i class="fas fa-list"></i> All Transactions
         </button>
     </div>
@@ -134,20 +195,20 @@
     <!-- Chart of Accounts Tab -->
     <div id="chartTab" class="tab-content">
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex justify-between items-center flex-wrap gap-2">
-                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+                <h2 class="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <i class="fas fa-book text-orange-500"></i>
                     Chart of Accounts
                 </h2>
-                <button onclick="openAccountModal()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2">
+                <button onclick="openAccountModal()" class="btn-gradient px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-white text-xs sm:text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center">
                     <i class="fas fa-plus"></i>
                     New Account
                 </button>
             </div>
-            <div class="p-5" id="chartOfAccountsContainer">
+            <div class="p-4 sm:p-5" id="chartOfAccountsContainer">
                 <div class="text-center py-8">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-                    <p class="text-sm text-gray-500 mt-2">Loading accounts...</p>
+                    <div class="inline-block animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-orange-500"></div>
+                    <p class="text-xs sm:text-sm text-gray-500 mt-2">Loading accounts...</p>
                 </div>
             </div>
         </div>
@@ -156,20 +217,20 @@
     <!-- Income Tab -->
     <div id="incomeTab" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex justify-between items-center">
-                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+                <h2 class="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <i class="fas fa-plus-circle text-green-600"></i>
                     Income Transactions
                 </h2>
-                <button onclick="openTransactionModal('income')" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2">
+                <button onclick="openTransactionModal('income')" class="btn-gradient px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-white text-xs sm:text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center">
                     <i class="fas fa-plus"></i>
                     Add Income
                 </button>
             </div>
-            <div class="p-5" id="incomeContainer">
+            <div class="p-4 sm:p-5" id="incomeContainer">
                 <div class="text-center py-8">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-                    <p class="text-sm text-gray-500 mt-2">Loading income...</p>
+                    <div class="inline-block animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-orange-500"></div>
+                    <p class="text-xs sm:text-sm text-gray-500 mt-2">Loading income...</p>
                 </div>
             </div>
         </div>
@@ -178,20 +239,20 @@
     <!-- Expenses Tab -->
     <div id="expenseTab" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex justify-between items-center">
-                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+                <h2 class="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <i class="fas fa-minus-circle text-red-600"></i>
                     Expense Transactions
                 </h2>
-                <button onclick="openTransactionModal('expense')" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2">
+                <button onclick="openTransactionModal('expense')" class="btn-gradient px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-white text-xs sm:text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center">
                     <i class="fas fa-plus"></i>
                     Add Expense
                 </button>
             </div>
-            <div class="p-5" id="expenseContainer">
+            <div class="p-4 sm:p-5" id="expenseContainer">
                 <div class="text-center py-8">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-                    <p class="text-sm text-gray-500 mt-2">Loading expenses...</p>
+                    <div class="inline-block animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-orange-500"></div>
+                    <p class="text-xs sm:text-sm text-gray-500 mt-2">Loading expenses...</p>
                 </div>
             </div>
         </div>
@@ -200,22 +261,23 @@
     <!-- All Transactions Tab -->
     <div id="transactionsTab" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
-                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                <h2 class="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <i class="fas fa-list text-orange-500"></i>
                     All Transactions
                 </h2>
             </div>
-            <div class="p-5" id="allTransactionsContainer">
+            <div class="p-4 sm:p-5" id="allTransactionsContainer">
                 <div class="text-center py-8">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-                    <p class="text-sm text-gray-500 mt-2">Loading transactions...</p>
+                    <div class="inline-block animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-orange-500"></div>
+                    <p class="text-xs sm:text-sm text-gray-500 mt-2">Loading transactions...</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Modals (unchanged, already responsive) -->
 <!-- Account Modal -->
 <div id="accountModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
@@ -330,7 +392,7 @@
             </button>
         </div>
         <div class="p-5">
-            <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
                     <input type="date" id="reportStartDate" 
@@ -343,7 +405,7 @@
                 </div>
             </div>
             
-            <div class="mb-6 flex gap-3">
+            <div class="mb-6 flex flex-col sm:flex-row gap-3">
                 <button onclick="generateReport()" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium flex items-center justify-center gap-2">
                     <i class="fas fa-chart-line"></i>
                     Generate Report
@@ -449,17 +511,17 @@
                                 </h3>
                                 <div class="space-y-2">
                                     ${typeAccounts.map(account => `
-                                        <div class="account-card flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-orange-50 transition-all">
-                                            <div class="flex-1">
+                                        <div class="account-card flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-gray-50 rounded-lg hover:bg-orange-50 transition-all gap-2 sm:gap-0">
+                                            <div class="flex-1 w-full sm:w-auto">
                                                 <p class="font-medium text-gray-800">${account.account_name}</p>
                                                 <p class="text-xs text-gray-500">${account.account_code}</p>
                                                 ${account.description ? `<p class="text-xs text-gray-400 mt-1">${account.description}</p>` : ''}
                                             </div>
-                                            <div class="flex items-center gap-2">
+                                            <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
                                                 <span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">${account.account_type}</span>
                                                 <button onclick="openReportModal('${account.id}', '${account.account_name}')" 
                                                         class="report-btn px-3 py-1 bg-orange-500 text-white rounded-lg text-xs hover:bg-orange-600 transition-all">
-                                                    <i class="fas fa-chart-line"></i> Run Report
+                                                    <i class="fas fa-chart-line"></i> <span class="hidden xs:inline">Run Report</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -482,7 +544,7 @@
         }
     }
     
-    // Load income transactions
+    // Load income transactions with responsive table
     async function loadIncome() {
         try {
             const response = await fetch('/accounts/transactions');
@@ -495,7 +557,7 @@
                 if (income.length > 0) {
                     container.innerHTML = `
                         <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
+                            <table class="responsive-table min-w-full divide-y divide-gray-200">
                                 <thead>
                                     <tr class="bg-gray-50">
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
@@ -508,11 +570,11 @@
                                 <tbody class="divide-y divide-gray-200">
                                     ${income.map(trans => `
                                         <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-3 text-sm text-gray-600">${trans.date}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-800">${trans.account_name}</td>
-                                            <td class="px-4 py-3 text-sm text-right text-green-600 font-medium">UGX ${trans.amount.toLocaleString()}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-600 capitalize">${trans.payment_method}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">${trans.description || '-'}</td>
+                                            <td data-label="Date" class="px-4 py-3 text-sm text-gray-600">${trans.date}</td>
+                                            <td data-label="Account" class="px-4 py-3 text-sm text-gray-800">${trans.account_name}</td>
+                                            <td data-label="Amount" class="px-4 py-3 text-sm text-right text-green-600 font-medium">UGX ${trans.amount.toLocaleString()}</td>
+                                            <td data-label="Payment Method" class="px-4 py-3 text-sm text-gray-600 capitalize">${trans.payment_method}</td>
+                                            <td data-label="Description" class="px-4 py-3 text-sm text-gray-500">${trans.description || '-'}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -528,7 +590,7 @@
         }
     }
     
-    // Load expense transactions
+    // Load expense transactions with responsive table
     async function loadExpenses() {
         try {
             const response = await fetch('/accounts/transactions');
@@ -541,7 +603,7 @@
                 if (expenses.length > 0) {
                     container.innerHTML = `
                         <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
+                            <table class="responsive-table min-w-full divide-y divide-gray-200">
                                 <thead>
                                     <tr class="bg-gray-50">
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
@@ -554,11 +616,11 @@
                                 <tbody class="divide-y divide-gray-200">
                                     ${expenses.map(trans => `
                                         <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-3 text-sm text-gray-600">${trans.date}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-800">${trans.account_name}</td>
-                                            <td class="px-4 py-3 text-sm text-right text-red-600 font-medium">UGX ${trans.amount.toLocaleString()}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-600 capitalize">${trans.payment_method}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">${trans.description || '-'}</td>
+                                            <td data-label="Date" class="px-4 py-3 text-sm text-gray-600">${trans.date}</td>
+                                            <td data-label="Account" class="px-4 py-3 text-sm text-gray-800">${trans.account_name}</td>
+                                            <td data-label="Amount" class="px-4 py-3 text-sm text-right text-red-600 font-medium">UGX ${trans.amount.toLocaleString()}</td>
+                                            <td data-label="Payment Method" class="px-4 py-3 text-sm text-gray-600 capitalize">${trans.payment_method}</td>
+                                            <td data-label="Description" class="px-4 py-3 text-sm text-gray-500">${trans.description || '-'}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -574,7 +636,7 @@
         }
     }
     
-    // Load all transactions
+    // Load all transactions with responsive table
     async function loadAllTransactions() {
         try {
             const response = await fetch('/accounts/transactions');
@@ -587,7 +649,7 @@
                 if (transactions.length > 0) {
                     container.innerHTML = `
                         <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
+                            <table class="responsive-table min-w-full divide-y divide-gray-200">
                                 <thead>
                                     <tr class="bg-gray-50">
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
@@ -602,20 +664,20 @@
                                 <tbody class="divide-y divide-gray-200">
                                     ${transactions.map(trans => `
                                         <tr class="hover:bg-gray-50 ${trans.type === 'income' ? 'bg-green-50' : trans.type === 'expense' ? 'bg-red-50' : 'bg-blue-50'}">
-                                            <td class="px-4 py-3 text-sm text-gray-600">${trans.date}</td>
-                                            <td class="px-4 py-3 text-sm">
+                                            <td data-label="Date" class="px-4 py-3 text-sm text-gray-600">${trans.date}</td>
+                                            <td data-label="Type" class="px-4 py-3 text-sm">
                                                 <span class="px-2 py-1 rounded-full text-xs font-medium 
                                                     ${trans.type === 'income' ? 'income-badge' : trans.type === 'expense' ? 'expense-badge' : 'bg-blue-100 text-blue-800'}">
                                                     ${trans.type_label}
                                                 </span>
                                             </td>
-                                            <td class="px-4 py-3 text-sm text-gray-800">${trans.student_name || trans.account_name}</td>
-                                            <td class="px-4 py-3 text-sm text-right ${trans.type === 'income' ? 'text-green-600' : 'text-red-600'} font-medium">
+                                            <td data-label="Account/Student" class="px-4 py-3 text-sm text-gray-800">${trans.student_name || trans.account_name}</td>
+                                            <td data-label="Amount" class="px-4 py-3 text-sm text-right ${trans.type === 'income' ? 'text-green-600' : 'text-red-600'} font-medium">
                                                 UGX ${trans.amount.toLocaleString()}
                                             </td>
-                                            <td class="px-4 py-3 text-sm text-gray-600 capitalize">${trans.payment_method}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">${trans.reference || '-'}</td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">${trans.description || '-'}</td>
+                                            <td data-label="Payment Method" class="px-4 py-3 text-sm text-gray-600 capitalize">${trans.payment_method}</td>
+                                            <td data-label="Reference" class="px-4 py-3 text-sm text-gray-500">${trans.reference || '-'}</td>
+                                            <td data-label="Description" class="px-4 py-3 text-sm text-gray-500">${trans.description || '-'}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -690,13 +752,13 @@
                 result.transactions.forEach(trans => {
                     transactionsHtml += `
                         <tr class="border-b border-gray-200">
-                            <td class="px-4 py-2 text-sm text-gray-600">${trans.date}</td>
-                            <td class="px-4 py-2 text-sm text-gray-800">${trans.description || '-'}</td>
-                            <td class="px-4 py-2 text-sm text-gray-500">${trans.reference || '-'}</td>
-                            <td class="px-4 py-2 text-sm text-right ${trans.type === 'credit' ? 'text-green-600' : 'text-red-600'} font-medium">
+                            <td data-label="Date" class="px-4 py-2 text-sm text-gray-600">${trans.date}</td>
+                            <td data-label="Description" class="px-4 py-2 text-sm text-gray-800">${trans.description || '-'}</td>
+                            <td data-label="Reference" class="px-4 py-2 text-sm text-gray-500">${trans.reference || '-'}</td>
+                            <td data-label="Amount" class="px-4 py-2 text-sm text-right ${trans.type === 'credit' ? 'text-green-600' : 'text-red-600'} font-medium">
                                 UGX ${trans.amount.toLocaleString()}
                             </td>
-                            <td class="px-4 py-2 text-sm text-gray-600 capitalize">${trans.type}</td>
+                            <td data-label="Type" class="px-4 py-2 text-sm text-gray-600 capitalize">${trans.type}</td>
                         </tr>
                     `;
                 });
@@ -710,7 +772,7 @@
                         <p class="mt-2"><strong>Total ${result.account.account_type === 'income' ? 'Income' : 'Expenses'}:</strong> UGX ${result.total.toLocaleString()}</p>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
+                        <table class="responsive-table min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Date</th>

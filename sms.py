@@ -1,21 +1,46 @@
-from comms_sdk import CommsSDK, MessagePriority
+import re
 
-api_username = "hajaranasejje"
-api_key = "b9aa9af77457643f169dd81e3cfe81b172d65fcf2ddfd30d"
-
-sdk = CommsSDK.authenticate(api_username, api_key)
-
-def send_fee_sms(phone, student_name, amount, balance, reciept_url, institution_name):
-    message = f"Payment received UGX {amount} for {student_name}. Balance: UGX {balance}. View receipt: {reciept_url}   Thank you for your payment. /n {institution_name} School Fees Payment Confirmation"
+def analyze_sql_backup(file_path):
+    insert_count = 0
+    tables = set()
+    total_rows = 0
 
     try:
-        response = sdk.send_sms(
-            [phone],
-            message,
-            sender_id="SCHOOL",
-            priority=MessagePriority.HIGHEST
-        )
-        return response
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                line = line.strip()
+
+                # Check for INSERT statements
+                if line.upper().startswith("INSERT INTO"):
+                    insert_count += 1
+
+                    # Extract table name
+                    match = re.search(r'INSERT INTO\s+`?(\w+)`?', line, re.IGNORECASE)
+                    if match:
+                        tables.add(match.group(1))
+
+                    # Estimate number of rows inserted
+                    values_part = line.split("VALUES", 1)
+                    if len(values_part) > 1:
+                        rows = values_part[1].count("),(") + 1
+                        total_rows += rows
+
+        print("=== SQL BACKUP ANALYSIS ===")
+        print(f"INSERT statements found: {insert_count}")
+        print(f"Estimated total rows: {total_rows}")
+        print(f"Tables with data ({len(tables)}):")
+
+        for table in sorted(tables):
+            print(f" - {table}")
+
+        if insert_count == 0:
+            print("\n⚠️ No data found! This backup likely contains only structure (CREATE TABLE).")
+
+    except FileNotFoundError:
+        print("❌ File not found. Check the path.")
     except Exception as e:
-        print("SMS Error:", e)
-        
+        print(f"❌ Error: {e}")
+
+
+# 👉 Replace with your .sql file path
+analyze_sql_backup("n.sql")
