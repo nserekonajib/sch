@@ -1,0 +1,244 @@
+<!-- templates/agent/apply.html - Simplified Application Page (No OTP) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply as Field Agent - Lunserk ERP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .btn-gradient {
+            background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+        }
+        .btn-gradient:hover {
+            background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+            transform: translateY(-2px);
+        }
+        .form-step {
+            display: none;
+        }
+        .form-step.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .step-indicator {
+            transition: all 0.3s ease;
+        }
+        .step-indicator.active {
+            background-color: #ffa500;
+            color: white;
+        }
+        .file-upload-area {
+            border: 2px dashed #e2e8f0;
+            transition: all 0.3s;
+        }
+        .file-upload-area:hover {
+            border-color: #ffa500;
+            background-color: #fff7ed;
+        }
+        .optional-badge {
+            font-size: 11px;
+            color: #9ca3af;
+            font-weight: normal;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Simple Header -->
+    <div class="bg-white shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div class="h-8 w-8 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
+                        <i class="fas fa-graduation-cap text-white text-sm"></i>
+                    </div>
+                    <span class="font-bold text-lg text-gray-800">Lunserk<span class="text-orange-500">ERP</span></span>
+                </div>
+                <a href="{{ url_for('agent.landing') }}" class="text-sm text-gray-600 hover:text-orange-500">← Back</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-3xl mx-auto px-4 py-8">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Field Agent Application</h1>
+            <p class="text-gray-600">Complete the form below to apply as a field agent</p>
+        </div>
+
+        <!-- Step Indicators -->
+        <div class="flex justify-between mb-8">
+            <div class="step-indicator w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-semibold" data-step="1">1</div>
+            <div class="flex-1 h-1 bg-gray-200 mt-5 mx-2"></div>
+            <div class="step-indicator w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-semibold" data-step="2">2</div>
+        </div>
+
+        <!-- Step 1: Personal Information -->
+        <div id="step1" class="form-step active">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Personal Information</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                    <input type="text" id="fullName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                    <input type="tel" id="phone" required placeholder="+256XXXXXXXXX" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <input type="email" id="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Region *</label>
+                    <select id="region" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                        <option value="">Select Region</option>
+                        <option value="Northern">Northern Region</option>
+                        <option value="Eastern">Eastern Region</option>
+                        <option value="Central">Central Region</option>
+                        <option value="Western">Western Region</option>
+                    </select>
+                </div>
+                <button type="button" onclick="nextStep(2)" class="w-full btn-gradient py-2 rounded-lg text-white font-medium">Continue</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Document Upload (Optional) -->
+        <div id="step2" class="form-step">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                    Identification Document 
+                    <span class="optional-badge">(Optional)</span>
+                </h2>
+                <div class="file-upload-area rounded-xl p-8 text-center cursor-pointer" onclick="document.getElementById('documentInput').click()">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-orange-400 mb-2"></i>
+                    <p class="text-gray-600">Click to upload National ID or Passport</p>
+                    <p class="text-xs text-gray-400 mt-1">PNG, JPG, JPEG up to 5MB (Optional)</p>
+                    <input type="file" id="documentInput" accept="image/*" class="hidden" onchange="previewDocument(this)">
+                </div>
+                <div id="documentPreview" class="mt-4 hidden">
+                    <img id="previewImg" class="w-32 h-32 object-cover rounded-lg mx-auto">
+                </div>
+                <div class="mt-4 p-3 bg-yellow-50 rounded-lg">
+                    <p class="text-xs text-yellow-700"><i class="fas fa-info-circle mr-1"></i> Uploading an identification document helps speed up the verification process, but it's not required to submit your application.</p>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="prevStep(1)" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Back</button>
+                    <button type="button" onclick="submitApplication()" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">Submit Application</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+            <p class="text-gray-700">Processing...</p>
+        </div>
+    </div>
+
+    <script>
+        let documentBase64 = null;
+        let deviceInfo = {
+            user_agent: navigator.userAgent,
+            screen_resolution: `${screen.width}x${screen.height}`,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            language: navigator.language
+        };
+
+        function previewDocument(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    documentBase64 = e.target.result;
+                    document.getElementById('previewImg').src = e.target.result;
+                    document.getElementById('documentPreview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function nextStep(step) {
+            const name = document.getElementById('fullName').value;
+            const phone = document.getElementById('phone').value;
+            const region = document.getElementById('region').value;
+            
+            if (!name || !phone || !region) {
+                alert('Please fill all required fields');
+                return;
+            }
+            
+            document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
+            document.getElementById(`step${step}`).classList.add('active');
+            
+            document.querySelectorAll('.step-indicator').forEach((el, idx) => {
+                if (idx + 1 <= step) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+        }
+
+        function prevStep(step) {
+            document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
+            document.getElementById(`step${step}`).classList.add('active');
+        }
+
+        async function submitApplication() {
+            const name = document.getElementById('fullName').value;
+            const phone = document.getElementById('phone').value;
+            const region = document.getElementById('region').value;
+            
+            if (!name || !phone || !region) {
+                alert('Please fill all required fields');
+                return;
+            }
+            
+            const data = {
+                full_name: name,
+                phone: phone,
+                email: document.getElementById('email').value,
+                region: region,
+                document_base64: documentBase64,
+                device_info: deviceInfo
+            };
+            
+            const loading = document.getElementById('loadingOverlay');
+            loading.classList.remove('hidden');
+            loading.classList.add('flex');
+            
+            try {
+                const response = await fetch('/agent/api/submit-application', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                
+                if (result.success) {
+                    alert(result.message);
+                    window.location.href = "{{ url_for('agent.landing') }}";
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                alert('Failed to submit application');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!-- templates/agent/dashboard.html - Agent Dashboard (Extends base.html) -->
+{% extends "base.html" %}
+
+{% block title %}Agent Dashboard - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+    }
+    .task-card {
+        transition: all 0.2s;
+    }
+    .task-card:hover {
+        transform: translateX(4px);
+        background-color: #fff7ed;
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .tab-active {
+        background-color: #ffa500;
+        color: white;
+    }
+    .tab-inactive {
+        background-color: #f3f4f6;
+        color: #6b7280;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Agent Dashboard</h1>
+        <p class="text-sm text-gray-600">Welcome back! Here are your tasks and earnings</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-orange-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Earnings</p>
+                    <p class="text-2xl font-bold text-gray-800" id="totalEarnings">UGX 0</p>
+                </div>
+                <div class="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-money-bill-wave text-orange-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-green-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Pending Earnings</p>
+                    <p class="text-2xl font-bold text-gray-800" id="pendingEarnings">UGX 0</p>
+                </div>
+                <div class="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-clock text-green-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-blue-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Tasks Completed</p>
+                    <p class="text-2xl font-bold text-gray-800" id="tasksCompleted">0</p>
+                </div>
+                <div class="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-check-circle text-blue-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6">
+        <button onclick="switchTab('tasks')" id="tabTasks" class="tab-active px-5 py-2 rounded-lg font-medium transition-all">Available Tasks</button>
+        <button onclick="switchTab('submissions')" id="tabSubmissions" class="tab-inactive px-5 py-2 rounded-lg font-medium transition-all">My Submissions</button>
+    </div>
+
+    <!-- Tasks Tab -->
+    <div id="tasksTab">
+        <div id="tasksList" class="space-y-3">
+            <div class="text-center py-8 text-gray-400">Loading tasks...</div>
+        </div>
+    </div>
+
+    <!-- Submissions Tab -->
+    <div id="submissionsTab" class="hidden">
+        <div id="submissionsList" class="space-y-3">
+            <div class="text-center py-8 text-gray-400">Loading submissions...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Task Submission Modal -->
+<div id="submissionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Submit Task</h3>
+            <button onclick="closeSubmissionModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <form id="submissionForm" class="p-5">
+            <input type="hidden" id="submitTaskId">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Task Title</label>
+                <p id="submitTaskTitle" class="text-gray-800 font-medium"></p>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Upload Proof (Photo/File)</label>
+                <div class="file-upload-area border-2 border-dashed rounded-lg p-4 text-center cursor-pointer" onclick="document.getElementById('proofInput').click()">
+                    <i class="fas fa-cloud-upload-alt text-2xl text-orange-400 mb-1"></i>
+                    <p class="text-sm text-gray-600">Click to upload proof</p>
+                    <input type="file" id="proofInput" accept="image/*" class="hidden" onchange="previewProof(this)">
+                </div>
+                <div id="proofPreview" class="mt-2 hidden">
+                    <img id="proofImg" class="w-20 h-20 object-cover rounded-lg">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                <textarea id="submissionNotes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
+            </div>
+            <div class="mb-4 p-3 bg-yellow-50 rounded-lg">
+                <p class="text-sm text-yellow-800"><i class="fas fa-info-circle"></i> Location verification will be performed automatically</p>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium">Submit Task</button>
+                <button type="button" onclick="closeSubmissionModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let currentProofBase64 = null;
+    let currentTaskId = null;
+    let currentLocation = null;
+
+    function switchTab(tab) {
+        const tasksTab = document.getElementById('tasksTab');
+        const submissionsTab = document.getElementById('submissionsTab');
+        const tabTasks = document.getElementById('tabTasks');
+        const tabSubmissions = document.getElementById('tabSubmissions');
+        
+        if (tab === 'tasks') {
+            tasksTab.classList.remove('hidden');
+            submissionsTab.classList.add('hidden');
+            tabTasks.classList.add('tab-active');
+            tabTasks.classList.remove('tab-inactive');
+            tabSubmissions.classList.add('tab-inactive');
+            tabSubmissions.classList.remove('tab-active');
+            loadTasks();
+        } else {
+            tasksTab.classList.add('hidden');
+            submissionsTab.classList.remove('hidden');
+            tabSubmissions.classList.add('tab-active');
+            tabSubmissions.classList.remove('tab-inactive');
+            tabTasks.classList.add('tab-inactive');
+            tabTasks.classList.remove('tab-active');
+            loadSubmissions();
+        }
+    }
+
+    async function loadTasks() {
+        try {
+            const response = await fetch('/agent/api/agent/tasks');
+            const data = await response.json();
+            
+            if (data.success && data.tasks.length > 0) {
+                const container = document.getElementById('tasksList');
+                container.innerHTML = data.tasks.map(task => `
+                    <div class="task-card bg-white rounded-xl shadow-md p-5 border border-gray-100">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="font-semibold text-gray-800">${task.title}</h3>
+                                <p class="text-sm text-gray-500 mt-1">${task.description}</p>
+                            </div>
+                            <span class="text-lg font-bold text-orange-500">UGX ${task.payment_amount.toLocaleString()}</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm text-gray-500 mb-3">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> ${task.region}</span>
+                            <span><i class="fas fa-calendar mr-1"></i> Due: ${new Date(task.deadline).toLocaleDateString()}</span>
+                        </div>
+                        ${!task.is_completed ? 
+                            `<button onclick="openSubmissionModal('${task.id}', '${task.title}')" class="w-full btn-gradient py-2 rounded-lg text-white font-medium">Submit Task</button>` :
+                            `<button disabled class="w-full bg-gray-200 py-2 rounded-lg text-gray-500 font-medium cursor-not-allowed">Completed</button>`
+                        }
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('tasksList').innerHTML = '<div class="text-center py-8 text-gray-400">No tasks available in your region</div>';
+            }
+        } catch (error) {
+            console.error('Error loading tasks:', error);
+        }
+    }
+
+    async function loadSubmissions() {
+        try {
+            const response = await fetch('/agent/api/agent/submissions');
+            const data = await response.json();
+            
+            if (data.success && data.submissions.length > 0) {
+                const statusColors = {
+                    pending: 'bg-yellow-100 text-yellow-700',
+                    approved: 'bg-green-100 text-green-700',
+                    rejected: 'bg-red-100 text-red-700'
+                };
+                
+                const container = document.getElementById('submissionsList');
+                container.innerHTML = data.submissions.map(sub => `
+                    <div class="bg-white rounded-xl shadow-md p-5 border border-gray-100">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="font-semibold text-gray-800">${sub.agent_tasks?.title || 'N/A'}</h3>
+                                <p class="text-xs text-gray-400 mt-1">Submitted: ${new Date(sub.created_at).toLocaleString()}</p>
+                            </div>
+                            <span class="text-lg font-bold text-orange-500">UGX ${sub.agent_tasks?.payment_amount?.toLocaleString() || 0}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${statusColors[sub.status]}">${sub.status.toUpperCase()}</span>
+                            ${sub.location_verified ? '<span class="text-xs text-green-600"><i class="fas fa-check-circle"></i> Location Verified</span>' : ''}
+                        </div>
+                        ${sub.rejection_reason ? `<p class="text-sm text-red-600 mt-2">Reason: ${sub.rejection_reason}</p>` : ''}
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('submissionsList').innerHTML = '<div class="text-center py-8 text-gray-400">No submissions yet</div>';
+            }
+        } catch (error) {
+            console.error('Error loading submissions:', error);
+        }
+    }
+
+    async function loadEarnings() {
+        try {
+            const response = await fetch('/agent/api/agent/earnings');
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('totalEarnings').textContent = `UGX ${data.earnings.total_earned.toLocaleString()}`;
+                document.getElementById('pendingEarnings').textContent = `UGX ${data.earnings.pending_earnings.toLocaleString()}`;
+                document.getElementById('tasksCompleted').textContent = data.earnings.tasks_completed;
+            }
+        } catch (error) {
+            console.error('Error loading earnings:', error);
+        }
+    }
+
+    function openSubmissionModal(taskId, taskTitle) {
+        currentTaskId = taskId;
+        document.getElementById('submitTaskId').value = taskId;
+        document.getElementById('submitTaskTitle').textContent = taskTitle;
+        document.getElementById('submissionModal').classList.remove('hidden');
+        document.getElementById('submissionModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    currentLocation = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+                },
+                (error) => {
+                    alert('Please enable GPS to submit tasks');
+                },
+                { enableHighAccuracy: true }
+            );
+        }
+    }
+
+    function closeSubmissionModal() {
+        document.getElementById('submissionModal').classList.add('hidden');
+        document.getElementById('submissionModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        currentProofBase64 = null;
+        document.getElementById('proofPreview').classList.add('hidden');
+        document.getElementById('submissionNotes').value = '';
+    }
+
+    function previewProof(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentProofBase64 = e.target.result;
+                document.getElementById('proofImg').src = e.target.result;
+                document.getElementById('proofPreview').classList.remove('hidden');
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    document.getElementById('submissionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (!currentLocation) {
+            alert('Please enable GPS to submit task');
+            return;
+        }
+        
+        if (!currentProofBase64) {
+            alert('Please upload proof of task completion');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const data = {
+            task_id: currentTaskId,
+            gps_lat: currentLocation.lat,
+            gps_lon: currentLocation.lon,
+            gps_accuracy: currentLocation.accuracy,
+            ip_address: '',
+            proof_url: currentProofBase64,
+            notes: document.getElementById('submissionNotes').value,
+            device_info: {
+                user_agent: navigator.userAgent,
+                screen_resolution: `${screen.width}x${screen.height}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                language: navigator.language
+            }
+        };
+        
+        try {
+            const response = await fetch('/agent/api/agent/submit-task', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeSubmissionModal();
+                alert(result.message);
+                loadTasks();
+                loadSubmissions();
+                loadEarnings();
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            alert('Failed to submit task');
+        }
+    });
+
+    // Load initial data
+    loadTasks();
+    loadEarnings();
+</script>
+{% endblock %}

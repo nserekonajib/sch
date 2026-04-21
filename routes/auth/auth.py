@@ -128,3 +128,130 @@ def logout():
     session.clear()
     flash('You have been logged out successfully', 'info')
     return redirect(url_for('landing'))
+
+
+# Add to auth.py (after existing imports)
+# Add to auth.py (after existing imports)
+# Updated auth.py with proper email and password update
+# auth.py - Fixed profile update with proper session handling
+
+# Alternative: Simpler approach using direct Supabase Admin API
+# Add this to your .env file: SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# auth.py - Fixed profile update without ClientOptions issues
+
+@auth_bp.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    """Update user email and password"""
+    user = session.get('user')
+    if not user:
+        return redirect(url_for('auth.login'))
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'update_email':
+            new_email = request.form.get('new_email', '').strip()
+            password = request.form.get('password', '')
+            
+            if not new_email or not password:
+                flash('Please provide new email and current password', 'error')
+                return redirect(url_for('auth.profile'))
+            
+            try:
+                # First verify the password
+                auth_response = supabase.auth.sign_in_with_password({
+                    "email": user['email'],
+                    "password": password
+                })
+                
+                if not auth_response.user:
+                    flash('Current password is incorrect', 'error')
+                    return redirect(url_for('auth.profile'))
+                
+                # Update the email using the authenticated session
+                update_response = supabase.auth.update_user({
+                    "email": new_email
+                })
+                
+                if update_response and update_response.user:
+                    # Update the institutes table
+                    try:
+                        supabase.table('institutes')\
+                            .update({'email': new_email})\
+                            .eq('user_id', user['id'])\
+                            .execute()
+                    except Exception as inst_error:
+                        print(f"Institute update error: {inst_error}")
+                    
+                    # Update session with new email
+                    session['user']['email'] = new_email
+                    
+                    flash('Email updated successfully!', 'success')
+                else:
+                    flash('Failed to update email. Please try again.', 'error')
+                    
+            except Exception as e:
+                error_msg = str(e)
+                print(f"Email update error: {error_msg}")
+                
+                if 'invalid password' in error_msg.lower():
+                    flash('Current password is incorrect', 'error')
+                elif 'email already in use' in error_msg.lower():
+                    flash('This email is already registered', 'error')
+                elif 'Email confirmation required' in error_msg:
+                    flash('Email confirmation is required. Please check your inbox.', 'warning')
+                else:
+                    flash(f'Error: {error_msg}', 'error')
+                    
+        elif action == 'update_password':
+            current_password = request.form.get('current_password', '')
+            new_password = request.form.get('new_password', '')
+            confirm_password = request.form.get('confirm_password', '')
+            
+            if not current_password or not new_password:
+                flash('Please provide current and new password', 'error')
+                return redirect(url_for('auth.profile'))
+            
+            if new_password != confirm_password:
+                flash('New passwords do not match', 'error')
+                return redirect(url_for('auth.profile'))
+            
+            if len(new_password) < 6:
+                flash('Password must be at least 6 characters', 'error')
+                return redirect(url_for('auth.profile'))
+            
+            try:
+                # First verify current password
+                auth_response = supabase.auth.sign_in_with_password({
+                    "email": user['email'],
+                    "password": current_password
+                })
+                
+                if not auth_response.user:
+                    flash('Current password is incorrect', 'error')
+                    return redirect(url_for('auth.profile'))
+                
+                # Update password
+                update_response = supabase.auth.update_user({
+                    "password": new_password
+                })
+                
+                if update_response and update_response.user:
+                    flash('Password updated successfully!', 'success')
+                else:
+                    flash('Failed to update password', 'error')
+                    
+            except Exception as e:
+                error_msg = str(e)
+                print(f"Password update error: {error_msg}")
+                
+                if 'invalid password' in error_msg.lower():
+                    flash('Current password is incorrect', 'error')
+                else:
+                    flash(f'Error: {error_msg}', 'error')
+        
+        return redirect(url_for('auth.profile'))
+    
+    # GET request - show profile form
+    return render_template('profile.html', user=user)

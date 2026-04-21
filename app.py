@@ -64,7 +64,7 @@ from routes.billing.billingModule import billing_bp
 from routes.dashboard.dashboard import dashboard_bp
 from routes.resultsCard.competenceReportCard import competence_bp
 from routes.admin.admin import admin_bp
-
+from routes.careers.careers import agent_bp
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
@@ -97,6 +97,8 @@ app.register_blueprint(requirements_bp, url_prefix='/requirements')
 app.register_blueprint(billing_bp, url_prefix='/billing')
 app.register_blueprint(competence_bp, url_prefix='/competence-report')
 app.register_blueprint(admin_bp, url_prefix='/admin')
+app.register_blueprint(agent_bp, url_prefix='/agent')
+
 
 
 @app.route('/')

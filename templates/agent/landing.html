@@ -1,0 +1,156 @@
+<!-- templates/agent/landing.html - Standalone Landing Page (No base.html) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Become a Field Agent - Lunserk ERP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .hero-section {
+            background: linear-gradient(135deg, #1e2a3a 0%, #2d3e50 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .benefit-card {
+            transition: all 0.3s ease;
+        }
+        .benefit-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+        }
+        .btn-gradient:hover {
+            background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+            transform: translateY(-2px);
+        }
+        .nav-link {
+            position: relative;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #ffa500;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after {
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-white">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-2">
+                    <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                        <i class="fas fa-graduation-cap text-white text-xl"></i>
+                    </div>
+                    <span class="font-bold text-xl text-gray-800 tracking-tight">Lunserk<span class="text-orange-500">ERP</span></span>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <a href="/" class="nav-link text-gray-600 hover:text-orange-500 transition-colors">Home</a>
+                    <a href="/login" class="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all text-sm font-medium">
+                        Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-section py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Become a Field Agent</h1>
+                <p class="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">Earn up to UGX 100,000 per day by completing location-based tasks in your region</p>
+                <a href="{{ url_for('agent.apply') }}" class="btn-gradient px-8 py-3 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all inline-flex items-center gap-2">
+                    Apply Now <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Benefits Section -->
+    <section class="py-16 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Why Become a Field Agent?</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">Join our network of trusted field agents across Uganda</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="benefit-card bg-white rounded-xl p-6 text-center shadow-md">
+                    <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-money-bill-wave text-2xl text-orange-500"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Earn Daily</h3>
+                    <p class="text-gray-600">Earn up to UGX 100,000 per day for completing tasks in your region</p>
+                </div>
+                <div class="benefit-card bg-white rounded-xl p-6 text-center shadow-md">
+                    <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-clock text-2xl text-orange-500"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Flexible Schedule</h3>
+                    <p class="text-gray-600">Work on your own time, choose tasks that fit your availability</p>
+                </div>
+                <div class="benefit-card bg-white rounded-xl p-6 text-center shadow-md">
+                    <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-map-marker-alt text-2xl text-orange-500"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Local Opportunities</h3>
+                    <p class="text-gray-600">Get tasks assigned based on your region - Northern, Eastern, Central, or Western</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="py-16 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">How It Works</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">Simple process to get started as a field agent</p>
+            </div>
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-orange-500 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-3">1</div>
+                    <h3 class="font-semibold text-gray-800 mb-2">Apply Online</h3>
+                    <p class="text-sm text-gray-600">Submit your application with identification document</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-orange-500 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-3">2</div>
+                    <h3 class="font-semibold text-gray-800 mb-2">Get Verified</h3>
+                    <p class="text-sm text-gray-600">Our team reviews and approves your application</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-orange-500 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-3">3</div>
+                    <h3 class="font-semibold text-gray-800 mb-2">Accept Tasks</h3>
+                    <p class="text-sm text-gray-600">Browse and accept tasks available in your region</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-orange-500 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-3">4</div>
+                    <h3 class="font-semibold text-gray-800 mb-2">Get Paid</h3>
+                    <p class="text-sm text-gray-600">Complete tasks and receive payments directly</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p>&copy; 2024 Lunserk ERP. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

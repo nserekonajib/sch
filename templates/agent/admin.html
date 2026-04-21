@@ -1,0 +1,509 @@
+<!-- templates/agent/admin.html - Admin Dashboard (Extends base.html) -->
+{% extends "base.html" %}
+
+{% block title %}Agent Management - Admin{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Agent Management</h1>
+        <p class="text-sm text-gray-600">Manage applications, agents, tasks and submissions</p>
+    </div>
+
+    <!-- Admin Tabs -->
+    <div class="flex gap-2 mb-6 overflow-x-auto">
+        <button onclick="switchAdminTab('applications')" id="tabApplications" class="tab-active px-4 py-2 rounded-lg font-medium transition-all bg-orange-500 text-white">Applications</button>
+        <button onclick="switchAdminTab('agents')" id="tabAgents" class="tab-inactive px-4 py-2 rounded-lg font-medium transition-all bg-gray-100 text-gray-600">Agents</button>
+        <button onclick="switchAdminTab('tasks')" id="tabTasks" class="tab-inactive px-4 py-2 rounded-lg font-medium transition-all bg-gray-100 text-gray-600">Tasks</button>
+        <button onclick="switchAdminTab('submissions')" id="tabSubmissions" class="tab-inactive px-4 py-2 rounded-lg font-medium transition-all bg-gray-100 text-gray-600">Submissions</button>
+    </div>
+
+    <!-- Applications Tab -->
+    <div id="applicationsTab">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-800">Pending Applications</h2>
+            </div>
+            <div id="applicationsList" class="divide-y divide-gray-200">
+                <div class="p-8 text-center text-gray-400">Loading applications...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agents Tab -->
+    <div id="agentsTab" class="hidden">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-800">Registered Agents</h2>
+            </div>
+            <div id="agentsList" class="divide-y divide-gray-200">
+                <div class="p-8 text-center text-gray-400">Loading agents...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tasks Tab -->
+    <div id="tasksTab" class="hidden">
+        <div class="mb-4 flex justify-end">
+            <button onclick="openCreateTaskModal()" class="btn-gradient px-4 py-2 rounded-lg text-white font-medium flex items-center gap-2">
+                <i class="fas fa-plus"></i> Create Task
+            </button>
+        </div>
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-800">Available Tasks</h2>
+            </div>
+            <div id="tasksList" class="divide-y divide-gray-200">
+                <div class="p-8 text-center text-gray-400">Loading tasks...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submissions Tab -->
+    <div id="submissionsAdminTab" class="hidden">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-800">Pending Submissions</h2>
+            </div>
+            <div id="adminSubmissionsList" class="divide-y divide-gray-200">
+                <div class="p-8 text-center text-gray-400">Loading submissions...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Task Modal -->
+<div id="createTaskModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Create New Task</h3>
+            <button onclick="closeCreateTaskModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <form id="createTaskForm" class="p-5">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Task Title *</label>
+                <input type="text" id="taskTitle" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                <textarea id="taskDescription" rows="3" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Region *</label>
+                <select id="taskRegion" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="">Select Region</option>
+                    <option value="Northern">Northern Region</option>
+                    <option value="Eastern">Eastern Region</option>
+                    <option value="Central">Central Region</option>
+                    <option value="Western">Western Region</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Payment Amount (UGX) *</label>
+                <input type="number" id="taskPayment" step="0.01" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Deadline *</label>
+                <input type="date" id="taskDeadline" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium">Create Task</button>
+                <button type="button" onclick="closeCreateTaskModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Reject Item</h3>
+            <button onclick="closeRejectModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-5">
+            <input type="hidden" id="rejectId">
+            <input type="hidden" id="rejectType">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Reason for Rejection *</label>
+                <textarea id="rejectReason" rows="3" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="confirmReject()" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium">Confirm</button>
+                <button onclick="closeRejectModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .tab-active {
+        background-color: #ffa500;
+        color: white;
+    }
+    .tab-inactive {
+        background-color: #f3f4f6;
+        color: #6b7280;
+    }
+    .tab-inactive:hover {
+        background-color: #e5e7eb;
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+</style>
+
+<script>
+    let currentRejectId = null;
+    let currentRejectType = null;
+
+    function switchAdminTab(tab) {
+        const tabs = ['applications', 'agents', 'tasks', 'submissions'];
+        tabs.forEach(t => {
+            const tabEl = document.getElementById(`${t}Tab`);
+            const btnEl = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+            if (t === tab) {
+                tabEl.classList.remove('hidden');
+                btnEl.classList.add('tab-active');
+                btnEl.classList.remove('tab-inactive');
+            } else {
+                tabEl.classList.add('hidden');
+                btnEl.classList.remove('tab-active');
+                btnEl.classList.add('tab-inactive');
+            }
+        });
+        
+        // Load data based on selected tab
+        if (tab === 'applications') loadApplications();
+        else if (tab === 'agents') loadAgents();
+        else if (tab === 'tasks') loadAdminTasks();
+        else if (tab === 'submissions') loadAdminSubmissions();
+    }
+
+    async function loadApplications() {
+        try {
+            const response = await fetch('/agent/api/admin/applications?status=pending');
+            const data = await response.json();
+            
+            if (data.success && data.applications.length > 0) {
+                const container = document.getElementById('applicationsList');
+                container.innerHTML = data.applications.map(app => `
+                    <div class="p-5 hover:bg-gray-50">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-semibold text-gray-800">${app.full_name}</p>
+                                <p class="text-sm text-gray-500">${app.phone} | ${app.email || 'No email'}</p>
+                                <p class="text-sm text-gray-500">Region: ${app.region}</p>
+                                ${app.identification_document ? `<a href="${app.identification_document}" target="_blank" class="text-xs text-blue-600 hover:underline">View Document</a>` : ''}
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="approveApplication('${app.id}')" class="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">Approve</button>
+                                <button onclick="openRejectModal('${app.id}', 'application')" class="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">Reject</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('applicationsList').innerHTML = '<div class="p-8 text-center text-gray-400">No pending applications</div>';
+            }
+        } catch (error) {
+            console.error('Error loading applications:', error);
+        }
+    }
+
+    async function loadAgents() {
+        try {
+            const response = await fetch('/agent/api/admin/agents');
+            const data = await response.json();
+            
+            if (data.success && data.agents.length > 0) {
+                const container = document.getElementById('agentsList');
+                container.innerHTML = data.agents.map(agent => `
+                    <div class="p-5 hover:bg-gray-50">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-semibold text-gray-800">${agent.full_name}</p>
+                                <p class="text-sm text-gray-500">${agent.phone} | ${agent.email || 'No email'}</p>
+                                <p class="text-sm text-gray-500">Region: ${agent.region}</p>
+                                <p class="text-xs text-gray-400 mt-1">Tasks: ${agent.tasks_completed} | Earnings: UGX ${agent.total_earnings?.toLocaleString() || 0}</p>
+                            </div>
+                            <div>
+                                <span class="px-2 py-1 rounded-full text-xs ${agent.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${agent.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('agentsList').innerHTML = '<div class="p-8 text-center text-gray-400">No agents found</div>';
+            }
+        } catch (error) {
+            console.error('Error loading agents:', error);
+        }
+    }
+
+    async function loadAdminTasks() {
+        try {
+            const response = await fetch('/agent/api/admin/tasks');
+            const data = await response.json();
+            
+            if (data.success && data.tasks.length > 0) {
+                const container = document.getElementById('tasksList');
+                container.innerHTML = data.tasks.map(task => `
+                    <div class="p-5 hover:bg-gray-50">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-semibold text-gray-800">${task.title}</p>
+                                <p class="text-sm text-gray-500">${task.description}</p>
+                                <p class="text-sm text-gray-500">Region: ${task.region} | Payment: UGX ${task.payment_amount.toLocaleString()} | Due: ${new Date(task.deadline).toLocaleDateString()}</p>
+                            </div>
+                            <div>
+                                <span class="px-2 py-1 rounded-full text-xs ${task.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">${task.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('tasksList').innerHTML = '<div class="p-8 text-center text-gray-400">No tasks found</div>';
+            }
+        } catch (error) {
+            console.error('Error loading tasks:', error);
+        }
+    }
+
+    async function loadAdminSubmissions() {
+        try {
+            const response = await fetch('/agent/api/admin/submissions?status=pending');
+            const data = await response.json();
+            
+            if (data.success && data.submissions.length > 0) {
+                const container = document.getElementById('adminSubmissionsList');
+                container.innerHTML = data.submissions.map(sub => `
+                    <div class="p-5 hover:bg-gray-50">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-semibold text-gray-800">${sub.agent_tasks?.title || 'N/A'}</p>
+                                <p class="text-sm text-gray-500">Agent: ${sub.agents?.full_name || 'N/A'} (${sub.agents?.phone || 'N/A'})</p>
+                                <p class="text-xs text-gray-400">Submitted: ${new Date(sub.created_at).toLocaleString()}</p>
+                                ${sub.proof_url ? `<a href="${sub.proof_url}" target="_blank" class="text-xs text-blue-600 hover:underline">View Proof</a>` : ''}
+                                ${sub.location_verified ? '<p class="text-xs text-green-600 mt-1">✓ Location Verified</p>' : '<p class="text-xs text-red-600 mt-1">✗ Location Mismatch</p>'}
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="approveSubmission('${sub.id}')" class="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">Approve</button>
+                                <button onclick="openRejectModal('${sub.id}', 'submission')" class="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">Reject</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('adminSubmissionsList').innerHTML = '<div class="p-8 text-center text-gray-400">No pending submissions</div>';
+            }
+        } catch (error) {
+            console.error('Error loading submissions:', error);
+        }
+    }
+
+    async function approveApplication(appId) {
+        if (!confirm('Approve this application?')) return;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/agent/api/admin/applications/${appId}/approve`, { method: 'POST' });
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                alert(result.message);
+                loadApplications();
+                loadAgents();
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            alert('Error approving application');
+        }
+    }
+
+    async function approveSubmission(subId) {
+        if (!confirm('Approve this submission and release payment?')) return;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/agent/api/admin/submissions/${subId}/approve`, { method: 'POST' });
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                alert(result.message);
+                loadAdminSubmissions();
+                loadAgents();
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            alert('Error approving submission');
+        }
+    }
+
+    function openRejectModal(id, type) {
+        currentRejectId = id;
+        currentRejectType = type;
+        document.getElementById('rejectReason').value = '';
+        document.getElementById('rejectModal').classList.remove('hidden');
+        document.getElementById('rejectModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeRejectModal() {
+        document.getElementById('rejectModal').classList.add('hidden');
+        document.getElementById('rejectModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        currentRejectId = null;
+        currentRejectType = null;
+    }
+
+    async function confirmReject() {
+        const reason = document.getElementById('rejectReason').value;
+        if (!reason) {
+            alert('Please provide a reason for rejection');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            let url;
+            if (currentRejectType === 'application') {
+                url = `/agent/api/admin/applications/${currentRejectId}/reject`;
+            } else {
+                url = `/agent/api/admin/submissions/${currentRejectId}/reject`;
+            }
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: reason })
+            });
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                alert(result.message);
+                closeRejectModal();
+                if (currentRejectType === 'application') {
+                    loadApplications();
+                } else {
+                    loadAdminSubmissions();
+                }
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            alert('Error rejecting item');
+        }
+    }
+
+    function openCreateTaskModal() {
+        document.getElementById('createTaskModal').classList.remove('hidden');
+        document.getElementById('createTaskModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeCreateTaskModal() {
+        document.getElementById('createTaskModal').classList.add('hidden');
+        document.getElementById('createTaskModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        document.getElementById('createTaskForm').reset();
+    }
+
+    document.getElementById('createTaskForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const data = {
+            title: document.getElementById('taskTitle').value,
+            description: document.getElementById('taskDescription').value,
+            region: document.getElementById('taskRegion').value,
+            payment_amount: parseFloat(document.getElementById('taskPayment').value),
+            deadline: document.getElementById('taskDeadline').value
+        };
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/agent/api/admin/tasks/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                alert(result.message);
+                closeCreateTaskModal();
+                loadAdminTasks();
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            alert('Error creating task');
+        }
+    });
+
+    // Load initial data
+    loadApplications();
+</script>
+{% endblock %}
