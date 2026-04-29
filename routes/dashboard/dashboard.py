@@ -6,6 +6,10 @@ from datetime import datetime, timedelta
 from functools import wraps
 from dotenv import load_dotenv
 
+# Fix imports - use relative imports
+from routes.auth.auth import accountant_required, secretary_required, support_staff_required, librarian_required, teacher_required, role_required
+from routes.accounts.accounts import get_institute_from_session
+
 load_dotenv()
 
 # Initialize Supabase client
@@ -23,41 +27,32 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    try:
-        response = supabase.table('institutes')\
-            .select('id')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return response.data[0]['id']
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
-
 @dashboard_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Main Dashboard Page"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
+    # Get institute object (not just ID)
+    institute = get_institute_from_session()
     
-    if not institute_id:
-        return render_template('dashboard/index.html', institute_id=None)
+    if not institute:
+        return render_template('dashboard/index.html', institute_id=None, institute_name=None)
     
-    return render_template('dashboard/index.html', institute_id=institute_id)
+    # Pass both institute_id and institute_name to template
+    return render_template('dashboard/index.html', 
+                         institute_id=institute.get('id'), 
+                         institute_name=institute.get('institute_name'))
 
 @dashboard_bp.route('/api/stats', methods=['GET'])
 @login_required
 def get_dashboard_stats():
     """Get all dashboard statistics"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
+    # Get institute object
+    institute = get_institute_from_session()
     
-    if not institute_id:
+    if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    institute_id = institute.get('id')  # Extract ID from institute object
     
     try:
         # Get date filters
@@ -69,6 +64,8 @@ def get_dashboard_stats():
             start_date = datetime.now().replace(day=1).date().isoformat()
         if not end_date:
             end_date = datetime.now().date().isoformat()
+        
+        print(f"Getting stats for institute: {institute_id} from {start_date} to {end_date}")
         
         # 1. Total Students
         students_response = supabase.table('students')\
@@ -145,11 +142,12 @@ def get_dashboard_stats():
 @login_required
 def get_income_expense_graph():
     """Get income vs expense data for line graph"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
+    institute = get_institute_from_session()
     
-    if not institute_id:
+    if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    institute_id = institute.get('id')
     
     try:
         # Get date range (last 12 months)
@@ -220,11 +218,12 @@ def get_income_expense_graph():
 @login_required
 def get_class_attendance():
     """Get attendance statistics by class"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
+    institute = get_institute_from_session()
     
-    if not institute_id:
+    if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    institute_id = institute.get('id')
     
     try:
         today = datetime.now().date().isoformat()
@@ -289,11 +288,12 @@ def get_class_attendance():
 @login_required
 def get_staff_attendance():
     """Get staff attendance statistics by role"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
+    institute = get_institute_from_session()
     
-    if not institute_id:
+    if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    institute_id = institute.get('id')
     
     try:
         today = datetime.now().date().isoformat()
@@ -351,11 +351,12 @@ def get_staff_attendance():
 @login_required
 def get_recent_activities():
     """Get recent activities across the system"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
+    institute = get_institute_from_session()
     
-    if not institute_id:
+    if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    institute_id = institute.get('id')
     
     try:
         activities = []
@@ -432,11 +433,12 @@ def get_recent_activities():
 @login_required
 def get_class_distribution():
     """Get student distribution by class"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
+    institute = get_institute_from_session()
     
-    if not institute_id:
+    if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    institute_id = institute.get('id')
     
     try:
         # Get all classes with student count
@@ -471,3 +473,19 @@ def get_class_distribution():
     except Exception as e:
         print(f"Error getting class distribution: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+# Add this helper function for backward compatibility
+def get_institute_id(user_id):
+    """Legacy function - kept for compatibility"""
+    try:
+        response = supabase.table('institutes')\
+            .select('id')\
+            .eq('user_id', user_id)\
+            .execute()
+        
+        if response.data and len(response.data) > 0:
+            return response.data[0]['id']
+        return None
+    except Exception as e:
+        print(f"Error getting institute: {e}")
+        return None

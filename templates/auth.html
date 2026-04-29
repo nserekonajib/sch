@@ -489,6 +489,16 @@
                         <div class="signup-link">
                             <a id="showRegister">Don't have an account? Sign Up</a>
                         </div>
+
+                           <!-- Add near the bottom of your auth.html login form -->
+                                <div class="mt-4 text-center">
+                                    <p class="text-gray-500 text-sm">
+                                        Are you an employee? 
+                                        <a href="{{ url_for('auth.employee_login') }}" class="text-orange-500 hover:underline">
+                                            <i class="fas fa-user-tie"></i> Login with Employee ID
+                                        </a>
+                                    </p>
+                                </div>
                     </div>
                 </div>
 
@@ -528,6 +538,8 @@
                         <div class="login-link">
                             <a id="showLogin">Already have an account? Login</a>
                         </div>
+
+                     
                     </div>
                 </div>
             </div>

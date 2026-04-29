@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Login - Lunserk ERP</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        orange: {
+                            400: '#fb923c',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Custom animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate-fade-in-up {
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        /* Custom focus ring */
+        .focus-ring-orange:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+            border-color: #f97316;
+        }
+        
+        /* Smooth transitions */
+        .transition-smooth {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-5">
+    
+    <!-- Login Card -->
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 animate-fade-in-up">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2 rounded-full text-xs font-bold mb-4">
+                <i class="fas fa-user-tie text-sm"></i>
+                <span>EMPLOYEE PORTAL</span>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Employee Login</h2>
+            <p class="text-sm text-gray-500">Enter your Employee ID and password to continue</p>
+        </div>
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 p-3 rounded-lg border-l-4 
+                        {% if category == 'error' %}bg-red-50 border-red-500 text-red-700
+                        {% elif category == 'success' %}bg-green-50 border-green-500 text-green-700
+                        {% elif category == 'warning' %}bg-yellow-50 border-yellow-500 text-yellow-700
+                        {% else %}bg-blue-50 border-blue-500 text-blue-700{% endif %}">
+                        <div class="flex items-center gap-2">
+                            <i class="fas {% if category == 'error' %}fa-times-circle
+                                      {% elif category == 'success' %}fa-check-circle
+                                      {% elif category == 'warning' %}fa-exclamation-triangle
+                                      {% else %}fa-info-circle{% endif %}"></i>
+                            <span class="text-sm">{{ message }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Login Form -->
+        <form method="POST" action="{{ url_for('auth.employee_login') }}">
+            <!-- Employee ID Field -->
+            <div class="mb-5">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-id-card text-orange-500 mr-2"></i>
+                    Employee ID
+                </label>
+                <div class="relative">
+                    <i class="fas fa-id-card absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" 
+                           name="employee_id" 
+                           placeholder="EMP-2024-0001" 
+                           required 
+                           autofocus
+                           class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-smooth">
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Enter your unique employee ID (e.g., EMP-2024-0001)</p>
+            </div>
+            
+            <!-- Password Field -->
+            <div class="mb-6">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-lock text-orange-500 mr-2"></i>
+                    Password
+                </label>
+                <div class="relative">
+                    <i class="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="password" 
+                           name="password" 
+                           placeholder="••••••••" 
+                           required
+                           class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-smooth">
+                    <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <i id="passwordToggleIcon" class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Login Button -->
+            <button type="submit" 
+                    class="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg mb-4">
+                <i class="fas fa-sign-in-alt mr-2"></i>
+                Login as Employee
+            </button>
+        </form>
+        
+        <!-- Divider -->
+        <div class="relative my-6">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-200"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+                <span class="px-3 bg-white text-gray-500">or</span>
+            </div>
+        </div>
+        
+        <!-- Owner Login Link -->
+        <div class="text-center mb-4">
+            <a href="{{ url_for('auth.login') }}" 
+               class="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 font-medium transition-colors duration-200">
+                <i class="fas fa-building"></i>
+                Login as Institute Owner
+            </a>
+        </div>
+        
+        <!-- Help Text -->
+        <div class="text-center text-xs text-gray-400 pt-4 border-t border-gray-100">
+            <i class="fas fa-question-circle mr-1"></i>
+            Contact your administrator if you forgot your Employee ID or password
+        </div>
+        
+    </div>
+    
+    <!-- Password Toggle Script -->
+    <script>
+        function togglePassword() {
+            const passwordInput = document.querySelector('input[name="password"]');
+            const icon = document.getElementById('passwordToggleIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+        
+        // Add loading state on form submit
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function() {
+                const button = this.querySelector('button[type="submit"]');
+                if (button) {
+                    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Logging in...';
+                    button.disabled = true;
+                }
+            });
+        }
+    </script>
+    
+</body>
+</html>

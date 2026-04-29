@@ -1,4 +1,4 @@
-# employees.py - Employee Management Blueprint
+# employees.py - Employee Management Blueprint (Fixed - No separate users table)
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
 import os
@@ -12,7 +12,7 @@ from functools import wraps
 from dotenv import load_dotenv
 import cloudinary
 import cloudinary.uploader
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv()
 
@@ -56,21 +56,53 @@ def get_institute_id(user_id):
         return None
 
 def generate_employee_id(institute_id):
-    """Generate unique employee ID"""
-    try:
-        year = datetime.now().strftime('%Y')
-        
-        # Get count of employees this year
-        response = supabase.table('employees')\
-            .select('id', count='exact')\
-            .eq('institute_id', institute_id)\
-            .gte('created_at', f"{year}-01-01")\
-            .execute()
-        
-        count = (response.count or 0) + 1
-        return f"EMP-{year}-{str(count).zfill(4)}"
-    except:
-        return f"EMP-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    """Generate unique employee ID with proper uniqueness check"""
+    year = datetime.now().strftime('%Y')
+    max_attempts = 10
+    
+    for attempt in range(max_attempts):
+        try:
+            # Get count of employees this year for this institute
+            response = supabase.table('employees')\
+                .select('employee_id', count='exact')\
+                .eq('institute_id', institute_id)\
+                .like('employee_id', f'EMP-{year}-%')\
+                .execute()
+            
+            # Get the maximum sequence number
+            max_seq = 0
+            if response.data:
+                for emp in response.data:
+                    emp_id = emp.get('employee_id', '')
+                    if emp_id and '-' in emp_id:
+                        try:
+                            seq = int(emp_id.split('-')[-1])
+                            if seq > max_seq:
+                                max_seq = seq
+                        except (ValueError, IndexError):
+                            continue
+            
+            next_seq = max_seq + 1
+            employee_id = f"EMP-{year}-{str(next_seq).zfill(4)}"
+            
+            # Double-check that this ID doesn't exist (just to be safe)
+            check_response = supabase.table('employees')\
+                .select('id')\
+                .eq('employee_id', employee_id)\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            if not check_response.data:
+                return employee_id
+            
+        except Exception as e:
+            print(f"Error generating employee ID (attempt {attempt + 1}): {e}")
+            # Fallback to timestamp-based ID if there's an error
+            if attempt == max_attempts - 1:
+                return f"EMP-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+    
+    # Ultimate fallback: use UUID
+    return f"EMP-{uuid.uuid4().hex[:8].upper()}"
 
 @employees_bp.route('/')
 @login_required
@@ -103,6 +135,11 @@ def get_employees():
         
         employees = response.data if response.data else []
         
+        # Remove password hash from response for security
+        for emp in employees:
+            if 'password_hash' in emp:
+                emp['password_hash'] = None
+        
         return jsonify({'success': True, 'employees': employees})
         
     except Exception as e:
@@ -127,7 +164,11 @@ def get_employee(employee_id):
             .execute()
         
         if response.data:
-            return jsonify({'success': True, 'employee': response.data[0]})
+            employee = response.data[0]
+            # Remove password hash from response
+            if 'password_hash' in employee:
+                employee['password_hash'] = None
+            return jsonify({'success': True, 'employee': employee})
         else:
             return jsonify({'success': False, 'message': 'Employee not found'}), 404
             
@@ -148,11 +189,22 @@ def create_employee():
     try:
         data = request.get_json()
         
-        # Generate employee ID
+        # Check if email already exists in this institute
+        existing_email = supabase.table('employees')\
+            .select('id')\
+            .eq('email', data.get('email', '').strip())\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if existing_email.data:
+            return jsonify({'success': False, 'message': 'Employee with this email already exists'}), 400
+        
+        # Generate unique employee ID
         employee_id = generate_employee_id(institute_id)
         
-        # Default password (will be hashed when creating user account)
+        # Default password "123" - stored as hash in employees table
         default_password = "123"
+        password_hash = generate_password_hash(default_password)
         
         # Prepare employee data
         employee_data = {
@@ -173,6 +225,7 @@ def create_employee():
             'monthly_salary': float(data.get('monthly_salary', 0)),
             'role': data.get('role'),  # teacher, accountant, librarian, secretary, support_staff, other
             'status': 'active',
+            'password_hash': password_hash,  # Store password hash in employees table
             'created_at': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat()
         }
@@ -205,48 +258,52 @@ def create_employee():
             except Exception as e:
                 print(f"Photo upload error: {e}")
         
-        # Insert employee
+        # Insert employee (password hash stored directly in employees table)
         result = supabase.table('employees').insert(employee_data).execute()
         
         if result.data:
-            # Create user account for employee
-            try:
-                # Check if user already exists with this email
-                existing_user = supabase.table('users')\
-                    .select('id')\
-                    .eq('email', employee_data['email'])\
-                    .execute()
-                
-                if not existing_user.data:
-                    # Create user account with role-based permissions
-                    user_id = str(uuid.uuid4())
-                    user_data = {
-                        'id': user_id,
-                        'email': employee_data['email'],
-                        'password_hash': generate_password_hash(default_password),
-                        'role': employee_data['role'],
-                        'employee_id': result.data[0]['id'],
-                        'institute_id': institute_id,
-                        'is_active': True,
-                        'created_at': datetime.now().isoformat()
-                    }
-                    
-                    supabase.table('users').insert(user_data).execute()
-            except Exception as e:
-                print(f"Error creating user account: {e}")
-                # Don't fail the employee creation if user account fails
+            # Return success with employee data (remove password hash)
+            response_employee = result.data[0].copy()
+            response_employee['password_hash'] = None
             
             return jsonify({
                 'success': True,
                 'message': f'Employee created successfully. Employee ID: {employee_id}, Default Password: {default_password}',
-                'employee': result.data[0]
+                'employee': response_employee,
+                'default_password': default_password
             })
         else:
             return jsonify({'success': False, 'message': 'Failed to create employee'}), 500
             
     except Exception as e:
+        error_msg = str(e)
         print(f"Error creating employee: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        
+        # Handle duplicate key errors gracefully
+        if 'duplicate key' in error_msg.lower() or '23505' in error_msg:
+            # Retry with a new employee ID
+            try:
+                # Generate a new unique ID with timestamp
+                fallback_id = f"EMP-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+                
+                # Update the employee_data with new ID
+                if 'employee_data' in locals():
+                    employee_data['employee_id'] = fallback_id
+                    result = supabase.table('employees').insert(employee_data).execute()
+                    
+                    if result.data:
+                        response_employee = result.data[0].copy()
+                        response_employee['password_hash'] = None
+                        return jsonify({
+                            'success': True,
+                            'message': f'Employee created successfully. Employee ID: {fallback_id}, Default Password: 123',
+                            'employee': response_employee,
+                            'default_password': '123'
+                        })
+            except Exception as retry_error:
+                print(f"Retry also failed: {retry_error}")
+        
+        return jsonify({'success': False, 'message': error_msg}), 500
 
 @employees_bp.route('/api/employees/update/<employee_id>', methods=['PUT'])
 @login_required
@@ -261,6 +318,19 @@ def update_employee(employee_id):
     try:
         data = request.get_json()
         
+        # Check if email is being changed and if it already exists
+        new_email = data.get('email', '').strip()
+        if new_email:
+            existing = supabase.table('employees')\
+                .select('id')\
+                .eq('email', new_email)\
+                .eq('institute_id', institute_id)\
+                .neq('id', employee_id)\
+                .execute()
+            
+            if existing.data:
+                return jsonify({'success': False, 'message': 'Employee with this email already exists'}), 400
+        
         # Prepare update data
         update_data = {
             'name': data.get('name', '').strip(),
@@ -272,12 +342,16 @@ def update_employee(employee_id):
             'education': data.get('education', '').strip(),
             'home_address': data.get('home_address', '').strip(),
             'experience': data.get('experience', '').strip(),
-            'email': data.get('email', '').strip(),
+            'email': new_email,
             'phone': data.get('phone', '').strip(),
             'monthly_salary': float(data.get('monthly_salary', 0)),
             'role': data.get('role'),
             'updated_at': datetime.now().isoformat()
         }
+        
+        # Update password if provided
+        if data.get('new_password'):
+            update_data['password_hash'] = generate_password_hash(data['new_password'])
         
         # Handle photo upload
         if data.get('photo_data') and not data.get('photo_data').startswith('http'):
@@ -323,10 +397,14 @@ def update_employee(employee_id):
             .execute()
         
         if result.data:
+            response_employee = result.data[0].copy()
+            if 'password_hash' in response_employee:
+                response_employee['password_hash'] = None
+                
             return jsonify({
                 'success': True,
                 'message': 'Employee updated successfully',
-                'employee': result.data[0]
+                'employee': response_employee
             })
         else:
             return jsonify({'success': False, 'message': 'Employee not found'}), 404
@@ -403,6 +481,39 @@ def toggle_status(employee_id):
         print(f"Error toggling status: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@employees_bp.route('/api/employees/reset-password/<employee_id>', methods=['POST'])
+@login_required
+def reset_password(employee_id):
+    """Reset employee password to default (123)"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        default_password = "123"
+        password_hash = generate_password_hash(default_password)
+        
+        result = supabase.table('employees')\
+            .update({'password_hash': password_hash, 'updated_at': datetime.now().isoformat()})\
+            .eq('id', employee_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if result.data:
+            return jsonify({
+                'success': True, 
+                'message': f'Password reset to default: {default_password}',
+                'default_password': default_password
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Employee not found'}), 404
+            
+    except Exception as e:
+        print(f"Error resetting password: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @employees_bp.route('/api/stats', methods=['GET'])
 @login_required
 def get_stats():
@@ -450,4 +561,99 @@ def get_stats():
         
     except Exception as e:
         print(f"Error getting stats: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# Employee Login Route (separate from main app)
+@employees_bp.route('/login', methods=['POST'])
+def employee_login():
+    """Employee login using email and password"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip()
+        password = data.get('password', '')
+        
+        if not email or not password:
+            return jsonify({'success': False, 'message': 'Email and password required'}), 400
+        
+        # Find employee by email
+        response = supabase.table('employees')\
+            .select('*')\
+            .eq('email', email)\
+            .eq('status', 'active')\
+            .execute()
+        
+        if not response.data:
+            return jsonify({'success': False, 'message': 'Invalid credentials or inactive account'}), 401
+        
+        employee = response.data[0]
+        
+        # Check password
+        if not check_password_hash(employee.get('password_hash', ''), password):
+            return jsonify({'success': False, 'message': 'Invalid credentials'}), 401
+        
+        # Remove password hash from session
+        employee_for_session = {k: v for k, v in employee.items() if k != 'password_hash'}
+        employee_for_session['is_employee'] = True
+        
+        session['user'] = employee_for_session
+        
+        return jsonify({
+            'success': True,
+            'message': 'Login successful',
+            'user': employee_for_session
+        })
+        
+    except Exception as e:
+        print(f"Error in employee login: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# Optional: Endpoint to clean up any orphaned employee_id duplicates (Admin only)
+@employees_bp.route('/api/cleanup-duplicate-ids', methods=['POST'])
+@login_required
+def cleanup_duplicate_ids():
+    """Clean up duplicate employee_ids (run this if you have duplicates)"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Find all employees
+        response = supabase.table('employees')\
+            .select('id, employee_id')\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        employees = response.data if response.data else []
+        
+        # Track duplicates
+        seen_ids = {}
+        duplicates = []
+        
+        for emp in employees:
+            emp_id = emp.get('employee_id')
+            if emp_id in seen_ids:
+                duplicates.append(emp)
+            else:
+                seen_ids[emp_id] = emp['id']
+        
+        # Fix duplicates
+        fixed_count = 0
+        for dup in duplicates:
+            new_id = generate_employee_id(institute_id)
+            supabase.table('employees')\
+                .update({'employee_id': new_id})\
+                .eq('id', dup['id'])\
+                .execute()
+            fixed_count += 1
+        
+        return jsonify({
+            'success': True,
+            'message': f'Cleaned up {fixed_count} duplicate employee IDs',
+            'duplicates_found': len(duplicates)
+        })
+        
+    except Exception as e:
+        print(f"Error cleaning up duplicates: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500

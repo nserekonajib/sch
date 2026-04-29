@@ -7,8 +7,9 @@ from datetime import datetime, timedelta
 import json
 from functools import wraps
 from dotenv import load_dotenv
-
+from routes.accounts.accounts import get_institute_from_session
 from routes.billing.pespal import PesaPal
+from routes.auth.auth import owner_required
 
 load_dotenv()
 
@@ -18,9 +19,9 @@ SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Get pricing from environment variables
-BASE_PRICE = float(os.getenv('SUBSCRIPTION_PRICE'))
-DISCOUNT_6_MONTHS = float(os.getenv('DISCOUNT_6_MONTHS'))
-DISCOUNT_12_MONTHS = float(os.getenv('DISCOUNT_12_MONTHS'))
+BASE_PRICE = float(os.getenv('SUBSCRIPTION_PRICE', 50000))  # Default 50,000 UGX
+DISCOUNT_6_MONTHS = float(os.getenv('DISCOUNT_6_MONTHS', 0.10))  # 10% discount
+DISCOUNT_12_MONTHS = float(os.getenv('DISCOUNT_12_MONTHS', 0.15))  # 15% discount
 
 def calculate_price(months):
     """Calculate price based on months with discounts"""
@@ -37,49 +38,46 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
-            return jsonify({'success': False, 'message': 'Please login'}), 401
+            if request.is_json:
+                return jsonify({'success': False, 'message': 'Please login'}), 401
+            flash('Please login to access this page', 'warning')
+            return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    try:
-        response = supabase.table('institutes')\
-            .select('id')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return response.data[0]['id']
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
-
 @billing_bp.route('/')
-@login_required
+@owner_required
 def index():
     """Billing Dashboard"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
-    
-    # Calculate discounted prices for display
-    price_per_month = BASE_PRICE
-    price_6_months = calculate_price(6)
-    price_12_months = calculate_price(12)
-    
-    if not institute_id:
-        return render_template('billing/index.html', 
-                              subscription=None, 
-                              payments=[],
-                              is_active=False,
-                              days_remaining=0,
-                              price_per_month=price_per_month,
-                              price_6_months=price_6_months,
-                              price_12_months=price_12_months,
-                              discount_6_months=DISCOUNT_6_MONTHS,
-                              discount_12_months=DISCOUNT_12_MONTHS)
-    
     try:
+        # Get institute object (returns full institute dict)
+        institute = get_institute_from_session()
+        
+        # Calculate discounted prices for display
+        price_per_month = BASE_PRICE
+        price_6_months = calculate_price(6)
+        price_12_months = calculate_price(12)
+        
+        # Extract institute_id correctly
+        institute_id = None
+        if institute and isinstance(institute, dict):
+            institute_id = institute.get('id')
+            print(f"Institute found: {institute.get('institute_name')} with ID: {institute_id}")
+        else:
+            print(f"No institute found, institute object: {institute}")
+        
+        if not institute_id:
+            return render_template('billing/index.html', 
+                                  subscription=None, 
+                                  payments=[],
+                                  is_active=False,
+                                  days_remaining=0,
+                                  price_per_month=price_per_month,
+                                  price_6_months=price_6_months,
+                                  price_12_months=price_12_months,
+                                  discount_6_months=DISCOUNT_6_MONTHS,
+                                  discount_12_months=DISCOUNT_12_MONTHS)
+        
         # Get subscription from organization_billing
         sub_response = supabase.table('organization_billing')\
             .select('*')\
@@ -104,9 +102,15 @@ def index():
         days_remaining = 0
         
         if subscription:
-            expiry_date = datetime.strptime(subscription['expiry_date'], '%Y-%m-%d').date()
-            is_active = expiry_date >= today
-            days_remaining = (expiry_date - today).days if expiry_date >= today else 0
+            expiry_date_str = subscription.get('expiry_date')
+            if expiry_date_str:
+                # Handle both string and date formats
+                if isinstance(expiry_date_str, str):
+                    expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+                else:
+                    expiry_date = expiry_date_str
+                is_active = expiry_date >= today
+                days_remaining = (expiry_date - today).days if expiry_date >= today else 0
         
         return render_template('billing/index.html', 
                               subscription=subscription, 
@@ -121,6 +125,13 @@ def index():
         
     except Exception as e:
         print(f"Error loading billing page: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        price_per_month = BASE_PRICE
+        price_6_months = calculate_price(6)
+        price_12_months = calculate_price(12)
+        
         return render_template('billing/index.html', 
                               subscription=None, 
                               payments=[], 
@@ -136,13 +147,18 @@ def index():
 @login_required
 def initiate_payment():
     """Initiate payment with PesaPal"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
-    
-    if not institute_id:
-        return jsonify({'success': False, 'message': 'Institute not found'}), 400
-    
     try:
+        # Get institute object and extract ID
+        institute = get_institute_from_session()
+        
+        if not institute or not isinstance(institute, dict):
+            return jsonify({'success': False, 'message': 'Institute not found'}), 400
+        
+        institute_id = institute.get('id')
+        
+        if not institute_id:
+            return jsonify({'success': False, 'message': 'Institute ID not found'}), 400
+        
         data = request.get_json()
         months = int(data.get('months', 1))
         
@@ -159,7 +175,7 @@ def initiate_payment():
             .eq('id', institute_id)\
             .execute()
         
-        institute = institute_response.data[0] if institute_response.data else {}
+        inst_data = institute_response.data[0] if institute_response.data else {}
         
         # Generate unique reference
         reference_id = f"SUB_{institute_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -175,8 +191,8 @@ def initiate_payment():
             amount=amount,
             reference_id=reference_id,
             callback_url=callback_url,
-            email=institute.get('email', user.get('email', '')),
-            first_name=institute.get('institute_name', 'Institute'),
+            email=inst_data.get('email', session.get('user', {}).get('email', '')),
+            first_name=inst_data.get('institute_name', 'Institute'),
             last_name='User'
         )
         
@@ -207,10 +223,11 @@ def initiate_payment():
             
     except Exception as e:
         print(f"Error initiating payment: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @billing_bp.route('/payment-callback')
-@login_required
 def payment_callback():
     """Handle PesaPal callback"""
     order_tracking_id = request.args.get('OrderTrackingId')
@@ -259,9 +276,17 @@ def payment_callback():
             
             if sub_response.data:
                 # Extend existing subscription
-                existing_expiry = datetime.strptime(sub_response.data[0]['expiry_date'], '%Y-%m-%d').date()
-                if existing_expiry > current_date:
-                    new_expiry = existing_expiry + timedelta(days=30 * months)
+                existing_expiry_str = sub_response.data[0].get('expiry_date')
+                if existing_expiry_str:
+                    if isinstance(existing_expiry_str, str):
+                        existing_expiry = datetime.strptime(existing_expiry_str, '%Y-%m-%d').date()
+                    else:
+                        existing_expiry = existing_expiry_str
+                    
+                    if existing_expiry > current_date:
+                        new_expiry = existing_expiry + timedelta(days=30 * months)
+                    else:
+                        new_expiry = expiry_date
                 else:
                     new_expiry = expiry_date
                 
@@ -348,9 +373,17 @@ def ipn_handler():
                 .execute()
             
             if sub_response.data:
-                existing_expiry = datetime.strptime(sub_response.data[0]['expiry_date'], '%Y-%m-%d').date()
-                if existing_expiry > current_date:
-                    new_expiry = existing_expiry + timedelta(days=30 * months)
+                existing_expiry_str = sub_response.data[0].get('expiry_date')
+                if existing_expiry_str:
+                    if isinstance(existing_expiry_str, str):
+                        existing_expiry = datetime.strptime(existing_expiry_str, '%Y-%m-%d').date()
+                    else:
+                        existing_expiry = existing_expiry_str
+                    
+                    if existing_expiry > current_date:
+                        new_expiry = existing_expiry + timedelta(days=30 * months)
+                    else:
+                        new_expiry = expiry_date
                 else:
                     new_expiry = expiry_date
                 
@@ -379,13 +412,17 @@ def ipn_handler():
 @login_required
 def check_subscription():
     """Check subscription status via API"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
-    
-    if not institute_id:
-        return jsonify({'success': False, 'message': 'Institute not found'}), 400
-    
     try:
+        institute = get_institute_from_session()
+        
+        if not institute or not isinstance(institute, dict):
+            return jsonify({'success': False, 'message': 'Institute not found'}), 400
+        
+        institute_id = institute.get('id')
+        
+        if not institute_id:
+            return jsonify({'success': False, 'message': 'Institute ID not found'}), 400
+        
         sub_response = supabase.table('organization_billing')\
             .select('*')\
             .eq('institute_id', institute_id)\
@@ -394,24 +431,29 @@ def check_subscription():
         subscription = sub_response.data[0] if sub_response.data else None
         
         if subscription:
-            expiry_date = datetime.strptime(subscription['expiry_date'], '%Y-%m-%d').date()
-            today = datetime.now().date()
-            is_active = expiry_date >= today
-            days_remaining = (expiry_date - today).days if is_active else 0
-            
-            return jsonify({
-                'success': True,
-                'is_active': is_active,
-                'expiry_date': subscription['expiry_date'],
-                'days_remaining': days_remaining
-            })
-        else:
-            return jsonify({
-                'success': True,
-                'is_active': False,
-                'expiry_date': None,
-                'days_remaining': 0
-            })
+            expiry_date_str = subscription.get('expiry_date')
+            if expiry_date_str:
+                if isinstance(expiry_date_str, str):
+                    expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+                else:
+                    expiry_date = expiry_date_str
+                today = datetime.now().date()
+                is_active = expiry_date >= today
+                days_remaining = (expiry_date - today).days if is_active else 0
+                
+                return jsonify({
+                    'success': True,
+                    'is_active': is_active,
+                    'expiry_date': subscription['expiry_date'],
+                    'days_remaining': days_remaining
+                })
+        
+        return jsonify({
+            'success': True,
+            'is_active': False,
+            'expiry_date': None,
+            'days_remaining': 0
+        })
             
     except Exception as e:
         print(f"Error checking subscription: {e}")

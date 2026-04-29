@@ -1,4 +1,4 @@
-# studentStatements.py - Student Statements Blueprint
+# studentStatements.py - Student Statements Blueprint with Employee Support
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
 import os
@@ -34,27 +34,79 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute for the current user"""
+def get_institute_from_session():
+    """Get institute details from current session - handles both owners and employees"""
+    user = session.get('user')
+    if not user:
+        print("No user in session")
+        return None
+    
+    print(f"Getting institute for user: {user.get('id')}, is_employee: {user.get('is_employee')}")
+    print(f"User institute_id from session: {user.get('institute_id')}")
+    
+    institute_id = None
+    
+    # CASE 1: Employee - has institute_id directly in session
+    if user.get('is_employee') and user.get('institute_id'):
+        institute_id = user.get('institute_id')
+        print(f"Using employee institute_id from session: {institute_id}")
+    
+    # CASE 2: Owner - need to look up by user_id
+    elif not user.get('is_employee') and user.get('id'):
+        try:
+            response = supabase.table('institutes')\
+                .select('id')\
+                .eq('user_id', user['id'])\
+                .execute()
+            
+            if response.data and len(response.data) > 0:
+                institute_id = response.data[0]['id']
+                print(f"Found owner institute_id: {institute_id}")
+            else:
+                print(f"No institute found for owner user_id: {user['id']}")
+        except Exception as e:
+            print(f"Error finding owner institute: {e}")
+    
+    # CASE 3: Employee but institute_id not in session - fallback to lookup
+    elif user.get('is_employee') and not user.get('institute_id'):
+        try:
+            employee_response = supabase.table('employees')\
+                .select('institute_id')\
+                .eq('id', user['id'])\
+                .execute()
+            
+            if employee_response.data and len(employee_response.data) > 0:
+                institute_id = employee_response.data[0].get('institute_id')
+                print(f"Found employee institute_id from lookup: {institute_id}")
+        except Exception as e:
+            print(f"Error looking up employee institute: {e}")
+    
+    if not institute_id:
+        print("No institute_id found")
+        return None
+    
+    # Fetch full institute details
     try:
         response = supabase.table('institutes')\
             .select('*')\
-            .eq('user_id', user_id)\
+            .eq('id', institute_id)\
             .execute()
         
         if response.data and len(response.data) > 0:
+            print(f"Found institute: {response.data[0].get('institute_name')}")
             return response.data[0]
-        return None
+        else:
+            print(f"No institute found with id: {institute_id}")
+            return None
     except Exception as e:
-        print(f"Error getting institute: {e}")
+        print(f"Error fetching institute details: {e}")
         return None
 
 @statement_bp.route('/')
 @login_required
 def index():
     """Student Statements Page"""
-    user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute = get_institute_from_session()
     
     if not institute:
         return render_template('statements/index.html', institute=None)
@@ -65,8 +117,7 @@ def index():
 @login_required
 def search_student():
     """Live search for students"""
-    user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute = get_institute_from_session()
     
     if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
@@ -104,14 +155,11 @@ def search_student():
         print(f"Error searching student: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# Replace the get_statement function in studentStatements.py with this updated version
-
 @statement_bp.route('/get-statement', methods=['POST'])
 @login_required
 def get_statement():
     """Get student statement with date filtering - includes all transactions with proper chronological order"""
-    user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute = get_institute_from_session()
     
     if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
@@ -317,8 +365,7 @@ def get_statement():
 @login_required
 def export_pdf():
     """Export student statement as PDF with minimal professional spacing"""
-    user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute = get_institute_from_session()
     
     if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
@@ -458,13 +505,18 @@ def export_pdf():
             ['Date', 'Description', 'Debit', 'Credit', 'Balance']
         ]
         
-        # Add only last 20 transactions for compactness, or all if less
+        # Add only last 30 transactions for compactness, or all if less
         display_statement = statement[-30:] if len(statement) > 30 else statement
         
         for entry in display_statement:
+            # Format date to show MM-DD only
+            date_display = entry['date'][5:10] if len(entry['date']) > 10 else entry['date']
+            # Truncate description if too long
+            desc_display = entry['description'][:40] + '...' if len(entry['description']) > 40 else entry['description']
+            
             table_data.append([
-                entry['date'][5:10] if len(entry['date']) > 10 else entry['date'],  # Show MM-DD only
-                entry['description'][:40] + '...' if len(entry['description']) > 40 else entry['description'],
+                date_display,
+                desc_display,
                 f"{entry['debit']:,.0f}" if entry['debit'] > 0 else '-',
                 f"{entry['credit']:,.0f}" if entry['credit'] > 0 else '-',
                 f"{entry['balance']:,.0f}"
