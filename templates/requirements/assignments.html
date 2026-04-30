@@ -1,4 +1,4 @@
-<!-- templates/requirements/assignments.html - Completely Fixed with Proper Data Loading -->
+<!-- templates/requirements/assignments.html - Production Ready with Live API Calls -->
 {% extends "base.html" %}
 
 {% block title %}Class Requirements - Lunserk ERP{% endblock %}
@@ -11,6 +11,11 @@
     .btn-gradient:hover {
         background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
         transform: translateY(-2px);
+    }
+    .btn-gradient:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
     }
     .assignment-card {
         transition: all 0.2s;
@@ -51,28 +56,14 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
-    .skeleton {
-        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-        background-size: 200% 100%;
-        animation: shimmer 1.5s infinite;
-        border-radius: 8px;
-    }
-    @keyframes shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-    }
-    .skeleton-text {
+    .spinner-small {
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #ffa500;
+        border-radius: 50%;
+        width: 16px;
         height: 16px;
-        margin: 8px 0;
-    }
-    .skeleton-title {
-        height: 24px;
-        width: 60%;
-        margin-bottom: 12px;
-    }
-    .dropdown-loading {
-        opacity: 0.6;
-        pointer-events: none;
+        animation: spin 1s linear infinite;
+        display: inline-block;
     }
     .initial-loading {
         position: fixed;
@@ -80,7 +71,7 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(255, 255, 255, 0.95);
+        background: rgba(255, 255, 255, 0.98);
         z-index: 9999;
         display: flex;
         align-items: center;
@@ -92,6 +83,23 @@
         height: 60px;
         border-width: 4px;
     }
+    .retry-btn {
+        margin-top: 20px;
+        padding: 8px 16px;
+        background: #ffa500;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .retry-btn:hover {
+        background: #ff8c00;
+    }
+    .dropdown-loading {
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+    }
 </style>
 {% endblock %}
 
@@ -102,6 +110,7 @@
         <div class="loader"></div>
         <p class="mt-4 text-gray-600 font-medium" id="initialLoadingStatus">Loading data...</p>
         <p class="text-sm text-gray-400 mt-2" id="initialLoadingDetail">Please wait while we prepare your workspace</p>
+        <button id="retryLoadBtn" class="retry-btn hidden" onclick="retryLoadAllData()">Retry Loading</button>
     </div>
 
     <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
@@ -243,22 +252,28 @@
     
     // Track loading status
     let loadingStatus = {
-        items: false,
-        classes: false,
-        assignments: false,
-        terms: false
+        items: { loaded: false, error: null },
+        classes: { loaded: false, error: null },
+        assignments: { loaded: false, error: null },
+        terms: { loaded: false, error: null }
     };
     
     // Check if all data is loaded
     function isAllDataLoaded() {
-        return loadingStatus.items && loadingStatus.classes && loadingStatus.assignments && loadingStatus.terms;
+        return loadingStatus.items.loaded && loadingStatus.classes.loaded && 
+               loadingStatus.assignments.loaded && loadingStatus.terms.loaded;
+    }
+    
+    // Check if any errors occurred
+    function hasErrors() {
+        return loadingStatus.items.error || loadingStatus.classes.error || 
+               loadingStatus.assignments.error || loadingStatus.terms.error;
     }
     
     // Update initial loading UI
     function updateInitialLoadingStatus() {
-        const loadedCount = Object.values(loadingStatus).filter(v => v === true).length;
+        const loadedCount = Object.values(loadingStatus).filter(v => v.loaded === true).length;
         const totalCount = 4;
-        const percentage = (loadedCount / totalCount) * 100;
         
         const statusMap = {
             0: 'Initializing...',
@@ -287,7 +302,29 @@
                     enableInterface();
                 }, 500);
             }, 500);
+        } else if (hasErrors()) {
+            // Show retry button if there are errors
+            document.getElementById('initialLoadingStatus').textContent = 'Failed to load data';
+            document.getElementById('initialLoadingDetail').textContent = 'Please check your connection and try again';
+            document.getElementById('retryLoadBtn').classList.remove('hidden');
         }
+    }
+    
+    // Retry loading all data
+    async function retryLoadAllData() {
+        // Reset loading status
+        loadingStatus = {
+            items: { loaded: false, error: null },
+            classes: { loaded: false, error: null },
+            assignments: { loaded: false, error: null },
+            terms: { loaded: false, error: null }
+        };
+        
+        document.getElementById('retryLoadBtn').classList.add('hidden');
+        document.getElementById('initialLoadingStatus').textContent = 'Loading data...';
+        document.getElementById('initialLoadingDetail').textContent = 'Retrying...';
+        
+        await loadAllData();
     }
     
     // Enable interface after all data is loaded
@@ -306,6 +343,9 @@
         populateItemSelects();
         populateClassSelects();
         populateTermFilters();
+        
+        // Render assignments
+        renderAssignments();
     }
     
     function showLoading(message = 'Processing...') {
@@ -396,30 +436,61 @@
         return div.innerHTML;
     }
     
-    // Load all data with proper error handling
+    // Load all data with proper error handling and timeout
     async function loadAllData() {
-        return Promise.all([
-            loadItems(),
-            loadClasses(),
-            loadAssignments(),
-            loadTerms()
-        ]);
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), 30000)
+        );
+        
+        try {
+            await Promise.race([
+                Promise.all([
+                    loadItems(),
+                    loadClasses(),
+                    loadAssignments(),
+                    loadTerms()
+                ]),
+                timeoutPromise
+            ]);
+        } catch (error) {
+            console.error('Loading failed:', error);
+            updateInitialLoadingStatus();
+        }
     }
     
     async function loadItems() {
-        loadingStatus.items = false;
+        loadingStatus.items.loaded = false;
+        loadingStatus.items.error = null;
+        
         try {
-            const response = await fetch('/requirements/api/items');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
+            const response = await fetch('/requirements/api/items', {
+                signal: controller.signal,
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
+            
             if (data.success) {
                 items = data.items || [];
-                loadingStatus.items = true;
+                loadingStatus.items.loaded = true;
+                console.log(`Loaded ${items.length} items`);
             } else {
-                items = [];
-                console.error('Failed to load items:', data.message);
+                throw new Error(data.message || 'Failed to load items');
             }
         } catch (error) {
             console.error('Error loading items:', error);
+            loadingStatus.items.error = error.message;
             items = [];
         } finally {
             updateInitialLoadingStatus();
@@ -427,19 +498,38 @@
     }
     
     async function loadClasses() {
-        loadingStatus.classes = false;
+        loadingStatus.classes.loaded = false;
+        loadingStatus.classes.error = null;
+        
         try {
-            const response = await fetch('/requirements/api/classes');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
+            const response = await fetch('/requirements/api/classes', {
+                signal: controller.signal,
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
+            
             if (data.success) {
                 classes = data.classes || [];
-                loadingStatus.classes = true;
+                loadingStatus.classes.loaded = true;
+                console.log(`Loaded ${classes.length} classes`);
             } else {
-                classes = [];
-                console.error('Failed to load classes:', data.message);
+                throw new Error(data.message || 'Failed to load classes');
             }
         } catch (error) {
             console.error('Error loading classes:', error);
+            loadingStatus.classes.error = error.message;
             classes = [];
         } finally {
             updateInitialLoadingStatus();
@@ -447,19 +537,38 @@
     }
     
     async function loadTerms() {
-        loadingStatus.terms = false;
+        loadingStatus.terms.loaded = false;
+        loadingStatus.terms.error = null;
+        
         try {
-            const response = await fetch('/requirements/api/terms');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
+            const response = await fetch('/requirements/api/terms', {
+                signal: controller.signal,
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
+            
             if (data.success) {
                 terms = data.terms || [];
-                loadingStatus.terms = true;
+                loadingStatus.terms.loaded = true;
+                console.log(`Loaded ${terms.length} terms`);
             } else {
-                terms = [];
-                console.error('Failed to load terms:', data.message);
+                throw new Error(data.message || 'Failed to load terms');
             }
         } catch (error) {
             console.error('Error loading terms:', error);
+            loadingStatus.terms.error = error.message;
             terms = [];
         } finally {
             updateInitialLoadingStatus();
@@ -467,21 +576,38 @@
     }
     
     async function loadAssignments() {
-        loadingStatus.assignments = false;
+        loadingStatus.assignments.loaded = false;
+        loadingStatus.assignments.error = null;
+        
         try {
-            const response = await fetch('/requirements/api/assignments');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
+            const response = await fetch('/requirements/api/assignments', {
+                signal: controller.signal,
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
+            
             if (data.success) {
                 assignments = data.assignments || [];
-                loadingStatus.assignments = true;
-                renderAssignments();
+                loadingStatus.assignments.loaded = true;
+                console.log(`Loaded ${assignments.length} assignments`);
             } else {
-                assignments = [];
-                console.error('Failed to load assignments:', data.message);
-                document.getElementById('assignmentsList').innerHTML = '<div class="p-8 text-center text-red-500">Failed to load assignments</div>';
+                throw new Error(data.message || 'Failed to load assignments');
             }
         } catch (error) {
             console.error('Error loading assignments:', error);
+            loadingStatus.assignments.error = error.message;
             assignments = [];
             document.getElementById('assignmentsList').innerHTML = '<div class="p-8 text-center text-red-500">Failed to load assignments</div>';
         } finally {
@@ -585,6 +711,19 @@
         }).join('');
     }
     
+    // Refresh data (called after create/delete)
+    async function refreshData() {
+        showLoading('Refreshing data...');
+        await Promise.all([
+            loadItems(),
+            loadClasses(),
+            loadAssignments(),
+            loadTerms()
+        ]);
+        hideLoading();
+        renderAssignments();
+    }
+    
     // Event listeners
     document.querySelectorAll('input[name="applyTo"]').forEach(radio => {
         radio.addEventListener('change', function() {
@@ -600,14 +739,18 @@
             showLoading('Deleting assignment...');
             
             try {
-                const response = await fetch(`/requirements/api/assignments/${deleteId}`, { method: 'DELETE' });
+                const response = await fetch(`/requirements/api/assignments/${deleteId}`, { 
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
                 const result = await response.json();
                 hideLoading();
                 
                 if (result.success) {
                     showMessage('Assignment deleted successfully', 'success');
-                    await loadAssignments();
-                    renderAssignments();
+                    await refreshData();
                 } else {
                     showMessage(result.message || 'Failed to delete assignment', 'error');
                 }
@@ -670,8 +813,7 @@
             
             if (result.success) {
                 showMessage('Assignment created successfully', 'success');
-                await loadAssignments();
-                renderAssignments();
+                await refreshData();
             } else {
                 showMessage(result.message || 'Error creating assignment', 'error');
             }
