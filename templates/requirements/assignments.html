@@ -1,4 +1,4 @@
-<!-- templates/requirements/assignments.html - Completely Fixed -->
+<!-- templates/requirements/assignments.html - Completely Fixed with Proper Data Loading -->
 {% extends "base.html" %}
 
 {% block title %}Class Requirements - Lunserk ERP{% endblock %}
@@ -70,18 +70,46 @@
         width: 60%;
         margin-bottom: 12px;
     }
+    .dropdown-loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    .initial-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.95);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+    .initial-loading .loader {
+        width: 60px;
+        height: 60px;
+        border-width: 4px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
- <a href="{{url_for('requirements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Requirements</a>
 <div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Initial Loading Overlay -->
+    <div id="initialLoadingOverlay" class="initial-loading">
+        <div class="loader"></div>
+        <p class="mt-4 text-gray-600 font-medium" id="initialLoadingStatus">Loading data...</p>
+        <p class="text-sm text-gray-400 mt-2" id="initialLoadingDetail">Please wait while we prepare your workspace</p>
+    </div>
+
     <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-800 mb-1">Class Requirements</h1>
             <p class="text-sm text-gray-600">Assign requirement items to classes</p>
         </div>
-        <button onclick="openAssignmentModal()" class="btn-gradient px-4 py-2 rounded-lg text-white font-medium flex items-center gap-2">
+        <button onclick="openAssignmentModal()" id="assignBtn" class="btn-gradient px-4 py-2 rounded-lg text-white font-medium flex items-center gap-2 opacity-50 cursor-not-allowed" disabled>
             <i class="fas fa-plus"></i> Assign Requirement
         </button>
     </div>
@@ -91,20 +119,20 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Class</label>
-                <select id="classFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                    <option value="">All Classes</option>
+                <select id="classFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm" disabled>
+                    <option value="">Loading classes...</option>
                 </select>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Item</label>
-                <select id="itemFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                    <option value="">All Items</option>
+                <select id="itemFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm" disabled>
+                    <option value="">Loading items...</option>
                 </select>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
-                <select id="termFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                    <option value="">All Terms</option>
+                <select id="termFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm" disabled>
+                    <option value="">Loading terms...</option>
                 </select>
             </div>
         </div>
@@ -116,7 +144,10 @@
             <h2 class="text-lg font-semibold text-gray-800">Current Assignments</h2>
         </div>
         <div id="assignmentsList" class="divide-y divide-gray-200">
-            <div class="p-8 text-center text-gray-400">Loading assignments...</div>
+            <div class="p-8 text-center">
+                <div class="loader mx-auto"></div>
+                <p class="text-gray-400 mt-4">Loading assignments...</p>
+            </div>
         </div>
     </div>
 </div>
@@ -203,25 +234,93 @@
 </div>
 
 <script>
+    // Global data stores
     let items = [];
     let classes = [];
     let assignments = [];
     let terms = [];
     let assignmentToDelete = null;
-
+    
+    // Track loading status
+    let loadingStatus = {
+        items: false,
+        classes: false,
+        assignments: false,
+        terms: false
+    };
+    
+    // Check if all data is loaded
+    function isAllDataLoaded() {
+        return loadingStatus.items && loadingStatus.classes && loadingStatus.assignments && loadingStatus.terms;
+    }
+    
+    // Update initial loading UI
+    function updateInitialLoadingStatus() {
+        const loadedCount = Object.values(loadingStatus).filter(v => v === true).length;
+        const totalCount = 4;
+        const percentage = (loadedCount / totalCount) * 100;
+        
+        const statusMap = {
+            0: 'Initializing...',
+            1: 'Loading items...',
+            2: 'Loading classes...',
+            3: 'Loading assignments...',
+            4: 'Loading terms...'
+        };
+        
+        const detailMap = {
+            0: 'Setting up your workspace',
+            1: 'Fetching requirement items',
+            2: 'Loading class information',
+            3: 'Retrieving current assignments',
+            4: 'Loading term data'
+        };
+        
+        document.getElementById('initialLoadingStatus').textContent = statusMap[loadedCount] || 'Almost ready...';
+        document.getElementById('initialLoadingDetail').textContent = detailMap[loadedCount] || 'Preparing your dashboard';
+        
+        if (isAllDataLoaded()) {
+            setTimeout(() => {
+                document.getElementById('initialLoadingOverlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('initialLoadingOverlay').style.display = 'none';
+                    enableInterface();
+                }, 500);
+            }, 500);
+        }
+    }
+    
+    // Enable interface after all data is loaded
+    function enableInterface() {
+        // Enable filter dropdowns
+        document.getElementById('classFilter').disabled = false;
+        document.getElementById('itemFilter').disabled = false;
+        document.getElementById('termFilter').disabled = false;
+        
+        // Enable assign button
+        const assignBtn = document.getElementById('assignBtn');
+        assignBtn.disabled = false;
+        assignBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        
+        // Populate all dropdowns
+        populateItemSelects();
+        populateClassSelects();
+        populateTermFilters();
+    }
+    
     function showLoading(message = 'Processing...') {
         document.getElementById('loadingMessage').textContent = message;
         document.getElementById('loadingOverlay').classList.remove('hidden');
         document.getElementById('loadingOverlay').classList.add('flex');
         document.body.style.overflow = 'hidden';
     }
-
+    
     function hideLoading() {
         document.getElementById('loadingOverlay').classList.add('hidden');
         document.getElementById('loadingOverlay').classList.remove('flex');
         document.body.style.overflow = '';
     }
-
+    
     function showMessage(message, type = 'success') {
         let messageContainer = document.getElementById('messageContainer');
         if (!messageContainer) {
@@ -245,22 +344,32 @@
             setTimeout(() => messageDiv.remove(), 300);
         }, 3000);
     }
-
+    
     function openAssignmentModal() {
+        // Check if all data is loaded before opening modal
+        if (!isAllDataLoaded()) {
+            showMessage('Please wait for data to finish loading', 'error');
+            return;
+        }
+        
         document.getElementById('assignmentModal').classList.remove('hidden');
         document.getElementById('assignmentModal').classList.add('flex');
         document.body.style.overflow = 'hidden';
         document.getElementById('assignmentForm').reset();
         document.querySelector('input[name="applyTo"][value="all"]').checked = true;
         document.getElementById('classSelectDiv').classList.add('hidden');
+        
+        // Refresh dropdowns in modal
+        populateItemSelects();
+        populateClassSelects();
     }
-
+    
     function closeAssignmentModal() {
         document.getElementById('assignmentModal').classList.add('hidden');
         document.getElementById('assignmentModal').classList.remove('flex');
         document.body.style.overflow = '';
     }
-
+    
     function openDeleteModal(assignmentId, assignmentName) {
         if (!assignmentId || assignmentId === 'null' || assignmentId === 'undefined') {
             showMessage('Invalid assignment ID', 'error');
@@ -272,134 +381,185 @@
         document.getElementById('deleteModal').classList.add('flex');
         document.body.style.overflow = 'hidden';
     }
-
+    
     function closeDeleteModal() {
         document.getElementById('deleteModal').classList.add('hidden');
         document.getElementById('deleteModal').classList.remove('flex');
         document.body.style.overflow = '';
         assignmentToDelete = null;
     }
-
+    
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
-
-    async function loadData() {
-        showLoading('Loading data...');
-        await Promise.all([loadItems(), loadClasses(), loadAssignments(), loadTerms()]);
-        hideLoading();
+    
+    // Load all data with proper error handling
+    async function loadAllData() {
+        return Promise.all([
+            loadItems(),
+            loadClasses(),
+            loadAssignments(),
+            loadTerms()
+        ]);
     }
-
+    
     async function loadItems() {
+        loadingStatus.items = false;
         try {
             const response = await fetch('/requirements/api/items');
             const data = await response.json();
             if (data.success) {
-                items = data.items;
-                populateItemSelects();
+                items = data.items || [];
+                loadingStatus.items = true;
+            } else {
+                items = [];
+                console.error('Failed to load items:', data.message);
             }
         } catch (error) {
             console.error('Error loading items:', error);
-            showMessage('Failed to load items', 'error');
+            items = [];
+        } finally {
+            updateInitialLoadingStatus();
         }
     }
-
+    
     async function loadClasses() {
+        loadingStatus.classes = false;
         try {
             const response = await fetch('/requirements/api/classes');
             const data = await response.json();
             if (data.success) {
-                classes = data.classes;
-                populateClassSelects();
+                classes = data.classes || [];
+                loadingStatus.classes = true;
+            } else {
+                classes = [];
+                console.error('Failed to load classes:', data.message);
             }
         } catch (error) {
             console.error('Error loading classes:', error);
-            showMessage('Failed to load classes', 'error');
+            classes = [];
+        } finally {
+            updateInitialLoadingStatus();
         }
     }
-
+    
     async function loadTerms() {
+        loadingStatus.terms = false;
         try {
             const response = await fetch('/requirements/api/terms');
             const data = await response.json();
             if (data.success) {
-                terms = data.terms;
-                populateTermFilters();
+                terms = data.terms || [];
+                loadingStatus.terms = true;
+            } else {
+                terms = [];
+                console.error('Failed to load terms:', data.message);
             }
         } catch (error) {
             console.error('Error loading terms:', error);
+            terms = [];
+        } finally {
+            updateInitialLoadingStatus();
         }
     }
-
+    
     async function loadAssignments() {
+        loadingStatus.assignments = false;
         try {
             const response = await fetch('/requirements/api/assignments');
             const data = await response.json();
             if (data.success) {
-                assignments = data.assignments;
+                assignments = data.assignments || [];
+                loadingStatus.assignments = true;
                 renderAssignments();
+            } else {
+                assignments = [];
+                console.error('Failed to load assignments:', data.message);
+                document.getElementById('assignmentsList').innerHTML = '<div class="p-8 text-center text-red-500">Failed to load assignments</div>';
             }
         } catch (error) {
             console.error('Error loading assignments:', error);
+            assignments = [];
             document.getElementById('assignmentsList').innerHTML = '<div class="p-8 text-center text-red-500">Failed to load assignments</div>';
+        } finally {
+            updateInitialLoadingStatus();
         }
     }
-
+    
     function populateItemSelects() {
         const select = document.getElementById('itemSelect');
         const filter = document.getElementById('itemFilter');
-        if (items.length === 0) {
+        
+        if (!items || items.length === 0) {
             select.innerHTML = '<option value="">-- No items available --</option>';
             filter.innerHTML = '<option value="">All Items</option>';
             return;
         }
-        const options = items.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
+        
+        const options = items.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit || 'unit')})</option>`).join('');
         select.innerHTML = '<option value="">-- Select Item --</option>' + options;
         filter.innerHTML = '<option value="">All Items</option>' + options;
     }
-
+    
     function populateClassSelects() {
         const select = document.getElementById('classSelect');
         const filter = document.getElementById('classFilter');
-        if (classes.length === 0) {
+        
+        if (!classes || classes.length === 0) {
             select.innerHTML = '<option value="">-- No classes available --</option>';
             filter.innerHTML = '<option value="">All Classes</option>';
             return;
         }
+        
         const options = classes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
         select.innerHTML = '<option value="">-- Select Class --</option>' + options;
         filter.innerHTML = '<option value="">All Classes</option>' + options;
     }
-
+    
     function populateTermFilters() {
         const filter = document.getElementById('termFilter');
-        if (terms.length === 0) {
+        
+        if (!terms || terms.length === 0) {
             filter.innerHTML = '<option value="">All Terms</option>';
             return;
         }
-        const options = terms.map(t => `<option value="${t.id}">${escapeHtml(t.term_name)} - ${t.academic_year}</option>`).join('');
+        
+        const options = terms.map(t => `<option value="${t.id}">${escapeHtml(t.term_name || 'Term')} - ${t.academic_year || 'N/A'}</option>`).join('');
         filter.innerHTML = '<option value="">All Terms</option>' + options;
     }
-
+    
     function renderAssignments() {
         const container = document.getElementById('assignmentsList');
         const classFilter = document.getElementById('classFilter').value;
         const itemFilter = document.getElementById('itemFilter').value;
         const termFilter = document.getElementById('termFilter').value;
-
+        
+        // Wait for data to be loaded
+        if (!isAllDataLoaded()) {
+            container.innerHTML = '<div class="p-8 text-center"><div class="loader mx-auto"></div><p class="text-gray-400 mt-4">Loading assignments...</p></div>';
+            return;
+        }
+        
         let filtered = [...assignments];
-        if (classFilter) filtered = filtered.filter(a => a.class_id === classFilter || a.apply_to_all);
-        if (itemFilter) filtered = filtered.filter(a => a.item_id === itemFilter);
-        if (termFilter) filtered = filtered.filter(a => a.term_id === termFilter);
-
+        
+        if (classFilter) {
+            filtered = filtered.filter(a => a.class_id === classFilter || a.apply_to_all);
+        }
+        if (itemFilter) {
+            filtered = filtered.filter(a => a.item_id === itemFilter);
+        }
+        if (termFilter) {
+            filtered = filtered.filter(a => a.term_id === termFilter);
+        }
+        
         if (filtered.length === 0) {
             container.innerHTML = '<div class="p-8 text-center text-gray-400">No assignments found</div>';
             return;
         }
-
+        
         container.innerHTML = filtered.map(assignment => {
             const item = items.find(i => i.id === assignment.item_id);
             const className = assignment.apply_to_all ? 'All Classes' : (classes.find(c => c.id === assignment.class_id)?.name || 'N/A');
@@ -424,14 +584,15 @@
             `;
         }).join('');
     }
-
+    
+    // Event listeners
     document.querySelectorAll('input[name="applyTo"]').forEach(radio => {
         radio.addEventListener('change', function() {
             const classDiv = document.getElementById('classSelectDiv');
             classDiv.classList.toggle('hidden', this.value === 'all');
         });
     });
-
+    
     document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
         if (assignmentToDelete && assignmentToDelete !== 'null' && assignmentToDelete !== 'undefined') {
             const deleteId = assignmentToDelete;
@@ -446,12 +607,14 @@
                 if (result.success) {
                     showMessage('Assignment deleted successfully', 'success');
                     await loadAssignments();
+                    renderAssignments();
                 } else {
-                    showMessage(result.message, 'error');
+                    showMessage(result.message || 'Failed to delete assignment', 'error');
                 }
             } catch (error) {
                 hideLoading();
                 showMessage('Error deleting assignment', 'error');
+                console.error('Delete error:', error);
             }
             assignmentToDelete = null;
         } else {
@@ -459,7 +622,7 @@
             closeDeleteModal();
         }
     });
-
+    
     document.getElementById('assignmentForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -492,10 +655,10 @@
             }
             data.class_id = classId;
         }
-
+        
         closeAssignmentModal();
         showLoading('Creating assignment...');
-
+        
         try {
             const response = await fetch('/requirements/api/assignments', {
                 method: 'POST',
@@ -508,20 +671,24 @@
             if (result.success) {
                 showMessage('Assignment created successfully', 'success');
                 await loadAssignments();
+                renderAssignments();
             } else {
-                showMessage(result.message, 'error');
+                showMessage(result.message || 'Error creating assignment', 'error');
             }
         } catch (error) {
             hideLoading();
             showMessage('Error creating assignment', 'error');
+            console.error('Create error:', error);
         }
     });
-
+    
     document.getElementById('classFilter').addEventListener('change', () => renderAssignments());
     document.getElementById('itemFilter').addEventListener('change', () => renderAssignments());
     document.getElementById('termFilter').addEventListener('change', () => renderAssignments());
-
-    // Initialize
-    loadData();
+    
+    // Initialize - load all data on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAllData();
+    });
 </script>
 {% endblock %}
