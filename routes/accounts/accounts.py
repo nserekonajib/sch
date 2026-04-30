@@ -647,9 +647,10 @@ def export_account_report(account_id):
     except Exception as e:
         print(f"Error exporting report: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
+    
 def generate_account_code(institute_id, account_type):
-    """Generate unique account code"""
+    """Generate unique account code including institute ID"""
     try:
         # Get count of existing accounts of this type for this institute
         response = supabase.table('chart_of_accounts')\
@@ -663,14 +664,16 @@ def generate_account_code(institute_id, account_type):
         # Map account type to prefix
         prefixes = {
             'asset': 'AST',
-            'liability': 'LIA',
+            'liability': 'LIA', 
             'equity': 'EQT',
             'income': 'INC',
             'expense': 'EXP'
         }
         
         prefix = prefixes.get(account_type, 'ACC')
-        return f"{prefix}-{str(count).zfill(4)}"
+        # Include institute_id in the account code to make it unique per institute
+        return f"{prefix}-{institute_id}-{str(count).zfill(4)}"
         
-    except:
-        return f"ACC-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    except Exception as e:
+        # Fallback with timestamp for uniqueness
+        return f"ACC-{institute_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
