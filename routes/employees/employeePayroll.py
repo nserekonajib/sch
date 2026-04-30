@@ -489,7 +489,7 @@ def print_payslip(receipt_number):
     except Exception as e:
         print(f"Error generating payslip: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
 @payroll_bp.route('/api/download-payroll-pdf', methods=['POST'])
 @login_required
 def download_payroll_pdf():
@@ -499,6 +499,8 @@ def download_payroll_pdf():
     
     if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    temp_logo_path = None
     
     try:
         data = request.get_json()
@@ -525,20 +527,26 @@ def download_payroll_pdf():
             spaceAfter=20
         )
         
+        # Handle logo with proper temp file management
         if institute.get('logo_url'):
             try:
                 response = requests.get(institute['logo_url'], timeout=5)
-                img_data = response.content
-                img_buffer = io.BytesIO(img_data)
-                pil_img = PILImage.open(img_buffer)
-                
-                with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
-                    pil_img.save(tmp.name)
-                    logo = Image(tmp.name, width=1.5*inch, height=1.5*inch)
+                if response.status_code == 200:
+                    img_data = response.content
+                    img_buffer = io.BytesIO(img_data)
+                    pil_img = PILImage.open(img_buffer)
+                    
+                    # Create temporary file without auto-deletion
+                    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                        pil_img.save(tmp.name, 'JPEG')
+                        temp_logo_path = tmp.name
+                    
+                    # Create Image object after file is saved
+                    logo = Image(temp_logo_path, width=1.5*inch, height=1.5*inch)
                     logo.hAlign = 'CENTER'
                     story.append(logo)
-                    os.unlink(tmp.name)
-            except:
+            except Exception as e:
+                print(f"Error loading logo: {e}")
                 pass
         
         story.append(Paragraph(institute.get('institute_name', 'School Name'), title_style))
@@ -549,8 +557,9 @@ def download_payroll_pdf():
         story.append(Paragraph(f"PAYROLL SUMMARY - {month}", title_style))
         story.append(Spacer(1, 10))
         
+        # Removed 'Employee ID' column as requested
         table_data = [
-            ['S/N', 'Employee ID', 'Employee Name', 'Gross Salary', 'Deductions', 'Bonuses', 'Net Pay (UGX)']
+            ['S/N', 'Employee Name', 'Gross Salary', 'Deductions', 'Bonuses', 'Net Pay (UGX)']
         ]
         
         total_gross = 0
@@ -569,11 +578,8 @@ def download_payroll_pdf():
             total_bonuses += bonuses
             total_net += net
             
-            role_display = emp.get('role', 'Staff').replace('_', ' ').title() if emp.get('role') else 'Staff'
-            
             table_data.append([
                 str(idx),
-                emp.get('employee_id', 'N/A'),
                 emp.get('name', 'N/A'),
                 f"{gross:,.0f}",
                 f"{deductions:,.0f}",
@@ -581,15 +587,17 @@ def download_payroll_pdf():
                 f"{net:,.0f}"
             ])
         
-        table_data.append(['', '', '', '', '', 'TOTAL:', f"{total_net:,.0f}"])
+        # Add total row
+        table_data.append(['', '', '', '', 'TOTAL:', f"{total_net:,.0f}"])
         
-        table = Table(table_data, colWidths=[0.5*inch, 1.2*inch, 1.8*inch, 1*inch, 1*inch, 1*inch, 1.2*inch])
+        # Adjusted column widths (removed Employee ID column)
+        table = Table(table_data, colWidths=[0.5*inch, 2.5*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1.5*inch])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ffa500')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('ALIGN', (3, 1), (6, -2), 'RIGHT'),
-            ('ALIGN', (6, -1), (6, -1), 'RIGHT'),
+            ('ALIGN', (2, 1), (5, -2), 'RIGHT'),
+            ('ALIGN', (5, -1), (5, -1), 'RIGHT'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 9),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
@@ -605,7 +613,16 @@ def download_payroll_pdf():
         story.append(Paragraph(f"Generated on: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", styles['Normal']))
         story.append(Paragraph("This is a computer generated document", styles['Normal']))
         
+        # Build the PDF
         doc.build(story)
+        
+        # Clean up temporary logo file after PDF is built
+        if temp_logo_path and os.path.exists(temp_logo_path):
+            try:
+                os.unlink(temp_logo_path)
+            except Exception as e:
+                print(f"Error deleting temp logo: {e}")
+        
         buffer.seek(0)
         
         return send_file(
@@ -616,6 +633,13 @@ def download_payroll_pdf():
         )
         
     except Exception as e:
+        # Clean up temp file if error occurs
+        if temp_logo_path and os.path.exists(temp_logo_path):
+            try:
+                os.unlink(temp_logo_path)
+            except:
+                pass
+        
         print(f"Error generating PDF: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
