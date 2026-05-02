@@ -1,11 +1,10 @@
-<!-- templates/auth.html - Animated Login/Registration Form with Orbiting Circles Above -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Animated Login Form || CodeByGaurav</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+    <title>OrbitFlow | Animated Login & Registration</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         * {
             padding: 0;
@@ -24,7 +23,6 @@
             position: relative;
         }
 
-        /* Main container - centers everything */
         .main-wrapper {
             position: relative;
             width: 100%;
@@ -34,7 +32,6 @@
             align-items: center;
         }
 
-        /* Circle Animation Container - positioned above the form */
         .circle-container {
             position: absolute;
             width: 600px;
@@ -48,15 +45,10 @@
         }
 
         @keyframes float {
-            0%, 100% {
-                transform: translate(-50%, -50%) translateY(0px);
-            }
-            50% {
-                transform: translate(-50%, -50%) translateY(-10px);
-            }
+            0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+            50% { transform: translate(-50%, -50%) translateY(-10px); }
         }
 
-        /* Individual orbiting particles */
         .orbit-particle {
             position: absolute;
             width: 12px;
@@ -70,15 +62,10 @@
         }
 
         @keyframes orbit {
-            from {
-                transform: rotate(0deg) translateX(180px) rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg) translateX(180px) rotate(-360deg);
-            }
+            from { transform: rotate(0deg) translateX(180px) rotate(0deg); }
+            to { transform: rotate(360deg) translateX(180px) rotate(-360deg); }
         }
 
-        /* Larger glowing orbs */
         .glow-orb {
             position: absolute;
             width: 20px;
@@ -92,15 +79,10 @@
         }
 
         @keyframes orbit-slow {
-            from {
-                transform: rotate(0deg) translateX(220px) rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg) translateX(220px) rotate(-360deg);
-            }
+            from { transform: rotate(0deg) translateX(220px) rotate(0deg); }
+            to { transform: rotate(360deg) translateX(220px) rotate(-360deg); }
         }
 
-        /* Sparkle particles */
         .sparkle {
             position: absolute;
             width: 4px;
@@ -112,21 +94,14 @@
         }
 
         @keyframes sparkle {
-            0%, 100% {
-                opacity: 0;
-                transform: scale(0);
-            }
-            50% {
-                opacity: 1;
-                transform: scale(1);
-            }
+            0%, 100% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
         }
 
-        /* Flip Card Container */
         .flip-container {
             position: relative;
-            width: 420px;
-            height: 520px;
+            width: 460px;
+            min-height: 620px;
             z-index: 10;
             perspective: 1000px;
             margin-top: 60px;
@@ -135,7 +110,7 @@
         .flip-card {
             position: relative;
             width: 100%;
-            height: 100%;
+            min-height: 620px;
             transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
             transform-style: preserve-3d;
         }
@@ -147,9 +122,8 @@
         .flip-front, .flip-back {
             position: absolute;
             width: 100%;
-            height: 100%;
+            min-height: 620px;
             backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
             border-radius: 20px;
         }
 
@@ -157,59 +131,50 @@
             transform: rotateY(180deg);
         }
 
-        /* Form Box Styles */
         .login-box, .register-box {
-            background: rgba(30, 42, 58, 0.95);
-            backdrop-filter: blur(10px);
+            background: rgba(30, 42, 58, 0.96);
+            backdrop-filter: blur(12px);
             padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border-radius: 28px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
             width: 100%;
-            height: 100%;
-            border: 1px solid rgba(255, 165, 0, 0.2);
+            min-height: 620px;
+            border: 1px solid rgba(255, 165, 0, 0.25);
             position: relative;
-            overflow: hidden;
+            overflow-y: auto;
         }
 
-        /* Form glow effect on hover */
-        .login-box::before, .register-box::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: linear-gradient(45deg, #ffa500, #ff8c00, #ffa500);
-            border-radius: 20px;
-            opacity: 0;
-            z-index: -1;
-            transition: opacity 0.3s ease;
+        .login-box::-webkit-scrollbar, .register-box::-webkit-scrollbar {
+            width: 5px;
         }
-
-        .login-box:hover::before, .register-box:hover::before {
-            opacity: 0.1;
+        .login-box::-webkit-scrollbar-track, .register-box::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+        }
+        .login-box::-webkit-scrollbar-thumb, .register-box::-webkit-scrollbar-thumb {
+            background: #ffa500;
+            border-radius: 10px;
         }
 
         h2 {
             text-align: center;
             color: #ffa500;
-            margin-bottom: 30px;
+            margin-bottom: 32px;
             font-size: 32px;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 2px;
             position: relative;
-            display: inline-block;
             width: 100%;
         }
 
         h2::after {
             content: '';
             position: absolute;
-            bottom: -10px;
+            bottom: -12px;
             left: 50%;
             transform: translateX(-50%);
-            width: 50px;
+            width: 60px;
             height: 3px;
             background: linear-gradient(90deg, #ffa500, #ff8c00);
             border-radius: 3px;
@@ -217,15 +182,15 @@
 
         .input-group {
             position: relative;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .input-group input {
             width: 100%;
-            padding: 12px 40px 12px 15px;
-            background: rgba(255, 255, 255, 0.1);
+            padding: 12px 46px 12px 18px;
+            background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 25px;
+            border-radius: 40px;
             color: #fff;
             font-size: 14px;
             outline: none;
@@ -234,88 +199,51 @@
 
         .input-group input:focus {
             border-color: #ffa500;
-            box-shadow: 0 0 15px rgba(255, 165, 0, 0.3);
-            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 18px rgba(255, 165, 0, 0.4);
+            background: rgba(255, 255, 255, 0.12);
         }
 
         .input-group input::placeholder {
-            color: rgba(255, 255, 255, 0.5);
+            color: rgba(255, 255, 255, 0.6);
         }
 
         .input-icon {
             position: absolute;
-            right: 15px;
+            right: 18px;
             top: 50%;
             transform: translateY(-50%);
-            color: rgba(255, 255, 255, 0.5);
+            color: rgba(255, 255, 255, 0.6);
             font-size: 16px;
-            transition: color 0.3s ease;
         }
 
         .input-group input:focus + .input-icon {
             color: #ffa500;
         }
 
-        .forget-password {
-            text-align: right;
-            margin-top: -15px;
-            margin-bottom: 25px;
-        }
-
-        .forget-password a {
-            color: rgba(255, 255, 255, 0.6);
-            text-decoration: none;
-            font-size: 12px;
-            transition: color 0.3s ease;
-        }
-
-        .forget-password a:hover {
-            color: #ffa500;
-        }
-
         .login-btn, .register-btn {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(90deg, #ffa500, #ff8c00);
+            background: linear-gradient(95deg, #ffa500, #ff8c00);
             border: none;
-            border-radius: 25px;
+            border-radius: 40px;
             color: #fff;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
             cursor: pointer;
-            position: relative;
-            overflow: hidden;
             transition: all 0.3s ease;
+            margin-top: 10px;
         }
 
         .login-btn:hover, .register-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(255, 165, 0, 0.5);
-        }
-
-        .login-btn:active::before, .register-btn:active::before {
-            width: 300px;
-            height: 300px;
-        }
-
-        .login-btn::before, .register-btn::before {
-            content: "";
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s ease, height 0.6s ease;
+            box-shadow: 0 10px 25px rgba(255, 165, 0, 0.4);
         }
 
         .signup-link, .login-link {
             text-align: center;
-            margin-top: 25px;
+            margin-top: 20px;
         }
 
         .signup-link a, .login-link a {
@@ -323,129 +251,77 @@
             text-decoration: none;
             font-size: 14px;
             font-weight: 600;
-            transition: color 0.3s ease;
             cursor: pointer;
         }
 
         .signup-link a:hover, .login-link a:hover {
-            color: #ff8c00;
             text-decoration: underline;
         }
 
-        /* Flash Messages */
+        .employee-link {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed rgba(255,165,0,0.3);
+        }
+        .employee-link a {
+            color: #ffaa33;
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .employee-link a:hover {
+            text-decoration: underline;
+        }
+
         .flash-messages {
             position: fixed;
             top: 20px;
             right: 20px;
-            z-index: 1000;
-            max-width: 350px;
+            z-index: 2000;
+            max-width: 380px;
         }
 
         .flash-message {
             padding: 12px 20px;
             margin-bottom: 10px;
-            border-radius: 8px;
+            border-radius: 40px;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
             animation: slideIn 0.3s ease;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
-        .flash-message.success {
-            background: #4caf50;
-            color: white;
-            border-left: 4px solid #2e7d32;
-        }
-
-        .flash-message.error {
-            background: #f44336;
-            color: white;
-            border-left: 4px solid #c62828;
-        }
-
-        .flash-message.warning {
-            background: #ff9800;
-            color: white;
-            border-left: 4px solid #ed6c02;
-        }
-
-        .flash-message.info {
-            background: #2196f3;
-            color: white;
-            border-left: 4px solid #0b5e7e;
-        }
+        .flash-message.success { background: #2e7d32; color: white; }
+        .flash-message.error { background: #c62828; color: white; }
+        .flash-message.warning { background: #ed6c02; color: white; }
 
         @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        /* Additional spacing for register form */
-        .register-box .input-group:last-of-type {
-            margin-bottom: 15px;
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
 
         .password-hint {
             font-size: 11px;
-            color: rgba(255, 255, 255, 0.4);
-            margin-top: -15px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: -8px;
             margin-bottom: 15px;
-            text-align: left;
+            padding-left: 10px;
         }
 
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .circle-container {
-                width: 400px;
-                height: 200px;
-            }
-            
-            @keyframes orbit {
-                from {
-                    transform: rotate(0deg) translateX(120px) rotate(0deg);
-                }
-                to {
-                    transform: rotate(360deg) translateX(120px) rotate(-360deg);
-                }
-            }
-            
-            @keyframes orbit-slow {
-                from {
-                    transform: rotate(0deg) translateX(150px) rotate(0deg);
-                }
-                to {
-                    transform: rotate(360deg) translateX(150px) rotate(-360deg);
-                }
-            }
-            
-            .flip-container {
-                width: 340px;
-                height: 480px;
-            }
-            
-            .login-box, .register-box {
-                padding: 30px;
-            }
-            
-            h2 {
-                font-size: 28px;
-            }
+        @media (max-width: 580px) {
+            .flip-container { width: 95%; min-height: 600px; }
+            .login-box, .register-box { padding: 25px 20px; }
+            h2 { font-size: 26px; }
         }
     </style>
 </head>
 <body>
-    <!-- Flash Messages Container -->
     <div class="flash-messages" id="flashMessages">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
                     <div class="flash-message {{ category }}">
+                        <i class="fas {% if category == 'success' %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
                         {{ message }}
                     </div>
                 {% endfor %}
@@ -454,92 +330,80 @@
     </div>
 
     <div class="main-wrapper">
-        <!-- Circle Animation Container - Orbiting particles above the form -->
         <div class="circle-container" id="circleContainer"></div>
         
-        <!-- Flip Card Container -->
         <div class="flip-container">
             <div class="flip-card" id="flipCard">
-                <!-- Login Form (Front) -->
+                <!-- Login Form -->
                 <div class="flip-front">
                     <div class="login-box">
-                        <h2>Login</h2>
+                        <h2>Welcome Back</h2>
                         <form action="{{ url_for('auth.login') }}" method="POST" id="loginForm">
                             <div class="input-group">
-                                <input type="email" name="email" placeholder="Email" required>
-                                <span class="input-icon">
-                                    <i class="fa-solid fa-envelope"></i>
-                                </span>
+                                <input type="email" name="email" placeholder="Email address" required>
+                                <span class="input-icon"><i class="fa-solid fa-envelope"></i></span>
                             </div>
-
                             <div class="input-group">
                                 <input type="password" name="password" placeholder="Password" required>
-                                <span class="input-icon">
-                                    <i class="fa-solid fa-lock"></i>
-                                </span>
+                                <span class="input-icon"><i class="fa-solid fa-lock"></i></span>
                             </div>
-
-                            <div class="forget-password">
-                                <a href="#">Forgot Password ?</a>
-                            </div>
-
-                            <button type="submit" class="login-btn">LOGIN</button>
+                            <button type="submit" class="login-btn">Login</button>
                         </form>
-
                         <div class="signup-link">
-                            <a id="showRegister">Don't have an account? Sign Up</a>
+                            <a id="showRegister">Don't have an account? Register Institute</a>
                         </div>
-
-                           <!-- Add near the bottom of your auth.html login form -->
-                                <div class="mt-4 text-center">
-                                    <p class="text-gray-500 text-sm">
-                                        Are you an employee? 
-                                        <a href="{{ url_for('auth.employee_login') }}" class="text-orange-500 hover:underline">
-                                            <i class="fas fa-user-tie"></i> Login with Employee ID
-                                        </a>
-                                    </p>
-                                </div>
+                        <div class="employee-link">
+                            <a href="{{ url_for('auth.employee_login') }}">
+                                <i class="fas fa-user-tie"></i> Employee Login
+                            </a>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Registration Form (Back) -->
+                <!-- Registration Form - FIXED with all required fields -->
                 <div class="flip-back">
                     <div class="register-box">
-                        <h2>Register</h2>
+                        <h2>Register Institute</h2>
                         <form action="{{ url_for('auth.register') }}" method="POST" id="registerForm">
+                            <!-- Email field -->
                             <div class="input-group">
-                                <input type="email" name="email" placeholder="Email" required>
-                                <span class="input-icon">
-                                    <i class="fa-solid fa-envelope"></i>
-                                </span>
+                                <input type="email" name="email" id="regEmail" placeholder="Email address" required>
+                                <span class="input-icon"><i class="fa-solid fa-envelope"></i></span>
                             </div>
 
+                            <!-- Institute Name - IMPORTANT! Backend expects this -->
                             <div class="input-group">
-                                <input type="password" name="password" placeholder="Password" required>
-                                <span class="input-icon">
-                                    <i class="fa-solid fa-lock"></i>
-                                </span>
+                                <input type="text" name="institute_name" id="regInstituteName" placeholder="Institute Name" required>
+                                <span class="input-icon"><i class="fa-solid fa-building"></i></span>
                             </div>
-                            
+
+                            <!-- Phone field - Backend expects this -->
                             <div class="input-group">
-                                <input type="password" name="confirm_password" placeholder="Confirm Password" required>
-                                <span class="input-icon">
-                                    <i class="fa-solid fa-check-circle"></i>
-                                </span>
+                                <input type="tel" name="phone" id="regPhone" placeholder="Phone Number">
+                                <span class="input-icon"><i class="fa-solid fa-phone"></i></span>
                             </div>
-                            
+
+                            <!-- Password field -->
+                            <div class="input-group">
+                                <input type="password" name="password" id="regPassword" placeholder="Password" required>
+                                <span class="input-icon"><i class="fa-solid fa-lock"></i></span>
+                            </div>
+
+                            <!-- Confirm Password field -->
+                            <div class="input-group">
+                                <input type="password" name="confirm_password" id="regConfirm" placeholder="Confirm Password" required>
+                                <span class="input-icon"><i class="fa-solid fa-check-circle"></i></span>
+                            </div>
+
                             <div class="password-hint">
-                                Password must be at least 6 characters
+                                <i class="fas fa-shield-alt"></i> Password must be at least 6 characters
                             </div>
 
-                            <button type="submit" class="register-btn">REGISTER</button>
+                            <button type="submit" class="register-btn">Register Institute</button>
                         </form>
-
                         <div class="login-link">
-                            <a id="showLogin">Already have an account? Login</a>
+                            <a id="showLogin">← Back to Login</a>
                         </div>
-
-                     
                     </div>
                 </div>
             </div>
@@ -547,14 +411,11 @@
     </div>
 
     <script>
-        // Create orbiting particles above the form
+        // Create orbiting particles
         const circleContainer = document.getElementById("circleContainer");
-        
-        // Number of particles
         const numParticles = 24;
         const numGlowOrbs = 8;
         
-        // Create regular orbiting particles
         for(let i = 0; i < numParticles; i++){
             const particle = document.createElement("div");
             particle.className = "orbit-particle";
@@ -567,7 +428,6 @@
             circleContainer.appendChild(particle);
         }
         
-        // Create larger glowing orbs
         for(let i = 0; i < numGlowOrbs; i++){
             const orb = document.createElement("div");
             orb.className = "glow-orb";
@@ -580,7 +440,6 @@
             circleContainer.appendChild(orb);
         }
         
-        // Create sparkle particles that appear randomly
         function createSparkle() {
             const sparkle = document.createElement("div");
             sparkle.className = "sparkle";
@@ -590,122 +449,83 @@
             const y = Math.sin(angle * Math.PI / 180) * radius;
             sparkle.style.transform = `translate(${x}px, ${y}px)`;
             sparkle.style.animationDuration = `${0.5 + Math.random() * 1}s`;
-            sparkle.style.animationDelay = `${Math.random() * 2}s`;
             circleContainer.appendChild(sparkle);
-            
-            setTimeout(() => {
-                sparkle.remove();
-            }, 1500);
+            setTimeout(() => sparkle.remove(), 1500);
         }
         
-        // Generate sparkles periodically
-        setInterval(() => {
-            if (document.hasFocus()) {
-                createSparkle();
-            }
-        }, 800);
+        setInterval(() => { if(document.hasFocus()) createSparkle(); }, 800);
         
         // Flip card functionality
         const flipCard = document.getElementById('flipCard');
         const showRegisterBtn = document.getElementById('showRegister');
         const showLoginBtn = document.getElementById('showLogin');
-
-        // Check URL parameter to determine which form to show
         const urlParams = new URLSearchParams(window.location.search);
-        const mode = urlParams.get('mode');
         
-        if (mode === 'register') {
+        if (urlParams.get('mode') === 'register') {
             flipCard.classList.add('flipped');
         }
-
-        // Handle flip to register
+        
         if (showRegisterBtn) {
-            showRegisterBtn.addEventListener('click', function(e) {
+            showRegisterBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
                 flipCard.classList.add('flipped');
             });
         }
-
-        // Handle flip to login
+        
         if (showLoginBtn) {
-            showLoginBtn.addEventListener('click', function(e) {
+            showLoginBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
                 flipCard.classList.remove('flipped');
             });
         }
-
-        // Auto-hide flash messages after 5 seconds
-        const flashMessages = document.querySelectorAll('.flash-message');
-        flashMessages.forEach(message => {
-            setTimeout(() => {
-                message.style.opacity = '0';
-                message.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    if(message.parentNode) message.remove();
-                }, 300);
-            }, 5000);
-        });
-
+        
         // Form validation for registration
         const registerForm = document.getElementById('registerForm');
         if (registerForm) {
             registerForm.addEventListener('submit', function(e) {
-                const password = this.querySelector('input[name="password"]').value;
-                const confirm = this.querySelector('input[name="confirm_password"]').value;
+                const email = document.getElementById('regEmail').value.trim();
+                const instituteName = document.getElementById('regInstituteName').value.trim();
+                const password = document.getElementById('regPassword').value;
+                const confirm = document.getElementById('regConfirm').value;
                 
-                if (password !== confirm) {
-                    e.preventDefault();
-                    const flashContainer = document.getElementById('flashMessages');
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = 'flash-message error';
-                    errorMsg.textContent = 'Passwords do not match';
-                    flashContainer.appendChild(errorMsg);
-                    
-                    setTimeout(() => {
-                        errorMsg.style.opacity = '0';
-                        setTimeout(() => errorMsg.remove(), 300);
-                    }, 5000);
-                    
-                    return false;
+                let errors = [];
+                
+                if (!email) errors.push('Email is required');
+                if (!instituteName) errors.push('Institute Name is required');
+                if (!password) errors.push('Password is required');
+                if (!confirm) errors.push('Please confirm your password');
+                
+                if (password && password.length < 6) {
+                    errors.push('Password must be at least 6 characters');
                 }
                 
-                if (password.length < 6) {
+                if (password && confirm && password !== confirm) {
+                    errors.push('Passwords do not match');
+                }
+                
+                if (errors.length > 0) {
                     e.preventDefault();
                     const flashContainer = document.getElementById('flashMessages');
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = 'flash-message error';
-                    errorMsg.textContent = 'Password must be at least 6 characters';
-                    flashContainer.appendChild(errorMsg);
-                    
-                    setTimeout(() => {
-                        errorMsg.style.opacity = '0';
-                        setTimeout(() => errorMsg.remove(), 300);
-                    }, 5000);
-                    
+                    errors.forEach(error => {
+                        const errorMsg = document.createElement('div');
+                        errorMsg.className = 'flash-message error';
+                        errorMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${error}`;
+                        flashContainer.appendChild(errorMsg);
+                        setTimeout(() => errorMsg.remove(), 5000);
+                    });
                     return false;
                 }
             });
         }
-
-        // Prevent form resubmission on page refresh
+        
+        // Auto-hide flash messages
+        document.querySelectorAll('.flash-message').forEach(msg => {
+            setTimeout(() => msg.remove(), 5000);
+        });
+        
         if (window.history.replaceState) {
             window.history.replaceState(null, null, window.location.href);
         }
-        
-        // Add parallax effect on mouse move
-        document.addEventListener('mousemove', (e) => {
-            const particles = document.querySelectorAll('.orbit-particle, .glow-orb');
-            const mouseX = e.clientX / window.innerWidth;
-            const mouseY = e.clientY / window.innerHeight;
-            
-            particles.forEach((particle, index) => {
-                const moveX = (mouseX - 0.5) * 20;
-                const moveY = (mouseY - 0.5) * 20;
-                particle.style.transform = `translate(${moveX * (index % 2 === 0 ? 1 : -1)}px, ${moveY * (index % 3 === 0 ? 1 : -1)}px)`;
-            });
-        });
     </script>
 </body>
 </html>

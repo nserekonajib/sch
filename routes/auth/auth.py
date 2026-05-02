@@ -272,7 +272,7 @@ def employee_login():
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    """Registration route for institute owners only"""
+    """Registration route for institute owners only - Institute created ONLY after user auth success"""
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -294,40 +294,72 @@ def register():
             return redirect(url_for('auth.register'))
         
         try:
-            # Attempt to sign up with Supabase
+            # FIRST: Create Supabase auth user
             response = supabase.auth.sign_up({
                 "email": email,
                 "password": password,
                 "options": {
                     "data": {
+                        "role": "owner",
                         "institute_name": institute_name,
-                        "phone": phone,
-                        "role": "owner"
+                        "phone": phone
                     }
                 }
             })
             
-            if response.user:
-                # Create institute record
-                institute_data = {
-                    'user_id': response.user.id,
-                    'email': email,
-                    'institute_name': institute_name,
-                    'phone': phone,
-                    'subscription_status': 'trial',
-                    'subscription_start': datetime.now().isoformat(),
-                    'created_at': datetime.now().isoformat()
-                }
+            if not response.user:
+                flash('Registration failed. Could not create user account.', 'error')
+                return redirect(url_for('auth.register'))
+            
+            # User created successfully, NOW create institute record
+            import random
+            import string
+            date_str = datetime.now().strftime("%Y%m%d")
+            random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            institute_code = f"INS{date_str}{random_suffix}"
+            
+            institute_data = {
+                'user_id': response.user.id,  # Now we have the user ID
+                'institute_code': institute_code,
+                'institute_name': institute_name,
+                'phone_number': phone,
+                'email': email,
+                'created_at': datetime.now().isoformat(),
+                'subscription_status': 'trial',
+                'subscription_start': datetime.now().isoformat()
+            }
+            
+            # Insert institute record
+            try:
+                institute_result = supabase.table('institutes').insert(institute_data).execute()
                 
-                try:
-                    supabase.table('institutes').insert(institute_data).execute()
-                except Exception as inst_error:
-                    print(f"Institute creation error: {inst_error}")
-                
-                flash('Registration successful! Please login with your credentials.', 'success')
-                return redirect(url_for('auth.login'))
-            else:
+                if institute_result.data and len(institute_result.data) > 0:
+                    # Update user metadata with institute_id
+                    supabase.auth.admin.update_user_by_id(
+                        response.user.id,
+                        {
+                            "user_metadata": {
+                                "institute_id": institute_result.data[0]['id'],
+                                "institute_code": institute_code,
+                                "role": "owner"
+                            }
+                        }
+                    )
+                    
+                    flash('Registration successful! Please login with your credentials.', 'success')
+                    return redirect(url_for('auth.login'))
+                else:
+                    # Institute creation failed, but user was created - should clean up?
+                    # Ideally delete the auth user, but that requires admin privileges
+                    flash('Registration partially failed. Please contact support.', 'error')
+                    return redirect(url_for('auth.register'))
+                    
+            except Exception as db_error:
+                print(f"Database error: {db_error}")
+                # Institute creation failed, but user was created
+                # You might want to delete the auth user here (requires admin)
                 flash('Registration failed. Please try again.', 'error')
+                return redirect(url_for('auth.register'))
                 
         except Exception as e:
             error_msg = str(e)
@@ -335,6 +367,7 @@ def register():
                 flash('Email already registered. Please login instead.', 'warning')
                 return redirect(url_for('auth.login'))
             else:
+                print(f"Registration error: {e}")
                 flash(f'Registration failed: {error_msg}', 'error')
     
     return render_template('auth.html', mode='register')
