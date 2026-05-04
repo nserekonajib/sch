@@ -304,14 +304,97 @@ def get_subjects():
             .eq('institute_id', institute['id'])\
             .execute()
         
+        print(f"Subjects query result for class {class_id}: {response.data}")  # Debug log
+        
         subjects = response.data if response.data else []
         
-        return jsonify({'success': True, 'subjects': subjects})
+        # Format subjects for frontend
+        formatted_subjects = []
+        for subject in subjects:
+            formatted_subjects.append({
+                'id': subject['subject_id'],
+                'name': subject['subjects']['name'] if subject.get('subjects') else 'Unknown',
+                'marks': subject['marks'],
+                'teacher_id': subject.get('teacher_id')
+            })
+        
+        return jsonify({'success': True, 'subjects': formatted_subjects})
         
     except Exception as e:
         print(f"Error getting subjects: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
+# @exams_bp.route('/api/debug/class-data', methods=['GET'])
+# @login_required
+# def debug_class_data():
+#     """Debug endpoint to check class data"""
+#     user = session.get('user')
+#     institute = get_institute(user['id'])
+    
+#     if not institute:
+#         return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+#     try:
+#         class_id = request.args.get('class_id')
+        
+#         if not class_id:
+#             return jsonify({'success': False, 'message': 'Class ID required'}), 400
+        
+#         debug_info = {}
+        
+#         # 1. Check class exists
+#         class_response = supabase.table('classes')\
+#             .select('*')\
+#             .eq('id', class_id)\
+#             .execute()
+#         debug_info['class'] = class_response.data[0] if class_response.data else None
+        
+#         # 2. Check class_subjects
+#         subjects_response = supabase.table('class_subjects')\
+#             .select('*, subjects(name)')\
+#             .eq('class_id', class_id)\
+#             .eq('institute_id', institute['id'])\
+#             .execute()
+#         debug_info['class_subjects'] = subjects_response.data if subjects_response.data else []
+#         debug_info['class_subjects_count'] = len(subjects_response.data) if subjects_response.data else 0
+        
+#         # 3. Check if subjects table has names
+#         subject_ids = [s['subject_id'] for s in debug_info['class_subjects']] if debug_info['class_subjects'] else []
+#         if subject_ids:
+#             subjects_table = supabase.table('subjects')\
+#                 .select('id, name')\
+#                 .in_('id', subject_ids)\
+#                 .execute()
+#             debug_info['subjects_table'] = subjects_table.data if subjects_table.data else []
+        
+#         # 4. Check class enrollments
+#         enrollments_response = supabase.table('class_enrollments')\
+#             .select('student_id, academic_year')\
+#             .eq('class_id', class_id)\
+#             .eq('academic_year', 2026)\
+#             .execute()
+#         debug_info['enrollments'] = enrollments_response.data if enrollments_response.data else []
+#         debug_info['enrollments_count'] = len(enrollments_response.data) if enrollments_response.data else 0
+        
+#         # 5. Get student details if any
+#         if debug_info['enrollments']:
+#             student_ids = [e['student_id'] for e in debug_info['enrollments']]
+#             students_response = supabase.table('students')\
+#                 .select('id, name, student_id')\
+#                 .eq('institute_id', institute['id'])\
+#                 .in_('id', student_ids)\
+#                 .execute()
+#             debug_info['students'] = students_response.data if students_response.data else []
+        
+#         return jsonify({'success': True, 'debug': debug_info})
+        
+#     except Exception as e:
+#         print(f"Debug error: {e}")
+#         import traceback
+#         traceback.print_exc()
+#         return jsonify({'success': False, 'message': str(e), 'traceback': traceback.format_exc()}), 500
+    
+    
 @exams_bp.route('/api/class-students', methods=['GET'])
 @login_required
 def get_class_students():
@@ -353,8 +436,8 @@ def get_class_students():
     except Exception as e:
         print(f"Error getting class students: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-# Update the get_marks endpoint in exams.py to use exam_total_marks
-
+    
+    
 @exams_bp.route('/api/marks', methods=['GET'])
 @login_required
 def get_marks():
@@ -387,6 +470,34 @@ def get_marks():
         exam = exam_response.data[0]
         exam_total_marks = exam['total_marks']
         
+        # Get subjects for the class
+        subjects_response = supabase.table('class_subjects')\
+            .select('*, subjects!inner(name)')\
+            .eq('class_id', class_id)\
+            .eq('institute_id', institute['id'])\
+            .execute()
+        
+        subjects = subjects_response.data if subjects_response.data else []
+        
+        # Format subjects for frontend
+        formatted_subjects = []
+        for subject in subjects:
+            formatted_subjects.append({
+                'id': subject['subject_id'],
+                'name': subject['subjects']['name'] if subject.get('subjects') else 'Unknown',
+                'max_marks': subject['marks']
+            })
+        
+        # If no subjects found, return early
+        if not formatted_subjects:
+            return jsonify({
+                'success': True,
+                'students': [],
+                'subjects': [],
+                'exam_total_marks': exam_total_marks,
+                'message': 'No subjects assigned to this class'
+            })
+        
         # Get students enrolled in this class for the academic year
         enrollments_response = supabase.table('class_enrollments')\
             .select('student_id')\
@@ -396,8 +507,49 @@ def get_marks():
         
         student_ids = [e['student_id'] for e in enrollments_response.data] if enrollments_response.data else []
         
+        # If no students enrolled, get ALL students and auto-enroll them
         if not student_ids:
-            return jsonify({'success': True, 'students': [], 'subjects': [], 'exam_total_marks': exam_total_marks})
+            print(f"No enrollments found for class {class_id}, auto-enrolling all students...")
+            
+            # Get all students in the institute
+            all_students_response = supabase.table('students')\
+                .select('id')\
+                .eq('institute_id', institute['id'])\
+                .execute()
+            
+            all_student_ids = [s['id'] for s in all_students_response.data] if all_students_response.data else []
+            
+            if all_student_ids:
+                # Auto-create enrollments for all students (without institute_id)
+                enrollments_to_insert = []
+                for student_id in all_student_ids:
+                    enrollments_to_insert.append({
+                        'id': str(uuid.uuid4()),
+                        'class_id': class_id,
+                        'student_id': student_id,
+                        'academic_year': int(academic_year),
+                        'enrolled_at': datetime.now().isoformat(),
+                        'updated_at': datetime.now().isoformat()
+                    })
+                
+                # Insert in batches to avoid errors
+                if enrollments_to_insert:
+                    # Insert in batches of 50
+                    batch_size = 50
+                    for i in range(0, len(enrollments_to_insert), batch_size):
+                        batch = enrollments_to_insert[i:i+batch_size]
+                        supabase.table('class_enrollments').insert(batch).execute()
+                    print(f"Auto-created {len(enrollments_to_insert)} enrollments")
+                    student_ids = all_student_ids
+        
+        if not student_ids:
+            return jsonify({
+                'success': True,
+                'students': [],
+                'subjects': formatted_subjects,
+                'exam_total_marks': exam_total_marks,
+                'message': 'No students available to enroll'
+            })
         
         # Get student details
         students_response = supabase.table('students')\
@@ -408,15 +560,6 @@ def get_marks():
             .execute()
         
         students = students_response.data if students_response.data else []
-        
-        # Get subjects for the class
-        subjects_response = supabase.table('class_subjects')\
-            .select('*, subjects(name)')\
-            .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
-            .execute()
-        
-        subjects = subjects_response.data if subjects_response.data else []
         
         # Get marks based on version
         if version == 'historical' and history_date:
@@ -463,10 +606,10 @@ def get_marks():
             # Calculate total obtained marks across all subjects
             total_obtained = 0
             
-            for subject in subjects:
-                subject_id = subject['subject_id']
-                subject_name = subject['subjects']['name'] if subject.get('subjects') else 'N/A'
-                max_marks = subject['marks']
+            for subject in formatted_subjects:
+                subject_id = subject['id']
+                subject_name = subject['name']
+                max_marks = subject['max_marks']
                 key = f"{student['id']}_{subject_id}"
                 
                 if key in existing_marks:
@@ -484,7 +627,7 @@ def get_marks():
                 if obtained:
                     total_obtained += obtained
             
-            # Calculate percentage based on EXAM TOTAL MARKS, not subject total
+            # Calculate percentage based on EXAM TOTAL MARKS
             percentage = round((total_obtained / exam_total_marks * 100), 1) if exam_total_marks > 0 else 0
             
             student_marks['total_obtained'] = total_obtained
@@ -495,7 +638,7 @@ def get_marks():
         return jsonify({
             'success': True,
             'students': marks_data,
-            'subjects': [{'id': s['subject_id'], 'name': s['subjects']['name'], 'max_marks': s['marks']} for s in subjects],
+            'subjects': formatted_subjects,
             'exam_total_marks': exam_total_marks
         })
         
@@ -504,7 +647,7 @@ def get_marks():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
 @exams_bp.route('/api/marks/save', methods=['POST'])
 @login_required
 def save_marks():

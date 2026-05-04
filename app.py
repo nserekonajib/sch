@@ -65,6 +65,7 @@ from routes.dashboard.dashboard import dashboard_bp
 from routes.resultsCard.competenceReportCard import competence_bp
 from routes.admin.admin import admin_bp
 from routes.careers.careers import agent_bp
+from routes.fees.editStudentInvoice import edit_invoice_bp
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
@@ -98,6 +99,7 @@ app.register_blueprint(billing_bp, url_prefix='/billing')
 app.register_blueprint(competence_bp, url_prefix='/competence-report')
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(agent_bp, url_prefix='/agent')
+app.register_blueprint(edit_invoice_bp, url_prefix='/edit-invoice')
 
 
 
@@ -126,6 +128,6 @@ def serve_static(filename):
     return send_from_directory('static', filename)
 
 if __name__ == '__main__':
-     app.run(host="0.0.0.0", port=40000)
-    # from waitress import serve
-    # serve(app, host='0.0.0.0', port=40000)
+    #  app.run(host="0.0.0.0", port=40000)
+    from waitress import serve
+    serve(app, host='0.0.0.0', port=40000)

@@ -1,4 +1,4 @@
-<!-- templates/competence/index.html - Selection Interface -->
+<!-- templates/competence/index.html - Selection Interface for DOCX Reports -->
 {% extends "base.html" %}
 
 {% block title %}Competence Report Card - Lunserk ERP{% endblock %}
@@ -11,6 +11,18 @@
     .btn-gradient:hover {
         background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
         transform: translateY(-2px);
+    }
+    .btn-word {
+        background: linear-gradient(135deg, #2b5797 0%, #1e3c72 100%);
+    }
+    .btn-word:hover {
+        background: linear-gradient(135deg, #1e3c72 0%, #2b5797 100%);
+    }
+    .btn-pdf {
+        background: linear-gradient(135deg, #d31027 0%, #ea384d 100%);
+    }
+    .btn-pdf:hover {
+        background: linear-gradient(135deg, #ea384d 0%, #d31027 100%);
     }
     .exam-badge {
         display: inline-block;
@@ -34,33 +46,107 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+    .format-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+    }
+    .format-btn {
+        padding: 12px 24px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+    .format-btn i {
+        margin-right: 8px;
+    }
+    .student-info-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .selected-count {
+        background-color: #ffa500;
+        color: white;
+        border-radius: 20px;
+        padding: 2px 8px;
+        font-size: 12px;
+        margin-left: 8px;
+    }
+    .checkbox-group {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    .exam-checkbox {
+        transition: all 0.2s ease;
+    }
+    .exam-checkbox:hover {
+        background-color: #fff7ed;
+        transform: translateX(3px);
+    }
+    .exam-checkbox.selected {
+        background-color: #fff7ed;
+        border-color: #ffa500;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
     <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 mb-1">Competence Report Card</h1>
-        <p class="text-sm text-gray-600">Generate competence-based report cards with A-series and EOT exams</p>
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Competence Report Card System</h1>
+        <p class="text-sm text-gray-600">Generate competence-based report cards with A-series and EOT exams (Microsoft Word & PDF formats)</p>
+    </div>
+
+    <!-- Student Info Card (if student selected) -->
+    <div id="studentInfoCard" class="hidden student-info-card">
+        <div class="flex justify-between items-center">
+            <div>
+                <i class="fas fa-user-graduate text-2xl mr-3"></i>
+                <span id="selectedStudentName" class="font-semibold text-lg"></span>
+                <span id="selectedStudentClass" class="text-sm opacity-90 ml-2"></span>
+            </div>
+            <div>
+                <i class="fas fa-calendar-alt mr-1"></i>
+                <span id="selectedTermYear"></span>
+            </div>
+        </div>
     </div>
 
     <div class="bg-white rounded-xl shadow-md p-6 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Select Student *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-user text-orange-500 mr-1"></i> Select Student *
+                </label>
                 <select id="studentSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                     <option value="">-- Select Student --</option>
                     {% for student in students %}
-                    <option value="{{ student.id }}">{{ student.name }} ({{ student.student_id }}) - {{ student.classes.name if student.classes else 'N/A' }}</option>
+                    <option value="{{ student.id }}" data-class="{{ student.classes.name if student.classes else 'N/A' }}" data-name="{{ student.name }}">
+                        {{ student.name }} ({{ student.student_id }}) - {{ student.classes.name if student.classes else 'N/A' }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
-                <input type="text" id="termInput" placeholder="e.g., ONE" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-graduation-cap text-orange-500 mr-1"></i> Term
+                </label>
+                <select id="termSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">-- Select Term --</option>
+                    <option value="ONE">Term One</option>
+                    <option value="TWO">Term Two</option>
+                    <option value="THREE">Term Three</option>
+                </select>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Year</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-calendar text-orange-500 mr-1"></i> Academic Year
+                </label>
                 <select id="yearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                     <option value="2024">2024</option>
                     <option value="2025" selected>2025</option>
@@ -68,8 +154,8 @@
                 </select>
             </div>
             <div class="flex items-end">
-                <button onclick="classifyExams()" class="w-full btn-gradient px-4 py-2 rounded-lg text-white font-medium">
-                    <i class="fas fa-search"></i> Load Exams
+                <button onclick="classifyExams()" class="w-full btn-gradient px-4 py-2 rounded-lg text-white font-medium transition-all">
+                    <i class="fas fa-magic"></i> Analyze & Classify
                 </button>
             </div>
         </div>
@@ -77,65 +163,189 @@
 
     <!-- Exam Classification Display -->
     <div id="examClassification" class="hidden bg-white rounded-xl shadow-md p-6 mb-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Exam Classification</h3>
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-chart-pie text-orange-500 mr-2"></i>
+            Exam Classification & Weight Analysis
+        </h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="border rounded-lg p-3">
-                <p class="font-medium text-blue-600 mb-2"><i class="fas fa-chart-line"></i> A-Series Exams</p>
+            <div class="border rounded-lg p-3 bg-blue-50">
+                <p class="font-medium text-blue-700 mb-2">
+                    <i class="fas fa-chart-line"></i> A-Series Exams (20% Weight)
+                </p>
                 <div id="aSeriesContainer" class="space-y-1 text-sm"></div>
+                <div id="aSeriesWarning" class="text-xs text-red-500 mt-2 hidden">
+                    <i class="fas fa-exclamation-triangle"></i> Need exactly 3 A-series exams
+                </div>
             </div>
-            <div class="border rounded-lg p-3">
-                <p class="font-medium text-green-600 mb-2"><i class="fas fa-stop"></i> End of Term (EOT)</p>
+            <div class="border rounded-lg p-3 bg-green-50">
+                <p class="font-medium text-green-700 mb-2">
+                    <i class="fas fa-chart-bar"></i> End of Term (EOT) - 80% Weight
+                </p>
                 <div id="eotContainer" class="text-sm"></div>
+                <div id="eotWarning" class="text-xs text-red-500 mt-2 hidden">
+                    <i class="fas fa-exclamation-triangle"></i> EOT exam is required for calculation
+                </div>
             </div>
-            <div class="border rounded-lg p-3">
-                <p class="font-medium text-gray-600 mb-2"><i class="fas fa-ellipsis-h"></i> Other Exams</p>
+            <div class="border rounded-lg p-3 bg-gray-50">
+                <p class="font-medium text-gray-700 mb-2">
+                    <i class="fas fa-plus-circle"></i> Additional Exams
+                </p>
                 <div id="otherContainer" class="text-sm"></div>
             </div>
         </div>
-        <div class="mt-4 text-sm text-gray-500">
-            <p><i class="fas fa-info-circle"></i> A-series exams are averaged for 20% of the final score. EOT contributes 80%.</p>
+        <div class="mt-4 p-3 bg-orange-50 rounded-lg text-sm">
+            <i class="fas fa-info-circle text-orange-600 mr-2"></i>
+            <span class="text-gray-700">Formula: <strong>Final Score = (A-Series Average ÷ Total Marks × 20) + (EOT Score ÷ EOT Total × 80)</strong></span>
         </div>
     </div>
 
     <!-- Exams Selection -->
     <div class="bg-white rounded-xl shadow-md p-6 mb-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <i class="fas fa-calendar-alt text-orange-500"></i>
-            Select Exams to Include
-        </h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3" id="examsList">
-            {% for exam in exams %}
-            <label class="exam-checkbox flex items-center gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-orange-50 transition-all">
-                <input type="checkbox" class="exam-cb w-4 h-4 text-orange-500 rounded" value="{{ exam.id }}">
-                <span class="text-sm text-gray-700">{{ exam.exam_name }} ({{ exam.total_marks }} marks)</span>
-            </label>
-            {% else %}
-            <div class="col-span-full text-center py-4 text-gray-400">No exams available</div>
-            {% endfor %}
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">
+                <i class="fas fa-calendar-alt text-orange-500 mr-2"></i>
+                Select Exams to Include
+            </h3>
+            <div class="flex gap-2">
+                <button onclick="selectAllExams()" class="text-sm text-orange-600 hover:text-orange-700">
+                    <i class="fas fa-check-double"></i> Select All
+                </button>
+                <button onclick="deselectAllExams()" class="text-sm text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i> Deselect All
+                </button>
+            </div>
+        </div>
+        
+        <div class="checkbox-group" id="examsList">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {% for exam in exams %}
+                <label class="exam-checkbox flex items-center gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-orange-50 transition-all" data-exam-id="{{ exam.id }}" data-exam-name="{{ exam.exam_name }}">
+                    <input type="checkbox" class="exam-cb w-4 h-4 text-orange-500 rounded" value="{{ exam.id }}">
+                    <span class="text-sm text-gray-700">{{ exam.exam_name }}</span>
+                    <span class="text-xs text-gray-400 ml-auto">{{ exam.total_marks }}m</span>
+                </label>
+                {% else %}
+                <div class="col-span-full text-center py-8 text-gray-400">
+                    <i class="fas fa-folder-open text-4xl mb-2"></i>
+                    <p>No exams available. Please create exams first.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="mt-3 flex justify-between items-center text-sm text-gray-500">
+            <div>
+                <i class="fas fa-check-circle text-green-500"></i>
+                <span id="selectedCount">0</span> exams selected
+            </div>
+            <div class="flex gap-3">
+                <span class="exam-badge exam-a">A-Series</span>
+                <span class="exam-badge exam-eot">EOT (80%)</span>
+                <span class="exam-badge exam-bot">BOT/MT (Optional)</span>
+            </div>
         </div>
     </div>
 
-    <!-- Generate Button -->
-    <div class="flex justify-center">
-        <button onclick="generateReport()" id="generateBtn" 
-                class="btn-gradient px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-lg">
-            <i class="fas fa-file-pdf"></i>
-            Generate Competence Report
+    <!-- Generate Buttons -->
+    <div class="format-buttons">
+        <button onclick="generateReport('docx')" id="generateWordBtn" 
+                class="format-btn btn-word px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+            <i class="fab fa-microsoft-word text-xl"></i>
+            Generate Word Document
         </button>
+        <button onclick="generateReport('pdf')" id="generatePdfBtn" 
+                class="format-btn btn-pdf px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+            <i class="fas fa-file-pdf text-xl"></i>
+            Generate PDF
+        </button>
+    </div>
+    
+    <!-- Info Text -->
+    <div class="text-center mt-4 text-xs text-gray-400">
+        <i class="fas fa-print"></i> Word documents can be edited before printing | PDFs are ready for immediate distribution
     </div>
 </div>
 
 <!-- Loading Overlay -->
-<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-8 flex flex-col items-center min-w-[300px]">
         <div class="loader"></div>
-        <p class="text-gray-700 mt-4">Generating report...</p>
+        <p class="text-gray-700 mt-4 font-semibold" id="loadingMessage">Generating report...</p>
+        <p class="text-gray-500 text-sm mt-2" id="loadingSubMessage">This may take a few seconds</p>
     </div>
 </div>
 
 <script>
     let classifiedData = null;
-
+    
+    // Track exam selection count
+    function updateSelectedCount() {
+        const count = document.querySelectorAll('.exam-cb:checked').length;
+        document.getElementById('selectedCount').innerHTML = count;
+        
+        // Highlight selected labels
+        document.querySelectorAll('.exam-checkbox').forEach(label => {
+            const checkbox = label.querySelector('.exam-cb');
+            if (checkbox.checked) {
+                label.classList.add('selected');
+            } else {
+                label.classList.remove('selected');
+            }
+        });
+    }
+    
+    function selectAllExams() {
+        document.querySelectorAll('.exam-cb').forEach(cb => {
+            cb.checked = true;
+        });
+        updateSelectedCount();
+        if (classifiedData) classifyExams(); // Reclassify if needed
+    }
+    
+    function deselectAllExams() {
+        document.querySelectorAll('.exam-cb').forEach(cb => {
+            cb.checked = false;
+        });
+        updateSelectedCount();
+        if (classifiedData) classifyExams(); // Reclassify if needed
+    }
+    
+    // Update student info card
+    document.getElementById('studentSelect').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (this.value) {
+            const studentName = selectedOption.getAttribute('data-name');
+            const studentClass = selectedOption.getAttribute('data-class');
+            document.getElementById('selectedStudentName').innerHTML = studentName;
+            document.getElementById('selectedStudentClass').innerHTML = `(${studentClass})`;
+            document.getElementById('studentInfoCard').classList.remove('hidden');
+        } else {
+            document.getElementById('studentInfoCard').classList.add('hidden');
+        }
+    });
+    
+    // Update term/year display
+    function updateStudentInfoCard() {
+        const term = document.getElementById('termSelect').value;
+        const year = document.getElementById('yearSelect').value;
+        if (document.getElementById('studentSelect').value && term) {
+            document.getElementById('selectedTermYear').innerHTML = `${term} - ${year}`;
+        }
+    }
+    
+    document.getElementById('termSelect').addEventListener('change', updateStudentInfoCard);
+    document.getElementById('yearSelect').addEventListener('change', updateStudentInfoCard);
+    
+    // Listen to checkbox changes
+    document.addEventListener('change', function(e) {
+        if (e.target.classList && e.target.classList.contains('exam-cb')) {
+            updateSelectedCount();
+        }
+    });
+    
+    // Initial count
+    updateSelectedCount();
+    
     async function classifyExams() {
         const selectedExams = [];
         document.querySelectorAll('.exam-cb:checked').forEach(cb => {
@@ -147,9 +357,13 @@
             return;
         }
         
-        const loading = document.getElementById('loadingOverlay');
-        loading.classList.remove('hidden');
-        loading.classList.add('flex');
+        const term = document.getElementById('termSelect').value;
+        if (!term) {
+            showMessage('Please select a term', 'error');
+            return;
+        }
+        
+        showLoading('Analyzing exams...', 'Identifying A-series and EOT patterns');
         
         try {
             const response = await fetch('/competence-report/api/exams/classify', {
@@ -159,41 +373,69 @@
             });
             
             const result = await response.json();
-            loading.classList.add('hidden');
-            loading.classList.remove('flex');
+            hideLoading();
             
             if (result.success) {
                 classifiedData = result.classified;
                 displayClassification(classifiedData);
                 document.getElementById('examClassification').classList.remove('hidden');
-                showMessage('Exams classified successfully', 'success');
+                
+                // Validate requirements
+                const hasEOT = classifiedData.eot !== null;
+                const aCount = classifiedData.a_series.length;
+                
+                if (!hasEOT) {
+                    document.getElementById('eotWarning').classList.remove('hidden');
+                } else {
+                    document.getElementById('eotWarning').classList.add('hidden');
+                }
+                
+                if (aCount !== 3) {
+                    document.getElementById('aSeriesWarning').classList.remove('hidden');
+                    if (aCount < 3) {
+                        document.getElementById('aSeriesWarning').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Need exactly 3 A-series exams (currently ' + aCount + ')';
+                    } else {
+                        document.getElementById('aSeriesWarning').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Too many A-series exams (max 3)';
+                    }
+                } else {
+                    document.getElementById('aSeriesWarning').classList.add('hidden');
+                }
+                
+                if (!hasEOT || aCount !== 3) {
+                    showMessage('Warning: For accurate competence report, please select exactly 3 A-series exams and 1 EOT exam', 'warning');
+                } else {
+                    showMessage('✓ Exams classified successfully. Ready to generate report.', 'success');
+                }
             } else {
                 showMessage(result.message, 'error');
             }
         } catch (error) {
-            loading.classList.add('hidden');
-            loading.classList.remove('flex');
+            hideLoading();
             showMessage('Failed to classify exams', 'error');
+            console.error(error);
         }
     }
     
     function displayClassification(data) {
-        document.getElementById('aSeriesContainer').innerHTML = data.a_series.length > 0 
-            ? data.a_series.map(a => `<div>${a.name} (${a.total_marks} marks)</div>`).join('')
+        const aSeriesHtml = data.a_series.length > 0 
+            ? data.a_series.map(a => `<div class="flex justify-between items-center py-1"><span>${a.name}</span><span class="text-xs text-gray-500">${a.total_marks} marks</span></div>`).join('')
             : '<div class="text-gray-400">No A-series exams selected</div>';
+        document.getElementById('aSeriesContainer').innerHTML = aSeriesHtml;
         
-        document.getElementById('eotContainer').innerHTML = data.eot 
-            ? `<div class="text-green-600">${data.eot.name} (${data.eot.total_marks} marks) - 80% weight</div>`
-            : '<div class="text-yellow-600">⚠️ EOT exam is required for 80% calculation</div>';
+        const eotHtml = data.eot 
+            ? `<div class="flex justify-between items-center p-2 bg-green-100 rounded"><span class="font-bold">${data.eot.name}</span><span class="text-green-700">${data.eot.total_marks} marks (80%)</span></div>`
+            : '<div class="text-yellow-600 p-2">⚠️ No EOT exam selected - calculation will be incorrect</div>';
+        document.getElementById('eotContainer').innerHTML = eotHtml;
         
-        document.getElementById('otherContainer').innerHTML = data.other.length > 0 
-            ? data.other.map(o => `<div>${o.name} (${o.total_marks} marks)</div>`).join('')
-            : '<div class="text-gray-400">No other exams selected</div>';
+        const otherHtml = data.other.length > 0 
+            ? data.other.map(o => `<div class="flex justify-between py-1"><span>${o.name}</span><span class="text-xs text-gray-500">${o.total_marks} marks</span></div>`).join('')
+            : '<div class="text-gray-400">No additional exams</div>';
+        document.getElementById('otherContainer').innerHTML = otherHtml;
     }
     
-    async function generateReport() {
+    async function generateReport(format) {  // 'docx' or 'pdf'
         const studentId = document.getElementById('studentSelect').value;
-        const term = document.getElementById('termInput').value.trim();
+        const term = document.getElementById('termSelect').value;
         const year = document.getElementById('yearSelect').value;
         
         const selectedExams = [];
@@ -201,6 +443,7 @@
             selectedExams.push(cb.value);
         });
         
+        // Validation
         if (!studentId) {
             showMessage('Please select a student', 'error');
             return;
@@ -212,13 +455,13 @@
         }
         
         if (!term) {
-            showMessage('Please enter the term', 'error');
+            showMessage('Please select the term', 'error');
             return;
         }
         
-        const loading = document.getElementById('loadingOverlay');
-        loading.classList.remove('hidden');
-        loading.classList.add('flex');
+        // Show proper loading message based on format
+        const formatName = format === 'docx' ? 'Word document' : 'PDF';
+        showLoading(`Generating ${formatName}...`, 'Preparing competence-based report card');
         
         try {
             const response = await fetch('/competence-report/generate', {
@@ -228,7 +471,8 @@
                     student_id: studentId,
                     exam_ids: selectedExams,
                     term: term,
-                    year: year
+                    year: year,
+                    format: format  // Send format preference
                 })
             });
             
@@ -238,38 +482,85 @@
                 const a = document.createElement('a');
                 a.href = url;
                 const studentName = document.getElementById('studentSelect').options[document.getElementById('studentSelect').selectedIndex]?.text.split(' (')[0] || 'student';
-                a.download = `competence_report_${studentName}_term${term}_${year}.pdf`;
+                const extension = format === 'docx' ? 'docx' : 'pdf';
+                a.download = `competence_report_${studentName.replace(/\s/g, '_')}_term${term}_${year}.${extension}`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
-                showMessage('Report generated successfully', 'success');
+                
+                hideLoading();
+                showMessage(`✓ Report generated successfully as ${formatName.toUpperCase()}!`, 'success');
             } else {
                 const error = await response.json();
-                showMessage(error.message || 'Failed to generate report', 'error');
+                hideLoading();
+                showMessage(error.message || `Failed to generate ${formatName}`, 'error');
             }
         } catch (error) {
+            hideLoading();
             console.error('Error:', error);
-            showMessage('Failed to generate report', 'error');
-        } finally {
-            loading.classList.add('hidden');
-            loading.classList.remove('flex');
+            showMessage(`Failed to generate ${formatName} report. Please try again.`, 'error');
         }
     }
     
+    function showLoading(message, subMessage) {
+        const overlay = document.getElementById('loadingOverlay');
+        const msgElem = document.getElementById('loadingMessage');
+        const subMsgElem = document.getElementById('loadingSubMessage');
+        
+        if (msgElem) msgElem.innerHTML = message;
+        if (subMsgElem) subMsgElem.innerHTML = subMessage || 'Please wait...';
+        
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+    }
+    
+    function hideLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+    }
+    
     function showMessage(message, type) {
-        const flashContainer = document.getElementById('flashMessages');
+        // Create or get flash container
+        let flashContainer = document.getElementById('flashMessages');
         if (!flashContainer) {
-            const container = document.createElement('div');
-            container.id = 'flashMessages';
-            container.className = 'flash-messages';
-            document.body.appendChild(container);
+            flashContainer = document.createElement('div');
+            flashContainer.id = 'flashMessages';
+            flashContainer.className = 'fixed top-20 right-4 z-50 space-y-2';
+            document.body.appendChild(flashContainer);
         }
+        
         const flashMsg = document.createElement('div');
-        flashMsg.className = `flash-message ${type}`;
-        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
-        document.getElementById('flashMessages').appendChild(flashMsg);
-        setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
+        const bgColor = type === 'success' ? 'bg-green-500' : (type === 'error' ? 'bg-red-500' : 'bg-yellow-500');
+        const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle');
+        
+        flashMsg.className = `${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-in`;
+        flashMsg.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+        flashContainer.appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            flashMsg.style.transform = 'translateX(100%)';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 4000);
     }
 </script>
+
+<style>
+    @keyframes slide-in {
+        from {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .animate-slide-in {
+        animation: slide-in 0.3s ease-out;
+    }
+</style>
 {% endblock %}

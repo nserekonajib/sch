@@ -9,9 +9,20 @@ import re
 from functools import wraps
 from dotenv import load_dotenv
 import io
-from xhtml2pdf import pisa
 import requests
-from PyPDF2 import PdfMerger
+from docxtpl import DocxTemplate, InlineImage
+from docx.shared import Mm, Inches
+import tempfile
+import subprocess
+import sys
+
+# Try to import docx2pdf, but don't fail if not installed
+try:
+    from docx2pdf import convert
+    DOCX2PDF_AVAILABLE = True
+except ImportError:
+    DOCX2PDF_AVAILABLE = False
+    print("Warning: docx2pdf not installed. PDF conversion will not be available.")
 
 load_dotenv()
 
@@ -43,11 +54,6 @@ def get_institute(user_id):
     except Exception as e:
         print(f"Error getting institute: {e}")
         return None
-
-def get_ordinal_suffix(n):
-    if 11 <= n % 100 <= 13:
-        return 'th'
-    return {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
 
 def parse_exam_name(exam_name):
     patterns = {
@@ -162,12 +168,16 @@ def generate_report():
     if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
+    # Store temp files for cleanup
+    temp_files = []
+    
     try:
         data = request.get_json()
         student_id = data.get('student_id')
         exam_ids = data.get('exam_ids', [])
         term = data.get('term', '')
         year = data.get('year', datetime.now().year)
+        format_type = data.get('format', 'docx')
         
         if not student_id or not exam_ids or not term:
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
@@ -183,7 +193,7 @@ def generate_report():
             return jsonify({'success': False, 'message': 'Student not found'}), 404
         
         student = student_response.data[0]
-        
+        print(student)
         # Get exams
         exams_response = supabase.table('exams')\
             .select('*')\
@@ -200,7 +210,12 @@ def generate_report():
             if exam_type == 'A':
                 match = re.search(r'(\d+)', exam['exam_name'])
                 number = int(match.group(1)) if match else 0
-                a_series.append({'id': exam['id'], 'name': exam['exam_name'], 'total_marks': exam['total_marks'], 'number': number})
+                a_series.append({
+                    'id': exam['id'], 
+                    'name': exam['exam_name'], 
+                    'total_marks': exam['total_marks'], 
+                    'number': number
+                })
             elif exam_type == 'EOT':
                 eot_exam = exam
         
@@ -233,7 +248,7 @@ def generate_report():
         
         # Prepare subject data
         subject_results = []
-        for subject in subjects:
+        for idx, subject in enumerate(subjects):
             subject_name = subject['subjects']['name'] if subject.get('subjects') else 'N/A'
             
             a_series_marks = []
@@ -241,15 +256,27 @@ def generate_report():
                 obtained = all_marks.get(a_exam['id'], {}).get(subject['subject_id'])
                 a_series_marks.append(obtained if obtained is not None else 0)
             
-            a_series_avg = sum(a_series_marks) / len(a_series_marks) if a_series_marks else 0
-            twenty_percent = (a_series_avg / 3) * 20 if a_series_marks else 0
+            while len(a_series_marks) < 3:
+                a_series_marks.append(0)
             
-            eot_mark = all_marks.get(eot_exam['id'], {}).get(subject['subject_id'], 0) if eot_exam else 0
-            eighty_percent = (eot_mark / eot_exam['total_marks']) * 80 if eot_exam and eot_exam['total_marks'] > 0 else 0
+            a_series_avg = sum(a_series_marks) / len(a_series_marks) if a_series_marks else 0
+            
+            if a_series and a_series[0]['total_marks'] > 0:
+                twenty_percent = (a_series_avg / a_series[0]['total_marks']) * 20
+            else:
+                twenty_percent = 0
+            
+            if eot_exam and eot_exam.get('total_marks', 0) > 0:
+                eot_mark = all_marks.get(eot_exam['id'], {}).get(subject['subject_id'], 0)
+                eighty_percent = (eot_mark / eot_exam['total_marks']) * 80
+            else:
+                eot_mark = 0
+                eighty_percent = 0
             
             total_percentage = twenty_percent + eighty_percent
             
-            # Determine grade (A: 80-100, B: 70-79, C: 60-69, D: 40-59, E: 0-39)
+            identifier = '1' if total_percentage < 40 else ('2' if total_percentage < 70 else '3')
+            
             if total_percentage >= 80:
                 grade = 'A'
                 remark = 'Exceptional'
@@ -268,56 +295,176 @@ def generate_report():
             
             subject_results.append({
                 'name': subject_name,
-                'code': str(100 + subject_results.__len__() + 1),
-                'a_series_marks': a_series_marks,
-                'a_series_avg': round(a_series_avg, 1),
-                'twenty_percent': round(twenty_percent, 1),
-                'eot_mark': eot_mark,
-                'eighty_percent': round(eighty_percent, 1),
-                'total_percentage': round(total_percentage, 1),
+                'a1': f"{a_series_marks[0]:.1f}",
+                'a2': f"{a_series_marks[1]:.1f}",
+                'a3': f"{a_series_marks[2]:.1f}",
+                'avg': f"{a_series_avg:.1f}",
+                'twenty': f"{twenty_percent:.1f}",
+                'eighty': f"{eighty_percent:.1f}",
+                'total': f"{total_percentage:.1f}",
+                'identifier': identifier,
                 'grade': grade,
                 'remark': remark
             })
         
-        # Calculate overall average
-        overall_percentage = sum([s['total_percentage'] for s in subject_results]) / len(subject_results) if subject_results else 0
+        if subject_results:
+            overall_percentage = sum([float(s['total']) for s in subject_results]) / len(subject_results)
+        else:
+            overall_percentage = 0
         
         if overall_percentage >= 80:
             overall_grade = 'A'
+            overall_achievement = 'EXCELLENT'
         elif overall_percentage >= 70:
             overall_grade = 'B'
+            overall_achievement = 'VERY GOOD'
         elif overall_percentage >= 60:
             overall_grade = 'C'
+            overall_achievement = 'GOOD'
         elif overall_percentage >= 40:
             overall_grade = 'D'
+            overall_achievement = 'AVERAGE'
         else:
             overall_grade = 'E'
+            overall_achievement = 'NEEDS IMPROVEMENT'
         
-        result_data = {
-            'institute': institute,
-            'student': student,
-            'class_name': student['classes']['name'] if student.get('classes') else 'N/A',
-            'section': student.get('category', 'Day'),
-            'gender': student.get('gender', 'N/A'),
-            'term': term,
-            'year': year,
-            'printed_date': datetime.now().strftime('%d/%m/%Y'),
-            'a_series': a_series,
-            'has_eot': eot_exam is not None,
+        overall_ident = '3' if overall_percentage >= 70 else ('2' if overall_percentage >= 40 else '1')
+        
+        def safe_upper(value, default='N/A'):
+            if value is None:
+                return default
+            return str(value).upper()
+        
+        def safe_get(dict_obj, key, default=''):
+            value = dict_obj.get(key, default)
+            if value is None:
+                return default
+            return value
+        
+        # Load the Word template
+        template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+        template_path = os.path.join(template_dir, 'competence_report_template.docx')
+        
+        if not os.path.exists(template_path):
+            os.makedirs(template_dir, exist_ok=True)
+            create_default_template(template_path)
+        
+        doc = DocxTemplate(template_path)
+        
+        # ========== IMAGE HANDLING ==========
+        # Handle Institute Logo
+        logo_url = institute.get('logo_url', '')
+        if logo_url and logo_url.startswith(('http://', 'https://')):
+            try:
+                print(f"Loading logo from: {logo_url}")
+                response = requests.get(logo_url, timeout=10)
+                if response.status_code == 200:
+                    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_logo:
+                        tmp_logo.write(response.content)
+                        tmp_logo_path = tmp_logo.name
+                        temp_files.append(tmp_logo_path)
+                        context_logo = InlineImage(doc, tmp_logo_path, width=Mm(25))
+                        print("✓ Logo loaded successfully")
+                else:
+                    context_logo = ""
+                    print(f"Failed to load logo: HTTP {response.status_code}")
+            except Exception as e:
+                print(f"Error loading logo: {e}")
+                context_logo = ""
+        else:
+            context_logo = ""
+            print(f"No logo URL provided: {logo_url}")
+        
+        # Handle Student Photo
+        photo_url = student.get('photo_url', '')
+        if photo_url and photo_url.startswith(('http://', 'https://')):
+            try:
+                print(f"Loading student photo from: {photo_url}")
+                response = requests.get(photo_url, timeout=10)
+                if response.status_code == 200:
+                    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_photo:
+                        tmp_photo.write(response.content)
+                        tmp_photo_path = tmp_photo.name
+                        temp_files.append(tmp_photo_path)
+                        context_photo = InlineImage(doc, tmp_photo_path, width=Mm(25))
+                        print("✓ Student photo loaded successfully")
+                else:
+                    context_photo = ""
+                    print(f"Failed to load photo: HTTP {response.status_code}")
+            except Exception as e:
+                print(f"Error loading photo: {e}")
+                context_photo = ""
+        else:
+            context_photo = ""
+            print(f"No photo URL provided: {photo_url}")
+        
+        # Prepare context with images
+        context = {
+            'logo': context_logo,
+            'student_photo': context_photo,
+            'SCHOOL_NAME': safe_upper(institute.get('institute_name'), 'ST CHARLES LWANGA SS-AKASHANDA'),
+            'ADDRESS': safe_get(institute, 'address', 'Kampala, Uganda'),
+            'PHONE_NUMBER': safe_get(institute, 'phone_number', '+256757632756'),
+            'EMAIL': safe_get(institute, 'email', 'info@school.ac.ug'),
+            'TERM': safe_upper(term, term),
+            'YEAR': str(year),
+            'STUDENT_NAME': safe_upper(student.get('name'), 'STUDENT'),
+            'GENDER': safe_upper(student.get('gender'), 'NOT SPECIFIED'),
+            'CLASS_NAME': safe_upper(student['classes']['name']) if student.get('classes') else 'N/A',
+            'SECTION': safe_upper(student.get('category'), 'DAY'),
             'subjects': subject_results,
-            'overall_percentage': round(overall_percentage, 1),
+            'overall_avg': f"{overall_percentage:.1f}",
+            'overall_ident': overall_ident,
+            'overall_achievement': overall_achievement,
             'overall_grade': overall_grade,
-            'teacher_comment': f"{student['name']}, You're on the right track. Focus on building on your strengths and addressing areas for improvement."
+            'teacher_comment': f"{safe_get(student, 'name', 'The student')} is making good progress. Focus on continuous improvement in all subjects.",
+            'next_term_date': f"05/{datetime.now().year + 1 if datetime.now().month > 8 else datetime.now().month}/2026",
+            'printed_date': datetime.now().strftime('%d/%m/%Y'),
         }
         
-        html_content = generate_competence_report_html(result_data)
-        pdf_buffer = convert_html_to_pdf(html_content)
+        # Render the template
+        doc.render(context)
         
+        # Save to bytes buffer
+        docx_buffer = io.BytesIO()
+        doc.save(docx_buffer)
+        docx_buffer.seek(0)
+        
+        # Handle PDF conversion if requested
+        if format_type == 'pdf':
+            if not DOCX2PDF_AVAILABLE:
+                print("docx2pdf not installed. Returning DOCX instead.")
+                return send_file(
+                    docx_buffer,
+                    as_attachment=True,
+                    download_name=f"competence_report_{student['name']}_{term}_{year}.docx",
+                    mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                )
+            
+            try:
+                pdf_buffer = convert_docx_to_pdf(docx_buffer)
+                return send_file(
+                    pdf_buffer,
+                    as_attachment=True,
+                    download_name=f"competence_report_{student['name']}_{term}_{year}.pdf",
+                    mimetype='application/pdf'
+                )
+            except Exception as e:
+                print(f"PDF conversion failed: {e}, falling back to DOCX")
+                docx_buffer.seek(0)
+                return send_file(
+                    docx_buffer,
+                    as_attachment=True,
+                    download_name=f"competence_report_{student['name']}_{term}_{year}.docx",
+                    mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                )
+        
+        # Return DOCX by default
         return send_file(
-            pdf_buffer,
+            docx_buffer,
             as_attachment=True,
-            download_name=f"competence_report_{student['name']}_{term}_{year}.pdf",
-            mimetype='application/pdf'
+            download_name=f"competence_report_{student['name']}_{term}_{year}.docx",
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
         
     except Exception as e:
@@ -326,183 +473,292 @@ def generate_report():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
     
-    
-def generate_competence_report_html(data):
+    finally:
+        # Clean up temporary image files
+        for temp_file in temp_files:
+            try:
+                if os.path.exists(temp_file):
+                    os.unlink(temp_file)
+                    print(f"Cleaned up temp file: {temp_file}")
+            except Exception as e:
+                print(f"Warning: Could not delete temp file {temp_file}: {e}")
+
+def convert_docx_to_pdf(docx_buffer):
     """
-    Fixed layout: Photo at top right, logo at top left.
-    Strict A4 formatting to prevent text overlap.
+    Convert DOCX to PDF using docx2pdf (works on Windows with Microsoft Word installed)
     """
+    temp_files = []
+    result_buffer = None
     
-    subject_rows = ""
-    for subject in data['subjects']:
-        a_marks = subject.get('a_series_marks', [])
-        a_vals = [f"{a_marks[i]:.1f}" if i < len(a_marks) else "-" for i in range(3)]
+    try:
+        # Save DOCX to temporary file
+        with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as tmp_docx:
+            tmp_docx.write(docx_buffer.getvalue())
+            docx_path = tmp_docx.name
+            temp_files.append(docx_path)
+            print(f"Temporary DOCX saved to: {docx_path}")
         
-        avg = subject['a_series_avg']
-        identifier = "1" if avg < 1.5 else ("2" if avg < 2.5 else "3")
-
-        subject_rows += f"""
-        <tr>
-            <td style="text-align:left; font-weight:bold; padding-left:5px;">{subject['name']}</td>
-            <td>{a_vals[0]}</td><td>{a_vals[1]}</td><td>{a_vals[2]}</td>
-            <td class="bg-grey">{subject['a_series_avg']:.1f}</td>
-            <td>{subject['twenty_percent']:.1f}</td>
-            <td>{subject['eighty_percent']:.1f}</td>
-            <td class="font-bold">{subject['total_percentage']:.1f}</td>
-            <td>{identifier}</td>
-            <td class="font-bold">{subject['grade']}</td>
-            <td style="text-align:left; font-size: 8pt; line-height:1.1;">{subject['remark']}</td>
-        </tr>
-        """
-
-    school_name = data['institute'].get('institute_name', 'ST CHARLES LWANGA SS-AKASHANDA').upper()
+        # Convert to PDF (same name, different extension)
+        pdf_path = docx_path.replace('.docx', '.pdf')
+        temp_files.append(pdf_path)
+        
+        # Use docx2pdf to convert
+        print(f"Converting {docx_path} to PDF using docx2pdf...")
+        convert(docx_path, pdf_path)
+        
+        # Wait a moment for the file to be written
+        import time
+        time.sleep(1)
+        
+        # Check if PDF was created
+        if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
+            # Read the PDF
+            with open(pdf_path, 'rb') as f:
+                result_buffer = io.BytesIO(f.read())
+            print(f"PDF conversion successful! PDF size: {os.path.getsize(pdf_path)} bytes")
+            return result_buffer
+        else:
+            raise Exception(f"PDF file was not created or is empty. Path: {pdf_path}")
+            
+    except Exception as e:
+        print(f"PDF conversion error details: {e}")
+        import traceback
+        traceback.print_exc()
+        raise Exception(f"PDF conversion failed: {str(e)}")
+    finally:
+        # Clean up temporary files
+        for file_path in temp_files:
+            try:
+                if os.path.exists(file_path):
+                    os.unlink(file_path)
+                    print(f"Cleaned up temp file: {file_path}")
+            except Exception as e:
+                print(f"Warning: Could not delete temp file {file_path}: {e}")
+                
+                
+                
+def create_default_template(template_path):
+    """Create a default Word template that works properly with docxtpl"""
+    from docx import Document
+    from docx.shared import Pt, Inches, Cm, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
     
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            @page {{ size: A4; margin: 0.4cm; }}
-            body {{ font-family: Arial, sans-serif; color: #1a365d; margin: 0; padding: 0; line-height: 1.1; }}
-            
-            .container {{ width: 100%; }}
-            table {{ width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 4px; }}
-            td, th {{ border: 1px solid #1a365d; padding: 2px; text-align: center; overflow: hidden; text-overflow: ellipsis; word-wrap: break-word; }}
-            
-            /* Header specifically for Logo-Info-Photo layout */
-            .header-table {{ border: none; }}
-            .header-table td {{ border: none; vertical-align: middle; }}
-            .school-name {{ font-size: 16pt; font-weight: bold; margin-bottom: 2px; }}
-            
-            .report-banner {{ background-color: #1a365d; color: white; text-align: center; font-weight: bold; padding: 5px; font-size: 13pt; margin: 4px 0; }}
-            
-            /* Subject Table */
-            .perf-table th {{ background-color: #f0f4f8; font-size: 8pt; height: 24px; }}
-            .perf-table td {{ font-size: 9pt; height: 20px; }}
-            .label {{ font-weight: bold; background-color: #f7fafc; text-align: left; padding-left: 5px; width: 15%; }}
-            
-            .font-bold {{ font-weight: bold; }}
-            .bg-grey {{ background-color: #f1f5f9; }}
-            .comment-box {{ border: 1px solid #1a365d; padding: 5px; font-size: 9pt; min-height: 28px; margin-top: 2px; }}
-            
-            .legend-table td {{ font-size: 8pt; padding: 2px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <table class="header-table">
-                <tr>
-                    <td width="15%" style="text-align:left;">
-                        <img src="{data['institute'].get('logo_url', '')}" width="75">
-                    </td>
-                    <td width="70%" style="text-align:center;">
-                        <div class="school-name">{school_name}</div>
-                        <div style="font-size:10pt;">{data['institute'].get('address', 'Kampala')}</div>
-                        <div style="font-size:9pt;">TEL: {data['institute'].get('phone_number', '+256757632756')}</div>
-                        <div style="font-size:9pt; color: #2563eb;">{data['institute'].get('email', 'nserekonajib3@gmail.com')}</div>
-                    </td>
-                    <td width="15%" style="text-align:right;">
-                        <img src="{data['student'].get('photo_url', '')}" width="80" style="border: 1px solid #1a365d; border-radius: 2px;">
-                    </td>
-                </tr>
-            </table>
-
-            <div class="report-banner">TERM {data['term']} REPORT CARD {data['year']}</div>
-
-            <table>
-                <tr>
-                    <td class="label">NAME:</td>
-                    <td colspan="3" style="text-align:left; padding-left:5px; font-weight:bold;">{data['student']['name'].upper()}</td>
-                    <td class="label">GENDER:</td>
-                    <td style="text-align:left; padding-left:5px;">{data['gender'].upper()}</td>
-                </tr>
-                <tr>
-                    <td class="label">CLASS:</td>
-                    <td style="text-align:left; padding-left:5px;">{data['class_name']}</td>
-                    <td class="label">SECTION:</td>
-                    <td style="text-align:left; padding-left:5px;">{data['section']}</td>
-                    <td class="label">TERM:</td>
-                    <td style="text-align:left; padding-left:5px;">{data['term']}</td>
-                </tr>
-            </table>
-
-            <table class="perf-table">
-                <thead>
-                    <tr>
-                        <th width="22%" style="text-align:left; padding-left:5px;">Subject</th>
-                        <th width="5%">A1</th><th width="5%">A2</th><th width="5%">A3</th>
-                        <th width="7%">AVG</th><th width="7%">20%</th><th width="7%">80%</th>
-                        <th width="8%">100%</th><th width="6%">Ident</th><th width="7%">GRADE</th>
-                        <th width="21%">Remarks/Descriptors</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {subject_rows}
-                    <tr class="font-bold bg-grey">
-                        <td style="text-align:left; padding-left:5px;">AVERAGE:</td>
-                        <td colspan="3"></td>
-                        <td>{data.get('avg_score', '2.0')}</td>
-                        <td>13.5</td><td>63.9</td><td>77.4</td>
-                        <td colspan="3"></td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <table>
-                <tr>
-                    <td class="font-bold">Overall Identifier</td><td width="10%">{data.get('overall_ident', '2')}</td>
-                    <td class="font-bold">Overall Achievement</td><td width="20%">MODERATE</td>
-                    <td class="font-bold">Overall Grade</td><td width="10%">{data['overall_grade']}</td>
-                </tr>
-            </table>
-            
-            <table>
-                <tr class="bg-grey font-bold">
-                    <td>GRADE</td><td>A</td><td>B</td><td>C</td><td>D</td><td>E</td>
-                </tr>
-                <tr>
-                    <td>SCORES</td><td>100 - 80</td><td>80 - 70</td><td>69 - 60</td><td>60 - 40</td><td>40 - 0</td>
-                </tr>
-            </table>
-
-            <div class="comment-box"><strong>Class teacher's Comment:</strong> <i>{data['teacher_comment']}</i></div>
-            <div class="comment-box"><strong>Headteacher's Comment:</strong> __________________________________________</div>
-
-            <table class="legend-table" style="margin-top:5px;">
-                <tr>
-                    <td rowspan="4" width="15%" class="font-bold">Key to Terms:</td>
-                    <td class="font-bold" width="10%">A1-A3</td><td style="text-align:left;">Chapter Assessments</td>
-                    <td class="font-bold" width="10%">80%</td><td style="text-align:left;">End of term assessment</td>
-                </tr>
-                <tr>
-                    <td class="font-bold">1 - Basic</td><td colspan="3" style="text-align:left;">0.9-1.49: Few Learning Outcomes (LOs) achieved</td>
-                </tr>
-                <tr>
-                    <td class="font-bold">2 - Moderate</td><td colspan="3" style="text-align:left;">1.5-2.49: Many LOs achieved, sufficient for achievement</td>
-                </tr>
-                <tr>
-                    <td class="font-bold">3 - Outstanding</td><td colspan="3" style="text-align:left;">2.5-3.0: Most or all LOs achieved excellently</td>
-                </tr>
-            </table>
-
-            <div style="border-top: 1px solid #1a365d; margin-top:5px; padding-top:2px; font-size:8pt; display:flex; justify-content:space-between; font-weight:bold;">
-                <span>NEXT TERM BEGINS: 05/23/2026</span>
-                <span>FEES BALANCE: ___________</span>
-                <span>PRINTED ON: {data['printed_date']}</span>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    return html
-
-
-def convert_html_to_pdf(html_content):
-    pdf_buffer = io.BytesIO()
-    pisa_status = pisa.CreatePDF(io.StringIO(html_content), dest=pdf_buffer)
+    doc = Document()
     
-    if pisa_status.err:
-        raise Exception(f"PDF generation failed: {pisa_status.err}")
+    # Set page margins for A4
+    section = doc.sections[0]
+    section.top_margin = Cm(1.5)
+    section.bottom_margin = Cm(1.5)
+    section.left_margin = Cm(1.5)
+    section.right_margin = Cm(1.5)
     
-    pdf_buffer.seek(0)
-    return pdf_buffer
+    # Header table with 3 columns: Logo, School Info, Student Photo
+    header_table = doc.add_table(rows=1, cols=3)
+    header_table.autofit = False
+    
+    # Set column widths
+    header_table.columns[0].width = Cm(2.5)  # Logo
+    header_table.columns[1].width = Cm(10)   # School info
+    header_table.columns[2].width = Cm(2.5)  # Student photo
+    
+    # Remove borders from header table
+    for row in header_table.rows:
+        for cell in row.cells:
+            cell._element.get_or_add_tcPr().append(OxmlElement('w:tcBorders'))
+    
+    # Logo cell (left)
+    logo_cell = header_table.cell(0, 0)
+    logo_cell.vertical_alignment = WD_TABLE_ALIGNMENT.CENTER
+    logo_para = logo_cell.paragraphs[0]
+    logo_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = logo_para.add_run('{{ logo }}')
+    run.font.size = Pt(8)
+    
+    # School info cell (center)
+    school_cell = header_table.cell(0, 1)
+    school_cell.vertical_alignment = WD_TABLE_ALIGNMENT.CENTER
+    
+    school_name = school_cell.paragraphs[0]
+    school_name.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = school_name.add_run('{{ SCHOOL_NAME }}')
+    run.bold = True
+    run.font.size = Pt(16)
+    run.font.color.rgb = RGBColor(0, 0, 128)
+    
+    school_address = school_cell.add_paragraph()
+    school_address.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    school_address.add_run('{{ ADDRESS }}').font.size = Pt(10)
+    
+    school_contact = school_cell.add_paragraph()
+    school_contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    school_contact.add_run('TEL: {{ PHONE_NUMBER }}    EMAIL: {{ EMAIL }}').font.size = Pt(9)
+    
+    # Student photo cell (right)
+    photo_cell = header_table.cell(0, 2)
+    photo_cell.vertical_alignment = WD_TABLE_ALIGNMENT.CENTER
+    photo_para = photo_cell.paragraphs[0]
+    photo_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = photo_para.add_run('{{ student_photo }}')
+    run.font.size = Pt(8)
+    
+    # Add spacing
+    doc.add_paragraph()
+    
+    # Report Title
+    report_title = doc.add_paragraph()
+    report_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = report_title.add_run('TERM {{ TERM }} REPORT CARD {{ YEAR }}')
+    run.bold = True
+    run.font.size = Pt(16)
+    run.font.color.rgb = RGBColor(255, 0, 0)
+    
+    # Student Information Table
+    info_table = doc.add_table(rows=2, cols=6)
+    info_table.style = 'Table Grid'
+    
+    # Row 1
+    info_table.cell(0, 0).text = 'NAME:'
+    info_table.cell(0, 1).text = '{{ STUDENT_NAME }}'
+    info_table.cell(0, 2).text = 'GENDER:'
+    info_table.cell(0, 3).text = '{{ GENDER }}'
+    info_table.cell(0, 4).text = 'TERM:'
+    info_table.cell(0, 5).text = '{{ TERM }}'
+    
+    # Row 2
+    info_table.cell(1, 0).text = 'CLASS:'
+    info_table.cell(1, 1).text = '{{ CLASS_NAME }}'
+    info_table.cell(1, 2).text = 'SECTION:'
+    info_table.cell(1, 3).text = '{{ SECTION }}'
+    info_table.cell(1, 4).text = 'YEAR:'
+    info_table.cell(1, 5).text = '{{ YEAR }}'
+    
+    # Make header cells bold
+    for row in info_table.rows:
+        for cell in row.cells:
+            if cell.text.strip().endswith(':'):
+                for paragraph in cell.paragraphs:
+                    if paragraph.runs:
+                        paragraph.runs[0].bold = True
+    
+    doc.add_paragraph()
+    
+    # Subjects Table - Using proper Jinja2 syntax for docxtpl with loop
+    subjects_table = doc.add_table(rows=1, cols=11)
+    subjects_table.style = 'Table Grid'
+    
+    # Set column widths
+    subjects_table.columns[0].width = Cm(3.5)  # SUBJECT
+    for i in range(1, 10):
+        subjects_table.columns[i].width = Cm(1.2)  # Number columns
+    subjects_table.columns[10].width = Cm(3.5)  # REMARKS
+    
+    # Table headers
+    headers = ['SUBJECT', 'A1', 'A2', 'A3', 'AVG', '20%', '80%', '100%', 'IDENT', 'GRADE', 'REMARKS']
+    header_cells = subjects_table.rows[0].cells
+    
+    for i, header in enumerate(headers):
+        header_cells[i].text = header
+        header_cells[i].paragraphs[0].runs[0].bold = True
+        header_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Add the Jinja2 for loop start tag
+    loop_start_row = subjects_table.add_row()
+    loop_start_cell = loop_start_row.cells[0]
+    loop_start_cell.text = '{% for subject in subjects %}'
+    # Merge cells to hide the loop tag across all columns
+    loop_start_cell.merge(loop_start_row.cells[10])
+    # Make the text very small to be less visible
+    loop_start_cell.paragraphs[0].runs[0].font.size = Pt(1)
+    loop_start_cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(255, 255, 255)
+    
+    # Add the actual subject data row
+    data_row = subjects_table.add_row()
+    data_row.cells[0].text = '{{ subject.name }}'
+    data_row.cells[1].text = '{{ subject.a1 }}'
+    data_row.cells[2].text = '{{ subject.a2 }}'
+    data_row.cells[3].text = '{{ subject.a3 }}'
+    data_row.cells[4].text = '{{ subject.avg }}'
+    data_row.cells[5].text = '{{ subject.twenty }}'
+    data_row.cells[6].text = '{{ subject.eighty }}'
+    data_row.cells[7].text = '{{ subject.total }}'
+    data_row.cells[8].text = '{{ subject.identifier }}'
+    data_row.cells[9].text = '{{ subject.grade }}'
+    data_row.cells[10].text = '{{ subject.remark }}'
+    
+    # Center align the numeric columns
+    for i in range(1, 10):
+        data_row.cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Add the Jinja2 for loop end tag
+    loop_end_row = subjects_table.add_row()
+    loop_end_cell = loop_end_row.cells[0]
+    loop_end_cell.text = '{% endfor %}'
+    # Merge cells to hide the loop tag across all columns
+    loop_end_cell.merge(loop_end_row.cells[10])
+    # Make the text very small to be less visible
+    loop_end_cell.paragraphs[0].runs[0].font.size = Pt(1)
+    loop_end_cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(255, 255, 255)
+    
+    doc.add_paragraph()
+    
+    # Overall Performance Table
+    overall_table = doc.add_table(rows=1, cols=6)
+    overall_table.style = 'Table Grid'
+    overall_cells = overall_table.rows[0].cells
+    overall_cells[0].text = 'OVERALL AVERAGE:'
+    overall_cells[1].text = '{{ overall_avg }}%'
+    overall_cells[2].text = 'IDENTIFIER:'
+    overall_cells[3].text = '{{ overall_ident }}'
+    overall_cells[4].text = 'GRADE:'
+    overall_cells[5].text = '{{ overall_grade }}'
+    
+    # Make labels bold
+    for i in [0, 2, 4]:
+        if overall_cells[i].paragraphs[0].runs:
+            overall_cells[i].paragraphs[0].runs[0].bold = True
+    
+    # Grading Scale
+    doc.add_paragraph()
+    scale_title = doc.add_paragraph()
+    scale_title.add_run('GRADING SCALE').bold = True
+    
+    scale_table = doc.add_table(rows=2, cols=5)
+    scale_table.style = 'Table Grid'
+    
+    grades = ['A', 'B', 'C', 'D', 'E']
+    scores = ['80-100', '70-79', '60-69', '40-59', '0-39']
+    
+    for i, grade in enumerate(grades):
+        scale_table.cell(0, i).text = grade
+        scale_table.cell(0, i).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        if scale_table.cell(0, i).paragraphs[0].runs:
+            scale_table.cell(0, i).paragraphs[0].runs[0].bold = True
+        scale_table.cell(1, i).text = scores[i]
+        scale_table.cell(1, i).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Comments
+    doc.add_paragraph()
+    comment_para = doc.add_paragraph()
+    comment_para.add_run("CLASS TEACHER'S COMMENT: ").bold = True
+    comment_para.add_run("{{ teacher_comment }}")
+    
+    doc.add_paragraph()
+    head_comment = doc.add_paragraph()
+    head_comment.add_run("HEADTEACHER'S COMMENT: ").bold = True
+    head_comment.add_run("_________________________________________")
+    
+    # Footer
+    doc.add_paragraph()
+    footer = doc.add_paragraph()
+    footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    footer.add_run("NEXT TERM BEGINS: {{ next_term_date }}").bold = True
+    footer.add_run("    |    ")
+    footer.add_run("PRINTED ON: {{ printed_date }}").bold = True
+    
+    # Save the template
+    os.makedirs(os.path.dirname(template_path), exist_ok=True)
+    doc.save(template_path)
+    print(f"✓ Default template created at {template_path}")
