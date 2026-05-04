@@ -31,3 +31,5 @@ pandas
 openpyxl
 comms_sdk
 waitress
+docx2pdf
+docxtpl
