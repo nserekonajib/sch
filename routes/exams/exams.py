@@ -437,7 +437,6 @@ def get_class_students():
         print(f"Error getting class students: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
     
-    
 @exams_bp.route('/api/marks', methods=['GET'])
 @login_required
 def get_marks():
@@ -498,7 +497,7 @@ def get_marks():
                 'message': 'No subjects assigned to this class'
             })
         
-        # Get students enrolled in this class for the academic year
+        # Get students enrolled in this specific class for the academic year
         enrollments_response = supabase.table('class_enrollments')\
             .select('student_id')\
             .eq('class_id', class_id)\
@@ -507,51 +506,54 @@ def get_marks():
         
         student_ids = [e['student_id'] for e in enrollments_response.data] if enrollments_response.data else []
         
-        # If no students enrolled, get ALL students and auto-enroll them
+        # IMPORTANT: If no students found, show ALL students with a warning
+        # Don't auto-enroll because of unique constraint!
         if not student_ids:
-            print(f"No enrollments found for class {class_id}, auto-enrolling all students...")
+            print(f"No students enrolled in class {class_id} for {academic_year}")
             
-            # Get all students in the institute
+            # Get ALL students from the institute
             all_students_response = supabase.table('students')\
-                .select('id')\
+                .select('id, name, student_id')\
                 .eq('institute_id', institute['id'])\
+                .order('name')\
                 .execute()
             
-            all_student_ids = [s['id'] for s in all_students_response.data] if all_students_response.data else []
+            all_students = all_students_response.data if all_students_response.data else []
             
-            if all_student_ids:
-                # Auto-create enrollments for all students (without institute_id)
-                enrollments_to_insert = []
-                for student_id in all_student_ids:
-                    enrollments_to_insert.append({
-                        'id': str(uuid.uuid4()),
-                        'class_id': class_id,
-                        'student_id': student_id,
-                        'academic_year': int(academic_year),
-                        'enrolled_at': datetime.now().isoformat(),
-                        'updated_at': datetime.now().isoformat()
+            # Return all students but mark them as not enrolled
+            marks_data = []
+            for student in all_students:
+                student_marks = {
+                    'student_id': student['id'],
+                    'student_name': student['name'],
+                    'student_number': student['student_id'],
+                    'subjects': [],
+                    'enrollment_status': 'not_enrolled',  # Add status
+                    'total_obtained': 0,
+                    'exam_total_marks': exam_total_marks,
+                    'percentage': 0
+                }
+                
+                # Add empty marks for all subjects
+                for subject in formatted_subjects:
+                    student_marks['subjects'].append({
+                        'subject_id': subject['id'],
+                        'subject_name': subject['name'],
+                        'max_marks': subject['max_marks'],
+                        'obtained': None
                     })
                 
-                # Insert in batches to avoid errors
-                if enrollments_to_insert:
-                    # Insert in batches of 50
-                    batch_size = 50
-                    for i in range(0, len(enrollments_to_insert), batch_size):
-                        batch = enrollments_to_insert[i:i+batch_size]
-                        supabase.table('class_enrollments').insert(batch).execute()
-                    print(f"Auto-created {len(enrollments_to_insert)} enrollments")
-                    student_ids = all_student_ids
-        
-        if not student_ids:
+                marks_data.append(student_marks)
+            
             return jsonify({
                 'success': True,
-                'students': [],
+                'students': marks_data,
                 'subjects': formatted_subjects,
                 'exam_total_marks': exam_total_marks,
-                'message': 'No students available to enroll'
+                'warning': f'No students enrolled in this class for {academic_year}. Showing all students.'
             })
         
-        # Get student details
+        # Get student details for enrolled students
         students_response = supabase.table('students')\
             .select('id, name, student_id')\
             .eq('institute_id', institute['id'])\
@@ -600,7 +602,8 @@ def get_marks():
                 'student_id': student['id'],
                 'student_name': student['name'],
                 'student_number': student['student_id'],
-                'subjects': []
+                'subjects': [],
+                'enrollment_status': 'enrolled'
             }
             
             # Calculate total obtained marks across all subjects
@@ -647,6 +650,7 @@ def get_marks():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+    
     
 @exams_bp.route('/api/marks/save', methods=['POST'])
 @login_required
