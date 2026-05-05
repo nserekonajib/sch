@@ -26,6 +26,15 @@ def from_json_filter(value):
     except (json.JSONDecodeError, TypeError):
         return []
     
+@app.template_filter('format_number')
+def format_number(value):
+    """Format number with commas"""
+    try:
+        return f"{int(value):,}"
+    except (ValueError, TypeError):
+        return value
+    
+       
 @app.context_processor
 def utility_processor():
     from datetime import datetime
@@ -128,6 +137,6 @@ def serve_static(filename):
     return send_from_directory('static', filename)
 
 if __name__ == '__main__':
-    #  app.run(host="0.0.0.0", port=40000)
-    from waitress import serve
-    serve(app, host='0.0.0.0', port=40000)
+     app.run(host="0.0.0.0", port=40000)
+    # from waitress import serve
+    # serve(app, host='0.0.0.0', port=40000)

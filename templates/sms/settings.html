@@ -1,16 +1,32 @@
-<!-- templates/sms/settings.html - SMS Integration Settings with External Link -->
+<!-- templates/sms/settings.html -->
 {% extends "base.html" %}
 
 {% block title %}SMS Settings - Lunserk ERP{% endblock %}
 
 {% block extra_css %}
 <style>
-    .settings-card {
-        transition: all 0.3s ease;
+    .balance-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 25px;
+        color: white;
+        position: relative;
+        overflow: hidden;
     }
-    .settings-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    .balance-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        transform: rotate(30deg);
+    }
+    .balance-amount {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 10px 0;
     }
     .btn-gradient {
         background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
@@ -19,16 +35,14 @@
         background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
         transform: translateY(-2px);
     }
-    .btn-outline {
+    .btn-outline-orange {
         border: 1px solid #ffa500;
         color: #ffa500;
         background: transparent;
-        transition: all 0.3s ease;
     }
-    .btn-outline:hover {
+    .btn-outline-orange:hover {
         background: #ffa500;
         color: white;
-        transform: translateY(-2px);
     }
     .toggle-switch {
         position: relative;
@@ -69,25 +83,115 @@
     input:checked + .toggle-slider:before {
         transform: translateX(24px);
     }
-    .info-box {
-        background: linear-gradient(135deg, #fef9e7 0%, #fff 100%);
-        border-left: 4px solid #ffa500;
-    }
     
-    /* EgoSMS Info Card */
-    .egosms-info {
-        background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
-        border-left: 4px solid #0284c7;
+    /* Custom Modal Styles */
+    .custom-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
     }
-    .contact-item {
+    .custom-modal.active {
+        display: flex;
+    }
+    .custom-modal-content {
+        background: white;
+        border-radius: 20px;
+        width: 90%;
+        max-width: 500px;
+        overflow: hidden;
+        animation: modalSlideIn 0.3s ease-out;
+    }
+    @keyframes modalSlideIn {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    .custom-modal-content.large {
+        max-width: 800px;
+        height: 90vh;
+    }
+    .custom-modal-header {
+        padding: 15px 20px;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .custom-modal-header.success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    .custom-modal-header.error {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+    .custom-modal-header.warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+    .custom-modal-header.info {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+    .custom-modal-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        opacity: 0.8;
+        transition: opacity 0.2s;
+    }
+    .custom-modal-close:hover {
+        opacity: 1;
+    }
+    .custom-modal-body {
+        padding: 25px;
+        text-align: center;
+    }
+    .custom-modal-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+    }
+    .custom-modal-title {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    .custom-modal-message {
+        color: #6b7280;
+        margin-bottom: 20px;
+        line-height: 1.5;
+    }
+    .custom-modal-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    .payment-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        min-height: 500px;
+    }
+    .topup-amount {
+        cursor: pointer;
         transition: all 0.2s;
     }
-    .contact-item:hover {
-        transform: translateX(4px);
-        color: #0284c7;
+    .topup-amount:hover, .topup-amount.selected {
+        background: #ffa500;
+        color: white;
+        border-color: #ffa500;
     }
-    
-    /* Loader Animation */
     .btn-loading {
         position: relative;
         pointer-events: none;
@@ -109,269 +213,536 @@
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
+    .manual-payment-card {
+        background: #fef9e7;
+        border: 2px dashed #ffa500;
+    }
+    .copy-btn {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .copy-btn:hover {
+        background: #ffa500;
+        color: white;
+    }
+    .info-note {
+        background: #f0f9ff;
+        border-left: 4px solid #3b82f6;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 py-6">
-    <!-- Page Header -->
+<div class="max-w-5xl mx-auto px-4 py-6">
+    <!-- Header -->
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800 mb-1">SMS Integration</h1>
-        <p class="text-sm text-gray-600">Configure SMS notifications for fee payments and other communications</p>
+        <p class="text-gray-600">Configure SMS notifications and manage your balance</p>
     </div>
 
-    <div class="grid grid-cols-1 gap-6">
-        <!-- SMS Settings Form -->
-        <div class="bg-white rounded-xl shadow-md overflow-hidden settings-card">
-            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
-                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <i class="fas fa-sms text-orange-500"></i>
-                    SMS Gateway Configuration
-                </h2>
-            </div>
-            
-            <div class="p-6">
-                <!-- Get Credentials Button -->
-                <div class="mb-6 p-4 bg-blue-50 rounded-lg flex items-center justify-between flex-wrap gap-4">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Settings -->
+        <div class="lg:col-span-2">
+            <!-- Balance Card -->
+            <div class="balance-card mb-6">
+                <div class="flex justify-between items-start">
                     <div>
-                        <p class="font-semibold text-gray-800">Don't have API credentials?</p>
-                        <p class="text-xs text-gray-600 mt-1">Get your API username and key from EgoSMS portal</p>
+                        <p class="text-sm opacity-90">Available Balance</p>
+                        <p class="balance-amount" id="balanceAmount">UGX 0</p>
+                        <p class="text-xs opacity-75">Total Spent: <span id="totalSpent">UGX 0</span></p>
                     </div>
-                    <button type="button" onclick="openEgoSMSPortal()" 
-                            id="egoSmsBtn"
-                            class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2 shadow-md">
-                        <i class="fas fa-external-link-alt"></i>
-                        Open EgoSMS Portal
+                    <button onclick="openTopUpModal()" 
+                            class="px-4 py-2 bg-white text-purple-600 rounded-lg text-sm font-semibold hover:bg-gray-100 transition-all">
+                        <i class="fas fa-plus-circle"></i> Top Up
                     </button>
                 </div>
+            </div>
+
+            <!-- Settings Form -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="px-6 py-4 border-b bg-gradient-to-r from-orange-50 to-white">
+                    <h2 class="text-lg font-semibold text-gray-800">
+                        <i class="fas fa-sliders-h text-orange-500"></i> Configuration
+                    </h2>
+                </div>
                 
-                <form id="smsSettingsForm">
-                    <!-- Enable SMS Toggle -->
-                    <div class="mb-6 flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                            <label class="font-semibold text-gray-800">Enable SMS Notifications</label>
-                            <p class="text-xs text-gray-500 mt-1">Turn on/off SMS notifications for fee payments</p>
-                        </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="smsEnabled" name="enabled" {% if settings and settings.enabled %}checked{% endif %}>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    
-                    <!-- API Credentials -->
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">API Username *</label>
-                        <input type="text" id="apiUsername" name="api_username" 
-                               value="{{ settings.api_username if settings else '' }}"
-                               placeholder="Enter your API username"
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                        <p class="text-xs text-gray-500 mt-1">Your CommsSDK API username</p>
-                    </div>
-                    
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">API Key *</label>
-                        <div class="relative">
-                            <input type="password" id="apiKey" name="api_key" 
-                                   value="{{ settings.api_key if settings else '' }}"
-                                   placeholder="Enter your API key"
-                                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                            <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                <i class="fas fa-eye" id="toggleIcon"></i>
-                            </button>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">Your CommsSDK API key</p>
-                    </div>
-                    
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Sender ID</label>
-                        <input type="text" id="senderId" name="sender_id" 
-                               value="{{ settings.sender_id if settings else 'SCHOOL' }}"
-                               placeholder="SCHOOL"
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                        <p class="text-xs text-gray-500 mt-1">Maximum 11 characters. Will appear as sender name</p>
-                    </div>
-                    
-                    <!-- Send on Payment Toggle -->
-                    <div class="mb-6 flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                            <label class="font-semibold text-gray-800">Send SMS on Payment</label>
-                            <p class="text-xs text-gray-500 mt-1">Automatically send SMS receipt after fee payment</p>
-                        </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="sendOnPayment" name="send_on_payment" {% if settings and settings.send_on_payment %}checked{% endif %}>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    
-                    <!-- Info Box -->
-                    <div class="info-box rounded-lg p-4 mb-6">
+                <div class="p-6">
+                    <!-- Note about credentials -->
+                    <div class="mb-6 p-4 bg-green-50 rounded-lg info-note">
                         <div class="flex items-start gap-3">
-                            <i class="fas fa-info-circle text-orange-500 mt-0.5"></i>
+                            <i class="fas fa-check-circle text-green-600 mt-0.5"></i>
                             <div>
-                                <p class="text-sm font-semibold text-gray-800 mb-1">How it works</p>
-                                <p class="text-xs text-gray-600">When a fee payment is processed, an SMS will be automatically sent to the student's registered phone number with payment details, receipt number, and remaining balance.</p>
-                                <p class="text-xs text-gray-600 mt-2">Make sure student phone numbers are correctly entered in their profiles.</p>
+                                <p class="text-sm font-semibold text-gray-800">API Credentials Configured</p>
+                                <p class="text-xs text-gray-600">Your SMS API credentials are securely stored in the system. No configuration needed.</p>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Test SMS Section -->
-                    <div class="border-t border-gray-200 pt-6 mb-6">
-                        <h3 class="text-md font-semibold text-gray-800 mb-4">Test SMS</h3>
-                        <div class="flex gap-3">
-                            <div class="flex-1">
-                                <input type="tel" id="testPhone" placeholder="Enter phone number (e.g., 256700000000)" 
-                                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <form id="smsSettingsForm">
+                        <!-- Enable SMS -->
+                        <div class="mb-6 flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                            <div>
+                                <label class="font-semibold">Enable SMS Notifications</label>
+                                <p class="text-xs text-gray-500">Send SMS on fee payments</p>
                             </div>
-                            <button type="button" onclick="sendTestSMS()" id="testSmsBtn"
-                                    class="px-6 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all flex items-center gap-2">
-                                <i class="fas fa-paper-plane"></i>
-                                Send Test
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="smsEnabled" name="enabled" {% if settings and settings.enabled %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <!-- Sender ID Only -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Sender ID</label>
+                            <input type="text" id="senderId" value="{{ settings.sender_id if settings else 'SCHOOL' }}" maxlength="11"
+                                   class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-orange-500">
+                            <p class="text-xs text-gray-500 mt-1">Max 11 characters - This will appear as the sender name on phones</p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Cost per SMS (UGX)</label>
+                            <input type="number" id="costPerSms" value="{{ settings.cost_per_sms if settings else 35 }}"
+                                   class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-orange-500">
+                            <p class="text-xs text-gray-500 mt-1">Cost per SMS segment (160 chars GSM / 70 chars Unicode)</p>
+                        </div>
+                        
+                        <!-- Send on Payment -->
+                        <div class="mb-6 flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                            <div>
+                                <label class="font-semibold">Auto-send on Payment</label>
+                                <p class="text-xs text-gray-500">Send SMS receipt after fee payment</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="sendOnPayment" name="send_on_payment" {% if settings and settings.send_on_payment %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <!-- Test SMS -->
+                        <div class="border-t pt-6 mb-6">
+                            <h3 class="font-semibold mb-3">Test SMS</h3>
+                            <div class="flex gap-3">
+                                <input type="tel" id="testPhone" placeholder="Phone number (e.g., 256700000000)"
+                                       class="flex-1 px-4 py-2 border rounded-lg">
+                                <button type="button" onclick="sendTestSMS()" id="testBtn"
+                                        class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                    <i class="fas fa-paper-plane"></i> Send
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="flex gap-3">
+                            <button type="button" onclick="resetForm()" 
+                                    class="px-6 py-2 border rounded-lg hover:bg-gray-50">Reset</button>
+                            <button type="submit" id="saveBtn"
+                                    class="flex-1 px-6 py-2 btn-gradient text-white rounded-lg font-semibold">
+                                <i class="fas fa-save"></i> Save Settings
                             </button>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2">Test your SMS configuration with a sample message</p>
-                    </div>
-                    
-                    <!-- Action Buttons -->
-                    <div class="flex gap-3 pt-4 border-t border-gray-200">
-                        <button type="button" onclick="resetForm()" class="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all">
-                            Reset
-                        </button>
-                        <button type="submit" id="saveSettingsBtn" class="flex-1 px-6 py-2.5 btn-gradient text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                            <i class="fas fa-save"></i>
-                            Save Settings
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        <!-- EgoSMS Contact Info -->
-        <div class="bg-white rounded-xl shadow-md overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <i class="fas fa-headset text-orange-500"></i>
-                    Need Help? Contact EgoSMS Support
-                </h2>
-            </div>
-            <div class="p-6">
-                <div class="egosms-info rounded-lg p-4 mb-4">
-                    <div class="flex items-center gap-3 mb-3">
-                        <i class="fas fa-map-marker-alt text-blue-600 text-lg"></i>
-                        <span class="text-sm text-gray-700">Plot 41, Factory Road, Ntinda Kampala, Uganda</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <i class="fas fa-envelope text-blue-600 text-lg"></i>
-                        <a href="mailto:info@pahappa.com" class="text-sm text-blue-600 hover:underline">info@pahappa.com</a>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div class="contact-item flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                        <i class="fas fa-phone-alt text-green-600"></i>
-                        <span class="text-xs">(+256) 707811113</span>
-                    </div>
-                    <div class="contact-item flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                        <i class="fas fa-phone-alt text-green-600"></i>
-                        <span class="text-xs">(+256) 788200915</span>
-                    </div>
-                    <div class="contact-item flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                        <i class="fas fa-phone-alt text-green-600"></i>
-                        <span class="text-xs">(+256) 770618482</span>
-                    </div>
-                    <div class="contact-item flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                        <i class="fas fa-phone-alt text-green-600"></i>
-                        <span class="text-xs">(+256) 750518482</span>
-                    </div>
+                    </form>
                 </div>
             </div>
         </div>
         
-        <!-- SMS Templates Info -->
-        <div class="bg-white rounded-xl shadow-md overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <i class="fas fa-envelope-open-text text-orange-500"></i>
-                    SMS Template
-                </h2>
+        <!-- Info Sidebar -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+                <h3 class="font-semibold mb-3"><i class="fas fa-info-circle text-orange-500"></i> How it works</h3>
+                <ul class="text-sm text-gray-600 space-y-2">
+                    <li>• SMS costs deducted from your balance</li>
+                    <li>• Pay as you go - top up anytime</li>
+                    <li>• Each SMS segment costs UGX <span id="displayCostPerSms">{{ settings.cost_per_sms if settings else 35 }}</span></li>
+                    <li>• Long messages split into segments</li>
+                    <li>• Unicode messages (special chars) use 70 chars/segment</li>
+                </ul>
             </div>
-            <div class="p-6">
-                <p class="text-sm text-gray-700 mb-3">Payment confirmation message format:</p>
-                <div class="bg-gray-50 rounded-lg p-4 font-mono text-sm">
-                    <p class="text-gray-800">Payment Received! 🎓</p>
-                    <p class="text-gray-800">Student: [Student Name]</p>
-                    <p class="text-gray-800">Amount: UGX [Amount]</p>
-                    <p class="text-gray-800">Balance: UGX [Balance]</p>
-                    <p class="text-gray-800">Method: [Payment Method]</p>
-                    <p class="text-gray-800">Receipt: [Receipt Number]</p>
-                    <p class="text-gray-800 mt-2">[Institute Name]</p>
-                    <p class="text-gray-800">Thank you for your payment!</p>
+            
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="font-semibold mb-3"><i class="fas fa-envelope-open-text text-orange-500"></i> SMS Template</h3>
+                <div class="bg-gray-50 rounded-lg p-3 text-xs font-mono">
+                    Payment Received! 🎓<br>
+                    Student: [Name]<br>
+                    Amount: UGX [Amount]<br>
+                    Balance: UGX [Balance]<br>
+                    Receipt: [Number]<br>
+                    Thank you!
                 </div>
-                <p class="text-xs text-gray-500 mt-3">Note: Any notes added during payment will also be included in the SMS</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Loading Overlay -->
-<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
-        <p class="text-gray-700">Processing...</p>
+<!-- Top Up Modal -->
+<div id="topupModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="custom-modal-header info">
+            <h3><i class="fas fa-plus-circle"></i> Top Up Balance</h3>
+            <button class="custom-modal-close" onclick="closeCustomModal('topupModal')">&times;</button>
+        </div>
+        <div class="custom-modal-body">
+            <p class="text-gray-600 mb-4">Select amount to add to your balance:</p>
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                {% for amount in [10000, 25000, 50000, 100000, 250000, 500000] %}
+                <button type="button" onclick="selectAmount({{ amount }})" 
+                        class="topup-amount p-3 border rounded-lg text-center font-semibold hover:border-orange-500">
+                    UGX {{ "{:,.0f}".format(amount).replace(',', ',') }}
+                </button>
+                {% endfor %}
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Custom Amount (UGX)</label>
+                <input type="number" id="customAmount" placeholder="Enter amount" min="5000" step="1000"
+                       class="w-full px-4 py-2 border rounded-lg">
+            </div>
+            <button onclick="proceedToPayment()" id="topupBtn"
+                    class="w-full py-3 btn-gradient text-white rounded-lg font-semibold">
+                <i class="fas fa-credit-card"></i> Proceed to Payment
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal with Iframe -->
+<div id="paymentModal" class="custom-modal">
+    <div class="custom-modal-content large">
+        <div class="custom-modal-header info">
+            <h3><i class="fas fa-credit-card"></i> Complete Payment</h3>
+            <button class="custom-modal-close" onclick="closePaymentModal()">&times;</button>
+        </div>
+        <div class="custom-modal-body" style="padding: 0; height: calc(90vh - 60px;">
+            <iframe id="paymentIframe" class="payment-iframe" src="about:blank"></iframe>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Modal -->
+<div id="alertModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="custom-modal-header" id="alertHeader">
+            <h3 id="alertTitle">Alert</h3>
+            <button class="custom-modal-close" onclick="closeCustomModal('alertModal')">&times;</button>
+        </div>
+        <div class="custom-modal-body">
+            <div id="alertIcon" class="custom-modal-icon"></div>
+            <div class="custom-modal-title" id="alertMessageTitle"></div>
+            <div class="custom-modal-message" id="alertMessage"></div>
+            <div class="custom-modal-buttons">
+                <button onclick="closeCustomModal('alertModal')" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="custom-modal-header warning">
+            <h3>Confirm Action</h3>
+            <button class="custom-modal-close" onclick="closeCustomModal('confirmModal')">&times;</button>
+        </div>
+        <div class="custom-modal-body">
+            <div class="custom-modal-icon">❓</div>
+            <div class="custom-modal-title" id="confirmTitle"></div>
+            <div class="custom-modal-message" id="confirmMessage"></div>
+            <div class="custom-modal-buttons">
+                <button onclick="closeCustomModal('confirmModal')" class="px-6 py-2 border rounded-lg hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button id="confirmYesBtn" class="px-6 py-2 btn-gradient text-white rounded-lg font-semibold">
+                    Yes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Payment Modal (when gateway fails) -->
+<div id="manualPaymentModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="custom-modal-header warning">
+            <h3><i class="fas fa-exclamation-triangle"></i> Payment Gateway Issue</h3>
+            <button class="custom-modal-close" onclick="closeCustomModal('manualPaymentModal')">&times;</button>
+        </div>
+        <div class="custom-modal-body">
+            <div class="custom-modal-icon">⚠️</div>
+            <div class="custom-modal-title">Manual Payment Required</div>
+            <div class="custom-modal-message">
+                We're experiencing technical issues with the payment gateway. Please make a manual payment to complete your top-up.
+            </div>
+            
+            <div class="manual-payment-card rounded-lg p-4 mb-4 text-left">
+                <p class="font-semibold text-gray-800 mb-2">Bank/ Mobile Money Details:</p>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span class="font-medium">Account Name:</span>
+                        <span>Lunserk ERP Solutions</span>
+                    </div>
+                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span class="font-medium">Mobile Money:</span>
+                        <div class="flex items-center gap-2">
+                            <span id="mobileMoneyNumber">0748675870</span>
+                            <button onclick="copyToClipboard('0748675870')" class="copy-btn text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span class="font-medium">Provider:</span>
+                        <span>MTN / Airtel Uganda</span>
+                    </div>
+                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span class="font-medium">Reference:</span>
+                        <span class="font-mono text-xs" id="manualReference">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-note rounded-lg p-3 mb-4 text-left">
+                <p class="text-xs text-gray-600">
+                    <i class="fas fa-info-circle text-blue-500"></i> 
+                    After making the payment, please contact support with your reference number to have your balance updated.
+                </p>
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="contactSupport()" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    <i class="fab fa-whatsapp"></i> Contact Support
+                </button>
+                <button onclick="closeCustomModal('manualPaymentModal')" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">
+                    Close
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    // Open EgoSMS Portal in new tab
-    function openEgoSMSPortal() {
-        const btn = document.getElementById('egoSmsBtn');
-        // Add loading state to button
-        btn.classList.add('btn-loading');
-        btn.disabled = true;
+    let selectedAmount = null;
+    let pendingPaymentAmount = null;
+    
+    // Custom Alert Function
+    function showAlert(title, message, type = 'info') {
+        const modal = document.getElementById('alertModal');
+        const header = document.getElementById('alertHeader');
+        const icon = document.getElementById('alertIcon');
+        const messageTitle = document.getElementById('alertMessageTitle');
+        const messageText = document.getElementById('alertMessage');
         
-        // Simulate loading before opening new tab
-        setTimeout(() => {
-            window.open('https://comms.egosms.co/ServiceLogin', '_blank');
-            btn.classList.remove('btn-loading');
-            btn.disabled = false;
-        }, 500);
+        // Set icon based on type
+        let iconHtml = '';
+        let headerClass = '';
+        if (type === 'success') {
+            iconHtml = '✅';
+            headerClass = 'success';
+        } else if (type === 'error') {
+            iconHtml = '❌';
+            headerClass = 'error';
+        } else if (type === 'warning') {
+            iconHtml = '⚠️';
+            headerClass = 'warning';
+        } else {
+            iconHtml = 'ℹ️';
+            headerClass = 'info';
+        }
+        
+        header.className = `custom-modal-header ${headerClass}`;
+        icon.innerHTML = `<div style="font-size: 64px;">${iconHtml}</div>`;
+        messageTitle.textContent = title;
+        messageText.textContent = message;
+        
+        modal.classList.add('active');
     }
     
-    // Add loading state to form submission buttons
-    function setButtonLoading(button, isLoading) {
-        if (isLoading) {
-            button.classList.add('btn-loading');
-            button.disabled = true;
-        } else {
-            button.classList.remove('btn-loading');
-            button.disabled = false;
+    // Custom Confirm Function
+    function showConfirm(title, message, onConfirm) {
+        const modal = document.getElementById('confirmModal');
+        const confirmTitle = document.getElementById('confirmTitle');
+        const confirmMessage = document.getElementById('confirmMessage');
+        const confirmBtn = document.getElementById('confirmYesBtn');
+        
+        confirmTitle.textContent = title;
+        confirmMessage.textContent = message;
+        
+        // Remove old event listeners
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        
+        newConfirmBtn.addEventListener('click', () => {
+            closeCustomModal('confirmModal');
+            onConfirm();
+        });
+        
+        modal.classList.add('active');
+    }
+    
+    // Load balance on page load
+    async function loadBalance() {
+        try {
+            const response = await fetch('/sms-settings/get-balance');
+            const result = await response.json();
+            if (result.success) {
+                document.getElementById('balanceAmount').innerHTML = `UGX ${result.balance.toLocaleString()}`;
+                document.getElementById('totalSpent').innerHTML = `UGX ${result.total_spent.toLocaleString()}`;
+            }
+        } catch (error) {
+            console.error('Error loading balance:', error);
         }
     }
     
-    function togglePassword() {
-        const passwordInput = document.getElementById('apiKey');
-        const icon = document.getElementById('toggleIcon');
-        
-        if (passwordInput.type === 'password') {
-            passwordInput.type = 'text';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        } else {
-            passwordInput.type = 'password';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
+    // Select amount
+    function selectAmount(amount) {
+        selectedAmount = amount;
+        document.querySelectorAll('.topup-amount').forEach(btn => {
+            btn.classList.remove('selected', 'bg-orange-500', 'text-white');
+        });
+        event.target.classList.add('selected', 'bg-orange-500', 'text-white');
+        document.getElementById('customAmount').value = '';
     }
     
-    async function sendTestSMS() {
-        const phone = document.getElementById('testPhone').value.trim();
-        const testBtn = document.getElementById('testSmsBtn');
+    // Open top up modal
+    function openTopUpModal() {
+        selectedAmount = null;
+        document.querySelectorAll('.topup-amount').forEach(btn => {
+            btn.classList.remove('selected', 'bg-orange-500', 'text-white');
+        });
+        document.getElementById('customAmount').value = '';
+        document.getElementById('topupModal').classList.add('active');
+    }
+    
+    // Proceed to payment
+    async function proceedToPayment() {
+        let amount = selectedAmount;
+        const customAmount = parseInt(document.getElementById('customAmount').value);
         
-        if (!phone) {
-            showMessage('Please enter a phone number', 'error');
+        if (customAmount && customAmount >= 5000) {
+            amount = customAmount;
+        }
+        
+        if (!amount || amount < 5000) {
+            showAlert('Invalid Amount', 'Please select or enter a valid amount (minimum UGX 5,000)', 'warning');
             return;
         }
         
-        setButtonLoading(testBtn, true);
+        pendingPaymentAmount = amount;
+        
+        const btn = document.getElementById('topupBtn');
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch('/sms-settings/initiate-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: amount })
+            });
+            
+            const result = await response.json();
+            
+            btn.classList.remove('btn-loading');
+            btn.disabled = false;
+            
+            if (result.success) {
+                closeCustomModal('topupModal');
+                const iframe = document.getElementById('paymentIframe');
+                iframe.src = result.redirect_url;
+                document.getElementById('paymentModal').classList.add('active');
+                
+                // Set up iframe message listener for payment completion
+                window.paymentMessageHandler = function(event) {
+                    if (event.data && event.data.type === 'payment_complete') {
+                        closePaymentModal();
+                        showAlert('Payment Successful', `UGX ${amount.toLocaleString()} has been added to your balance!`, 'success');
+                        loadBalance();
+                        window.removeEventListener('message', window.paymentMessageHandler);
+                    }
+                };
+                window.addEventListener('message', window.paymentMessageHandler);
+                
+                // Timeout to detect if iframe fails to load
+                setTimeout(() => {
+                    const iframeLoaded = iframe.contentDocument && iframe.contentDocument.readyState === 'complete';
+                    if (!iframeLoaded && document.getElementById('paymentModal').classList.contains('active')) {
+                        closePaymentModal();
+                        showManualPaymentOption(amount);
+                    }
+                }, 10000);
+                
+            } else {
+                showAlert('Payment Failed', result.message || 'Failed to initiate payment. Please try again or use manual payment.', 'error');
+                showManualPaymentOption(amount);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            btn.classList.remove('btn-loading');
+            btn.disabled = false;
+            showAlert('Connection Error', 'Failed to connect to payment gateway. Please use manual payment option.', 'error');
+            showManualPaymentOption(amount);
+        }
+    }
+    
+    // Show manual payment option
+    function showManualPaymentOption(amount) {
+        const reference = `MANUAL_${Date.now()}_${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+        document.getElementById('manualReference').textContent = reference;
+        pendingPaymentAmount = amount;
+        
+        // Store manual payment request in session for tracking
+        fetch('/sms-settings/store-manual-request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: amount, reference: reference })
+        }).catch(console.error);
+        
+        closeCustomModal('paymentModal');
+        document.getElementById('manualPaymentModal').classList.add('active');
+    }
+    
+    // Copy to clipboard
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            showAlert('Copied!', 'Number copied to clipboard', 'success');
+        }).catch(() => {
+            showAlert('Error', 'Failed to copy', 'error');
+        });
+    }
+    
+    // Contact support
+    function contactSupport() {
+        const message = `Hello, I've made a manual payment for SMS top-up. Reference: ${document.getElementById('manualReference').textContent}, Amount: UGX ${pendingPaymentAmount?.toLocaleString()}`;
+        window.open(`https://wa.me/256748675870?text=${encodeURIComponent(message)}`, '_blank');
+        showAlert('Support Contact', 'Please share your payment screenshot and reference number with support.', 'info');
+    }
+    
+    // Close payment modal
+    function closePaymentModal() {
+        const iframe = document.getElementById('paymentIframe');
+        iframe.src = 'about:blank';
+        document.getElementById('paymentModal').classList.remove('active');
+        if (window.paymentMessageHandler) {
+            window.removeEventListener('message', window.paymentMessageHandler);
+        }
+        loadBalance();
+    }
+    
+    // Close custom modal
+    function closeCustomModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+    
+    // Send test SMS
+    async function sendTestSMS() {
+        const phone = document.getElementById('testPhone').value.trim();
+        if (!phone) {
+            showAlert('Missing Information', 'Please enter a phone number', 'warning');
+            return;
+        }
+        
+        const btn = document.getElementById('testBtn');
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
         
         try {
             const response = await fetch('/sms-settings/test', {
@@ -382,34 +753,42 @@
             
             const result = await response.json();
             
-            setButtonLoading(testBtn, false);
+            btn.classList.remove('btn-loading');
+            btn.disabled = false;
             
             if (result.success) {
-                showMessage(result.message, 'success');
+                showAlert('Test SMS Sent', result.message, 'success');
                 document.getElementById('testPhone').value = '';
+                loadBalance();
             } else {
-                showMessage(result.message, 'error');
+                if (result.insufficient_balance) {
+                    showConfirm('Insufficient Balance', result.message + '\n\nWould you like to top up your balance?', () => {
+                        openTopUpModal();
+                    });
+                } else {
+                    showAlert('Failed', result.message, 'error');
+                }
             }
         } catch (error) {
-            console.error('Error:', error);
-            setButtonLoading(testBtn, false);
-            showMessage('Failed to send test SMS', 'error');
+            btn.classList.remove('btn-loading');
+            btn.disabled = false;
+            showAlert('Error', 'Failed to send test SMS', 'error');
         }
     }
     
-    // Save SMS Settings
-    document.getElementById('smsSettingsForm').addEventListener('submit', async function(e) {
+    // Save settings
+    document.getElementById('smsSettingsForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const saveBtn = document.getElementById('saveSettingsBtn');
-        setButtonLoading(saveBtn, true);
+        const btn = document.getElementById('saveBtn');
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
         
         const data = {
-            api_username: document.getElementById('apiUsername').value.trim(),
-            api_key: document.getElementById('apiKey').value.trim(),
-            sender_id: document.getElementById('senderId').value.trim() || 'SCHOOL',
+            sender_id: document.getElementById('senderId').value.trim(),
             enabled: document.getElementById('smsEnabled').checked,
-            send_on_payment: document.getElementById('sendOnPayment').checked
+            send_on_payment: document.getElementById('sendOnPayment').checked,
+            cost_per_sms: parseInt(document.getElementById('costPerSms').value) || 35
         };
         
         try {
@@ -421,54 +800,40 @@
             
             const result = await response.json();
             
-            setButtonLoading(saveBtn, false);
+            btn.classList.remove('btn-loading');
+            btn.disabled = false;
             
             if (result.success) {
-                showMessage(result.message, 'success');
-                setTimeout(() => window.location.reload(), 1500);
+                showAlert('Success', result.message, 'success');
+                document.getElementById('displayCostPerSms').textContent = data.cost_per_sms;
             } else {
-                showMessage(result.message, 'error');
+                showAlert('Failed', result.message, 'error');
             }
         } catch (error) {
-            console.error('Error:', error);
-            setButtonLoading(saveBtn, false);
-            showMessage('Failed to save settings', 'error');
+            btn.classList.remove('btn-loading');
+            btn.disabled = false;
+            showAlert('Error', 'Failed to save settings', 'error');
         }
     });
     
+    // Reset form
     function resetForm() {
-        document.getElementById('apiUsername').value = '';
-        document.getElementById('apiKey').value = '';
         document.getElementById('senderId').value = 'SCHOOL';
         document.getElementById('smsEnabled').checked = false;
         document.getElementById('sendOnPayment').checked = true;
+        document.getElementById('costPerSms').value = 35;
         document.getElementById('testPhone').value = '';
+        showAlert('Form Reset', 'All settings have been reset', 'info');
     }
     
-    function showMessage(message, type) {
-        const flashContainer = document.getElementById('flashMessages');
-        if (!flashContainer) {
-            const container = document.createElement('div');
-            container.id = 'flashMessages';
-            container.className = 'flash-messages';
-            document.body.appendChild(container);
+    // Load balance on page load
+    loadBalance();
+    
+    // Close modal on outside click
+    window.onclick = function(event) {
+        if (event.target.classList.contains('custom-modal')) {
+            event.target.classList.remove('active');
         }
-        
-        const flashMsg = document.createElement('div');
-        flashMsg.className = `flash-message ${type}`;
-        flashMsg.innerHTML = `
-            <div class="flex items-center gap-2">
-                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-                <span>${message}</span>
-            </div>
-        `;
-        
-        document.getElementById('flashMessages').appendChild(flashMsg);
-        
-        setTimeout(() => {
-            flashMsg.style.opacity = '0';
-            setTimeout(() => flashMsg.remove(), 300);
-        }, 5000);
     }
 </script>
 {% endblock %}

@@ -50,10 +50,29 @@ def get_institute_id(user_id):
     except Exception as e:
         print(f"Error getting institute ID: {e}")
         return None
+    
+    
+MASTER_API_USERNAME = os.getenv('COMMS_API_USERNAME', '')
+MASTER_API_KEY = os.getenv('COMMS_API_KEY', '')
 
 def send_payment_sms(institute, student, amount_paid, balance, receipt_number, payment_method, notes=""):
-    """Send SMS notification for payment"""
+    """
+    Send SMS notification for payment with balance checking and deduction
+    
+    Args:
+        institute (dict): Institute object with id, institute_name
+        student (dict): Student object with id, name, contact_number
+        amount_paid (float): Amount paid
+        balance (float): Remaining balance after payment
+        receipt_number (str): Payment receipt number
+        payment_method (str): Method of payment (cash, mobile money, etc.)
+        notes (str): Additional notes to include in SMS
+    
+    Returns:
+        bool: True if SMS sent successfully, False otherwise
+    """
     try:
+        # ==================== STEP 1: GET SMS SETTINGS ====================
         sms_response = supabase.table('sms_settings')\
             .select('*')\
             .eq('institute_id', institute['id'])\
@@ -61,30 +80,43 @@ def send_payment_sms(institute, student, amount_paid, balance, receipt_number, p
             .execute()
         
         if not sms_response.data:
-            print("SMS not enabled or no settings found")
+            print(f"SMS not enabled or no settings found for institute {institute['id']}")
             return False
         
         settings = sms_response.data[0]
         
+        # Check if auto-send on payment is enabled
         if not settings.get('send_on_payment', True):
-            print("SMS on payment is disabled")
+            print("SMS on payment is disabled in settings")
             return False
         
-        phone = student.get('contact_number', '')
+        # ==================== STEP 2: GET STUDENT PHONE NUMBER ====================
+        phone = student.get('contact_number') or student.get('phone') or student.get('phone_number') or ''
+        
         if not phone:
-            print(f"No phone number for student: {student['name']}")
+            print(f"No phone number for student: {student.get('name', 'Unknown')}")
             return False
         
-        phone = phone.strip().replace(' ', '').replace('-', '')
+        # Format phone number to international format
+        phone = phone.strip().replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
         if not phone.startswith('+'):
-            phone = '+' + phone if phone.startswith('256') else phone
+            if phone.startswith('0'):
+                phone = '+256' + phone[1:]  # Uganda format
+            elif phone.startswith('256'):
+                phone = '+' + phone
+            elif len(phone) == 9 and phone.isdigit():
+                phone = '+256' + phone  # Assume Uganda local number
         
-        # Show credit balance if negative
-        balance_display = f"Credit: UGX {abs(balance):,.0f}" if balance < 0 else f"Due: UGX {balance:,.0f}"
+        # ==================== STEP 3: PREPARE SMS MESSAGE ====================
+        # Format balance display (negative = credit, positive = due)
+        if balance < 0:
+            balance_display = f"Credit: UGX {abs(balance):,.0f}"
+        else:
+            balance_display = f"Due: UGX {balance:,.0f}"
         
         message = f"""Payment Received! 🎓
 
-Student: {student['name']}
+Student: {student.get('name', 'Student')}
 Amount: UGX {amount_paid:,.0f}
 {balance_display}
 Method: {payment_method.upper()}
@@ -94,35 +126,199 @@ Receipt: {receipt_number}
 Thank you for your payment!"""
 
         if notes:
-            message += f"\nNote: {notes}"
+            message += f"\n\nNote: {notes}"
+        
+        # Ensure message doesn't exceed reasonable length (max 10 segments ~ 1600 chars)
+        if len(message) > 1600:
+            message = message[:1550] + "..."
+        
+        # ==================== STEP 4: CALCULATE SMS COST ====================
+        # Check for Unicode characters (emoji, special chars, non-ASCII)
+        has_unicode = any(ord(c) > 127 for c in message)
+        segment_size = 70 if has_unicode else 160
+        segments = (len(message) + segment_size - 1) // segment_size
+        cost_per_sms = settings.get('cost_per_sms', 35)
+        total_cost = segments * cost_per_sms
+        
+        # Generate log ID for tracking
+        log_id = str(uuid.uuid4())
+        
+        # ==================== STEP 5: CHECK INSTITUTE BALANCE ====================
+        balance_response = supabase.table('institutes')\
+            .select('balance, total_spent')\
+            .eq('id', institute['id'])\
+            .execute()
+        
+        if not balance_response.data:
+            print(f"Institute {institute['id']} not found in database")
+            # Log failed attempt
+            supabase.table('sms_log').insert({
+                'id': log_id,
+                'institute_id': institute['id'],
+                'student_id': student.get('id'),
+                'phone_number': phone,
+                'message': message[:500],
+                'message_length': len(message),
+                'segments': segments,
+                'cost': total_cost,
+                'status': 'failed',
+                'error_message': 'Institute not found in database',
+                'sent_at': datetime.now().isoformat()
+            }).execute()
+            return False
+        
+        current_balance = balance_response.data[0].get('balance', 0)
+        current_total_spent = balance_response.data[0].get('total_spent', 0)
+        
+        # Check if balance is sufficient
+        if current_balance < total_cost:
+            insufficient_msg = f"Insufficient balance. Available: UGX {current_balance:,.0f}, Required: UGX {total_cost:,.0f}"
+            print(insufficient_msg)
+            
+            # Log insufficient balance
+            supabase.table('sms_log').insert({
+                'id': log_id,
+                'institute_id': institute['id'],
+                'student_id': student.get('id'),
+                'phone_number': phone,
+                'message': message[:500],
+                'message_length': len(message),
+                'segments': segments,
+                'cost': total_cost,
+                'status': 'failed',
+                'error_message': insufficient_msg,
+                'sent_at': datetime.now().isoformat()
+            }).execute()
+            return False
+        
+        # ==================== STEP 6: SEND SMS USING MASTER CREDENTIALS ====================
+        # Check if master credentials are configured
+        if not MASTER_API_USERNAME or not MASTER_API_KEY:
+            error_msg = "Master API credentials not configured in .env file"
+            print(error_msg)
+            supabase.table('sms_log').insert({
+                'id': log_id,
+                'institute_id': institute['id'],
+                'student_id': student.get('id'),
+                'phone_number': phone,
+                'message': message[:500],
+                'message_length': len(message),
+                'segments': segments,
+                'cost': total_cost,
+                'status': 'failed',
+                'error_message': error_msg,
+                'sent_at': datetime.now().isoformat()
+            }).execute()
+            return False
         
         try:
+            # Import CommsSDK (only import when needed)
             from comms_sdk import CommsSDK, MessagePriority
             
-            sdk = CommsSDK.authenticate(
-                settings['api_username'], 
-                settings['api_key']
-            )
+            # Authenticate using master credentials
+            sdk = CommsSDK.authenticate(MASTER_API_USERNAME, MASTER_API_KEY)
             
+            # Send the SMS
             response = sdk.send_sms(
                 [phone],
                 message,
-                sender_id=settings.get('sender_id', 'SCHOOL'),
+                sender_id=settings.get('sender_id', 'SCHOOL')[:11],  # Max 11 characters
                 priority=MessagePriority.HIGHEST
             )
             
+            # ==================== STEP 7: DEDUCT BALANCE ON SUCCESS ====================
+            new_balance = current_balance - total_cost
+            new_total_spent = current_total_spent + total_cost
+            
+            # Update institute balance
+            update_result = supabase.table('institutes')\
+                .update({
+                    'balance': new_balance,
+                    'total_spent': new_total_spent,
+                    'last_balance_update': datetime.now().isoformat()
+                })\
+                .eq('id', institute['id'])\
+                .execute()
+            
+            if not update_result.data:
+                print("Warning: SMS sent but failed to update balance")
+                # Still log as sent since SMS was delivered
+                supabase.table('sms_log').insert({
+                    'id': log_id,
+                    'institute_id': institute['id'],
+                    'student_id': student.get('id'),
+                    'phone_number': phone,
+                    'message': message[:500],
+                    'message_length': len(message),
+                    'segments': segments,
+                    'cost': total_cost,
+                    'status': 'sent_but_no_deduction',
+                    'error_message': 'Balance update failed',
+                    'sent_at': datetime.now().isoformat()
+                }).execute()
+                return True
+            
+            # ==================== STEP 8: LOG SUCCESSFUL SMS ====================
+            supabase.table('sms_log').insert({
+                'id': log_id,
+                'institute_id': institute['id'],
+                'student_id': student.get('id'),
+                'phone_number': phone,
+                'message': message[:500],
+                'message_length': len(message),
+                'segments': segments,
+                'cost': total_cost,
+                'status': 'sent',
+                'error_message': None,
+                'sent_at': datetime.now().isoformat()
+            }).execute()
+            
             print(f"SMS sent successfully to {phone}")
+            print(f"  - Segments: {segments}, Cost: UGX {total_cost:,.0f}")
+            print(f"  - Balance before: UGX {current_balance:,.0f}, After: UGX {new_balance:,.0f}")
+            
             return True
             
-        except ImportError:
-            print("CommsSDK not installed")
+        except ImportError as e:
+            error_msg = f"CommsSDK not installed: {str(e)}. Run: pip install comms-sdk"
+            print(error_msg)
+            supabase.table('sms_log').insert({
+                'id': log_id,
+                'institute_id': institute['id'],
+                'student_id': student.get('id'),
+                'phone_number': phone,
+                'message': message[:500],
+                'message_length': len(message),
+                'segments': segments,
+                'cost': total_cost,
+                'status': 'failed',
+                'error_message': error_msg[:500],
+                'sent_at': datetime.now().isoformat()
+            }).execute()
             return False
+            
         except Exception as e:
-            print(f"SMS sending error: {e}")
+            error_msg = str(e)
+            print(f"SMS sending error: {error_msg}")
+            supabase.table('sms_log').insert({
+                'id': log_id,
+                'institute_id': institute['id'],
+                'student_id': student.get('id'),
+                'phone_number': phone,
+                'message': message[:500],
+                'message_length': len(message),
+                'segments': segments,
+                'cost': total_cost,
+                'status': 'failed',
+                'error_message': error_msg[:500],
+                'sent_at': datetime.now().isoformat()
+            }).execute()
             return False
             
     except Exception as e:
-        print(f"Error in send_payment_sms: {e}")
+        print(f"Unexpected error in send_payment_sms: {e}")
+        import traceback
+        traceback.print_exc()
         return False
     
 @collect_bp.route('/')

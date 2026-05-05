@@ -1,0 +1,460 @@
+<!-- templates/admin/manual_payments.html -->
+{% extends "base.html" %}
+
+{% block title %}Manual Payments - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .status-approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .status-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .payment-card {
+        transition: all 0.2s;
+    }
+    .payment-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .filter-btn {
+        transition: all 0.2s;
+    }
+    .filter-btn.active {
+        background: #ffa500;
+        color: white;
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Manual Payment Requests</h1>
+        <p class="text-gray-600">Review and approve manual payment top-ups from institutions</p>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-yellow-500">
+            <p class="text-sm text-gray-500">Pending</p>
+            <p class="text-2xl font-bold text-yellow-600" id="pendingCount">0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500">
+            <p class="text-sm text-gray-500">Approved</p>
+            <p class="text-2xl font-bold text-green-600" id="approvedCount">0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-red-500">
+            <p class="text-sm text-gray-500">Rejected</p>
+            <p class="text-2xl font-bold text-red-600" id="rejectedCount">0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500">
+            <p class="text-sm text-gray-500">Total Amount</p>
+            <p class="text-2xl font-bold text-blue-600" id="totalAmount">UGX 0</p>
+        </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="bg-white rounded-xl shadow-md mb-6">
+        <div class="flex gap-2 p-2 border-b">
+            <button onclick="filterPayments('all')" id="filterAll" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 active">
+                All
+            </button>
+            <button onclick="filterPayments('pending')" id="filterPending" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100">
+                Pending
+            </button>
+            <button onclick="filterPayments('approved')" id="filterApproved" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100">
+                Approved
+            </button>
+            <button onclick="filterPayments('rejected')" id="filterRejected" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100">
+                Rejected
+            </button>
+        </div>
+    </div>
+
+    <!-- Payments List -->
+    <div id="paymentsContainer" class="space-y-4">
+        <div class="text-center py-8">
+            <div class="loader mx-auto"></div>
+            <p class="mt-2 text-gray-500">Loading payments...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Modal -->
+<div id="approveModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+        <div class="px-5 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Approve Payment</h3>
+        </div>
+        <div class="p-5">
+            <p class="text-gray-600 mb-4">Confirm approval of this payment request:</p>
+            <div class="bg-gray-50 rounded-lg p-3 mb-4">
+                <p><strong>Amount:</strong> <span id="approveAmount" class="text-green-600 font-bold"></span></p>
+                <p><strong>Institution:</strong> <span id="approveInstitute"></span></p>
+                <p><strong>Reference:</strong> <span id="approveReference" class="font-mono text-sm"></span></p>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Admin Notes (Optional)</label>
+                <textarea id="approveNotes" rows="2" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-orange-500" placeholder="Add any notes..."></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="confirmApprove()" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium">Approve</button>
+                <button onclick="closeApproveModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+        <div class="px-5 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Reject Payment</h3>
+        </div>
+        <div class="p-5">
+            <p class="text-gray-600 mb-4">Please provide a reason for rejection:</p>
+            <div class="mb-4">
+                <textarea id="rejectNotes" rows="3" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-orange-500" placeholder="Reason for rejection..."></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="confirmReject()" class="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded-lg text-white font-medium">Reject</button>
+                <button onclick="closeRejectModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="loader"></div>
+        <p class="text-gray-700 mt-4">Processing...</p>
+    </div>
+</div>
+
+<style>
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<script>
+    let currentFilter = 'all';
+    let allPayments = [];
+
+    // Format number with commas
+    function formatNumber(num) {
+        return new Intl.NumberFormat('en-US').format(num);
+    }
+
+    // Load payments
+    async function loadPayments() {
+        const container = document.getElementById('paymentsContainer');
+        container.innerHTML = '<div class="text-center py-8"><div class="loader mx-auto"></div><p class="mt-2 text-gray-500">Loading payments...</p></div>';
+        
+        try {
+            const response = await fetch(`/admin/api/manual-payments?status=${currentFilter}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                allPayments = data.payments;
+                updateStats();
+                renderPayments(allPayments);
+            } else {
+                container.innerHTML = `<div class="text-center py-8 text-red-500">Failed to load payments: ${data.message}</div>`;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            container.innerHTML = '<div class="text-center py-8 text-red-500">Error loading payments</div>';
+        }
+    }
+
+    // Update statistics
+    function updateStats() {
+        const pending = allPayments.filter(p => p.status === 'pending').length;
+        const approved = allPayments.filter(p => p.status === 'approved').length;
+        const rejected = allPayments.filter(p => p.status === 'rejected').length;
+        const totalAmount = allPayments.filter(p => p.status === 'approved').reduce((sum, p) => sum + parseFloat(p.amount), 0);
+        
+        document.getElementById('pendingCount').textContent = pending;
+        document.getElementById('approvedCount').textContent = approved;
+        document.getElementById('rejectedCount').textContent = rejected;
+        document.getElementById('totalAmount').textContent = `UGX ${formatNumber(totalAmount)}`;
+    }
+
+    // Render payments
+    function renderPayments(payments) {
+        const container = document.getElementById('paymentsContainer');
+        
+        if (payments.length === 0) {
+            container.innerHTML = '<div class="bg-white rounded-xl shadow-md p-8 text-center text-gray-400">No payment requests found</div>';
+            return;
+        }
+        
+        container.innerHTML = payments.map(payment => {
+            const statusClass = `status-${payment.status}`;
+            const statusText = payment.status.toUpperCase();
+            const institute = payment.institutes || {};
+            const createdDate = new Date(payment.created_at).toLocaleString();
+            
+            let actionButtons = '';
+            if (payment.status === 'pending') {
+                actionButtons = `
+                    <button onclick="openApproveModal('${payment.id}', '${escapeHtml(institute.institute_name || 'Unknown')}', '${payment.reference}', ${payment.amount})" 
+                            class="px-3 py-1 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
+                        <i class="fas fa-check"></i> Approve
+                    </button>
+                    <button onclick="openRejectModal('${payment.id}')" 
+                            class="px-3 py-1 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">
+                        <i class="fas fa-times"></i> Reject
+                    </button>
+                `;
+            } else {
+                actionButtons = `
+                    <span class="text-gray-400 text-sm">${payment.admin_notes || 'No notes'}</span>
+                `;
+            }
+            
+            return `
+                <div class="bg-white rounded-xl shadow-md p-5 payment-card">
+                    <div class="flex flex-wrap justify-between items-start gap-4">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                                <h3 class="font-semibold text-gray-800">${escapeHtml(institute.institute_name || 'Unknown')}</h3>
+                                <span class="status-badge ${statusClass}">${statusText}</span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                <div>
+                                    <span class="text-gray-500">Reference:</span>
+                                    <span class="font-mono text-xs">${payment.reference}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Amount:</span>
+                                    <span class="font-bold text-green-600">UGX ${formatNumber(payment.amount)}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Email:</span>
+                                    <span>${escapeHtml(institute.email || 'N/A')}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Phone:</span>
+                                    <span>${escapeHtml(institute.phone_number || 'N/A')}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Created:</span>
+                                    <span>${createdDate}</span>
+                                </div>
+                            </div>
+                            ${payment.admin_notes ? `
+                                <div class="mt-2 p-2 bg-gray-50 rounded text-sm">
+                                    <span class="text-gray-500">Admin Notes:</span>
+                                    <p class="text-gray-700">${escapeHtml(payment.admin_notes)}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="flex gap-2">
+                            ${actionButtons}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Filter payments
+    function filterPayments(status) {
+        currentFilter = status;
+        
+        // Update active button styles
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active', 'bg-orange-500', 'text-white');
+            btn.classList.add('hover:bg-gray-100');
+        });
+        
+        const activeBtn = document.getElementById(`filter${status.charAt(0).toUpperCase() + status.slice(1)}`);
+        if (activeBtn) {
+            activeBtn.classList.add('active', 'bg-orange-500', 'text-white');
+            activeBtn.classList.remove('hover:bg-gray-100');
+        }
+        
+        loadPayments();
+    }
+
+    // Approve modal
+    let currentPaymentId = null;
+    
+    function openApproveModal(paymentId, instituteName, reference, amount) {
+        currentPaymentId = paymentId;
+        document.getElementById('approveAmount').innerHTML = `UGX ${formatNumber(amount)}`;
+        document.getElementById('approveInstitute').textContent = instituteName;
+        document.getElementById('approveReference').textContent = reference;
+        document.getElementById('approveNotes').value = '';
+        document.getElementById('approveModal').classList.remove('hidden');
+        document.getElementById('approveModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeApproveModal() {
+        document.getElementById('approveModal').classList.add('hidden');
+        document.getElementById('approveModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    async function confirmApprove() {
+        const notes = document.getElementById('approveNotes').value;
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/admin/api/manual-payment/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    payment_id: currentPaymentId,
+                    admin_notes: notes
+                })
+            });
+            
+            const result = await response.json();
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                showMessage(result.message, 'success');
+                closeApproveModal();
+                loadPayments();
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to approve payment', 'error');
+        }
+    }
+    
+    // Reject modal
+    function openRejectModal(paymentId) {
+        currentPaymentId = paymentId;
+        document.getElementById('rejectNotes').value = '';
+        document.getElementById('rejectModal').classList.remove('hidden');
+        document.getElementById('rejectModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeRejectModal() {
+        document.getElementById('rejectModal').classList.add('hidden');
+        document.getElementById('rejectModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    async function confirmReject() {
+        const notes = document.getElementById('rejectNotes').value;
+        
+        if (!notes) {
+            showMessage('Please provide a reason for rejection', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/admin/api/manual-payment/reject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    payment_id: currentPaymentId,
+                    admin_notes: notes
+                })
+            });
+            
+            const result = await response.json();
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                showMessage(result.message, 'success');
+                closeRejectModal();
+                loadPayments();
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to reject payment', 'error');
+        }
+    }
+    
+    // Helper functions
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'fixed top-4 right-4 z-50 space-y-2';
+            document.body.appendChild(container);
+        }
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `bg-${type === 'success' ? 'green' : 'red'}-100 border-l-4 border-${type === 'success' ? 'green' : 'red'}-500 text-${type === 'success' ? 'green' : 'red'}-700 p-4 rounded shadow-lg min-w-[300px]`;
+        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
+    }
+    
+    // Close modals on outside click
+    window.onclick = function(event) {
+        const approveModal = document.getElementById('approveModal');
+        const rejectModal = document.getElementById('rejectModal');
+        if (event.target === approveModal) closeApproveModal();
+        if (event.target === rejectModal) closeRejectModal();
+    }
+    
+    // Initialize
+    loadPayments();
+</script>
+{% endblock %}

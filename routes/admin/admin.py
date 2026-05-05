@@ -9,6 +9,7 @@ import io
 import pandas as pd
 from functools import wraps
 from dotenv import load_dotenv
+  
 
 load_dotenv()
 
@@ -439,4 +440,122 @@ def get_dashboard_chart():
         
     except Exception as e:
         print(f"Error getting chart data: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+# Add to admin.py - Manual Payment Management
+
+@admin_bp.route('/manual-payments')
+@admin_required
+def manual_payments_page():
+    """Manual payments management page"""
+    return render_template('admin/manual_payments.html')
+
+@admin_bp.route('/api/manual-payments', methods=['GET'])
+@admin_required
+def get_manual_payments():
+    """Get all manual payment requests"""
+    try:
+        status = request.args.get('status', 'all')
+        
+        query = supabase.table('manual_payment_requests')\
+            .select('*, institutes(institute_name, email, phone_number)')\
+            .order('created_at', desc=True)
+        
+        if status != 'all':
+            query = query.eq('status', status)
+        
+        response = query.execute()
+        payments = response.data if response.data else []
+        
+        return jsonify({
+            'success': True,
+            'payments': payments
+        })
+    except Exception as e:
+        print(f"Error getting manual payments: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/manual-payment/approve', methods=['POST'])
+@admin_required
+def approve_manual_payment():
+    """Approve manual payment and add to balance"""
+    try:
+        data = request.get_json()
+        payment_id = data.get('payment_id')
+        admin_notes = data.get('admin_notes', '')
+        
+        if not payment_id:
+            return jsonify({'success': False, 'message': 'Payment ID required'}), 400
+        
+        # Get payment request
+        payment_response = supabase.table('manual_payment_requests')\
+            .select('*')\
+            .eq('id', payment_id)\
+            .execute()
+        
+        if not payment_response.data:
+            return jsonify({'success': False, 'message': 'Payment request not found'}), 404
+        
+        payment = payment_response.data[0]
+        
+        if payment['status'] != 'pending':
+            return jsonify({'success': False, 'message': f'Payment already {payment["status"]}'}), 400
+        
+        institute_id = payment['institute_id']
+        amount = float(payment['amount'])
+        
+        # Add to balance using the function from sms_settings
+        from routes.sms.sms_settings import add_to_balance
+        success, result = add_to_balance(institute_id, amount, f"Manual payment - {payment['reference']}")
+        
+        if not success:
+            return jsonify({'success': False, 'message': f'Failed to add balance: {result}'}), 500
+        
+        # Update payment status
+        supabase.table('manual_payment_requests')\
+            .update({
+                'status': 'approved',
+                'admin_notes': admin_notes,
+                'updated_at': datetime.now().isoformat()
+            })\
+            .eq('id', payment_id)\
+            .execute()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Payment approved! UGX {amount:,.2f} added to balance.'
+        })
+        
+    except Exception as e:
+        print(f"Error approving manual payment: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/manual-payment/reject', methods=['POST'])
+@admin_required
+def reject_manual_payment():
+    """Reject manual payment request"""
+    try:
+        data = request.get_json()
+        payment_id = data.get('payment_id')
+        admin_notes = data.get('admin_notes', '')
+        
+        if not payment_id:
+            return jsonify({'success': False, 'message': 'Payment ID required'}), 400
+        
+        supabase.table('manual_payment_requests')\
+            .update({
+                'status': 'rejected',
+                'admin_notes': admin_notes,
+                'updated_at': datetime.now().isoformat()
+            })\
+            .eq('id', payment_id)\
+            .execute()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Payment request rejected'
+        })
+        
+    except Exception as e:
+        print(f"Error rejecting manual payment: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
