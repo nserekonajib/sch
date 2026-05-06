@@ -1,10 +1,12 @@
-# dashboard.py - Main Dashboard Blueprint
+# dashboard.py - Optimized Main Dashboard Blueprint (FIXED)
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
 import os
 from datetime import datetime, timedelta
 from functools import wraps
 from dotenv import load_dotenv
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
 # Fix imports - use relative imports
 from routes.auth.auth import accountant_required, secretary_required, support_staff_required, librarian_required, teacher_required, role_required
@@ -19,6 +21,29 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 dashboard_bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
 
+# Simple in-memory cache
+cache = {}
+CACHE_TTL = 300  # 5 minutes
+
+def cached(ttl=300):
+    """Cache decorator - preserves original function name"""
+    def decorator(func):
+        @wraps(func)  # This preserves the original function name
+        def wrapper(*args, **kwargs):
+            cache_key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
+            now = datetime.now()
+            
+            if cache_key in cache:
+                cached_data, timestamp = cache[cache_key]
+                if (now - timestamp).seconds < ttl:
+                    return cached_data
+            
+            result = func(*args, **kwargs)
+            cache[cache_key] = (result, now)
+            return result
+        return wrapper
+    return decorator
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -31,92 +56,64 @@ def login_required(f):
 @role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Main Dashboard Page"""
-    # Get institute object (not just ID)
     institute = get_institute_from_session()
     
     if not institute:
         return render_template('dashboard/index.html', institute_id=None, institute_name=None)
     
-    # Pass both institute_id and institute_name to template
     return render_template('dashboard/index.html', 
                          institute_id=institute.get('id'), 
                          institute_name=institute.get('institute_name'))
 
 @dashboard_bp.route('/api/stats', methods=['GET'])
 @login_required
+@cached(ttl=60)  # Cache for 1 minute
 def get_dashboard_stats():
-    """Get all dashboard statistics"""
-    # Get institute object
+    """Get all dashboard statistics - OPTIMIZED with single queries"""
     institute = get_institute_from_session()
     
     if not institute:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
-    institute_id = institute.get('id')  # Extract ID from institute object
+    institute_id = institute.get('id')
     
     try:
         # Get date filters
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
-        # Set default to current month if not provided
         if not start_date:
             start_date = datetime.now().replace(day=1).date().isoformat()
         if not end_date:
             end_date = datetime.now().date().isoformat()
         
-        print(f"Getting stats for institute: {institute_id} from {start_date} to {end_date}")
+        # OPTIMIZATION: Use parallel queries
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            # Submit all queries in parallel
+            students_future = executor.submit(
+                lambda: supabase.table('students').select('id', count='exact')
+                .eq('institute_id', institute_id).eq('status', 'active').execute()
+            )
+            
+            employees_future = executor.submit(
+                lambda: supabase.table('employees').select('id', count='exact')
+                .eq('institute_id', institute_id).eq('status', 'active').execute()
+            )
+            
+            # Combined financial query
+            financial_future = executor.submit(
+                lambda: get_financial_data(institute_id, start_date, end_date)
+            )
         
-        # 1. Total Students
-        students_response = supabase.table('students')\
-            .select('id', count='exact')\
-            .eq('institute_id', institute_id)\
-            .eq('status', 'active')\
-            .execute()
-        total_students = students_response.count or 0
+        # Get results
+        students_result = students_future.result()
+        employees_result = employees_future.result()
         
-        # 2. Total Employees
-        employees_response = supabase.table('employees')\
-            .select('id', count='exact')\
-            .eq('institute_id', institute_id)\
-            .eq('status', 'active')\
-            .execute()
-        total_employees = employees_response.count or 0
+        total_students = students_result.count or 0
+        total_employees = employees_result.count or 0
         
-        # 3. Revenue Collected (from payments table)
-        payments_response = supabase.table('payments')\
-            .select('amount')\
-            .eq('institute_id', institute_id)\
-            .gte('payment_date', start_date)\
-            .lte('payment_date', end_date)\
-            .execute()
-        
-        revenue_collected = sum(float(p['amount']) for p in (payments_response.data or []))
-        
-        # 4. Total Profit/Loss
-        # Get income from income_transactions
-        income_response = supabase.table('income_transactions')\
-            .select('amount')\
-            .eq('institute_id', institute_id)\
-            .gte('transaction_date', start_date)\
-            .lte('transaction_date', end_date)\
-            .execute()
-        
-        total_income = sum(i['amount'] for i in (income_response.data or []))
-        
-        # Get expenses from expense_transactions
-        expense_response = supabase.table('expense_transactions')\
-            .select('amount')\
-            .eq('institute_id', institute_id)\
-            .gte('transaction_date', start_date)\
-            .lte('transaction_date', end_date)\
-            .execute()
-        
-        total_expenses = sum(e['amount'] for e in (expense_response.data or []))
-        
-        # Add school fees to income
-        revenue_collected = revenue_collected or 0
-        total_income += revenue_collected
+        # Handle financial data
+        revenue_collected, total_income, total_expenses = financial_future.result()
         
         total_profit = total_income - total_expenses
         
@@ -138,10 +135,46 @@ def get_dashboard_stats():
         print(f"Error getting dashboard stats: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+def get_financial_data(institute_id, start_date, end_date):
+    """Helper function to get financial data"""
+    try:
+        # Get payments
+        payments_response = supabase.table('payments')\
+            .select('amount')\
+            .eq('institute_id', institute_id)\
+            .gte('payment_date', start_date)\
+            .lte('payment_date', end_date)\
+            .execute()
+        revenue_collected = sum(float(p['amount']) for p in (payments_response.data or []))
+        
+        # Get income
+        income_response = supabase.table('income_transactions')\
+            .select('amount')\
+            .eq('institute_id', institute_id)\
+            .gte('transaction_date', start_date)\
+            .lte('transaction_date', end_date)\
+            .execute()
+        total_income = sum(i['amount'] for i in (income_response.data or [])) + revenue_collected
+        
+        # Get expenses
+        expense_response = supabase.table('expense_transactions')\
+            .select('amount')\
+            .eq('institute_id', institute_id)\
+            .gte('transaction_date', start_date)\
+            .lte('transaction_date', end_date)\
+            .execute()
+        total_expenses = sum(e['amount'] for e in (expense_response.data or []))
+        
+        return revenue_collected, total_income, total_expenses
+    except Exception as e:
+        print(f"Error in get_financial_data: {e}")
+        return 0, 0, 0
+
 @dashboard_bp.route('/api/income-expense-graph', methods=['GET'])
 @login_required
+@cached(ttl=300)  # Cache for 5 minutes
 def get_income_expense_graph():
-    """Get income vs expense data for line graph"""
+    """Get income vs expense data for line graph - OPTIMIZED"""
     institute = get_institute_from_session()
     
     if not institute:
@@ -150,7 +183,7 @@ def get_income_expense_graph():
     institute_id = institute.get('id')
     
     try:
-        # Get date range (last 12 months)
+        # Get last 12 months
         end_date = datetime.now()
         start_date = end_date - timedelta(days=365)
         
@@ -165,23 +198,21 @@ def get_income_expense_graph():
                 next_month = current.replace(month=current.month + 1)
             month_end = (next_month - timedelta(days=1)).date().isoformat()
             
-            # Get income for this month (including fees)
-            fees_response = supabase.table('payments')\
+            # Get payments for this month
+            payments_response = supabase.table('payments')\
                 .select('amount')\
                 .eq('institute_id', institute_id)\
                 .gte('payment_date', month_start)\
                 .lte('payment_date', month_end)\
                 .execute()
             
+            # Get income transactions for this month
             income_response = supabase.table('income_transactions')\
                 .select('amount')\
                 .eq('institute_id', institute_id)\
                 .gte('transaction_date', month_start)\
                 .lte('transaction_date', month_end)\
                 .execute()
-            
-            monthly_income = sum(float(f['amount']) for f in (fees_response.data or []))
-            monthly_income += sum(i['amount'] for i in (income_response.data or []))
             
             # Get expenses for this month
             expense_response = supabase.table('expense_transactions')\
@@ -191,6 +222,8 @@ def get_income_expense_graph():
                 .lte('transaction_date', month_end)\
                 .execute()
             
+            monthly_income = sum(float(f['amount']) for f in (payments_response.data or []))
+            monthly_income += sum(i['amount'] for i in (income_response.data or []))
             monthly_expense = sum(e['amount'] for e in (expense_response.data or []))
             
             monthly_data.append({
@@ -216,8 +249,9 @@ def get_income_expense_graph():
 
 @dashboard_bp.route('/api/class-attendance', methods=['GET'])
 @login_required
+@cached(ttl=120)  # Cache for 2 minutes
 def get_class_attendance():
-    """Get attendance statistics by class"""
+    """Get attendance statistics by class - OPTIMIZED"""
     institute = get_institute_from_session()
     
     if not institute:
@@ -235,36 +269,34 @@ def get_class_attendance():
             .order('name')\
             .execute()
         
-        classes = classes_response.data if classes_response.data else []
+        # Get all active students in one query
+        all_students = supabase.table('students')\
+            .select('id, class_id')\
+            .eq('institute_id', institute_id)\
+            .eq('status', 'active')\
+            .execute()
+        
+        students_by_class = defaultdict(list)
+        for student in (all_students.data or []):
+            if student.get('class_id'):
+                students_by_class[student['class_id']].append(student['id'])
+        
+        # Get all attendance for today in one query
+        attendance_response = supabase.table('attendance')\
+            .select('student_id')\
+            .eq('institute_id', institute_id)\
+            .eq('scan_date', today)\
+            .execute()
+        
+        present_students = set(a['student_id'] for a in (attendance_response.data or []))
         
         class_data = []
-        for class_item in classes:
-            # Get students in this class
-            students_response = supabase.table('students')\
-                .select('id')\
-                .eq('class_id', class_item['id'])\
-                .eq('institute_id', institute_id)\
-                .eq('status', 'active')\
-                .execute()
-            
-            total_students = len(students_response.data or [])
+        for class_item in (classes_response.data or []):
+            class_students = students_by_class.get(class_item['id'], [])
+            total_students = len(class_students)
             
             if total_students > 0:
-                # Get present students today
-                present_response = supabase.table('attendance')\
-                    .select('student_id')\
-                    .eq('institute_id', institute_id)\
-                    .eq('scan_date', today)\
-                    .execute()
-                
-                present_ids = set(a['student_id'] for a in (present_response.data or []))
-                
-                # Count present students in this class
-                present_count = 0
-                for student in (students_response.data or []):
-                    if student['id'] in present_ids:
-                        present_count += 1
-                
+                present_count = sum(1 for s in class_students if s in present_students)
                 absent_count = total_students - present_count
                 
                 class_data.append({
@@ -286,8 +318,9 @@ def get_class_attendance():
 
 @dashboard_bp.route('/api/staff-attendance', methods=['GET'])
 @login_required
+@cached(ttl=120)
 def get_staff_attendance():
-    """Get staff attendance statistics by role"""
+    """Get staff attendance statistics by role - OPTIMIZED"""
     institute = get_institute_from_session()
     
     if not institute:
@@ -298,43 +331,36 @@ def get_staff_attendance():
     try:
         today = datetime.now().date().isoformat()
         
-        # Get all employees grouped by role
+        # Get all employees
         employees_response = supabase.table('employees')\
             .select('id, role')\
             .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .execute()
         
-        employees = employees_response.data if employees_response.data else []
-        
-        # Get present employees today
-        present_response = supabase.table('staff_attendance')\
+        # Get attendance for today
+        attendance_response = supabase.table('staff_attendance')\
             .select('employee_id')\
             .eq('institute_id', institute_id)\
             .eq('attendance_date', today)\
             .execute()
         
-        present_ids = set(p['employee_id'] for p in (present_response.data or []))
+        present_ids = set(p['employee_id'] for p in (attendance_response.data or []))
         
-        # Group by role
-        role_stats = {}
-        for emp in employees:
+        role_stats = defaultdict(lambda: {'total': 0, 'present': 0})
+        for emp in (employees_response.data or []):
             role = emp.get('role', 'other')
-            if role not in role_stats:
-                role_stats[role] = {'total': 0, 'present': 0}
             role_stats[role]['total'] += 1
             if emp['id'] in present_ids:
                 role_stats[role]['present'] += 1
         
-        # Format for chart
         role_data = []
         for role, stats in role_stats.items():
-            absent = stats['total'] - stats['present']
             role_data.append({
                 'role': role.replace('_', ' ').title() if role else 'Other',
                 'total': stats['total'],
                 'present': stats['present'],
-                'absent': absent,
+                'absent': stats['total'] - stats['present'],
                 'percentage': round((stats['present'] / stats['total'] * 100), 1) if stats['total'] > 0 else 0
             })
         
@@ -349,8 +375,9 @@ def get_staff_attendance():
 
 @dashboard_bp.route('/api/recent-activities', methods=['GET'])
 @login_required
+@cached(ttl=60)
 def get_recent_activities():
-    """Get recent activities across the system"""
+    """Get recent activities across the system - OPTIMIZED"""
     institute = get_institute_from_session()
     
     if not institute:
@@ -361,7 +388,7 @@ def get_recent_activities():
     try:
         activities = []
         
-        # Recent student additions
+        # Get recent students
         students_response = supabase.table('students')\
             .select('name, created_at')\
             .eq('institute_id', institute_id)\
@@ -379,7 +406,7 @@ def get_recent_activities():
                 'color': 'green'
             })
         
-        # Recent fee payments
+        # Get recent payments
         payments_response = supabase.table('payments')\
             .select('amount, receipt_number, created_at, students(name)')\
             .eq('institute_id', institute_id)\
@@ -398,7 +425,7 @@ def get_recent_activities():
                 'color': 'blue'
             })
         
-        # Recent employee additions
+        # Get recent employees
         employees_response = supabase.table('employees')\
             .select('name, created_at')\
             .eq('institute_id', institute_id)\
@@ -418,11 +445,10 @@ def get_recent_activities():
         
         # Sort by time and take latest 10
         activities.sort(key=lambda x: x['time'], reverse=True)
-        activities = activities[:10]
         
         return jsonify({
             'success': True,
-            'activities': activities
+            'activities': activities[:10]
         })
         
     except Exception as e:
@@ -431,8 +457,9 @@ def get_recent_activities():
 
 @dashboard_bp.route('/api/class-distribution', methods=['GET'])
 @login_required
+@cached(ttl=300)
 def get_class_distribution():
-    """Get student distribution by class"""
+    """Get student distribution by class - OPTIMIZED"""
     institute = get_institute_from_session()
     
     if not institute:
@@ -448,17 +475,21 @@ def get_class_distribution():
             .order('name')\
             .execute()
         
+        # Get all students with their class IDs in one query
+        students_response = supabase.table('students')\
+            .select('class_id')\
+            .eq('institute_id', institute_id)\
+            .eq('status', 'active')\
+            .execute()
+        
+        class_counts = defaultdict(int)
+        for student in (students_response.data or []):
+            if student.get('class_id'):
+                class_counts[student['class_id']] += 1
+        
         class_data = []
         for class_item in (classes_response.data or []):
-            # Count active students in this class
-            students_response = supabase.table('students')\
-                .select('id', count='exact')\
-                .eq('class_id', class_item['id'])\
-                .eq('institute_id', institute_id)\
-                .eq('status', 'active')\
-                .execute()
-            
-            count = students_response.count or 0
+            count = class_counts.get(class_item['id'], 0)
             if count > 0:
                 class_data.append({
                     'name': class_item['name'],
@@ -474,7 +505,7 @@ def get_class_distribution():
         print(f"Error getting class distribution: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# Add this helper function for backward compatibility
+# Helper function
 def get_institute_id(user_id):
     """Legacy function - kept for compatibility"""
     try:

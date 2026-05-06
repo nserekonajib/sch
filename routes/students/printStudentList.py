@@ -89,7 +89,7 @@ def get_students():
             .eq('class_id', class_id)\
             .eq('academic_year', int(academic_year))\
             .execute()
-        
+        # print(enrollments_response)
         student_ids = [e['student_id'] for e in enrollments_response.data] if enrollments_response.data else []
         
         if not student_ids:
@@ -372,3 +372,4 @@ def convert_html_to_pdf(html_content):
     
     pdf_buffer.seek(0)
     return pdf_buffer
+

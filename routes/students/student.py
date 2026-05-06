@@ -208,11 +208,10 @@ def get_stats():
     except Exception as e:
         print(f"Error getting stats: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-
 @student_bp.route('/add', methods=['POST'])
 @login_required
 def add_student():
-    """Add a single student via AJAX"""
+    """Add a single student via AJAX with enrollment confirmation"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -225,6 +224,9 @@ def add_student():
         # Generate unique student ID
         class_id = data.get('class_id')
         class_name = data.get('class_name', '')
+        
+        if not class_id:
+            return jsonify({'success': False, 'message': 'Class ID is required'}), 400
         
         # Get existing student IDs for this institute
         existing_ids_response = supabase.table('students')\
@@ -240,8 +242,12 @@ def add_student():
         student_id = generate_unique_student_id(institute_id, class_name, existing_ids)
         
         # Prepare student data
+        student_uuid = str(uuid.uuid4())
+        current_year = datetime.now().year
+        current_time = datetime.now().isoformat()
+        
         student_data = {
-            'id': str(uuid.uuid4()),
+            'id': student_uuid,
             'institute_id': institute_id,
             'student_id': student_id,
             'name': data.get('name', '').strip(),
@@ -261,8 +267,8 @@ def add_student():
             'class_id': class_id,
             'status': 'active',
             'enrollment_date': datetime.now().date().isoformat(),
-            'created_at': datetime.now().isoformat(),
-            'updated_at': datetime.now().isoformat()
+            'created_at': current_time,
+            'updated_at': current_time
         }
         
         # Handle photo upload
@@ -296,28 +302,78 @@ def add_student():
         # Insert student
         result = supabase.table('students').insert(student_data).execute()
         
-        if result.data:
-            # Auto-enroll student to class
-            enrollment_data = {
-                'student_id': result.data[0]['id'],
+        if not result.data:
+            return jsonify({'success': False, 'message': 'Failed to add student to students table'}), 500
+        
+        # Auto-enroll student to class
+        enrollment_uuid = str(uuid.uuid4())
+        enrollment_data = {
+            'id': enrollment_uuid,
+            'student_id': student_uuid,
+            'class_id': class_id,
+            'academic_year': current_year,
+            'enrolled_at': current_time,
+            'updated_at': current_time
+        }
+        
+        # Insert into class_enrollments
+        enrollment_result = supabase.table('class_enrollments').insert(enrollment_data).execute()
+        
+        # Verify enrollment was successful
+        if not enrollment_result.data:
+            # Rollback: Delete the student if enrollment fails
+            print(f"Warning: Failed to create enrollment for student {student_uuid}. Rolling back...")
+            supabase.table('students').delete().eq('id', student_uuid).execute()
+            return jsonify({'success': False, 'message': 'Failed to enroll student in class'}), 500
+        
+        # Double-check enrollment exists
+        verify_enrollment = supabase.table('class_enrollments')\
+            .select('id, student_id, class_id, academic_year')\
+            .eq('student_id', student_uuid)\
+            .eq('class_id', class_id)\
+            .eq('academic_year', current_year)\
+            .execute()
+        
+        enrollment_verified = len(verify_enrollment.data) > 0
+        
+        # Also handle future academic years (optional)
+        future_years = [current_year + 1, current_year + 2]
+        future_enrollments = []
+        
+        for year in future_years:
+            future_enrollment_data = {
+                'id': str(uuid.uuid4()),
+                'student_id': student_uuid,
                 'class_id': class_id,
-                'enrolled_at': datetime.now().isoformat(),
-                'academic_year': datetime.now().year
+                'academic_year': year,
+                'enrolled_at': current_time,
+                'updated_at': current_time
             }
-            supabase.table('class_enrollments').insert(enrollment_data).execute()
-            
-            return jsonify({
-                'success': True,
-                'message': 'Student added successfully!',
-                'student': result.data[0]
-            })
-        else:
-            return jsonify({'success': False, 'message': 'Failed to add student'}), 500
+            try:
+                future_result = supabase.table('class_enrollments').insert(future_enrollment_data).execute()
+                if future_result.data:
+                    future_enrollments.append(year)
+            except Exception as e:
+                print(f"Note: Could not create future enrollment for {year}: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Student added and enrolled successfully!',
+            'student': result.data[0],
+            'enrollment': {
+                'verified': enrollment_verified,
+                'enrollment_id': enrollment_result.data[0]['id'] if enrollment_result.data else None,
+                'academic_year': current_year,
+                'future_enrollments': future_enrollments
+            }
+        })
             
     except Exception as e:
         print(f"Error adding student: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
 @student_bp.route('/update/<student_id>', methods=['PUT'])
 @login_required
 def update_student(student_id):
@@ -416,11 +472,10 @@ def update_student(student_id):
     except Exception as e:
         print(f"Error updating student: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-
 @student_bp.route('/import', methods=['POST'])
 @login_required
 def import_students():
-    """Import students from Excel/CSV file - simplified to only require names"""
+    """Import students from Excel/CSV file with enrollment confirmation"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -445,13 +500,13 @@ def import_students():
         
         class_name = class_response.data[0]['name'] if class_response.data else ''
         
-        # Read file - only expecting Name column
+        # Read file
         if file.filename.endswith('.csv'):
             df = pd.read_csv(io.StringIO(file.stream.read().decode('utf-8')))
         else:
             df = pd.read_excel(file)
         
-        # Find the name column (case insensitive)
+        # Find the name column
         name_column = None
         for col in df.columns:
             if col.lower() in ['name', 'student name', 'full name', 'student_name']:
@@ -473,7 +528,10 @@ def import_students():
                 existing_ids.add(student['student_id'])
         
         students_added = 0
+        enrollments_added = 0
         errors = []
+        current_year = datetime.now().year
+        current_time = datetime.now().isoformat()
         
         for idx, row in df.iterrows():
             try:
@@ -483,43 +541,55 @@ def import_students():
                 if not student_name or student_name == 'nan':
                     continue
                 
+                student_uuid = str(uuid.uuid4())
                 student_id = generate_unique_student_id(institute_id, class_name, existing_ids)
-                existing_ids.add(student_id)  # Add to set to avoid duplicates in same batch
+                existing_ids.add(student_id)
                 
                 student_data = {
-                    'id': str(uuid.uuid4()),
+                    'id': student_uuid,
                     'institute_id': institute_id,
                     'student_id': student_id,
                     'name': student_name,
                     'class_id': class_id,
                     'status': 'active',
                     'enrollment_date': datetime.now().date().isoformat(),
-                    'created_at': datetime.now().isoformat(),
-                    'updated_at': datetime.now().isoformat()
+                    'created_at': current_time,
+                    'updated_at': current_time
                 }
                 
                 # Insert student
                 result = supabase.table('students').insert(student_data).execute()
                 
                 if result.data:
-                    # Auto-enroll
-                    enrollment_data = {
-                        'student_id': result.data[0]['id'],
-                        'class_id': class_id,
-                        'enrolled_at': datetime.now().isoformat(),
-                        'academic_year': datetime.now().year
-                    }
-                    supabase.table('class_enrollments').insert(enrollment_data).execute()
                     students_added += 1
+                    
+                    # Create enrollment record
+                    enrollment_data = {
+                        'id': str(uuid.uuid4()),
+                        'student_id': student_uuid,
+                        'class_id': class_id,
+                        'academic_year': current_year,
+                        'enrolled_at': current_time,
+                        'updated_at': current_time
+                    }
+                    
+                    enrollment_result = supabase.table('class_enrollments').insert(enrollment_data).execute()
+                    
+                    if enrollment_result.data:
+                        enrollments_added += 1
+                    else:
+                        errors.append(f"Row {idx + 2}: Student added but enrollment failed for {student_name}")
                 else:
-                    errors.append(f"Row {idx + 2}: Failed to add student")
+                    errors.append(f"Row {idx + 2}: Failed to add student {student_name}")
                     
             except Exception as e:
                 errors.append(f"Row {idx + 2}: {str(e)}")
         
         return jsonify({
             'success': True,
-            'message': f'Successfully imported {students_added} students',
+            'message': f'Successfully imported {students_added} students with {enrollments_added} enrollments',
+            'students_added': students_added,
+            'enrollments_added': enrollments_added,
             'errors': errors if errors else None
         })
         
@@ -613,4 +683,86 @@ def get_classes():
         return jsonify({'success': True, 'classes': response.data or []})
         
     except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+    
+# student.py - Add this new API endpoint for paginated students
+
+@student_bp.route('/api/students', methods=['GET'])
+@login_required
+def get_students_api():
+    """Get students with pagination via API"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Get pagination parameters
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 30))
+        
+        # Get filter parameters
+        search = request.args.get('search', '').strip()
+        class_name = request.args.get('class', '').strip()
+        category = request.args.get('category', '').strip()
+        status = request.args.get('status', '').strip()
+        
+        # Start building query
+        query = supabase.table('students')\
+            .select('*, classes(name, id)', count='exact')\
+            .eq('institute_id', institute_id)
+        
+        # Apply filters
+        if search:
+            # Search in name or student_id
+            query = query.or_(f"name.ilike.%{search}%,student_id.ilike.%{search}%")
+        
+        if class_name:
+            # Filter by class name (needs a more complex approach since classes is a relation)
+            # First get class IDs for the given class name
+            classes_response = supabase.table('classes')\
+                .select('id')\
+                .eq('name', class_name)\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            if classes_response.data:
+                class_ids = [c['id'] for c in classes_response.data]
+                query = query.in_('class_id', class_ids)
+        
+        if category:
+            query = query.eq('category', category)
+        
+        if status:
+            query = query.eq('status', status)
+        
+        # Get total count
+        count_response = query.execute()
+        total = len(count_response.data) if count_response.data else 0
+        
+        # Calculate range
+        start = (page - 1) * per_page
+        end = start + per_page - 1
+        
+        # Get paginated data
+        response = query.range(start, end).order('created_at', desc=True).execute()
+        
+        students = response.data if response.data else []
+        
+        # Check if there are more records
+        has_more = (page * per_page) < total
+        
+        return jsonify({
+            'success': True,
+            'data': students,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'has_more': has_more
+        })
+        
+    except Exception as e:
+        print(f"Error fetching students via API: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500

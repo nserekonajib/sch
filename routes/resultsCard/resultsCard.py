@@ -54,10 +54,13 @@ def get_grade_comment(percentage, grading_settings):
         if grade['min_percentage'] <= percentage <= grade['max_percentage']:
             return grade['grade_name'], grade['status']
     return 'N/A', 'No Grade Assigned'
+
+
 @results_bp.route('/r')
 @login_required
 def r():
     return render_template('results/index2.html')
+
 @results_bp.route('/')
 @login_required
 def index():
@@ -84,8 +87,9 @@ def index():
         
         classes = classes_response.data if classes_response.data else []
         
+        # FIXED: Direct query to students table - no class_enrollments
         students_response = supabase.table('students')\
-            .select('id, name, student_id, class_id, classes(name), photo_url, gender')\
+            .select('id, name, student_id, class_id, classes(name), photo_url, gender, status')\
             .eq('institute_id', institute['id'])\
             .eq('status', 'active')\
             .order('name')\
@@ -93,23 +97,33 @@ def index():
         
         students = students_response.data if students_response.data else []
         
+        # Process students to ensure class name is accessible
+        for student in students:
+            if student.get('classes') and isinstance(student['classes'], dict):
+                student['class_name'] = student['classes'].get('name', 'N/A')
+            else:
+                student['class_name'] = 'N/A'
+        
         return render_template('results/index.html', exams=exams, classes=classes, students=students, institute=institute)
         
     except Exception as e:
         print(f"Error loading results page: {e}")
+        import traceback
+        traceback.print_exc()
         return render_template('results/index.html', exams=[], classes=[], students=[], institute=institute)
 
 def generate_single_student_pdf(student_id, exam_ids, term, year, institute, grading):
     """Generate PDF for a single student and return as BytesIO"""
     try:
-        # Get student details
+        # FIXED: Get student details with class info - direct query
         student_response = supabase.table('students')\
-            .select('*, classes(name)')\
+            .select('*, classes(id, name)')\
             .eq('id', student_id)\
             .eq('institute_id', institute['id'])\
             .execute()
         
         if not student_response.data:
+            print(f"Student not found: {student_id}")
             return None
         
         student = student_response.data[0]
@@ -119,13 +133,18 @@ def generate_single_student_pdf(student_id, exam_ids, term, year, institute, gra
             .select('*')\
             .in_('id', exam_ids)\
             .execute()
-        print(exams_response)
+        
         exams = exams_response.data if exams_response.data else []
         
-        # Get subjects for student's class
+        # Get class_id from student record
         class_id = student.get('class_id')
+        if not class_id:
+            print(f"No class_id for student: {student_id}")
+            return None
+        
+        # Get subjects for student's class
         subjects_response = supabase.table('class_subjects')\
-            .select('*, subjects(name)')\
+            .select('*, subjects(id, name)')\
             .eq('class_id', class_id)\
             .eq('institute_id', institute['id'])\
             .execute()
@@ -133,7 +152,9 @@ def generate_single_student_pdf(student_id, exam_ids, term, year, institute, gra
         subjects = subjects_response.data if subjects_response.data else []
         
         if not subjects:
-            return None
+            print(f"No subjects found for class: {class_id}")
+            # Return a simple PDF with message instead of None
+            return generate_empty_results_pdf(student, institute, term, year, "No subjects configured for this class")
         
         # Get marks for each exam
         all_marks = {}
@@ -205,7 +226,7 @@ def generate_single_student_pdf(student_id, exam_ids, term, year, institute, gra
         
         overall_grade, overall_comment = get_grade_comment(overall_percentage, grading)
         
-        # Calculate position in class
+        # FIXED: Get class students directly from students table by class_id
         class_students_response = supabase.table('students')\
             .select('id, name')\
             .eq('class_id', class_id)\
@@ -215,6 +236,7 @@ def generate_single_student_pdf(student_id, exam_ids, term, year, institute, gra
         
         class_students = class_students_response.data if class_students_response.data else []
         
+        # Calculate percentages for all students in class
         class_percentages = []
         for class_student in class_students:
             student_total = 0
@@ -255,10 +277,13 @@ def generate_single_student_pdf(student_id, exam_ids, term, year, institute, gra
         
         total_students = len(class_percentages)
         
+        # Get class name from student's classes relation
+        class_name = student.get('classes', {}).get('name') if student.get('classes') else 'N/A'
+        
         result_data = {
             'institute': institute,
             'student': student,
-            'class_name': student['classes']['name'] if student.get('classes') else 'N/A',
+            'class_name': class_name,
             'exams': exams,
             'subjects': subject_results,
             'overall_percentage': round(overall_percentage, 1),
@@ -279,6 +304,43 @@ def generate_single_student_pdf(student_id, exam_ids, term, year, institute, gra
         
     except Exception as e:
         print(f"Error generating PDF for student {student_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def generate_empty_results_pdf(student, institute, term, year, message):
+    """Generate a PDF for a student with no results"""
+    try:
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                @page {{ size: A4; margin: 1cm; }}
+                body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                .message {{ color: #ffa500; font-size: 14pt; margin-top: 50px; }}
+                .info {{ margin-top: 30px; font-size: 10pt; }}
+            </style>
+        </head>
+        <body>
+            <h2>{institute.get('institute_name', 'Academic Institute')}</h2>
+            <h3>Student Report Card</h3>
+            <div class="info">
+                <p><strong>Student Name:</strong> {student.get('name', 'N/A')}</p>
+                <p><strong>Student ID:</strong> {student.get('student_id', 'N/A')}</p>
+                <p><strong>Term/Year:</strong> {term} / {year}</p>
+            </div>
+            <div class="message">
+                <p>{message}</p>
+                <p>Please contact the administrator to configure subjects and marks.</p>
+            </div>
+        </body>
+        </html>
+        """
+        return convert_html_to_pdf(html)
+    except Exception as e:
+        print(f"Error generating empty results PDF: {e}")
         return None
 
 @results_bp.route('/generate-class', methods=['POST'])
@@ -307,7 +369,7 @@ def generate_class_results():
         if not term:
             return jsonify({'success': False, 'message': 'Please enter the term'}), 400
         
-        # Get all students in the class
+        # FIXED: Get all students in the class directly from students table
         students_response = supabase.table('students')\
             .select('id, name, student_id')\
             .eq('class_id', class_id)\
@@ -319,7 +381,7 @@ def generate_class_results():
         students = students_response.data if students_response.data else []
         
         if not students:
-            return jsonify({'success': False, 'message': 'No students found in this class'}), 404
+            return jsonify({'success': False, 'message': 'No active students found in this class'}), 404
         
         # Get grading settings
         grading_response = supabase.table('exam_grading')\
@@ -336,7 +398,8 @@ def generate_class_results():
         failed_students = []
         
         # Generate PDF for each student
-        for idx, student in enumerate(students):
+        for student in students:
+            print(f"Generating PDF for student: {student['name']}")
             pdf_buffer = generate_single_student_pdf(
                 student['id'], exam_ids, term, year, institute, grading
             )
@@ -382,6 +445,7 @@ def generate_class_results():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @results_bp.route('/generate', methods=['POST'])
 @login_required

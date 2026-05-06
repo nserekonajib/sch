@@ -5,13 +5,12 @@
 
 {% block extra_css %}
 <style>
+    /* Custom animations and effects that complement Tailwind */
     .balance-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 20px;
-        padding: 25px;
-        color: white;
         position: relative;
         overflow: hidden;
+        z-index: 1;
     }
     .balance-card::before {
         content: '';
@@ -22,38 +21,20 @@
         height: 200%;
         background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
         transform: rotate(30deg);
-    }
-    .balance-amount {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin: 10px 0;
-    }
-    .btn-gradient {
-        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-    }
-    .btn-gradient:hover {
-        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
-        transform: translateY(-2px);
-    }
-    .btn-outline-orange {
-        border: 1px solid #ffa500;
-        color: #ffa500;
-        background: transparent;
-    }
-    .btn-outline-orange:hover {
-        background: #ffa500;
-        color: white;
+        pointer-events: none;
     }
     .toggle-switch {
         position: relative;
         display: inline-block;
         width: 52px;
         height: 28px;
+        flex-shrink: 0;
     }
     .toggle-switch input {
         opacity: 0;
         width: 0;
         height: 0;
+        position: absolute;
     }
     .toggle-slider {
         position: absolute;
@@ -62,7 +43,7 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background-color: #ccc;
+        background-color: #cbd5e1;
         transition: 0.3s;
         border-radius: 28px;
     }
@@ -78,13 +59,13 @@
         border-radius: 50%;
     }
     input:checked + .toggle-slider {
-        background-color: #ffa500;
+        background-color: #f59e0b;
     }
     input:checked + .toggle-slider:before {
         transform: translateX(24px);
     }
     
-    /* Custom Modal Styles */
+    /* Modal animations - fixed z-index */
     .custom-modal {
         display: none;
         position: fixed;
@@ -93,20 +74,28 @@
         width: 100%;
         height: 100%;
         background: rgba(0, 0, 0, 0.8);
-        z-index: 9999;
+        z-index: 99999;
         justify-content: center;
         align-items: center;
     }
     .custom-modal.active {
-        display: flex;
+        display: flex !important;
     }
     .custom-modal-content {
         background: white;
-        border-radius: 20px;
+        border-radius: 1rem;
         width: 90%;
         max-width: 500px;
         overflow: hidden;
         animation: modalSlideIn 0.3s ease-out;
+        position: relative;
+        z-index: 100000;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .custom-modal-content.large {
+        max-width: 800px;
+        height: 90vh;
     }
     @keyframes modalSlideIn {
         from {
@@ -117,80 +106,6 @@
             transform: translateY(0);
             opacity: 1;
         }
-    }
-    .custom-modal-content.large {
-        max-width: 800px;
-        height: 90vh;
-    }
-    .custom-modal-header {
-        padding: 15px 20px;
-        color: white;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .custom-modal-header.success {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    }
-    .custom-modal-header.error {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    }
-    .custom-modal-header.warning {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    }
-    .custom-modal-header.info {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    }
-    .custom-modal-close {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 24px;
-        cursor: pointer;
-        opacity: 0.8;
-        transition: opacity 0.2s;
-    }
-    .custom-modal-close:hover {
-        opacity: 1;
-    }
-    .custom-modal-body {
-        padding: 25px;
-        text-align: center;
-    }
-    .custom-modal-icon {
-        font-size: 64px;
-        margin-bottom: 20px;
-    }
-    .custom-modal-title {
-        font-size: 24px;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    .custom-modal-message {
-        color: #6b7280;
-        margin-bottom: 20px;
-        line-height: 1.5;
-    }
-    .custom-modal-buttons {
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-        margin-top: 20px;
-    }
-    .payment-iframe {
-        width: 100%;
-        height: 100%;
-        border: none;
-        min-height: 500px;
-    }
-    .topup-amount {
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    .topup-amount:hover, .topup-amount.selected {
-        background: #ffa500;
-        color: white;
-        border-color: #ffa500;
     }
     .btn-loading {
         position: relative;
@@ -213,46 +128,110 @@
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
-    .manual-payment-card {
-        background: #fef9e7;
-        border: 2px dashed #ffa500;
+    .payment-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        min-height: 500px;
     }
     .copy-btn {
         cursor: pointer;
         transition: all 0.2s;
+        padding: 4px 8px;
+        border-radius: 4px;
     }
     .copy-btn:hover {
-        background: #ffa500;
+        background: #f59e0b;
         color: white;
     }
-    .info-note {
-        background: #f0f9ff;
-        border-left: 4px solid #3b82f6;
+    .topup-amount {
+        cursor: pointer;
+        transition: all 0.2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .topup-amount:active {
+        transform: scale(0.98);
+    }
+    .topup-amount:hover {
+        background: #fef3c7;
+        border-color: #f59e0b;
+    }
+    .topup-amount.selected {
+        background: #f59e0b;
+        color: white;
+        border-color: #f59e0b;
+    }
+    
+    /* Mobile-specific fixes */
+    @media (max-width: 640px) {
+        .custom-modal-content {
+            width: 95%;
+            margin: 0.5rem;
+            max-height: 85vh;
+        }
+        .grid-cols-3 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .balance-card {
+            padding: 1rem;
+        }
+        .balance-amount {
+            font-size: 1.5rem;
+        }
+        button {
+            min-height: 44px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .topup-amount {
+            min-height: 48px;
+            padding: 0.75rem;
+        }
+        /* Ensure buttons are clickable */
+        .balance-card button {
+            position: relative;
+            z-index: 10;
+            pointer-events: auto;
+        }
+    }
+    
+    /* Touch-friendly improvements */
+    @media (hover: none) and (pointer: coarse) {
+        button, 
+        .topup-amount,
+        .toggle-slider,
+        .copy-btn {
+            cursor: pointer;
+            min-height: 48px;
+        }
+        .toggle-switch {
+            transform: scale(1.1);
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 py-6">
+<div class="container mx-auto px-4 py-6 max-w-7xl" style="position: relative; z-index: 1;">
     <!-- Header -->
     <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 mb-1">SMS Integration</h1>
-        <p class="text-gray-600">Configure SMS notifications and manage your balance</p>
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-1">SMS Integration</h1>
+        <p class="text-sm md:text-base text-gray-600">Configure SMS notifications and manage your balance</p>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Main Settings -->
-        <div class="lg:col-span-2">
-            <!-- Balance Card -->
-            <div class="balance-card mb-6">
-                <div class="flex justify-between items-start">
-                    <div>
+    <div class="flex flex-col lg:flex-row gap-6">
+        <!-- Main Settings - Left Column -->
+        <div class="flex-1 lg:w-2/3">
+            <!-- Balance Card - Fixed button clickability -->
+            <div class="balance-card rounded-2xl p-4 md:p-6 mb-6 text-white" style="position: relative;">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div class="flex-1" style="position: relative; z-index: 2;">
                         <p class="text-sm opacity-90">Available Balance</p>
-                        <p class="balance-amount" id="balanceAmount">UGX 0</p>
-                        <p class="text-xs opacity-75">Total Spent: <span id="totalSpent">UGX 0</span></p>
+                        <p class="text-2xl md:text-3xl font-bold mt-1" id="balanceAmount">UGX 0</p>
+                        <p class="text-xs opacity-75 mt-1">Total Spent: <span id="totalSpent">UGX 0</span></p>
                     </div>
                     <button onclick="openTopUpModal()" 
-                            class="px-4 py-2 bg-white text-purple-600 rounded-lg text-sm font-semibold hover:bg-gray-100 transition-all">
+                            style="position: relative; z-index: 10; cursor: pointer; pointer-events: auto;"
+                            class="w-full sm:w-auto px-6 py-3 bg-white text-purple-600 rounded-lg text-sm font-semibold hover:bg-gray-100 active:bg-gray-200 transition-all shadow-lg">
                         <i class="fas fa-plus-circle"></i> Top Up
                     </button>
                 </div>
@@ -260,29 +239,29 @@
 
             <!-- Settings Form -->
             <div class="bg-white rounded-xl shadow-md overflow-hidden">
-                <div class="px-6 py-4 border-b bg-gradient-to-r from-orange-50 to-white">
+                <div class="px-4 md:px-6 py-4 border-b bg-gradient-to-r from-orange-50 to-white">
                     <h2 class="text-lg font-semibold text-gray-800">
                         <i class="fas fa-sliders-h text-orange-500"></i> Configuration
                     </h2>
                 </div>
                 
-                <div class="p-6">
+                <div class="p-4 md:p-6">
                     <!-- Note about credentials -->
-                    <div class="mb-6 p-4 bg-green-50 rounded-lg info-note">
-                        <div class="flex items-start gap-3">
-                            <i class="fas fa-check-circle text-green-600 mt-0.5"></i>
-                            <div>
+                    <div class="mb-6 p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
+                        <div class="flex flex-col sm:flex-row items-start gap-3">
+                            <i class="fas fa-check-circle text-green-600 text-xl mt-1"></i>
+                            <div class="flex-1">
                                 <p class="text-sm font-semibold text-gray-800">API Credentials Configured</p>
                                 <p class="text-xs text-gray-600">Your SMS API credentials are securely stored in the system. No configuration needed.</p>
                             </div>
                         </div>
                     </div>
                     
-                    <form id="smsSettingsForm">
+                    <form id="smsSettingsForm" class="space-y-6">
                         <!-- Enable SMS -->
-                        <div class="mb-6 flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                            <div>
-                                <label class="font-semibold">Enable SMS Notifications</label>
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                            <div class="flex-1">
+                                <label class="font-semibold text-gray-800 block mb-1">Enable SMS Notifications</label>
                                 <p class="text-xs text-gray-500">Send SMS on fee payments</p>
                             </div>
                             <label class="toggle-switch">
@@ -291,25 +270,26 @@
                             </label>
                         </div>
                         
-                        <!-- Sender ID Only -->
-                        <div class="mb-4">
+                        <!-- Sender ID -->
+                        <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Sender ID</label>
                             <input type="text" id="senderId" value="{{ settings.sender_id if settings else 'SCHOOL' }}" maxlength="11"
-                                   class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-orange-500">
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all">
                             <p class="text-xs text-gray-500 mt-1">Max 11 characters - This will appear as the sender name on phones</p>
                         </div>
                         
-                        <div class="mb-4">
+                        <!-- Cost per SMS -->
+                        <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Cost per SMS (UGX)</label>
                             <input type="number" id="costPerSms" value="{{ settings.cost_per_sms if settings else 35 }}"
-                                   class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-orange-500">
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all">
                             <p class="text-xs text-gray-500 mt-1">Cost per SMS segment (160 chars GSM / 70 chars Unicode)</p>
                         </div>
                         
                         <!-- Send on Payment -->
-                        <div class="mb-6 flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                            <div>
-                                <label class="font-semibold">Auto-send on Payment</label>
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                            <div class="flex-1">
+                                <label class="font-semibold text-gray-800 block mb-1">Auto-send on Payment</label>
                                 <p class="text-xs text-gray-500">Send SMS receipt after fee payment</p>
                             </div>
                             <label class="toggle-switch">
@@ -319,24 +299,26 @@
                         </div>
                         
                         <!-- Test SMS -->
-                        <div class="border-t pt-6 mb-6">
-                            <h3 class="font-semibold mb-3">Test SMS</h3>
-                            <div class="flex gap-3">
+                        <div class="border-t pt-6">
+                            <h3 class="font-semibold text-gray-800 mb-3">Test SMS</h3>
+                            <div class="flex flex-col sm:flex-row gap-3">
                                 <input type="tel" id="testPhone" placeholder="Phone number (e.g., 256700000000)"
-                                       class="flex-1 px-4 py-2 border rounded-lg">
+                                       class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200">
                                 <button type="button" onclick="sendTestSMS()" id="testBtn"
-                                        class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                        class="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all font-medium">
                                     <i class="fas fa-paper-plane"></i> Send
                                 </button>
                             </div>
                         </div>
                         
                         <!-- Action Buttons -->
-                        <div class="flex gap-3">
+                        <div class="flex flex-col sm:flex-row gap-3 pt-4">
                             <button type="button" onclick="resetForm()" 
-                                    class="px-6 py-2 border rounded-lg hover:bg-gray-50">Reset</button>
+                                    class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-medium">
+                                Reset
+                            </button>
                             <button type="submit" id="saveBtn"
-                                    class="flex-1 px-6 py-2 btn-gradient text-white rounded-lg font-semibold">
+                                    class="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-md">
                                 <i class="fas fa-save"></i> Save Settings
                             </button>
                         </div>
@@ -345,22 +327,43 @@
             </div>
         </div>
         
-        <!-- Info Sidebar -->
-        <div class="lg:col-span-1">
-            <div class="bg-white rounded-xl shadow-md p-6 mb-6">
-                <h3 class="font-semibold mb-3"><i class="fas fa-info-circle text-orange-500"></i> How it works</h3>
+        <!-- Info Sidebar - Right Column -->
+        <div class="lg:w-1/3 space-y-6">
+            <!-- How it works card -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <i class="fas fa-info-circle text-orange-500"></i> How it works
+                </h3>
                 <ul class="text-sm text-gray-600 space-y-2">
-                    <li>• SMS costs deducted from your balance</li>
-                    <li>• Pay as you go - top up anytime</li>
-                    <li>• Each SMS segment costs UGX <span id="displayCostPerSms">{{ settings.cost_per_sms if settings else 35 }}</span></li>
-                    <li>• Long messages split into segments</li>
-                    <li>• Unicode messages (special chars) use 70 chars/segment</li>
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-check-circle text-green-500 text-xs mt-0.5 flex-shrink-0"></i>
+                        <span>SMS costs deducted from your balance</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-check-circle text-green-500 text-xs mt-0.5 flex-shrink-0"></i>
+                        <span>Pay as you go - top up anytime</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-check-circle text-green-500 text-xs mt-0.5 flex-shrink-0"></i>
+                        <span>Each SMS segment costs UGX <span id="displayCostPerSms">{{ settings.cost_per_sms if settings else 35 }}</span></span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-check-circle text-green-500 text-xs mt-0.5 flex-shrink-0"></i>
+                        <span>Long messages split into segments</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-check-circle text-green-500 text-xs mt-0.5 flex-shrink-0"></i>
+                        <span>Unicode messages use 70 chars/segment</span>
+                    </li>
                 </ul>
             </div>
             
+            <!-- SMS Template card -->
             <div class="bg-white rounded-xl shadow-md p-6">
-                <h3 class="font-semibold mb-3"><i class="fas fa-envelope-open-text text-orange-500"></i> SMS Template</h3>
-                <div class="bg-gray-50 rounded-lg p-3 text-xs font-mono">
+                <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <i class="fas fa-envelope-open-text text-orange-500"></i> SMS Template
+                </h3>
+                <div class="bg-gray-50 rounded-lg p-3 text-xs font-mono text-gray-700 break-words">
                     Payment Received! 🎓<br>
                     Student: [Name]<br>
                     Amount: UGX [Amount]<br>
@@ -376,42 +379,42 @@
 <!-- Top Up Modal -->
 <div id="topupModal" class="custom-modal">
     <div class="custom-modal-content">
-        <div class="custom-modal-header info">
-            <h3><i class="fas fa-plus-circle"></i> Top Up Balance</h3>
-            <button class="custom-modal-close" onclick="closeCustomModal('topupModal')">&times;</button>
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3 flex justify-between items-center sticky top-0">
+            <h3 class="text-white font-semibold"><i class="fas fa-plus-circle"></i> Top Up Balance</h3>
+            <button class="text-white text-2xl hover:opacity-80" onclick="closeCustomModal('topupModal')">&times;</button>
         </div>
-        <div class="custom-modal-body">
-            <p class="text-gray-600 mb-4">Select amount to add to your balance:</p>
-            <div class="grid grid-cols-3 gap-3 mb-4">
+        <div class="p-6">
+            <p class="text-gray-600 mb-4 text-center">Select amount to add to your balance:</p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                 {% for amount in [10000, 25000, 50000, 100000, 250000, 500000] %}
-                <button type="button" onclick="selectAmount({{ amount }})" 
-                        class="topup-amount p-3 border rounded-lg text-center font-semibold hover:border-orange-500">
-                    UGX {{ "{:,.0f}".format(amount).replace(',', ',') }}
+                <button type="button" onclick="selectAmount({{ amount }}, this)" 
+                        class="topup-amount p-3 border border-gray-300 rounded-lg text-center font-semibold hover:border-orange-500 transition-all active:scale-95">
+                    UGX {{ "{:,.0f}".format(amount) }}
                 </button>
                 {% endfor %}
             </div>
             <div class="mb-4">
-                <label class="block text-sm font-medium mb-2">Custom Amount (UGX)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Custom Amount (UGX)</label>
                 <input type="number" id="customAmount" placeholder="Enter amount" min="5000" step="1000"
-                       class="w-full px-4 py-2 border rounded-lg">
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200">
             </div>
             <button onclick="proceedToPayment()" id="topupBtn"
-                    class="w-full py-3 btn-gradient text-white rounded-lg font-semibold">
+                    class="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-md active:scale-95">
                 <i class="fas fa-credit-card"></i> Proceed to Payment
             </button>
         </div>
     </div>
 </div>
 
-<!-- Payment Modal with Iframe -->
+<!-- Payment Modal -->
 <div id="paymentModal" class="custom-modal">
-    <div class="custom-modal-content large">
-        <div class="custom-modal-header info">
-            <h3><i class="fas fa-credit-card"></i> Complete Payment</h3>
-            <button class="custom-modal-close" onclick="closePaymentModal()">&times;</button>
+    <div class="custom-modal-content large flex flex-col h-full">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3 flex justify-between items-center rounded-t-xl sticky top-0">
+            <h3 class="text-white font-semibold"><i class="fas fa-credit-card"></i> Complete Payment</h3>
+            <button class="text-white text-2xl hover:opacity-80" onclick="closePaymentModal()">&times;</button>
         </div>
-        <div class="custom-modal-body" style="padding: 0; height: calc(90vh - 60px;">
-            <iframe id="paymentIframe" class="payment-iframe" src="about:blank"></iframe>
+        <div class="flex-1 p-0">
+            <iframe id="paymentIframe" class="payment-iframe w-full h-full" src="about:blank"></iframe>
         </div>
     </div>
 </div>
@@ -419,16 +422,16 @@
 <!-- Alert Modal -->
 <div id="alertModal" class="custom-modal">
     <div class="custom-modal-content">
-        <div class="custom-modal-header" id="alertHeader">
-            <h3 id="alertTitle">Alert</h3>
-            <button class="custom-modal-close" onclick="closeCustomModal('alertModal')">&times;</button>
+        <div class="px-5 py-3 flex justify-between items-center sticky top-0" id="alertHeader">
+            <h3 class="text-white font-semibold" id="alertTitle">Alert</h3>
+            <button class="text-white text-2xl hover:opacity-80" onclick="closeCustomModal('alertModal')">&times;</button>
         </div>
-        <div class="custom-modal-body">
-            <div id="alertIcon" class="custom-modal-icon"></div>
-            <div class="custom-modal-title" id="alertMessageTitle"></div>
-            <div class="custom-modal-message" id="alertMessage"></div>
-            <div class="custom-modal-buttons">
-                <button onclick="closeCustomModal('alertModal')" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+        <div class="p-6 text-center">
+            <div id="alertIcon" class="text-6xl mb-4"></div>
+            <div class="text-xl font-bold text-gray-800 mb-2" id="alertMessageTitle"></div>
+            <div class="text-gray-600 mb-4" id="alertMessage"></div>
+            <div class="flex justify-center">
+                <button onclick="closeCustomModal('alertModal')" class="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all">
                     OK
                 </button>
             </div>
@@ -439,19 +442,19 @@
 <!-- Confirm Modal -->
 <div id="confirmModal" class="custom-modal">
     <div class="custom-modal-content">
-        <div class="custom-modal-header warning">
-            <h3>Confirm Action</h3>
-            <button class="custom-modal-close" onclick="closeCustomModal('confirmModal')">&times;</button>
+        <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 px-5 py-3 flex justify-between items-center sticky top-0">
+            <h3 class="text-white font-semibold">Confirm Action</h3>
+            <button class="text-white text-2xl hover:opacity-80" onclick="closeCustomModal('confirmModal')">&times;</button>
         </div>
-        <div class="custom-modal-body">
-            <div class="custom-modal-icon">❓</div>
-            <div class="custom-modal-title" id="confirmTitle"></div>
-            <div class="custom-modal-message" id="confirmMessage"></div>
-            <div class="custom-modal-buttons">
-                <button onclick="closeCustomModal('confirmModal')" class="px-6 py-2 border rounded-lg hover:bg-gray-50">
+        <div class="p-6 text-center">
+            <div class="text-6xl mb-4">❓</div>
+            <div class="text-xl font-bold text-gray-800 mb-2" id="confirmTitle"></div>
+            <div class="text-gray-600 mb-6" id="confirmMessage"></div>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <button onclick="closeCustomModal('confirmModal')" class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-medium">
                     Cancel
                 </button>
-                <button id="confirmYesBtn" class="px-6 py-2 btn-gradient text-white rounded-lg font-semibold">
+                <button id="confirmYesBtn" class="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition-all">
                     Yes
                 </button>
             </div>
@@ -459,59 +462,59 @@
     </div>
 </div>
 
-<!-- Manual Payment Modal (when gateway fails) -->
+<!-- Manual Payment Modal -->
 <div id="manualPaymentModal" class="custom-modal">
     <div class="custom-modal-content">
-        <div class="custom-modal-header warning">
-            <h3><i class="fas fa-exclamation-triangle"></i> Payment Gateway Issue</h3>
-            <button class="custom-modal-close" onclick="closeCustomModal('manualPaymentModal')">&times;</button>
+        <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 px-5 py-3 flex justify-between items-center sticky top-0">
+            <h3 class="text-white font-semibold"><i class="fas fa-exclamation-triangle"></i> Payment Gateway Issue</h3>
+            <button class="text-white text-2xl hover:opacity-80" onclick="closeCustomModal('manualPaymentModal')">&times;</button>
         </div>
-        <div class="custom-modal-body">
-            <div class="custom-modal-icon">⚠️</div>
-            <div class="custom-modal-title">Manual Payment Required</div>
-            <div class="custom-modal-message">
-                We're experiencing technical issues with the payment gateway. Please make a manual payment to complete your top-up.
+        <div class="p-6">
+            <div class="text-center mb-4">
+                <div class="text-6xl mb-2">⚠️</div>
+                <div class="text-xl font-bold text-gray-800">Manual Payment Required</div>
+                <p class="text-gray-600 text-sm mt-2">We're experiencing technical issues with the payment gateway. Please make a manual payment to complete your top-up.</p>
             </div>
             
-            <div class="manual-payment-card rounded-lg p-4 mb-4 text-left">
-                <p class="font-semibold text-gray-800 mb-2">Bank/ Mobile Money Details:</p>
+            <div class="bg-yellow-50 rounded-lg p-4 mb-4 border-2 border-dashed border-orange-300">
+                <p class="font-semibold text-gray-800 mb-3">Bank/ Mobile Money Details:</p>
                 <div class="space-y-2 text-sm">
-                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
-                        <span class="font-medium">Account Name:</span>
-                        <span>Lunserk ERP Solutions</span>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-2 bg-white rounded">
+                        <span class="font-medium text-gray-700">Account Name:</span>
+                        <span class="text-gray-900 break-words">Lunserk ERP Solutions</span>
                     </div>
-                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
-                        <span class="font-medium">Mobile Money:</span>
-                        <div class="flex items-center gap-2">
-                            <span id="mobileMoneyNumber">0748675870</span>
-                            <button onclick="copyToClipboard('0748675870')" class="copy-btn text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-copy"></i>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-2 bg-white rounded">
+                        <span class="font-medium text-gray-700">Mobile Money:</span>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span id="mobileMoneyNumber" class="font-mono">0748675870</span>
+                            <button onclick="copyToClipboard('0748675870')" class="copy-btn text-blue-600 hover:text-blue-800 p-2">
+                                <i class="fas fa-copy"></i> Copy
                             </button>
                         </div>
                     </div>
-                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
-                        <span class="font-medium">Provider:</span>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-2 bg-white rounded">
+                        <span class="font-medium text-gray-700">Provider:</span>
                         <span>MTN / Airtel Uganda</span>
                     </div>
-                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
-                        <span class="font-medium">Reference:</span>
-                        <span class="font-mono text-xs" id="manualReference">Loading...</span>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-2 bg-white rounded">
+                        <span class="font-medium text-gray-700">Reference:</span>
+                        <span class="font-mono text-xs break-all" id="manualReference">Loading...</span>
                     </div>
                 </div>
             </div>
             
-            <div class="info-note rounded-lg p-3 mb-4 text-left">
-                <p class="text-xs text-gray-600">
+            <div class="bg-blue-50 rounded-lg p-3 mb-4 border-l-4 border-blue-500">
+                <p class="text-xs text-gray-700">
                     <i class="fas fa-info-circle text-blue-500"></i> 
                     After making the payment, please contact support with your reference number to have your balance updated.
                 </p>
             </div>
             
-            <div class="flex gap-3">
-                <button onclick="contactSupport()" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button onclick="contactSupport()" class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-medium">
                     <i class="fab fa-whatsapp"></i> Contact Support
                 </button>
-                <button onclick="closeCustomModal('manualPaymentModal')" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">
+                <button onclick="closeCustomModal('manualPaymentModal')" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all">
                     Close
                 </button>
             </div>
@@ -521,6 +524,7 @@
 
 <script>
     let selectedAmount = null;
+    let selectedAmountButton = null;
     let pendingPaymentAmount = null;
     
     // Custom Alert Function
@@ -531,25 +535,25 @@
         const messageTitle = document.getElementById('alertMessageTitle');
         const messageText = document.getElementById('alertMessage');
         
-        // Set icon based on type
         let iconHtml = '';
         let headerClass = '';
+        
         if (type === 'success') {
             iconHtml = '✅';
-            headerClass = 'success';
+            headerClass = 'bg-gradient-to-r from-green-500 to-green-600';
         } else if (type === 'error') {
             iconHtml = '❌';
-            headerClass = 'error';
+            headerClass = 'bg-gradient-to-r from-red-500 to-red-600';
         } else if (type === 'warning') {
             iconHtml = '⚠️';
-            headerClass = 'warning';
+            headerClass = 'bg-gradient-to-r from-yellow-500 to-yellow-600';
         } else {
             iconHtml = 'ℹ️';
-            headerClass = 'info';
+            headerClass = 'bg-gradient-to-r from-blue-500 to-blue-600';
         }
         
-        header.className = `custom-modal-header ${headerClass}`;
-        icon.innerHTML = `<div style="font-size: 64px;">${iconHtml}</div>`;
+        header.className = `${headerClass} px-5 py-3 flex justify-between items-center sticky top-0`;
+        icon.innerHTML = iconHtml;
         messageTitle.textContent = title;
         messageText.textContent = message;
         
@@ -566,7 +570,6 @@
         confirmTitle.textContent = title;
         confirmMessage.textContent = message;
         
-        // Remove old event listeners
         const newConfirmBtn = confirmBtn.cloneNode(true);
         confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
         
@@ -578,14 +581,16 @@
         modal.classList.add('active');
     }
     
-    // Load balance on page load
+    // Load balance
     async function loadBalance() {
         try {
             const response = await fetch('/sms-settings/get-balance');
             const result = await response.json();
             if (result.success) {
-                document.getElementById('balanceAmount').innerHTML = `UGX ${result.balance.toLocaleString()}`;
-                document.getElementById('totalSpent').innerHTML = `UGX ${result.total_spent.toLocaleString()}`;
+                const balanceElem = document.getElementById('balanceAmount');
+                const spentElem = document.getElementById('totalSpent');
+                if (balanceElem) balanceElem.innerHTML = `UGX ${result.balance.toLocaleString()}`;
+                if (spentElem) spentElem.innerHTML = `UGX ${result.total_spent.toLocaleString()}`;
             }
         } catch (error) {
             console.error('Error loading balance:', error);
@@ -593,29 +598,35 @@
     }
     
     // Select amount
-    function selectAmount(amount) {
+    function selectAmount(amount, button) {
         selectedAmount = amount;
-        document.querySelectorAll('.topup-amount').forEach(btn => {
-            btn.classList.remove('selected', 'bg-orange-500', 'text-white');
-        });
-        event.target.classList.add('selected', 'bg-orange-500', 'text-white');
-        document.getElementById('customAmount').value = '';
+        if (selectedAmountButton) {
+            selectedAmountButton.classList.remove('selected', 'bg-orange-500', 'text-white', 'border-orange-500');
+        }
+        selectedAmountButton = button;
+        button.classList.add('selected', 'bg-orange-500', 'text-white', 'border-orange-500');
+        const customAmount = document.getElementById('customAmount');
+        if (customAmount) customAmount.value = '';
     }
     
     // Open top up modal
     function openTopUpModal() {
         selectedAmount = null;
-        document.querySelectorAll('.topup-amount').forEach(btn => {
-            btn.classList.remove('selected', 'bg-orange-500', 'text-white');
-        });
-        document.getElementById('customAmount').value = '';
-        document.getElementById('topupModal').classList.add('active');
+        if (selectedAmountButton) {
+            selectedAmountButton.classList.remove('selected', 'bg-orange-500', 'text-white', 'border-orange-500');
+            selectedAmountButton = null;
+        }
+        const customAmount = document.getElementById('customAmount');
+        if (customAmount) customAmount.value = '';
+        const modal = document.getElementById('topupModal');
+        if (modal) modal.classList.add('active');
     }
     
     // Proceed to payment
     async function proceedToPayment() {
         let amount = selectedAmount;
-        const customAmount = parseInt(document.getElementById('customAmount').value);
+        const customAmountInput = document.getElementById('customAmount');
+        const customAmount = customAmountInput ? parseInt(customAmountInput.value) : null;
         
         if (customAmount && customAmount >= 5000) {
             amount = customAmount;
@@ -629,8 +640,10 @@
         pendingPaymentAmount = amount;
         
         const btn = document.getElementById('topupBtn');
-        btn.classList.add('btn-loading');
-        btn.disabled = true;
+        if (btn) {
+            btn.classList.add('btn-loading');
+            btn.disabled = true;
+        }
         
         try {
             const response = await fetch('/sms-settings/initiate-payment', {
@@ -641,16 +654,18 @@
             
             const result = await response.json();
             
-            btn.classList.remove('btn-loading');
-            btn.disabled = false;
+            if (btn) {
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }
             
             if (result.success) {
                 closeCustomModal('topupModal');
                 const iframe = document.getElementById('paymentIframe');
-                iframe.src = result.redirect_url;
-                document.getElementById('paymentModal').classList.add('active');
+                if (iframe) iframe.src = result.redirect_url;
+                const paymentModal = document.getElementById('paymentModal');
+                if (paymentModal) paymentModal.classList.add('active');
                 
-                // Set up iframe message listener for payment completion
                 window.paymentMessageHandler = function(event) {
                     if (event.data && event.data.type === 'payment_complete') {
                         closePaymentModal();
@@ -661,24 +676,23 @@
                 };
                 window.addEventListener('message', window.paymentMessageHandler);
                 
-                // Timeout to detect if iframe fails to load
                 setTimeout(() => {
-                    const iframeLoaded = iframe.contentDocument && iframe.contentDocument.readyState === 'complete';
-                    if (!iframeLoaded && document.getElementById('paymentModal').classList.contains('active')) {
+                    const paymentModalCheck = document.getElementById('paymentModal');
+                    if (paymentModalCheck && paymentModalCheck.classList.contains('active')) {
                         closePaymentModal();
                         showManualPaymentOption(amount);
                     }
                 }, 10000);
-                
             } else {
-                showAlert('Payment Failed', result.message || 'Failed to initiate payment. Please try again or use manual payment.', 'error');
+                showAlert('Payment Failed', result.message || 'Failed to initiate payment.', 'error');
                 showManualPaymentOption(amount);
             }
         } catch (error) {
-            console.error('Error:', error);
-            btn.classList.remove('btn-loading');
-            btn.disabled = false;
-            showAlert('Connection Error', 'Failed to connect to payment gateway. Please use manual payment option.', 'error');
+            if (btn) {
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }
+            showAlert('Connection Error', 'Failed to connect to payment gateway.', 'error');
             showManualPaymentOption(amount);
         }
     }
@@ -686,10 +700,10 @@
     // Show manual payment option
     function showManualPaymentOption(amount) {
         const reference = `MANUAL_${Date.now()}_${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
-        document.getElementById('manualReference').textContent = reference;
+        const manualRef = document.getElementById('manualReference');
+        if (manualRef) manualRef.textContent = reference;
         pendingPaymentAmount = amount;
         
-        // Store manual payment request in session for tracking
         fetch('/sms-settings/store-manual-request', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -697,7 +711,8 @@
         }).catch(console.error);
         
         closeCustomModal('paymentModal');
-        document.getElementById('manualPaymentModal').classList.add('active');
+        const manualModal = document.getElementById('manualPaymentModal');
+        if (manualModal) manualModal.classList.add('active');
     }
     
     // Copy to clipboard
@@ -711,16 +726,18 @@
     
     // Contact support
     function contactSupport() {
-        const message = `Hello, I've made a manual payment for SMS top-up. Reference: ${document.getElementById('manualReference').textContent}, Amount: UGX ${pendingPaymentAmount?.toLocaleString()}`;
+        const referenceElem = document.getElementById('manualReference');
+        const reference = referenceElem ? referenceElem.textContent : '';
+        const message = `Hello, I've made a manual payment for SMS top-up. Reference: ${reference}, Amount: UGX ${pendingPaymentAmount?.toLocaleString()}`;
         window.open(`https://wa.me/256748675870?text=${encodeURIComponent(message)}`, '_blank');
-        showAlert('Support Contact', 'Please share your payment screenshot and reference number with support.', 'info');
     }
     
     // Close payment modal
     function closePaymentModal() {
         const iframe = document.getElementById('paymentIframe');
-        iframe.src = 'about:blank';
-        document.getElementById('paymentModal').classList.remove('active');
+        if (iframe) iframe.src = 'about:blank';
+        const paymentModal = document.getElementById('paymentModal');
+        if (paymentModal) paymentModal.classList.remove('active');
         if (window.paymentMessageHandler) {
             window.removeEventListener('message', window.paymentMessageHandler);
         }
@@ -729,20 +746,25 @@
     
     // Close custom modal
     function closeCustomModal(modalId) {
-        document.getElementById(modalId).classList.remove('active');
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.remove('active');
     }
     
     // Send test SMS
     async function sendTestSMS() {
-        const phone = document.getElementById('testPhone').value.trim();
+        const phoneInput = document.getElementById('testPhone');
+        const phone = phoneInput ? phoneInput.value.trim() : '';
+        
         if (!phone) {
             showAlert('Missing Information', 'Please enter a phone number', 'warning');
             return;
         }
         
         const btn = document.getElementById('testBtn');
-        btn.classList.add('btn-loading');
-        btn.disabled = true;
+        if (btn) {
+            btn.classList.add('btn-loading');
+            btn.disabled = true;
+        }
         
         try {
             const response = await fetch('/sms-settings/test', {
@@ -753,12 +775,14 @@
             
             const result = await response.json();
             
-            btn.classList.remove('btn-loading');
-            btn.disabled = false;
+            if (btn) {
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }
             
             if (result.success) {
                 showAlert('Test SMS Sent', result.message, 'success');
-                document.getElementById('testPhone').value = '';
+                if (phoneInput) phoneInput.value = '';
                 loadBalance();
             } else {
                 if (result.insufficient_balance) {
@@ -770,59 +794,82 @@
                 }
             }
         } catch (error) {
-            btn.classList.remove('btn-loading');
-            btn.disabled = false;
+            if (btn) {
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }
             showAlert('Error', 'Failed to send test SMS', 'error');
         }
     }
     
     // Save settings
-    document.getElementById('smsSettingsForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const btn = document.getElementById('saveBtn');
-        btn.classList.add('btn-loading');
-        btn.disabled = true;
-        
-        const data = {
-            sender_id: document.getElementById('senderId').value.trim(),
-            enabled: document.getElementById('smsEnabled').checked,
-            send_on_payment: document.getElementById('sendOnPayment').checked,
-            cost_per_sms: parseInt(document.getElementById('costPerSms').value) || 35
-        };
-        
-        try {
-            const response = await fetch('/sms-settings/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+    const settingsForm = document.getElementById('smsSettingsForm');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            const result = await response.json();
-            
-            btn.classList.remove('btn-loading');
-            btn.disabled = false;
-            
-            if (result.success) {
-                showAlert('Success', result.message, 'success');
-                document.getElementById('displayCostPerSms').textContent = data.cost_per_sms;
-            } else {
-                showAlert('Failed', result.message, 'error');
+            const btn = document.getElementById('saveBtn');
+            if (btn) {
+                btn.classList.add('btn-loading');
+                btn.disabled = true;
             }
-        } catch (error) {
-            btn.classList.remove('btn-loading');
-            btn.disabled = false;
-            showAlert('Error', 'Failed to save settings', 'error');
-        }
-    });
+            
+            const senderId = document.getElementById('senderId');
+            const smsEnabled = document.getElementById('smsEnabled');
+            const sendOnPayment = document.getElementById('sendOnPayment');
+            const costPerSms = document.getElementById('costPerSms');
+            
+            const data = {
+                sender_id: senderId ? senderId.value.trim() : 'SCHOOL',
+                enabled: smsEnabled ? smsEnabled.checked : false,
+                send_on_payment: sendOnPayment ? sendOnPayment.checked : true,
+                cost_per_sms: parseInt(costPerSms ? costPerSms.value : 35) || 35
+            };
+            
+            try {
+                const response = await fetch('/sms-settings/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (btn) {
+                    btn.classList.remove('btn-loading');
+                    btn.disabled = false;
+                }
+                
+                if (result.success) {
+                    showAlert('Success', result.message, 'success');
+                    const displayCost = document.getElementById('displayCostPerSms');
+                    if (displayCost) displayCost.textContent = data.cost_per_sms;
+                } else {
+                    showAlert('Failed', result.message, 'error');
+                }
+            } catch (error) {
+                if (btn) {
+                    btn.classList.remove('btn-loading');
+                    btn.disabled = false;
+                }
+                showAlert('Error', 'Failed to save settings', 'error');
+            }
+        });
+    }
     
     // Reset form
     function resetForm() {
-        document.getElementById('senderId').value = 'SCHOOL';
-        document.getElementById('smsEnabled').checked = false;
-        document.getElementById('sendOnPayment').checked = true;
-        document.getElementById('costPerSms').value = 35;
-        document.getElementById('testPhone').value = '';
+        const senderId = document.getElementById('senderId');
+        const smsEnabled = document.getElementById('smsEnabled');
+        const sendOnPayment = document.getElementById('sendOnPayment');
+        const costPerSms = document.getElementById('costPerSms');
+        const testPhone = document.getElementById('testPhone');
+        
+        if (senderId) senderId.value = 'SCHOOL';
+        if (smsEnabled) smsEnabled.checked = false;
+        if (sendOnPayment) sendOnPayment.checked = true;
+        if (costPerSms) costPerSms.value = 35;
+        if (testPhone) testPhone.value = '';
         showAlert('Form Reset', 'All settings have been reset', 'info');
     }
     
@@ -831,7 +878,7 @@
     
     // Close modal on outside click
     window.onclick = function(event) {
-        if (event.target.classList.contains('custom-modal')) {
+        if (event.target.classList && event.target.classList.contains('custom-modal')) {
             event.target.classList.remove('active');
         }
     }
