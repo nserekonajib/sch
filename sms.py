@@ -2,7 +2,7 @@ import requests
 import hashlib
 school_code = "14001"
 password = "ba46b319-0ab0-43d2-b509-9d0199f5c6b5"
-def test1():
+def fun1():
     
     date = "2024-01-15"
     
@@ -22,7 +22,7 @@ def test1():
 # CONFIGURATION
 # =========================
 
-def test2():
+def fun2():
   
     from_date = "2024-01-01"
     to_date = "2024-01-31"
@@ -72,80 +72,4 @@ def test2():
 
     except Exception as e:
         print("ERROR:", str(e))
-        
-import requests
-import hashlib
-import json
-
-BASE_URL = "https://schoolpay.co.ug/paymentapi/AndroidRS/AdhocPayments"
-
-
-def generate_hash(school_code, reference, password):
-    """
-    MD5(SchoolCode + IdentifyingReference + Password)
-    """
-    raw = f"{school_code}{reference}{password}"
-    return hashlib.md5(raw.encode()).hexdigest().upper()
-
-
-def request_mobile_money_payment(
-    school_code: str,
-    password: str,
-    amount: int,
-    external_reference: str,
-    phone_number: str,
-    first_name: str,
-    last_name: str,
-    reason: str
-):
-    """
-    Triggers instant mobile money debit request via SchoolPay API
-    """
-
-    # 1. Generate authentication hash
-    hash_value = generate_hash(school_code, external_reference, password)
-
-    # 2. Build URL
-    url = f"{BASE_URL}/Request/{school_code}/{hash_value}"
-
-    # 3. Payload
-    payload = {
-        "amount": amount,
-        "externalReference": external_reference,
-        "phoneNumber": phone_number,
-        "firstName": first_name,
-        "lastName": last_name,
-        "reason": reason
-    }
-
-    # 4. Send request
-    try:
-        response = requests.post(url, json=payload)
-
-        try:
-            data = response.json()
-        except:
-            return {
-                "error": "Invalid JSON response",
-                "raw": response.text,
-                "status_code": response.status_code
-            }
-
-        return data
-
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
-        
-result = request_mobile_money_payment(
-    school_code="14001",
-    password="ba46b319-0ab0-43d2-b509-9d0199f5c6b5",
-    amount=10000,
-    external_reference="INV-12345",
-    phone_number="256748675870",    
-    first_name="John",
-    last_name="Doe",
-    reason="Tuition Fee"
-)
-print(result)
+ 

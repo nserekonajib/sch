@@ -61,6 +61,7 @@ def index():
         print(f"Error loading student list page: {e}")
         return render_template('student_list/index.html', classes=[], institute=None)
 
+
 @student_list_bp.route('/api/students', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def get_students():
