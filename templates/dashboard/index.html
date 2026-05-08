@@ -363,20 +363,57 @@
         </div>
     </div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     let incomeExpenseChart = null;
     let classDistributionChart = null;
+    
+    // Retry configuration
+    const MAX_RETRIES = 2;
+    const RETRY_DELAY = 1000; // 1 second delay between retries
+
+    // Generic fetch function with retry logic
+    async function fetchWithRetry(url, retryCount = 0) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error(`Fetch attempt ${retryCount + 1} failed for ${url}:`, error);
+            
+            if (retryCount < MAX_RETRIES) {
+                console.log(`Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                return fetchWithRetry(url, retryCount + 1);
+            } else {
+                throw error;
+            }
+        }
+    }
 
     // Set default dates (current month)
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
-    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    
+    // Wait for DOM to be fully loaded before setting dates and loading data
+    document.addEventListener('DOMContentLoaded', function() {
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        
+        if (startDateInput) startDateInput.value = firstDay.toISOString().split('T')[0];
+        if (endDateInput) endDateInput.value = today.toISOString().split('T')[0];
+        
+        // Initial load with retry
+        refreshDashboard();
+    });
 
     async function refreshDashboard() {
-        await Promise.all([
+        console.log('Refreshing dashboard with retry capability...');
+        
+        // Track all promises with their retry logic
+        const promises = [
             loadStats(),
             loadOverallProfit(),
             loadIncomeExpenseGraph(),
@@ -384,70 +421,90 @@
             loadClassAttendance(),
             loadStaffAttendance(),
             loadRecentActivities()
-        ]);
-    }
-// Update the loadStats function in your HTML template
-
-async function loadStats() {
-    // Show loaders for stats cards
-    const statLoaders = ['loaderTotalStudents', 'loaderTotalEmployees', 'loaderTotalCollected', 
-                        'loaderOtherIncome', 'loaderTotalExpenses', 'loaderSchoolFees', 'loaderFilteredProfit'];
-    statLoaders.forEach(loaderId => {
-        const loader = document.getElementById(loaderId);
-        if (loader) loader.classList.remove('hidden');
-    });
-    
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
-    
-    try {
-        const response = await fetch(`/dashboard/api/stats?start_date=${startDate}&end_date=${endDate}`);
-        const data = await response.json();
+        ];
         
-        if (data.success) {
-            // Update all stats
-            document.getElementById('totalStudents').textContent = data.stats.total_students;
-            document.getElementById('totalEmployees').textContent = data.stats.total_employees;
-            document.getElementById('totalCollected').textContent = `UGX ${data.stats.total_collected.toLocaleString()}`;
-            document.getElementById('otherIncome').textContent = `UGX ${data.stats.other_income.toLocaleString()}`;
-            document.getElementById('totalExpenses').textContent = `UGX ${data.stats.total_expenses.toLocaleString()}`;
-            document.getElementById('schoolFeesCollected').textContent = `UGX ${data.stats.revenue_collected.toLocaleString()}`;
-            document.getElementById('filteredProfit').textContent = `UGX ${data.stats.total_profit.toLocaleString()}`;
-            
-            // Add tooltip to show current month fees
-            const schoolFeesElement = document.getElementById('schoolFeesCollected');
-            if (data.stats.current_month_fees) {
-                schoolFeesElement.title = `Current month school fees: UGX ${data.stats.current_month_fees.toLocaleString()}`;
+        // Wait for all to complete, but don't let one failure affect others
+        const results = await Promise.allSettled(promises);
+        
+        // Log any failures
+        results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+                console.error(`Dashboard component ${index} failed after retries:`, result.reason);
             }
-            
-            // Color coding for filtered profit
-            const filteredProfitElement = document.getElementById('filteredProfit');
-            if (data.stats.total_profit < 0) {
-                filteredProfitElement.classList.remove('text-purple-600');
-                filteredProfitElement.classList.add('text-red-600');
-            } else {
-                filteredProfitElement.classList.remove('text-red-600');
-                filteredProfitElement.classList.add('text-purple-600');
-            }
-        }
-    } catch (error) {
-        console.error('Error loading stats:', error);
-    } finally {
-        // Hide loaders
+        });
+        
+        console.log('Dashboard refresh completed');
+    }
+
+    // Update the loadStats function with retry logic
+    async function loadStats() {
+        // Show loaders for stats cards
+        const statLoaders = ['loaderTotalStudents', 'loaderTotalEmployees', 'loaderTotalCollected', 
+                            'loaderOtherIncome', 'loaderTotalExpenses', 'loaderSchoolFees', 'loaderFilteredProfit'];
         statLoaders.forEach(loaderId => {
             const loader = document.getElementById(loaderId);
-            if (loader) loader.classList.add('hidden');
+            if (loader) loader.classList.remove('hidden');
         });
+        
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        try {
+            const data = await fetchWithRetry(`/dashboard/api/stats?start_date=${startDate}&end_date=${endDate}`);
+            
+            if (data.success) {
+                // Update all stats
+                document.getElementById('totalStudents').textContent = data.stats.total_students;
+                document.getElementById('totalEmployees').textContent = data.stats.total_employees;
+                document.getElementById('totalCollected').textContent = `UGX ${data.stats.total_collected.toLocaleString()}`;
+                document.getElementById('otherIncome').textContent = `UGX ${data.stats.other_income.toLocaleString()}`;
+                document.getElementById('totalExpenses').textContent = `UGX ${data.stats.total_expenses.toLocaleString()}`;
+                document.getElementById('schoolFeesCollected').textContent = `UGX ${data.stats.revenue_collected.toLocaleString()}`;
+                document.getElementById('filteredProfit').textContent = `UGX ${data.stats.total_profit.toLocaleString()}`;
+                
+                // Add tooltip to show current month fees
+                const schoolFeesElement = document.getElementById('schoolFeesCollected');
+                if (data.stats.current_month_fees) {
+                    schoolFeesElement.title = `Current month school fees: UGX ${data.stats.current_month_fees.toLocaleString()}`;
+                }
+                
+                // Color coding for filtered profit
+                const filteredProfitElement = document.getElementById('filteredProfit');
+                if (data.stats.total_profit < 0) {
+                    filteredProfitElement.classList.remove('text-purple-600');
+                    filteredProfitElement.classList.add('text-red-600');
+                } else {
+                    filteredProfitElement.classList.remove('text-red-600');
+                    filteredProfitElement.classList.add('text-purple-600');
+                }
+                
+                console.log('Stats loaded successfully');
+            }
+        } catch (error) {
+            console.error('Error loading stats after retries:', error);
+            // Show error indicators in stats cards
+            statLoaders.forEach(loaderId => {
+                const statElement = document.getElementById(loaderId.replace('loader', ''));
+                if (statElement && statElement.parentElement) {
+                    statElement.textContent = 'Error loading data';
+                    statElement.classList.add('text-red-600');
+                }
+            });
+        } finally {
+            // Hide loaders
+            statLoaders.forEach(loaderId => {
+                const loader = document.getElementById(loaderId);
+                if (loader) loader.classList.add('hidden');
+            });
+        }
     }
-}
 
     async function loadOverallProfit() {
         const loader = document.getElementById('loaderOverallProfit');
         if (loader) loader.classList.remove('hidden');
         
         try {
-            const response = await fetch('/dashboard/api/overall-profit');
-            const data = await response.json();
+            const data = await fetchWithRetry('/dashboard/api/overall-profit');
             
             if (data.success) {
                 const overallProfitElement = document.getElementById('overallProfit');
@@ -461,9 +518,16 @@ async function loadStats() {
                     overallProfitElement.classList.remove('text-red-600');
                     overallProfitElement.classList.add('text-rose-600');
                 }
+                
+                console.log('Overall profit loaded successfully');
             }
         } catch (error) {
-            console.error('Error loading overall profit:', error);
+            console.error('Error loading overall profit after retries:', error);
+            const overallProfitElement = document.getElementById('overallProfit');
+            if (overallProfitElement) {
+                overallProfitElement.textContent = 'Error loading data';
+                overallProfitElement.classList.add('text-red-600');
+            }
         } finally {
             if (loader) loader.classList.add('hidden');
         }
@@ -474,10 +538,9 @@ async function loadStats() {
         if (chartLoader) chartLoader.classList.remove('hidden');
         
         try {
-            const response = await fetch('/dashboard/api/income-expense-graph');
-            const data = await response.json();
+            const data = await fetchWithRetry('/dashboard/api/income-expense-graph');
             
-            if (data.success && data.data.length > 0) {
+            if (data.success && data.data && data.data.length > 0) {
                 const months = data.data.map(item => item.month);
                 const incomes = data.data.map(item => item.income);
                 const expenses = data.data.map(item => item.expense);
@@ -542,9 +605,24 @@ async function loadStats() {
                         }
                     }
                 });
+                console.log('Income/Expense graph loaded successfully');
+            } else if (data.success && (!data.data || data.data.length === 0)) {
+                console.log('No income/expense data available');
+                const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
+                if (incomeExpenseChart) incomeExpenseChart.destroy();
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.fillStyle = '#999';
+                ctx.font = '14px Arial';
+                ctx.fillText('No data available', ctx.canvas.width/2 - 60, ctx.canvas.height/2);
             }
         } catch (error) {
-            console.error('Error loading graph:', error);
+            console.error('Error loading graph after retries:', error);
+            const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
+            if (incomeExpenseChart) incomeExpenseChart.destroy();
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.fillStyle = '#ef4444';
+            ctx.font = '14px Arial';
+            ctx.fillText('Error loading chart data', ctx.canvas.width/2 - 80, ctx.canvas.height/2);
         } finally {
             if (chartLoader) chartLoader.classList.add('hidden');
         }
@@ -555,10 +633,9 @@ async function loadStats() {
         if (pieLoader) pieLoader.classList.remove('hidden');
         
         try {
-            const response = await fetch('/dashboard/api/class-distribution');
-            const data = await response.json();
+            const data = await fetchWithRetry('/dashboard/api/class-distribution');
             
-            if (data.success && data.data.length > 0) {
+            if (data.success && data.data && data.data.length > 0) {
                 const labels = data.data.map(item => item.name);
                 const counts = data.data.map(item => item.count);
                 
@@ -600,9 +677,24 @@ async function loadStats() {
                         }
                     }
                 });
+                console.log('Class distribution loaded successfully');
+            } else if (data.success && (!data.data || data.data.length === 0)) {
+                console.log('No class distribution data available');
+                const ctx = document.getElementById('classDistributionChart').getContext('2d');
+                if (classDistributionChart) classDistributionChart.destroy();
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.fillStyle = '#999';
+                ctx.font = '14px Arial';
+                ctx.fillText('No class data available', ctx.canvas.width/2 - 70, ctx.canvas.height/2);
             }
         } catch (error) {
-            console.error('Error loading class distribution:', error);
+            console.error('Error loading class distribution after retries:', error);
+            const ctx = document.getElementById('classDistributionChart').getContext('2d');
+            if (classDistributionChart) classDistributionChart.destroy();
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.fillStyle = '#ef4444';
+            ctx.font = '14px Arial';
+            ctx.fillText('Error loading distribution', ctx.canvas.width/2 - 80, ctx.canvas.height/2);
         } finally {
             if (pieLoader) pieLoader.classList.add('hidden');
         }
@@ -613,11 +705,10 @@ async function loadStats() {
         if (attendanceLoader) attendanceLoader.classList.remove('hidden');
         
         try {
-            const response = await fetch('/dashboard/api/class-attendance');
-            const data = await response.json();
+            const data = await fetchWithRetry('/dashboard/api/class-attendance');
             const tbody = document.getElementById('classAttendanceTable');
             
-            if (data.success && data.data.length > 0) {
+            if (data.success && data.data && data.data.length > 0) {
                 tbody.innerHTML = data.data.map(item => `
                     <tr class="border-b hover:bg-gray-50">
                         <td class="py-2 text-left text-sm">${item.class_name}</td>
@@ -630,11 +721,16 @@ async function loadStats() {
                         </td>
                     </tr>
                 `).join('');
+                console.log('Class attendance loaded successfully');
             } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No attendance data</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No attendance data available</td><tr>';
             }
         } catch (error) {
-            console.error('Error loading class attendance:', error);
+            console.error('Error loading class attendance after retries:', error);
+            const tbody = document.getElementById('classAttendanceTable');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-red-400">Error loading attendance data</td></tr>';
+            }
         } finally {
             if (attendanceLoader) attendanceLoader.classList.add('hidden');
         }
@@ -645,11 +741,10 @@ async function loadStats() {
         if (staffLoader) staffLoader.classList.remove('hidden');
         
         try {
-            const response = await fetch('/dashboard/api/staff-attendance');
-            const data = await response.json();
+            const data = await fetchWithRetry('/dashboard/api/staff-attendance');
             const tbody = document.getElementById('staffAttendanceTable');
             
-            if (data.success && data.data.length > 0) {
+            if (data.success && data.data && data.data.length > 0) {
                 tbody.innerHTML = data.data.map(item => `
                     <tr class="border-b hover:bg-gray-50">
                         <td class="py-2 text-left text-sm">${item.role}</td>
@@ -662,11 +757,16 @@ async function loadStats() {
                         </td>
                     </tr>
                 `).join('');
+                console.log('Staff attendance loaded successfully');
             } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No attendance data</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No attendance data available</td></tr>';
             }
         } catch (error) {
-            console.error('Error loading staff attendance:', error);
+            console.error('Error loading staff attendance after retries:', error);
+            const tbody = document.getElementById('staffAttendanceTable');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-red-400">Error loading attendance data</td></tr>';
+            }
         } finally {
             if (staffLoader) staffLoader.classList.add('hidden');
         }
@@ -677,11 +777,10 @@ async function loadStats() {
         if (activitiesLoader) activitiesLoader.classList.remove('hidden');
         
         try {
-            const response = await fetch('/dashboard/api/recent-activities');
-            const data = await response.json();
+            const data = await fetchWithRetry('/dashboard/api/recent-activities');
             const container = document.getElementById('activitiesList');
             
-            if (data.success && data.activities.length > 0) {
+            if (data.success && data.activities && data.activities.length > 0) {
                 const colorMap = {
                     'green': 'bg-green-100 text-green-600',
                     'blue': 'bg-blue-100 text-blue-600',
@@ -703,11 +802,16 @@ async function loadStats() {
                         </div>
                     </div>
                 `).join('');
+                console.log('Recent activities loaded successfully');
             } else {
                 container.innerHTML = '<div class="p-8 text-center text-gray-400">No recent activities</div>';
             }
         } catch (error) {
-            console.error('Error loading activities:', error);
+            console.error('Error loading activities after retries:', error);
+            const container = document.getElementById('activitiesList');
+            if (container) {
+                container.innerHTML = '<div class="p-8 text-center text-red-400">Error loading activities</div>';
+            }
         } finally {
             if (activitiesLoader) activitiesLoader.classList.add('hidden');
         }
@@ -741,8 +845,5 @@ async function loadStats() {
         document.getElementById('endDate').value = today.toISOString().split('T')[0];
         refreshDashboard();
     }
-
-    // Load all data on page load
-    refreshDashboard();
 </script>
 {% endblock %}

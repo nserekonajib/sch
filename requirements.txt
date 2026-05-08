@@ -35,3 +35,4 @@ docx2pdf
 docxtpl
 xlrd
 xlwt
+flask[async]
