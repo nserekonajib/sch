@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required, owner_required
 # instituteProfile.py - Fixed version without public.users table
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from supabase import create_client, Client
@@ -8,6 +9,7 @@ from functools import wraps
 from datetime import datetime
 import uuid
 from dotenv import load_dotenv
+from routes.accounts.accounts import get_institute_id
 
 load_dotenv()
 
@@ -71,7 +73,7 @@ def get_or_create_institute(user_id):
         return None
 
 @instituteProfile_bp.route('/profile', methods=['GET', 'POST'])
-@login_required
+@owner_required
 def profile():
     """Institute Profile Page - View and Update"""
     user = session.get('user')
@@ -144,7 +146,7 @@ def profile():
     return render_template('institute/profile.html', **profile_data)
 
 @instituteProfile_bp.route('/remove-logo', methods=['POST'])
-@login_required
+@role_required(['owner'])
 def remove_logo():
     """Remove institute logo"""
     user = session.get('user')

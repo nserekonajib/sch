@@ -1,3 +1,4 @@
+
 # auth.py - Authentication Blueprint with Supabase & Separate Employee Login
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from supabase import create_client, Client
@@ -375,7 +376,7 @@ def register():
 # ========== PROFILE ROUTE (Both Owner & Employee) ==========
 
 @auth_bp.route('/profile', methods=['GET', 'POST'])
-@login_required
+@role_required(['owner'])
 def profile():
     """Update user profile - handles both owner and employee"""
     user = session.get('user')
@@ -548,7 +549,7 @@ def logout():
 # ========== HELPER ROUTES ==========
 
 @auth_bp.route('/api/current-user', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_current_user():
     """Get current logged in user info"""
     user = session.get('user', {})
@@ -556,7 +557,7 @@ def get_current_user():
     return jsonify({'success': True, 'user': safe_user})
 
 @auth_bp.route('/api/user-role', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_user_role():
     """Get current user's role"""
     user = session.get('user', {})

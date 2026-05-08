@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # fees.py - Updated with category filtering and proper student selection
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -13,6 +14,7 @@ from functools import wraps
 from dotenv import load_dotenv
 import cloudinary
 import cloudinary.uploader
+from routes.accounts.accounts import get_institute_id
 
 load_dotenv()
 
@@ -32,23 +34,23 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute ID for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('id')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute_id(user_id):
+#     """Get institute ID for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('id')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]['id']
-        return None
-    except Exception as e:
-        print(f"Error getting institute ID: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]['id']
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute ID: {e}")
+#         return None
 
 @fees_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Fees Management Dashboard"""
     user = session.get('user')
@@ -96,7 +98,7 @@ def index():
         return render_template('fees/index.html', classes=[], students=[], fee_particulars=[])
 
 @fees_bp.route('/particulars', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_particulars():
     """Get fee particulars for a class or student"""
     user = session.get('user')
@@ -130,7 +132,7 @@ def get_particulars():
     
     
 @fees_bp.route('/search-students', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def search_students():
     """Search students by name or ID with category filter"""
     user = session.get('user')
@@ -184,7 +186,7 @@ def search_students():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @fees_bp.route('/particulars/create', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def create_particulars():
     """Create fee particulars and generate invoices with category filtering"""
     user = session.get('user')
@@ -379,7 +381,7 @@ def generate_unique_invoice_number(institute_id, existing_numbers):
     return fallback_number
 
 @fees_bp.route('/invoices', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_invoices():
     """Get all invoices"""
     user = session.get('user')
@@ -417,7 +419,7 @@ def get_invoices():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @fees_bp.route('/invoices/<invoice_id>/pay', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def pay_invoice(invoice_id):
     """Process invoice payment"""
     user = session.get('user')
@@ -494,7 +496,7 @@ def pay_invoice(invoice_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @fees_bp.route('/students/<student_id>/invoices', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_student_invoices(student_id):
     """Get invoices for a specific student"""
     user = session.get('user')

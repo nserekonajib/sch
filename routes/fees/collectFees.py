@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # collectFees.py - Simplified with negative balance only (no credit invoices)
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -16,7 +17,7 @@ from reportlab.lib.units import inch, mm
 from reportlab.pdfgen import canvas
 from functools import wraps
 from dotenv import load_dotenv
-
+from routes.accounts.accounts import get_institute_id
 load_dotenv()
 
 # Initialize Supabase client
@@ -36,20 +37,20 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute ID for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute_id(user_id):
+#     """Get institute ID for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('*')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute ID: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute ID: {e}")
+#         return None
     
     
 MASTER_API_USERNAME = os.getenv('COMMS_API_USERNAME', '')
@@ -322,7 +323,7 @@ Thank you for your payment!"""
         return False
     
 @collect_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Fee Collection Page"""
     user = session.get('user')
@@ -334,13 +335,13 @@ def index():
     return render_template('fees/collection.html', institute=institute, now=datetime.now())
 
 @collect_bp.route('/search-student', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def search_student():
     """Search for student by name or ID"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -350,17 +351,19 @@ def search_student():
         if not search_term:
             return jsonify({'success': False, 'message': 'Please enter search term'}), 400
         
+        # Search by name
         response = supabase.table('students')\
             .select('*, classes(name)')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .ilike('name', f'%{search_term}%')\
             .execute()
         
+        # If no results, search by student_id
         if not response.data:
             response = supabase.table('students')\
                 .select('*, classes(name)')\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .eq('status', 'active')\
                 .ilike('student_id', f'%{search_term}%')\
                 .execute()
@@ -371,16 +374,17 @@ def search_student():
         
     except Exception as e:
         print(f"Error searching student: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
 @collect_bp.route('/get-student-fees/<student_id>', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_student_fees(student_id):
     """Get fee details and invoices for a student"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -388,7 +392,7 @@ def get_student_fees(student_id):
         student_response = supabase.table('students')\
             .select('*, classes(name)')\
             .eq('id', student_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not student_response.data:
@@ -400,7 +404,7 @@ def get_student_fees(student_id):
         invoices_response = supabase.table('invoices')\
             .select('*, fee_particulars(fee_items)')\
             .eq('student_id', student_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .neq('balance', 0)\
             .order('created_at', desc=True)\
             .execute()
@@ -440,17 +444,19 @@ def get_student_fees(student_id):
         
     except Exception as e:
         print(f"Error getting student fees: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 # Update the process_payment function in collectFees.py
 
 @collect_bp.route('/process-payment', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def process_payment():
     """Process fee payment - balance becomes negative if payment exceeds due"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -464,6 +470,14 @@ def process_payment():
         
         if not student_id or amount_paid <= 0:
             return jsonify({'success': False, 'message': 'Invalid payment amount'}), 400
+        
+        # Get institute details for SMS and receipt
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
         
         # Handle fee_month - convert from YYYY-MM to first day of month for date field
         if fee_month:
@@ -479,7 +493,7 @@ def process_payment():
         student_response = supabase.table('students')\
             .select('*, classes(name)')\
             .eq('id', student_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not student_response.data:
@@ -490,7 +504,7 @@ def process_payment():
         # Get all existing receipt numbers
         existing_receipts_response = supabase.table('payments')\
             .select('receipt_number')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         existing_numbers = set()
@@ -507,7 +521,7 @@ def process_payment():
                 .select('*')\
                 .eq('id', invoice_id)\
                 .eq('student_id', student_id)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .execute()
             
             if not invoice_response.data:
@@ -537,7 +551,7 @@ def process_payment():
                     'updated_at': datetime.now().isoformat()
                 })\
                 .eq('id', invoice_id)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .execute()
             
             payments_made.append({
@@ -554,7 +568,7 @@ def process_payment():
             invoices_response = supabase.table('invoices')\
                 .select('*')\
                 .eq('student_id', student_id)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .gt('balance', 0)\
                 .order('created_at', desc=False)\
                 .execute()
@@ -580,7 +594,7 @@ def process_payment():
                             'updated_at': datetime.now().isoformat()
                         })\
                         .eq('id', invoice['id'])\
-                        .eq('institute_id', institute['id'])\
+                        .eq('institute_id', institute_id)\
                         .execute()
                     
                     payments_made.append({
@@ -598,7 +612,7 @@ def process_payment():
                 recent_invoice_response = supabase.table('invoices')\
                     .select('*')\
                     .eq('student_id', student_id)\
-                    .eq('institute_id', institute['id'])\
+                    .eq('institute_id', institute_id)\
                     .order('created_at', desc=True)\
                     .limit(1)\
                     .execute()
@@ -617,7 +631,7 @@ def process_payment():
                             'updated_at': datetime.now().isoformat()
                         })\
                         .eq('id', invoice['id'])\
-                        .eq('institute_id', institute['id'])\
+                        .eq('institute_id', institute_id)\
                         .execute()
                     
                     payments_made.append({
@@ -634,7 +648,7 @@ def process_payment():
                     
                     invoice_data = {
                         'id': new_invoice_id,
-                        'institute_id': institute['id'],
+                        'institute_id': institute_id,
                         'student_id': student_id,
                         'invoice_number': new_invoice_number,
                         'total_amount': -remaining_amount,
@@ -656,20 +670,20 @@ def process_payment():
                     })
         
         # Generate unique receipt number
-        receipt_number = generate_unique_receipt_number(institute['id'], existing_numbers)
+        receipt_number = generate_unique_receipt_number(institute_id, existing_numbers)
         
         # Create payment record
         payment_id = str(uuid.uuid4())
         payment_data = {
             'id': payment_id,
-            'institute_id': institute['id'],
+            'institute_id': institute_id,
             'student_id': student_id,
             'invoice_id': invoice_id,
             'amount': amount_paid,
             'payment_method': payment_method,
             'receipt_number': receipt_number,
             'payment_date': datetime.now().date().isoformat(),
-            'fee_month': fee_month_date,  # Use the converted date
+            'fee_month': fee_month_date,
             'notes': notes,
             'created_at': datetime.now().isoformat()
         }
@@ -680,7 +694,7 @@ def process_payment():
         updated_invoices = supabase.table('invoices')\
             .select('*')\
             .eq('student_id', student_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         total_due = sum(inv['balance'] for inv in updated_invoices.data)
@@ -716,17 +730,19 @@ def process_payment():
         
     except Exception as e:
         print(f"Error processing payment: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-    
-    
+
+
 @collect_bp.route('/apply-discount', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def apply_discount():
     """Apply discount to an invoice"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -743,7 +759,7 @@ def apply_discount():
         invoice_response = supabase.table('invoices')\
             .select('*')\
             .eq('id', invoice_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not invoice_response.data:
@@ -757,7 +773,7 @@ def apply_discount():
         else:
             discount_amount = min(discount_value, abs(invoice['balance']))
         
-        # Apply discount to invoice - only update balance, not discount_applied
+        # Apply discount to invoice
         new_balance = invoice['balance'] - discount_amount
         
         # Update status
@@ -768,7 +784,7 @@ def apply_discount():
         else:
             new_status = 'partial' if invoice['paid_amount'] > 0 else 'pending'
         
-        # Update invoice - remove discount_applied from update
+        # Update invoice
         supabase.table('invoices')\
             .update({
                 'balance': new_balance,
@@ -776,7 +792,7 @@ def apply_discount():
                 'updated_at': datetime.now().isoformat()
             })\
             .eq('id', invoice_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         # Get student details
@@ -791,7 +807,7 @@ def apply_discount():
         discount_id = str(uuid.uuid4())
         discount_data = {
             'id': discount_id,
-            'institute_id': institute['id'],
+            'institute_id': institute_id,
             'student_id': invoice['student_id'],
             'student_name': student_name,
             'invoice_id': invoice_id,
@@ -819,21 +835,30 @@ def apply_discount():
         print(f"Error applying discount: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @collect_bp.route('/receipt/<receipt_number>', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_receipt(receipt_number):
     """Get receipt details for printing"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
+        
         payment_response = supabase.table('payments')\
             .select('*, students(name, student_id, classes(name))')\
             .eq('receipt_number', receipt_number)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not payment_response.data:
@@ -861,21 +886,30 @@ def get_receipt(receipt_number):
         print(f"Error getting receipt: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @collect_bp.route('/print-receipt/<receipt_number>', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def print_receipt(receipt_number):
     """Generate thermal receipt PDF for printing"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
+        
         payment_response = supabase.table('payments')\
             .select('*, students(name, student_id, classes(name))')\
             .eq('receipt_number', receipt_number)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not payment_response.data:
@@ -887,7 +921,7 @@ def print_receipt(receipt_number):
         invoices_response = supabase.table('invoices')\
             .select('balance')\
             .eq('student_id', payment['student_id'])\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         current_balance = sum(inv['balance'] for inv in invoices_response.data) if invoices_response.data else 0
@@ -1008,7 +1042,10 @@ def print_receipt(receipt_number):
         
     except Exception as e:
         print(f"Error generating receipt: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 def generate_unique_receipt_number(institute_id, existing_numbers):
     """Generate unique receipt number with retry logic"""
@@ -1048,6 +1085,7 @@ def generate_unique_receipt_number(institute_id, existing_numbers):
         fallback_number = f"RCP-{timestamp}-{random.randint(1000, 9999)}"
     
     return fallback_number
+
 
 def generate_receipt_number(institute_id):
     """Legacy function - kept for compatibility"""

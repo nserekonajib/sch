@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # printStudentList.py - Fixed Student List Printing Blueprint
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -8,7 +9,7 @@ from dotenv import load_dotenv
 import io
 from xhtml2pdf import pisa
 import requests
-
+from routes.accounts.accounts import get_institute_id
 load_dotenv()
 
 # Initialize Supabase client
@@ -26,35 +27,29 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute(user_id):
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
-
 @student_list_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Student List Page"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('student_list/index.html', classes=[], institute=None)
     
     try:
+        # Get institute details for display
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else None
+        
         # Get all classes for dropdown
         classes_response = supabase.table('classes')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('name')\
             .execute()
         
@@ -64,16 +59,16 @@ def index():
         
     except Exception as e:
         print(f"Error loading student list page: {e}")
-        return render_template('student_list/index.html', classes=[], institute=institute)
+        return render_template('student_list/index.html', classes=[], institute=None)
 
 @student_list_bp.route('/api/students', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_students():
     """Get students by class with fees balance"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -89,7 +84,7 @@ def get_students():
             .eq('class_id', class_id)\
             .eq('academic_year', int(academic_year))\
             .execute()
-        # print(enrollments_response)
+        
         student_ids = [e['student_id'] for e in enrollments_response.data] if enrollments_response.data else []
         
         if not student_ids:
@@ -104,10 +99,10 @@ def get_students():
                 }
             })
         
-        # Then get student details from students table (which has institute_id)
+        # Then get student details from students table
         students_response = supabase.table('students')\
             .select('id, name, student_id, gender, photo_url, contact_number, email, status')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .in_('id', student_ids)\
             .execute()
         
@@ -124,7 +119,7 @@ def get_students():
             invoices_response = supabase.table('invoices')\
                 .select('balance')\
                 .eq('student_id', student['id'])\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .neq('status', 'paid')\
                 .execute()
             
@@ -169,13 +164,13 @@ def get_students():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @student_list_bp.route('/api/export-pdf', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def export_pdf():
     """Export student list to PDF"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -187,6 +182,14 @@ def export_pdf():
         
         if not students:
             return jsonify({'success': False, 'message': 'No students to export'}), 400
+        
+        # Get institute details for PDF header
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
         
         html_content = generate_student_list_html(institute, students, class_name, academic_year, summary)
         pdf_buffer = convert_html_to_pdf(html_content)
@@ -203,8 +206,7 @@ def export_pdf():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-from datetime import datetime
-from jinja2 import Template
+
 
 def generate_student_list_html(institute, students, class_name, academic_year, summary):
     """
@@ -284,12 +286,12 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
             <table>
                 <tr>
                     <td style="width: 60px; border:none;">
-                        {% if institute.logo_url %}<img src="{{ institute.logo_url }}" width="50" height="50">{% endif %}
+                        {% if institute.get('logo_url') %}<img src="{{ institute.get('logo_url') }}" width="50" height="50">{% endif %}
                     </td>
                     <td class="text-center" style="border:none;">
-                        <div class="institute-name">{{ institute.institute_name | upper }}</div>
-                        <div style="font-style: italic; font-size: 8pt;">{{ institute.target_line }}</div>
-                        <div style="font-size: 8pt;">{{ institute.address }} | {{ institute.phone_number }}</div>
+                        <div class="institute-name">{{ institute.get('institute_name', 'School Name') | upper }}</div>
+                        <div style="font-style: italic; font-size: 8pt;">{{ institute.get('target_line', '') }}</div>
+                        <div style="font-size: 8pt;">{{ institute.get('address', '') }} | {{ institute.get('phone_number', '') }}</div>
                     </td>
                     <td style="width: 60px; border:none;"></td>
                 </tr>
@@ -355,13 +357,17 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
     </html>
     """
 
+    from jinja2 import Template
     return Template(html_template).render(
-        institute=institute, students=students, 
-        class_name=class_name, academic_year=academic_year, 
-        summary=summary, generated_at=datetime.now().strftime('%d/%m/%Y')
+        institute=institute, 
+        students=students, 
+        class_name=class_name, 
+        academic_year=academic_year, 
+        summary=summary, 
+        generated_at=datetime.now().strftime('%d/%m/%Y')
     )
-    
-    
+
+
 def convert_html_to_pdf(html_content):
     """Convert HTML to PDF using xhtml2pdf"""
     pdf_buffer = io.BytesIO()
@@ -372,4 +378,3 @@ def convert_html_to_pdf(html_content):
     
     pdf_buffer.seek(0)
     return pdf_buffer
-

@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # studentStatements.py - Student Statements Blueprint with Employee Support
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -103,7 +104,7 @@ def get_institute_from_session():
         return None
 
 @statement_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Student Statements Page"""
     institute = get_institute_from_session()
@@ -114,7 +115,7 @@ def index():
     return render_template('statements/index.html', institute=institute)
 
 @statement_bp.route('/search-student', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def search_student():
     """Live search for students"""
     institute = get_institute_from_session()
@@ -156,7 +157,7 @@ def search_student():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @statement_bp.route('/get-statement', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_statement():
     """Get student statement with date filtering - includes all transactions with proper chronological order"""
     institute = get_institute_from_session()
@@ -362,7 +363,7 @@ def get_statement():
         return jsonify({'success': False, 'message': str(e)}), 500
     
 @statement_bp.route('/export-pdf', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def export_pdf():
     """Export student statement as PDF with minimal professional spacing"""
     institute = get_institute_from_session()

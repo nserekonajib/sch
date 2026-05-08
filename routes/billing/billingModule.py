@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # billingModule.py - Updated with dynamic pricing and discounts
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 from supabase import create_client, Client
@@ -144,7 +145,7 @@ def index():
                               discount_12_months=DISCOUNT_12_MONTHS)
 
 @billing_bp.route('/initiate-payment', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def initiate_payment():
     """Initiate payment with PesaPal"""
     try:
@@ -409,7 +410,7 @@ def ipn_handler():
     return jsonify({'status': 'success'})
 
 @billing_bp.route('/check-subscription', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def check_subscription():
     """Check subscription status via API"""
     try:

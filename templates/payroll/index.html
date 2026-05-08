@@ -1,27 +1,10 @@
-<!-- templates/payroll/index.html - Updated to use PDF print -->
+<!-- templates/payroll/index.html - Fully Responsive (Tables for Desktop, Cards for Mobile) -->
 {% extends "base.html" %}
 
 {% block title %}Payroll Management - Lunserk ERP{% endblock %}
 
 {% block extra_css %}
 <style>
-    .salary-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .salary-table th, .salary-table td {
-        padding: 10px;
-        text-align: left;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    .salary-table th {
-        background-color: #f9fafb;
-        font-weight: 600;
-        font-size: 13px;
-    }
-    .salary-table td {
-        font-size: 13px;
-    }
     .btn-gradient {
         background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
     }
@@ -52,25 +35,28 @@
     .status-paid {
         background-color: #d1fae5;
         color: #065f46;
-        padding: 2px 8px;
+        padding: 4px 12px;
         border-radius: 20px;
-        font-size: 11px;
+        font-size: 12px;
         display: inline-block;
+        font-weight: 500;
     }
     .status-pending {
         background-color: #fef3c7;
         color: #d97706;
-        padding: 2px 8px;
+        padding: 4px 12px;
         border-radius: 20px;
-        font-size: 11px;
+        font-size: 12px;
         display: inline-block;
+        font-weight: 500;
     }
     .deductions-input, .bonuses-input {
         width: 100px;
-        padding: 5px 8px;
+        padding: 6px 10px;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
+        border-radius: 8px;
         text-align: right;
+        font-size: 13px;
     }
     .deductions-input:focus, .bonuses-input:focus {
         outline: none;
@@ -80,6 +66,213 @@
     .net-pay {
         font-weight: bold;
         color: #059669;
+        font-size: 14px;
+    }
+    
+    /* Desktop Table Styles */
+    .salary-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .salary-table th, .salary-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .salary-table th {
+        background-color: #f9fafb;
+        font-weight: 600;
+        font-size: 13px;
+        color: #374151;
+    }
+    .salary-table td {
+        font-size: 13px;
+        vertical-align: middle;
+    }
+    
+    /* Mobile Card Styles */
+    .employee-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.2s;
+    }
+    .employee-card:hover {
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .employee-info h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0 0 4px 0;
+    }
+    .employee-info p {
+        font-size: 12px;
+        color: #6b7280;
+        margin: 0;
+    }
+    .card-details {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .detail-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: #6b7280;
+    }
+    .detail-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1f2937;
+    }
+    .detail-value.amount {
+        color: #059669;
+    }
+    .card-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+    }
+    .card-checkbox {
+        margin-right: 12px;
+    }
+    
+    /* Responsive breakpoints */
+    @media (min-width: 1024px) {
+        .mobile-view {
+            display: none;
+        }
+        .desktop-view {
+            display: block;
+        }
+    }
+    @media (max-width: 1023px) {
+        .mobile-view {
+            display: block;
+        }
+        .desktop-view {
+            display: none;
+        }
+        .deductions-input, .bonuses-input {
+            width: 80px;
+            font-size: 12px;
+            padding: 4px 8px;
+        }
+    }
+    
+    /* Selection bar for mobile */
+    .selection-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        padding: 12px 16px;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        z-index: 40;
+    }
+    .selection-bar.show {
+        transform: translateY(0);
+    }
+    .selection-bar-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    /* Loading and empty states */
+    .skeleton-card {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 12px;
+        height: 120px;
+        margin-bottom: 12px;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    
+    /* Floating action button for mobile */
+    .fab-process {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+        color: white;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(255, 165, 0, 0.4);
+        cursor: pointer;
+        transition: all 0.2s;
+        z-index: 45;
+        display: none;
+    }
+    .fab-process:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(255, 165, 0, 0.5);
+    }
+    .fab-process.show {
+        display: flex;
+    }
+    
+    /* Checkbox styling */
+    input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #ffa500;
+    }
+    
+    /* Scroll to top button */
+    .scroll-top {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: white;
+        color: #ffa500;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        cursor: pointer;
+        z-index: 45;
+        border: 1px solid #e5e7eb;
+    }
+    .scroll-top.show {
+        display: flex;
     }
 </style>
 {% endblock %}
@@ -95,67 +288,75 @@
     <!-- Month Selection -->
     <div class="bg-white rounded-xl shadow-md p-5 mb-6">
         <div class="flex flex-wrap items-end gap-4">
-            <div>
+            <div class="flex-1 min-w-[200px]">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Select Month</label>
                 <input type="month" id="monthSelect" value="{{ now.strftime('%Y-%m') }}" 
-                       class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
             </div>
             <div>
-                <button onclick="loadSalaryData()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+                <button onclick="loadSalaryData()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium w-full sm:w-auto">
                     <i class="fas fa-sync-alt"></i> Load Employees
-                </button>
-            </div>
-            <div>
-                <button onclick="processPayments()" id="payBtn" disabled
-                        class="btn-gradient px-5 py-2 rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
-                    <i class="fas fa-money-bill-wave"></i>
-                    Process Selected Payments
-                </button>
-            </div>
-            <div>
-                <button onclick="downloadPayrollPDF()" id="downloadPdfBtn" disabled
-                        class="px-5 py-2 bg-gray-300 text-gray-500 rounded-lg font-medium transition-all cursor-not-allowed">
-                    <i class="fas fa-download"></i> Download PDF
                 </button>
             </div>
         </div>
     </div>
 
+    <!-- Selection Counter for Mobile -->
+    <div id="selectionCounter" class="bg-orange-50 rounded-lg p-3 mb-4 hidden">
+        <div class="flex justify-between items-center">
+            <span class="text-sm text-orange-700">
+                <i class="fas fa-check-circle"></i> <span id="selectedCount">0</span> employee(s) selected
+            </span>
+            <button onclick="clearSelection()" class="text-orange-600 text-sm hover:underline">Clear</button>
+        </div>
+    </div>
+
     <!-- Loading State -->
-    <div id="loadingState" style="display: block;" class="text-center py-12">
+    <div id="loadingState" class="text-center py-12">
         <div class="inline-block">
             <div class="animate-spin rounded-full h-12 w-12 border-4 border-orange-200 border-t-orange-500"></div>
             <p class="text-gray-600 mt-3">Loading employees...</p>
         </div>
     </div>
 
-    <!-- Employees Table -->
-    <div id="employeesContainer" class="bg-white rounded-xl shadow-md overflow-hidden" style="display: none;">
+    <!-- Loading Skeletons for Mobile -->
+    <div id="skeletonLoading" class="mobile-view" style="display: none;">
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+    </div>
+
+    <!-- Desktop Table View -->
+    <div id="desktopView" class="desktop-view bg-white rounded-xl shadow-md overflow-hidden" style="display: none;">
         <div class="overflow-x-auto">
             <table class="salary-table min-w-full">
                 <thead>
                     <tr>
-                        <th class="w-10">
-                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()" 
-                                   class="w-4 h-4 text-orange-500 rounded">
+                        <th class="w-12">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
                         </th>
                         <th>Employee ID</th>
                         <th>Employee Name</th>
                         <th>Role</th>
-                        <th class="text-right">Gross Salary (UGX)</th>
-                        <th class="text-right">Deductions (UGX)</th>
-                        <th class="text-right">Bonuses (UGX)</th>
-                        <th class="text-right">Net Pay (UGX)</th>
+                        <th class="text-right">Gross Salary</th>
+                        <th class="text-right">Deductions</th>
+                        <th class="text-right">Bonuses</th>
+                        <th class="text-right">Net Pay</th>
                         <th>Status</th>
                     </tr>
                 </thead>
-                <tbody id="employeesTableBody">
-                    <!-- Data will be loaded here -->
-                </tbody>
+                <tbody id="employeesTableBody"></tbody>
             </table>
         </div>
     </div>
 
+    <!-- Mobile Card View -->
+    <div id="mobileView" class="mobile-view" style="display: none;">
+        <div id="mobileEmployeesContainer"></div>
+        <div style="height: 80px;"></div> <!-- Spacer for FAB -->
+    </div>
+
+    <!-- Empty State -->
     <div id="emptyState" class="bg-white rounded-xl shadow-md p-12 text-center" style="display: none;">
         <div class="h-20 w-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fas fa-users text-3xl text-orange-500"></i>
@@ -166,6 +367,29 @@
             <i class="fas fa-plus-circle"></i> Add Employee
         </a>
     </div>
+</div>
+
+<!-- Mobile Selection Bar -->
+<div id="selectionBar" class="selection-bar">
+    <div class="selection-bar-content">
+        <div>
+            <span class="text-sm font-medium" id="barSelectedCount">0</span>
+            <span class="text-xs text-gray-500"> selected</span>
+        </div>
+        <button onclick="processPayments()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+            <i class="fas fa-money-bill-wave"></i> Pay Now
+        </button>
+    </div>
+</div>
+
+<!-- Floating Action Button for Mobile -->
+<div id="fabProcess" class="fab-process" onclick="processPayments()">
+    <i class="fas fa-money-bill-wave text-xl"></i>
+</div>
+
+<!-- Scroll to Top Button -->
+<div id="scrollTop" class="scroll-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+    <i class="fas fa-arrow-up"></i>
 </div>
 
 <!-- Success Modal -->
@@ -185,7 +409,7 @@
 </div>
 
 <!-- Loading Overlay -->
-<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl p-6 flex flex-col items-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
         <p class="text-gray-700">Processing payments...</p>
@@ -196,24 +420,48 @@
     let currentEmployees = [];
     let selectedEmployeeIds = new Set();
     let currentMonth = '';
+    let isMobile = window.innerWidth < 1024;
+    
+    // Check screen size on resize
+    window.addEventListener('resize', () => {
+        isMobile = window.innerWidth < 1024;
+        if (currentEmployees.length > 0) {
+            displayEmployees(currentEmployees);
+        }
+        updateMobileUI();
+    });
     
     function formatRole(role) {
         if (!role) return 'Staff';
         return role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
     
+    function formatCurrency(amount) {
+        return (amount || 0).toLocaleString();
+    }
+    
     async function loadSalaryData() {
         currentMonth = document.getElementById('monthSelect').value;
         
+        // Show loading states
         document.getElementById('loadingState').style.display = 'block';
-        document.getElementById('employeesContainer').style.display = 'none';
+        document.getElementById('desktopView').style.display = 'none';
+        document.getElementById('mobileView').style.display = 'none';
         document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('skeletonLoading').style.display = 'none';
+        
+        // Show skeletons on mobile
+        if (isMobile) {
+            document.getElementById('skeletonLoading').style.display = 'block';
+            document.getElementById('loadingState').style.display = 'none';
+        }
         
         try {
             const response = await fetch(`/payroll/api/salary-summary?month=${currentMonth}`);
             const result = await response.json();
             
             document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('skeletonLoading').style.display = 'none';
             
             if (result.success && result.employees) {
                 currentEmployees = result.employees;
@@ -222,10 +470,11 @@
                     document.getElementById('emptyState').style.display = 'block';
                 } else {
                     displayEmployees(currentEmployees);
-                    document.getElementById('employeesContainer').style.display = 'block';
-                    document.getElementById('downloadPdfBtn').disabled = false;
-                    document.getElementById('downloadPdfBtn').classList.remove('bg-gray-300', 'cursor-not-allowed');
-                    document.getElementById('downloadPdfBtn').classList.add('btn-gradient', 'text-white');
+                    if (isMobile) {
+                        document.getElementById('mobileView').style.display = 'block';
+                    } else {
+                        document.getElementById('desktopView').style.display = 'block';
+                    }
                 }
             } else {
                 showMessage(result.message || 'Failed to load employees', 'error');
@@ -234,14 +483,17 @@
         } catch (error) {
             console.error('Error:', error);
             document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('skeletonLoading').style.display = 'none';
             document.getElementById('emptyState').style.display = 'block';
             showMessage('Failed to load salary data: ' + error.message, 'error');
         }
+        
+        updateMobileUI();
     }
     
     function displayEmployees(employees) {
+        // Desktop table view
         const tbody = document.getElementById('employeesTableBody');
-        
         tbody.innerHTML = employees.map(emp => {
             const roleDisplay = formatRole(emp.role);
             const netPay = emp.monthly_salary - (emp.deductions || 0) + (emp.bonuses || 0);
@@ -257,7 +509,7 @@
                     <td class="text-sm text-gray-600">${emp.employee_id || 'N/A'}</td>
                     <td class="text-sm font-medium text-gray-800">${emp.name || 'N/A'}</td>
                     <td class="text-sm text-gray-600">${roleDisplay}</td>
-                    <td class="text-right text-sm text-gray-700">${(emp.monthly_salary || 0).toLocaleString()}</td>
+                    <td class="text-right text-sm text-gray-700">UGX ${formatCurrency(emp.monthly_salary)}</td>
                     <td class="text-right">
                         <input type="number" class="deductions-input" data-employee-id="${emp.id}" 
                                value="${emp.deductions || 0}" step="1000"
@@ -272,7 +524,7 @@
                     </td>
                     <td class="text-right">
                         <span class="net-pay" id="net-pay-${emp.id}">
-                            ${netPay.toLocaleString()}
+                            UGX ${formatCurrency(netPay)}
                         </span>
                     </td>
                     <td class="text-center">
@@ -282,10 +534,77 @@
             `;
         }).join('');
         
+        // Mobile card view
+        const mobileContainer = document.getElementById('mobileEmployeesContainer');
+        mobileContainer.innerHTML = employees.map(emp => {
+            const roleDisplay = formatRole(emp.role);
+            const netPay = emp.monthly_salary - (emp.deductions || 0) + (emp.bonuses || 0);
+            const isChecked = selectedEmployeeIds.has(emp.id);
+            
+            return `
+                <div class="employee-card" data-employee-id="${emp.id}">
+                    <div class="card-header">
+                        <div class="employee-info">
+                            <h3>${escapeHtml(emp.name || 'N/A')}</h3>
+                            <p>${emp.employee_id || 'N/A'} • ${roleDisplay}</p>
+                        </div>
+                        <div>
+                            <input type="checkbox" class="mobile-checkbox" 
+                                   data-employee-id="${emp.id}"
+                                   ${emp.is_paid ? 'disabled' : ''}
+                                   ${isChecked ? 'checked' : ''}
+                                   onchange="toggleEmployee('${emp.id}', this.checked)">
+                        </div>
+                    </div>
+                    <div class="card-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Gross Salary</span>
+                            <span class="detail-value">UGX ${formatCurrency(emp.monthly_salary)}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Deductions</span>
+                            <input type="number" class="deductions-input mobile-deductions" 
+                                   data-employee-id="${emp.id}" 
+                                   value="${emp.deductions || 0}" step="1000"
+                                   ${emp.is_paid ? 'disabled' : ''}
+                                   onchange="updateNetPay('${emp.id}')"
+                                   style="width: 100px;">
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Bonuses</span>
+                            <input type="number" class="bonuses-input mobile-bonuses" 
+                                   data-employee-id="${emp.id}" 
+                                   value="${emp.bonuses || 0}" step="1000"
+                                   ${emp.is_paid ? 'disabled' : ''}
+                                   onchange="updateNetPay('${emp.id}')"
+                                   style="width: 100px;">
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Net Pay</span>
+                            <span class="detail-value amount" id="mobile-net-pay-${emp.id}">
+                                UGX ${formatCurrency(netPay)}
+                            </span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Status</span>
+                            <span>${emp.is_paid ? '<span class="status-paid">Paid</span>' : '<span class="status-pending">Pending</span>'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
         selectedEmployeeIds.clear();
         const selectAll = document.getElementById('selectAllCheckbox');
         if (selectAll) selectAll.checked = false;
         updateSelectAllState();
+        updateMobileUI();
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     function updateNetPay(employeeId) {
@@ -302,7 +621,13 @@
         employee.bonuses = bonuses;
         
         const netPay = employee.monthly_salary - deductions + bonuses;
-        document.getElementById(`net-pay-${employeeId}`).textContent = netPay.toLocaleString();
+        
+        // Update both desktop and mobile views
+        const desktopNetPay = document.getElementById(`net-pay-${employeeId}`);
+        if (desktopNetPay) desktopNetPay.textContent = `UGX ${formatCurrency(netPay)}`;
+        
+        const mobileNetPay = document.getElementById(`mobile-net-pay-${employeeId}`);
+        if (mobileNetPay) mobileNetPay.textContent = `UGX ${formatCurrency(netPay)}`;
     }
     
     function toggleEmployee(employeeId, isChecked) {
@@ -311,7 +636,17 @@
         } else {
             selectedEmployeeIds.delete(employeeId);
         }
+        
+        // Sync mobile checkboxes
+        const mobileCheckboxes = document.querySelectorAll('.mobile-checkbox');
+        mobileCheckboxes.forEach(cb => {
+            if (cb.dataset.employeeId === employeeId) {
+                cb.checked = isChecked;
+            }
+        });
+        
         updateSelectAllState();
+        updateMobileUI();
     }
     
     function toggleSelectAll() {
@@ -322,13 +657,23 @@
             checkboxes.forEach(cb => {
                 cb.checked = true;
                 selectedEmployeeIds.add(cb.dataset.employeeId);
+                
+                // Sync mobile checkboxes
+                const mobileCb = document.querySelector(`.mobile-checkbox[data-employee-id="${cb.dataset.employeeId}"]`);
+                if (mobileCb) mobileCb.checked = true;
             });
         } else {
             checkboxes.forEach(cb => {
                 cb.checked = false;
                 selectedEmployeeIds.delete(cb.dataset.employeeId);
+                
+                // Sync mobile checkboxes
+                const mobileCb = document.querySelector(`.mobile-checkbox[data-employee-id="${cb.dataset.employeeId}"]`);
+                if (mobileCb) mobileCb.checked = false;
             });
         }
+        updateSelectAllState();
+        updateMobileUI();
     }
     
     function updateSelectAllState() {
@@ -343,6 +688,53 @@
             selectAll.checked = selectedEmployeeIds.size === checkboxes.length;
             selectAll.indeterminate = selectedEmployeeIds.size > 0 && selectedEmployeeIds.size < checkboxes.length;
         }
+        
+        // Update download PDF button
+        const downloadBtn = document.getElementById('downloadPdfBtn');
+        if (downloadBtn && currentEmployees.length > 0) {
+            downloadBtn.disabled = false;
+            downloadBtn.classList.remove('bg-gray-300', 'cursor-not-allowed');
+            downloadBtn.classList.add('btn-gradient', 'text-white');
+        }
+    }
+    
+    function updateMobileUI() {
+        const count = selectedEmployeeIds.size;
+        const selectionCounter = document.getElementById('selectionCounter');
+        const selectionBar = document.getElementById('selectionBar');
+        const fabProcess = document.getElementById('fabProcess');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const barSelectedCount = document.getElementById('barSelectedCount');
+        
+        if (count > 0) {
+            selectionCounter.classList.remove('hidden');
+            if (selectedCountSpan) selectedCountSpan.textContent = count;
+            if (barSelectedCount) barSelectedCount.textContent = count;
+            selectionBar.classList.add('show');
+            fabProcess.classList.add('show');
+        } else {
+            selectionCounter.classList.add('hidden');
+            selectionBar.classList.remove('show');
+            fabProcess.classList.remove('show');
+        }
+    }
+    
+    function clearSelection() {
+        selectedEmployeeIds.clear();
+        
+        // Clear all checkboxes
+        document.querySelectorAll('.employee-checkbox').forEach(cb => {
+            cb.checked = false;
+        });
+        document.querySelectorAll('.mobile-checkbox').forEach(cb => {
+            cb.checked = false;
+        });
+        
+        const selectAll = document.getElementById('selectAllCheckbox');
+        if (selectAll) selectAll.checked = false;
+        
+        updateSelectAllState();
+        updateMobileUI();
     }
     
     async function processPayments() {
@@ -386,7 +778,6 @@
             });
             
             const result = await response.json();
-            
             loading.style.display = 'none';
             
             if (result.success) {
@@ -394,10 +785,10 @@
                     <div class="text-sm py-1 border-b border-gray-200">
                         <div class="font-medium">${p.employee_name}</div>
                         <div class="text-xs text-gray-500">
-                            Gross: UGX ${p.gross_salary.toLocaleString()} | 
-                            Deductions: UGX ${p.deductions.toLocaleString()} | 
-                            Bonuses: UGX ${p.bonuses.toLocaleString()} | 
-                            Net: UGX ${p.net_pay.toLocaleString()}
+                            Gross: UGX ${formatCurrency(p.gross_salary)} | 
+                            Deductions: UGX ${formatCurrency(p.deductions)} | 
+                            Bonuses: UGX ${formatCurrency(p.bonuses)} | 
+                            Net: UGX ${formatCurrency(p.net_pay)}
                         </div>
                         <button onclick="printPayslip('${p.receipt_number}')" class="mt-1 text-orange-500 text-xs hover:underline">
                             <i class="fas fa-print"></i> Print Slip
@@ -410,7 +801,7 @@
                     <div class="mt-3 text-left bg-gray-50 p-3 rounded-lg max-h-40 overflow-y-auto">
                         ${paymentsList}
                     </div>
-                    <div class="mt-2 text-sm font-bold">Total Paid: UGX ${result.total_amount.toLocaleString()}</div>
+                    <div class="mt-2 text-sm font-bold">Total Paid: UGX ${formatCurrency(result.total_amount)}</div>
                     ${result.errors ? `<div class="mt-2 text-red-600 text-sm">${result.errors.join('<br>')}</div>` : ''}
                 `;
                 document.getElementById('successModal').classList.remove('hidden');
@@ -429,7 +820,6 @@
     }
     
     function printPayslip(receiptNumber) {
-        // Open PDF in new window
         window.open(`/payroll/api/print-payslip/${receiptNumber}`, '_blank');
     }
     
@@ -486,30 +876,32 @@
     }
     
     function showMessage(message, type) {
-        const flashContainer = document.getElementById('flashMessages');
-        if (!flashContainer) {
-            const container = document.createElement('div');
-            container.id = 'flashMessages';
-            container.className = 'flash-messages';
-            document.body.appendChild(container);
-        }
-        
-        const flashMsg = document.createElement('div');
-        flashMsg.className = `flash-message ${type}`;
-        flashMsg.innerHTML = `
+        // Create toast notification
+        const toast = document.createElement('div');
+        toast.className = `fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:bottom-4 bg-${type === 'success' ? 'green' : 'red'}-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 animate-fade-in`;
+        toast.innerHTML = `
             <div class="flex items-center gap-2">
                 <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
                 <span>${message}</span>
             </div>
         `;
-        
-        document.getElementById('flashMessages').appendChild(flashMsg);
+        document.body.appendChild(toast);
         
         setTimeout(() => {
-            flashMsg.style.opacity = '0';
-            setTimeout(() => flashMsg.remove(), 300);
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
         }, 5000);
     }
+    
+    // Scroll to top functionality
+    window.addEventListener('scroll', () => {
+        const scrollTop = document.getElementById('scrollTop');
+        if (window.scrollY > 300) {
+            scrollTop.classList.add('show');
+        } else {
+            scrollTop.classList.remove('show');
+        }
+    });
     
     window.onclick = function(event) {
         const modal = document.getElementById('successModal');
@@ -518,6 +910,29 @@
         }
     };
     
+    // Add download PDF button to UI
+    const filterBar = document.querySelector('.flex-wrap.items-end.gap-4');
+    if (filterBar && !document.getElementById('downloadPdfBtn')) {
+        const pdfBtn = document.createElement('div');
+        pdfBtn.innerHTML = `
+            <button onclick="downloadPayrollPDF()" id="downloadPdfBtn" disabled
+                    class="px-5 py-2 bg-gray-300 text-gray-500 rounded-lg font-medium transition-all cursor-not-allowed">
+                <i class="fas fa-download"></i> Download PDF
+            </button>
+        `;
+        filterBar.appendChild(pdfBtn);
+    }
+    
     loadSalaryData();
 </script>
+
+<style>
+    @keyframes fade-in {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+        animation: fade-in 0.3s ease-out;
+    }
+</style>
 {% endblock %}

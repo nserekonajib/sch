@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # accounts.py - Fixed get_institute_id to properly handle employee sessions
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -28,8 +29,18 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_from_session():
-    """Get institute details from current session - handles both owners and employees"""
+def get_institute_from_session(return_id_only=False):
+    """Get institute details from current session - handles both owners and employees
+    
+    Args:
+        return_id_only (bool): If True, returns only the institute ID (UUID string)
+                              If False, returns the full institute object (dict)
+    
+    Returns:
+        str or dict or None: Institute ID if return_id_only=True, 
+                             Full institute object if return_id_only=False,
+                             None if not found
+    """
     user = session.get('user')
     if not user:
         print("No user in session")
@@ -79,7 +90,12 @@ def get_institute_from_session():
         print("No institute_id found")
         return None
     
-    # Fetch full institute details
+    # If caller only wants the ID, return it directly
+    if return_id_only:
+        print(f"Returning institute ID only: {institute_id}")
+        return institute_id
+    
+    # Otherwise, fetch and return full institute details
     try:
         response = supabase.table('institutes')\
             .select('*')\
@@ -96,13 +112,59 @@ def get_institute_from_session():
         print(f"Error fetching institute details: {e}")
         return None
 
-# Legacy function for backward compatibility
-def get_institute_id(user):
-    """Legacy function - kept for compatibility"""
-    return get_institute_from_session()
+
+def get_institute_id(user_param=None):
+    """Legacy function - returns institute ID (UUID string) intelligently
+    
+    This function can accept either a user object or None.
+    If it receives a dictionary (old style), it extracts the user_id.
+    If it receives None, it gets the current user from session.
+    
+    Returns:
+        str or None: Institute ID as UUID string
+    """
+    # Handle different parameter types for backward compatibility
+    if user_param is not None and isinstance(user_param, dict):
+        # Old style: was called with user object
+        user_id = user_param.get('id')
+        if user_id:
+            # Temporarily store the user_id in session context
+            original_user = session.get('user')
+            try:
+                # Create a mock session user
+                session['user'] = user_param
+                # Get institute ID only
+                result = get_institute_from_session(return_id_only=True)
+                return result
+            finally:
+                # Restore original session user
+                if original_user:
+                    session['user'] = original_user
+                else:
+                    session.pop('user', None)
+    else:
+        # New style: get from current session
+        result = get_institute_from_session(return_id_only=True)
+        
+        # If result is a dict (for some reason), extract the ID
+        if isinstance(result, dict):
+            return result.get('id')
+        return result
+
+
+# Optional: Add a convenience function for getting just the ID
+def get_current_institute_id():
+    """Convenience function to get just the institute ID from current session"""
+    return get_institute_from_session(return_id_only=True)
+
+
+# Optional: Add a convenience function for getting full object
+def get_current_institute():
+    """Convenience function to get full institute object from current session"""
+    return get_institute_from_session(return_id_only=False)
 
 @accounts_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Accounts Dashboard"""
     institute = get_institute_from_session()
@@ -114,8 +176,9 @@ def index():
     
     return render_template('accounts/index.html', institute=institute)
 
+
 @accounts_bp.route('/dashboard/stats', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_dashboard_stats():
     """Get enhanced dashboard statistics"""
     institute = get_institute_from_session()
@@ -126,43 +189,108 @@ def get_dashboard_stats():
     print(f"Getting stats for institute: {institute['id']} - {institute.get('institute_name')}")
     
     try:
-        # Get date range (current month)
+        # Get current month date range for school fees (current month only)
         today = datetime.now()
-        month_start = today.replace(day=1).date().isoformat()
-        month_end = today.date().isoformat()
+        month_start = today.replace(day=1).date()
+        month_end = today.date()
         
-        # Get school fees collected from payments table
+        # For other income and expenses, get ALL TIME (or you can set to current year)
+        # Option 1: Get current year
+        year_start = datetime(today.year, 1, 1).date()
+        
+        # Option 2: Get ALL TIME (no date filter)
+        # Just fetch all data without date filtering
+        
+        print(f"Date range for school fees (current month): {month_start} to {month_end}")
+        print(f"Date range for other income (all time/current year): {year_start} to {month_end}")
+        
+        # Get school fees collected from payments table (current month only)
         payments_response = supabase.table('payments')\
-            .select('amount')\
+            .select('amount, payment_date')\
             .eq('institute_id', institute['id'])\
-            .gte('payment_date', month_start)\
-            .lte('payment_date', month_end)\
             .execute()
         
-        school_fees_collected = sum(float(item['amount']) for item in (payments_response.data or []))
+        # Filter payments by current month date
+        school_fees_collected = 0
+        for payment in (payments_response.data or []):
+            try:
+                payment_date = payment.get('payment_date')
+                if payment_date:
+                    if isinstance(payment_date, str):
+                        payment_date = datetime.strptime(payment_date, '%Y-%m-%d').date()
+                    elif isinstance(payment_date, datetime):
+                        payment_date = payment_date.date()
+                    
+                    if month_start <= payment_date <= month_end:
+                        school_fees_collected += float(payment['amount'])
+            except Exception as e:
+                print(f"Error parsing payment date: {e}")
         
-        # Get other income from income_transactions
+        print(f"School fees collected (current month): {school_fees_collected}")
+        
+        # Get other income from income_transactions (ALL TIME or CURRENT YEAR)
         other_income_response = supabase.table('income_transactions')\
-            .select('amount')\
+            .select('amount, transaction_date, description')\
             .eq('institute_id', institute['id'])\
-            .gte('transaction_date', month_start)\
-            .lte('transaction_date', month_end)\
             .execute()
         
-        other_income = sum(item['amount'] for item in (other_income_response.data or []))
+        print(f"All income transactions: {other_income_response.data}")
+        
+        # Calculate other income for CURRENT YEAR (or you can use ALL TIME by removing date filter)
+        other_income = 0
+        for item in (other_income_response.data or []):
+            try:
+                transaction_date = item.get('transaction_date')
+                
+                if transaction_date:
+                    if isinstance(transaction_date, str):
+                        if 'T' in transaction_date:
+                            transaction_date = datetime.fromisoformat(transaction_date.replace('Z', '+00:00')).date()
+                        else:
+                            transaction_date = datetime.strptime(transaction_date, '%Y-%m-%d').date()
+                    elif isinstance(transaction_date, datetime):
+                        transaction_date = transaction_date.date()
+                    
+                    # Option A: Use current year (2026)
+                    if transaction_date.year == today.year:
+                        amount = float(item['amount'])
+                        other_income += amount
+                        print(f"✓ ADDED {amount} from {item.get('description', 'Unknown')} on {transaction_date}")
+                    else:
+                        print(f"✗ SKIPPED - year {transaction_date.year} not current year")
+                        
+            except Exception as e:
+                print(f"Error parsing income date: {e}")
+        
+        print(f"Other income (current year): {other_income}")
+        
+        # Get expenses from expense_transactions (ALL TIME or CURRENT YEAR)
+        expense_response = supabase.table('expense_transactions')\
+            .select('amount, transaction_date')\
+            .eq('institute_id', institute['id'])\
+            .execute()
+        
+        total_expenses = 0
+        for item in (expense_response.data or []):
+            try:
+                transaction_date = item.get('transaction_date')
+                if transaction_date:
+                    if isinstance(transaction_date, str):
+                        if 'T' in transaction_date:
+                            transaction_date = datetime.fromisoformat(transaction_date.replace('Z', '+00:00')).date()
+                        else:
+                            transaction_date = datetime.strptime(transaction_date, '%Y-%m-%d').date()
+                    elif isinstance(transaction_date, datetime):
+                        transaction_date = transaction_date.date()
+                    
+                    # Use current year for expenses as well
+                    if transaction_date.year == today.year:
+                        total_expenses += float(item['amount'])
+            except Exception as e:
+                print(f"Error parsing expense date: {e}")
         
         # Total income
         total_income = school_fees_collected + other_income
-        
-        # Get expenses
-        expense_response = supabase.table('expense_transactions')\
-            .select('amount')\
-            .eq('institute_id', institute['id'])\
-            .gte('transaction_date', month_start)\
-            .lte('transaction_date', month_end)\
-            .execute()
-        
-        total_expenses = sum(item['amount'] for item in (expense_response.data or []))
         
         # Net profit/loss
         net = total_income - total_expenses
@@ -175,8 +303,47 @@ def get_dashboard_stats():
         
         total_accounts = accounts_response.count or 0
         
-        # Get transaction count
-        total_transactions = len(payments_response.data or []) + len(other_income_response.data or []) + len(expense_response.data or [])
+        # Get transaction count (current year)
+        total_transactions = 0
+        for payment in (payments_response.data or []):
+            try:
+                payment_date = payment.get('payment_date')
+                if payment_date:
+                    if isinstance(payment_date, str):
+                        payment_date = datetime.strptime(payment_date, '%Y-%m-%d').date()
+                    elif isinstance(payment_date, datetime):
+                        payment_date = payment_date.date()
+                    
+                    if payment_date.year == today.year:
+                        total_transactions += 1
+            except:
+                pass
+        
+        for item in (other_income_response.data or []):
+            try:
+                transaction_date = item.get('transaction_date')
+                if transaction_date:
+                    if isinstance(transaction_date, str):
+                        transaction_date = datetime.strptime(transaction_date, '%Y-%m-%d').date()
+                    
+                    if transaction_date.year == today.year:
+                        total_transactions += 1
+            except:
+                pass
+        
+        for item in (expense_response.data or []):
+            try:
+                transaction_date = item.get('transaction_date')
+                if transaction_date:
+                    if isinstance(transaction_date, str):
+                        transaction_date = datetime.strptime(transaction_date, '%Y-%m-%d').date()
+                    
+                    if transaction_date.year == today.year:
+                        total_transactions += 1
+            except:
+                pass
+        
+        print(f"Final stats - School Fees (current month): {school_fees_collected}, Other Income (current year): {other_income}, Total Income: {total_income}, Expenses: {total_expenses}, Net: {net}")
         
         return jsonify({
             'success': True,
@@ -193,10 +360,12 @@ def get_dashboard_stats():
         
     except Exception as e:
         print(f"Error getting dashboard stats: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/chart-of-accounts', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_chart_of_accounts():
     """Get all chart of accounts for the current institute only"""
     institute = get_institute_from_session()
@@ -240,7 +409,7 @@ def get_chart_of_accounts():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/chart-of-accounts/create', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def create_account():
     """Create a new chart of account for the current institute"""
     institute = get_institute_from_session()
@@ -285,7 +454,7 @@ def create_account():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/income/create', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def create_income():
     """Record income transaction for the current institute"""
     institute = get_institute_from_session()
@@ -328,7 +497,7 @@ def create_income():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/expense/create', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def create_expense():
     """Record expense transaction for the current institute"""
     institute = get_institute_from_session()
@@ -371,7 +540,7 @@ def create_expense():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/transactions', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_transactions():
     """Get all transactions for the current institute"""
     institute = get_institute_from_session()
@@ -459,7 +628,7 @@ def get_transactions():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/account-report/<account_id>', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_account_report(account_id):
     """Get report for specific account with date filtering"""
     institute = get_institute_from_session()
@@ -542,7 +711,7 @@ def get_account_report(account_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/export-report/<account_id>', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def export_account_report(account_id):
     """Export account report to Excel/CSV"""
     institute = get_institute_from_session()

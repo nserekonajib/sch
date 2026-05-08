@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # sms_settings.py - Complete SMS Integration with Balance Deduction
 from flask import Blueprint, render_template, request, jsonify, session, url_for
 from supabase import create_client, Client
@@ -8,7 +9,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import uuid
 import re
-
+from routes.accounts.accounts import get_institute_id as get_institute
 
 load_dotenv()
 
@@ -126,7 +127,7 @@ def add_to_balance(institute_id, amount, description=""):
         return False, str(e)
 
 @sms_settings_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """SMS Settings Page"""
     user = session.get('user')
@@ -151,7 +152,7 @@ def index():
         return render_template('sms/settings.html', settings=None, institute=institute)
 
 @sms_settings_bp.route('/get-balance', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_balance():
     """Get current institute balance"""
     user = session.get('user')
@@ -167,7 +168,7 @@ def get_balance():
     })
 
 @sms_settings_bp.route('/save', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def save_settings():
     """Save SMS API settings"""
     user = session.get('user')
@@ -215,7 +216,7 @@ def save_settings():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @sms_settings_bp.route('/calculate-cost', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def calculate_cost():
     """Calculate SMS cost without sending"""
     try:
@@ -241,7 +242,7 @@ def calculate_cost():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @sms_settings_bp.route('/test', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def test_sms():
     """Test SMS sending with balance deduction"""
     user = session.get('user')
@@ -349,7 +350,7 @@ def test_sms():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @sms_settings_bp.route('/initiate-payment', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def initiate_payment():
     """Initiate payment to top up balance"""
     try:
@@ -528,7 +529,7 @@ Thank you for your payment!"""
     
     
 @sms_settings_bp.route('/store-manual-request', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def store_manual_request():
     """Store manual payment request for tracking"""
     try:

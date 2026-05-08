@@ -21,7 +21,8 @@ import cloudinary.uploader
 import requests
 from PIL import Image as PILImage
 import tempfile
-
+from routes.accounts.accounts import get_institute_id
+from routes.auth.auth import role_required, owner_required
 load_dotenv()
 
 # Initialize Supabase client
@@ -40,20 +41,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
+
 
 def get_salary_expense_account(institute_id):
     """Get or create salary expense account"""
@@ -100,31 +88,39 @@ def get_salary_expense_account(institute_id):
         return None
 
 @payroll_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Payroll Management Page"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('payroll/index.html', institute=None, now=datetime.now())
+    
+    # Get institute details for the template
+    institute_response = supabase.table('institutes')\
+        .select('*')\
+        .eq('id', institute_id)\
+        .execute()
+    
+    institute = institute_response.data[0] if institute_response.data else None
     
     return render_template('payroll/index.html', institute=institute, now=datetime.now())
 
 @payroll_bp.route('/api/employees', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_employees():
     """Get all active employees for payroll"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
         response = supabase.table('employees')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .order('name')\
             .execute()
@@ -138,13 +134,13 @@ def get_employees():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @payroll_bp.route('/api/salary-summary', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_salary_summary():
     """Get salary summary for selected month"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -155,7 +151,7 @@ def get_salary_summary():
         
         employees_response = supabase.table('employees')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .execute()
         
@@ -163,7 +159,7 @@ def get_salary_summary():
         
         paid_response = supabase.table('salary_payments')\
             .select('employee_id')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('payment_month', month)\
             .execute()
         
@@ -195,13 +191,13 @@ def get_salary_summary():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @payroll_bp.route('/api/process-payment', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def process_payment():
     """Process salary payment for employees with deductions and bonuses"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -216,7 +212,7 @@ def process_payment():
         if not payment_month:
             return jsonify({'success': False, 'message': 'Payment month required'}), 400
         
-        salary_account = get_salary_expense_account(institute['id'])
+        salary_account = get_salary_expense_account(institute_id)
         
         if not salary_account:
             return jsonify({'success': False, 'message': 'Salary expense account not found. Please create a SALARIES expense account in Chart of Accounts first.'}), 400
@@ -250,11 +246,11 @@ def process_payment():
                     continue
                 
                 payment_id = str(uuid.uuid4())
-                receipt_number = generate_salary_receipt_number(institute['id'])
+                receipt_number = generate_salary_receipt_number(institute_id)
                 
                 payment_data = {
                     'id': payment_id,
-                    'institute_id': institute['id'],
+                    'institute_id': institute_id,
                     'employee_id': employee_id,
                     'amount': net_pay,
                     'gross_salary': salary_amount,
@@ -273,7 +269,7 @@ def process_payment():
                 
                 expense_data = {
                     'id': str(uuid.uuid4()),
-                    'institute_id': institute['id'],
+                    'institute_id': institute_id,
                     'account_id': salary_account['id'],
                     'amount': net_pay,
                     'transaction_date': payment_date,
@@ -319,23 +315,33 @@ def process_payment():
         
     except Exception as e:
         print(f"Error processing salary payment: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @payroll_bp.route('/api/print-payslip/<receipt_number>', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def print_payslip(receipt_number):
     """Generate PDF salary slip for printing"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
+        
         payment_response = supabase.table('salary_payments')\
             .select('*, employees(name, employee_id, role)')\
             .eq('receipt_number', receipt_number)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not payment_response.data:
@@ -488,21 +494,31 @@ def print_payslip(receipt_number):
         
     except Exception as e:
         print(f"Error generating payslip: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
     
 @payroll_bp.route('/api/download-payroll-pdf', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def download_payroll_pdf():
     """Download payroll summary as PDF"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     temp_logo_path = None
     
     try:
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
+        
         data = request.get_json()
         employees = data.get('employees', [])
         month = data.get('month')
@@ -641,6 +657,8 @@ def download_payroll_pdf():
                 pass
         
         print(f"Error generating PDF: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 def generate_salary_receipt_number(institute_id):

@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # resultsCard.py - Student Results Card Generation with Class-wise PDF Merge
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -12,6 +13,7 @@ from xhtml2pdf import pisa
 import requests
 from PyPDF2 import PdfMerger
 import tempfile
+from routes.accounts.accounts import get_institute_id as get_institute_id_func
 
 load_dotenv()
 
@@ -30,20 +32,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute(user_id):
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
-
 def get_ordinal_suffix(n):
     if 11 <= n % 100 <= 13:
         return 'th'
@@ -55,25 +43,32 @@ def get_grade_comment(percentage, grading_settings):
             return grade['grade_name'], grade['status']
     return 'N/A', 'No Grade Assigned'
 
-
 @results_bp.route('/r')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def r():
     return render_template('results/index2.html')
 
 @results_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('results/index.html', exams=[], classes=[], students=[], institute=None)
     
     try:
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
+        
         exams_response = supabase.table('exams')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('created_at', desc=True)\
             .execute()
         
@@ -81,16 +76,16 @@ def index():
         
         classes_response = supabase.table('classes')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('name')\
             .execute()
         
         classes = classes_response.data if classes_response.data else []
         
-        # FIXED: Direct query to students table - no class_enrollments
+        # Direct query to students table - no class_enrollments
         students_response = supabase.table('students')\
             .select('id, name, student_id, class_id, classes(name), photo_url, gender, status')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .order('name')\
             .execute()
@@ -110,16 +105,24 @@ def index():
         print(f"Error loading results page: {e}")
         import traceback
         traceback.print_exc()
-        return render_template('results/index.html', exams=[], classes=[], students=[], institute=institute)
+        return render_template('results/index.html', exams=[], classes=[], students=[], institute=None)
 
-def generate_single_student_pdf(student_id, exam_ids, term, year, institute, grading):
+def generate_single_student_pdf(student_id, exam_ids, term, year, institute_id, grading):
     """Generate PDF for a single student and return as BytesIO"""
     try:
-        # FIXED: Get student details with class info - direct query
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
+        
+        # Get student details with class info - direct query
         student_response = supabase.table('students')\
             .select('*, classes(id, name)')\
             .eq('id', student_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not student_response.data:
@@ -132,6 +135,7 @@ def generate_single_student_pdf(student_id, exam_ids, term, year, institute, gra
         exams_response = supabase.table('exams')\
             .select('*')\
             .in_('id', exam_ids)\
+            .eq('institute_id', institute_id)\
             .execute()
         
         exams = exams_response.data if exams_response.data else []
@@ -146,7 +150,7 @@ def generate_single_student_pdf(student_id, exam_ids, term, year, institute, gra
         subjects_response = supabase.table('class_subjects')\
             .select('*, subjects(id, name)')\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         subjects = subjects_response.data if subjects_response.data else []
@@ -163,7 +167,7 @@ def generate_single_student_pdf(student_id, exam_ids, term, year, institute, gra
                 .select('*')\
                 .eq('exam_id', exam['id'])\
                 .eq('student_id', student_id)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .execute()
             
             marks_dict = {}
@@ -226,11 +230,11 @@ def generate_single_student_pdf(student_id, exam_ids, term, year, institute, gra
         
         overall_grade, overall_comment = get_grade_comment(overall_percentage, grading)
         
-        # FIXED: Get class students directly from students table by class_id
+        # Get class students directly from students table by class_id
         class_students_response = supabase.table('students')\
             .select('id, name')\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .execute()
         
@@ -253,7 +257,7 @@ def generate_single_student_pdf(student_id, exam_ids, term, year, institute, gra
                         .eq('exam_id', exam_id)\
                         .eq('student_id', class_student['id'])\
                         .eq('subject_id', subject_id)\
-                        .eq('institute_id', institute['id'])\
+                        .eq('institute_id', institute_id)\
                         .execute()
                     
                     if marks_resp.data:
@@ -344,13 +348,13 @@ def generate_empty_results_pdf(student, institute, term, year, message):
         return None
 
 @results_bp.route('/generate-class', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def generate_class_results():
     """Generate merged PDF for entire class"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -369,11 +373,11 @@ def generate_class_results():
         if not term:
             return jsonify({'success': False, 'message': 'Please enter the term'}), 400
         
-        # FIXED: Get all students in the class directly from students table
+        # Get all students in the class directly from students table
         students_response = supabase.table('students')\
             .select('id, name, student_id')\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .order('name')\
             .execute()
@@ -386,7 +390,7 @@ def generate_class_results():
         # Get grading settings
         grading_response = supabase.table('exam_grading')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('min_percentage', desc=True)\
             .execute()
         
@@ -401,7 +405,7 @@ def generate_class_results():
         for student in students:
             print(f"Generating PDF for student: {student['name']}")
             pdf_buffer = generate_single_student_pdf(
-                student['id'], exam_ids, term, year, institute, grading
+                student['id'], exam_ids, term, year, institute_id, grading
             )
             
             if pdf_buffer:
@@ -429,6 +433,7 @@ def generate_class_results():
         class_response = supabase.table('classes')\
             .select('name')\
             .eq('id', class_id)\
+            .eq('institute_id', institute_id)\
             .execute()
         
         class_name = class_response.data[0]['name'] if class_response.data else 'Class'
@@ -446,15 +451,14 @@ def generate_class_results():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-
 @results_bp.route('/generate', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def generate_results():
     """Generate single student report card"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -473,13 +477,13 @@ def generate_results():
         # Get grading settings
         grading_response = supabase.table('exam_grading')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('min_percentage', desc=True)\
             .execute()
         
         grading = grading_response.data if grading_response.data else []
         
-        pdf_buffer = generate_single_student_pdf(student_id, exam_ids, term, year, institute, grading)
+        pdf_buffer = generate_single_student_pdf(student_id, exam_ids, term, year, institute_id, grading)
         
         if not pdf_buffer:
             return jsonify({'success': False, 'message': 'Failed to generate report card'}), 500
@@ -488,6 +492,7 @@ def generate_results():
         student_response = supabase.table('students')\
             .select('name')\
             .eq('id', student_id)\
+            .eq('institute_id', institute_id)\
             .execute()
         
         student_name = student_response.data[0]['name'] if student_response.data else 'Student'

@@ -125,17 +125,26 @@
             <p class="text-sm text-gray-600">Manage all students, enrollments, and student information</p>
         </div>
         <div class="flex gap-2">
-            <button onclick="openImportModal()" 
-                    class="px-4 py-2 bg-white border border-orange-500 text-orange-500 rounded-lg text-sm font-medium hover:bg-orange-50 transition-all flex items-center gap-2">
-                <i class="fas fa-upload text-sm"></i>
-                Import
-            </button>
-            <button onclick="openAddModal()" 
-                    class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
-                <i class="fas fa-plus-circle text-sm"></i>
-                Add Student
-            </button>
-        </div>
+                <!-- Regular Import Button -->
+                <button onclick="openImportModal()" 
+                        class="px-4 py-2 bg-white border border-orange-500 text-orange-500 rounded-lg text-sm font-medium hover:bg-orange-50 transition-all flex items-center gap-2">
+                    <i class="fas fa-upload text-sm"></i>
+                    Import
+                </button>
+                
+                <!-- School Pay Import Button -->
+                <button onclick="openSchoolPayImportModal()" 
+                        class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:from-green-600 hover:to-green-700 transition-all flex items-center gap-2 shadow-sm">
+                    <i class="fas fa-file-invoice-dollar text-sm"></i>
+                    School Pay Import
+                </button>
+                
+                <button onclick="openAddModal()" 
+                        class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                    <i class="fas fa-plus-circle text-sm"></i>
+                    Add Student
+                </button>
+            </div>
     </div>
 
     <!-- Stats Cards - Loaded via API -->
@@ -429,7 +438,74 @@
         </button>
     </div>
 </div>
-
+<!-- School Pay Import Modal -->
+<div id="schoolPayImportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Import from School Pay File</h3>
+            <button onclick="closeSchoolPayImportModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        
+        <form id="schoolPayImportForm" enctype="multipart/form-data" class="p-5">
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Select Class *</label>
+                <select name="class_id" id="schoolPayClassSelect" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="">Select Class</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Upload School Pay File (Excel/CSV)</label>
+                <div class="file-upload-area rounded-lg p-4 text-center cursor-pointer border-2 border-dashed border-gray-300 hover:border-orange-500 transition-all" onclick="document.getElementById('schoolPayFileInput').click()">
+                    <i class="fas fa-file-invoice-dollar text-3xl text-orange-500 mb-2"></i>
+                    <p class="text-sm text-gray-600">Click to upload School Pay file</p>
+                    <p class="text-xs text-gray-400 mt-1">Accepts .xls, .xlsx, .csv</p>
+                    <input type="file" id="schoolPayFileInput" name="file" accept=".xls,.xlsx,.csv" class="hidden" onchange="showSchoolPayFileName(this)">
+                </div>
+                <p id="schoolPayFileName" class="text-xs text-gray-500 mt-2 hidden"></p>
+            </div>
+            
+            <div class="bg-blue-50 rounded-lg p-3 mb-4">
+                <p class="text-xs text-blue-800 font-medium mb-1">File Format Requirements:</p>
+                <ul class="text-xs text-blue-700 space-y-1">
+                    <li>• <strong>Payment Code</strong> - Used as Student ID</li>
+                    <li>• <strong>First Name</strong> - Student's first name</li>
+                    <li>• <strong>Last Name</strong> - Student's last name</li>
+                    <li>• <strong>Student Phone</strong> - Will be formatted to 256XXXXXXXXX</li>
+                </ul>
+                <p class="text-xs text-blue-600 mt-2">
+                    <i class="fas fa-info-circle"></i> 
+                    Suite Code and Class code columns are optional and will be ignored
+                </p>
+            </div>
+            
+            <div class="bg-yellow-50 rounded-lg p-3 mb-4">
+                <p class="text-xs text-yellow-800 font-medium mb-1">Important Notes:</p>
+                <ul class="text-xs text-yellow-700 space-y-1">
+                    <li>• <i class="fas fa-check-circle text-green-600"></i> Students are checked for duplicates by Payment Code and Phone</li>
+                    <li>• <i class="fas fa-sync-alt"></i> Phone numbers auto-formatted to 256XXXXXXXXX format</li>
+                    <li>• <i class="fas fa-layer-group"></i> Processes in batches of 100 for better performance</li>
+                    <li>• <i class="fas fa-clipboard-list"></i> Auto-enrolls students to selected class</li>
+                </ul>
+            </div>
+            
+            <div class="flex gap-2 pt-2">
+                <button type="button" onclick="closeSchoolPayImportModal()" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-gray-600 text-sm hover:bg-gray-50 transition-all">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-3 py-2 btn-gradient text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+                    <i class="fas fa-upload text-xs"></i>
+                    Import School Pay File
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 <!-- Loading Overlay -->
 <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl p-4 flex flex-col items-center">
@@ -1137,7 +1213,87 @@
         if (event.target === importModal) closeImportModal();
         if (event.target === successModal) closeSuccessModal();
     };
+    // School Pay Import Modal Functions
+function openSchoolPayImportModal() {
+    document.getElementById('schoolPayImportModal').classList.remove('hidden');
+    document.getElementById('schoolPayImportModal').classList.add('flex');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSchoolPayImportModal() {
+    document.getElementById('schoolPayImportModal').classList.add('hidden');
+    document.getElementById('schoolPayImportModal').classList.remove('flex');
+    document.getElementById('schoolPayImportForm').reset();
+    document.getElementById('schoolPayFileName').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function showSchoolPayFileName(input) {
+    if (input.files && input.files[0]) {
+        const fileName = document.getElementById('schoolPayFileName');
+        fileName.textContent = `Selected: ${input.files[0].name}`;
+        fileName.classList.remove('hidden');
+    }
+}
+
+// School Pay Import Form Submission
+document.getElementById('schoolPayImportForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
     
+    const loading = document.getElementById('loadingOverlay');
+    loading.classList.remove('hidden');
+    loading.classList.add('flex');
+    
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetchWithRetry('/students/import-from-school-pay', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        
+        if (result.success) {
+            closeSchoolPayImportModal();
+            
+            // Show detailed success message
+            let successMessage = result.message;
+            if (result.errors && result.errors.length > 0) {
+                const errorList = result.errors.slice(0, 5).join('\n• ');
+                const moreErrors = result.errors.length > 5 ? `\n... and ${result.errors.length - 5} more errors` : '';
+                successMessage += `\n\nWarnings:\n• ${errorList}${moreErrors}`;
+            }
+            
+            openSuccessModal('Import Successful!', successMessage);
+            await loadStats();
+            await applyFiltersAndReload();
+        } else {
+            openSuccessModal('Import Failed', result.message);
+        }
+    } catch (error) {
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        console.error('School Pay import error:', error);
+        openSuccessModal('Error', 'Failed to import students. Please check file format.');
+    }
+});
+
+// Add close modal on outside click
+window.onclick = function(event) {
+    const studentModal = document.getElementById('studentModal');
+    const importModal = document.getElementById('importModal');
+    const schoolPayModal = document.getElementById('schoolPayImportModal');
+    const successModal = document.getElementById('successModal');
+    
+    if (event.target === studentModal) closeStudentModal();
+    if (event.target === importModal) closeImportModal();
+    if (event.target === schoolPayModal) closeSchoolPayImportModal();
+    if (event.target === successModal) closeSuccessModal();
+};
     // ==================== Initialize ====================
     
     // Load stats immediately

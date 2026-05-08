@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # sendMessageToParents.py - Complete rewrite with balance checking and SMS logging
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
@@ -7,7 +8,7 @@ import re
 from datetime import datetime
 from functools import wraps
 from dotenv import load_dotenv
-
+from routes.accounts.accounts import get_institute_id as get_institute
 load_dotenv()
 
 # Initialize Supabase client
@@ -30,20 +31,20 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute(user_id):
-    """Get institute for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute(user_id):
+#     """Get institute for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('*')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute: {e}")
+#         return None
 
 def get_sms_settings(institute_id):
     """Get SMS settings for the institute"""
@@ -160,7 +161,7 @@ def log_sms_sent(institute_id, student_id, phone_number, message, segments, cost
         return False
 
 @message_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Send Message to Parents Page"""
     user = session.get('user')
@@ -208,7 +209,7 @@ def index():
         return render_template('message/index.html', classes=[], students=[], institute=institute, sms_settings=None, balance=0)
 
 @message_bp.route('/api/get-recipients', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_recipients():
     """Get recipients based on selected criteria"""
     user = session.get('user')
@@ -291,7 +292,7 @@ def get_recipients():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @message_bp.route('/api/search-students', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def search_students():
     """Fast live search for students"""
     user = session.get('user')
@@ -351,7 +352,7 @@ def search_students():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @message_bp.route('/api/calculate-cost', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def calculate_cost():
     """Calculate SMS cost before sending"""
     user = session.get('user')
@@ -395,7 +396,7 @@ def calculate_cost():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @message_bp.route('/api/send', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def send_message():
     """Send SMS messages to selected recipients with balance checking"""
     user = session.get('user')
@@ -581,7 +582,7 @@ def send_message():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @message_bp.route('/api/message-history', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_message_history():
     """Get SMS sending history from sms_log table"""
     user = session.get('user')
@@ -661,7 +662,7 @@ def get_message_history():
         return jsonify({'success': True, 'logs': [], 'summary': {'total_sent': 0, 'total_failed': 0, 'total_cost': 0}})
 
 @message_bp.route('/api/get-balance', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_balance():
     """Get current institute balance"""
     user = session.get('user')

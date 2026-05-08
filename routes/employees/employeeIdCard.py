@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # employeeIdCard.py - Fixed PDF generation with proper None handling
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -23,6 +24,7 @@ import cloudinary.uploader
 import requests
 from functools import wraps
 from dotenv import load_dotenv
+from routes.accounts.accounts import get_institute_id
 
 load_dotenv()
 
@@ -50,23 +52,23 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute_id(user_id):
+#     """Get institute for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('*')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute: {e}")
+#         return None
 
 @employeeID_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Employee ID Card Generation Page"""
     user = session.get('user')
@@ -93,7 +95,7 @@ def index():
         return render_template('employee_id/index.html', employees=[], institute=institute)
 
 @employeeID_bp.route('/generate', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def generate_ids():
     """Generate ID cards for selected employees"""
     user = session.get('user')
@@ -196,7 +198,7 @@ def generate_ids():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employeeID_bp.route('/print-all', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def print_all():
     """Generate HTML for printing all ID cards"""
     user = session.get('user')
@@ -225,7 +227,7 @@ def print_all():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employeeID_bp.route('/preview/<employee_id>', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def preview_card(employee_id):
     """Preview single ID card"""
     user = session.get('user')

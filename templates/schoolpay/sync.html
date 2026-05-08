@@ -1,0 +1,519 @@
+<!-- templates/schoolpay/sync.html - SchoolPay Payment Sync -->
+{% extends "base.html" %}
+
+{% block title %}Sync SchoolPay Payments - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .sync-card {
+        transition: all 0.3s ease;
+    }
+    .sync-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .status-success {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .status-warning {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+    .status-error {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    .sync-progress {
+        transition: width 0.3s ease;
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Sync SchoolPay Payments</h1>
+        <p class="text-sm text-gray-600">Fetch payments from SchoolPay API and sync to your local database</p>
+    </div>
+
+    {% if not settings_exists %}
+    <!-- No Settings Warning -->
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 rounded-xl p-4 mb-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm text-yellow-700">
+                    SchoolPay is not configured. Please go to <a href="{{ url_for('schoolpay.index') }}" class="font-bold underline">SchoolPay Settings</a> to configure your API credentials first.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Sync Form Card -->
+    <div class="sync-card bg-white rounded-xl shadow-md overflow-hidden mb-6">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-sync-alt text-orange-500"></i>
+                Sync Payments
+            </h2>
+        </div>
+        
+        <div class="p-6">
+            <form id="syncForm">
+                <!-- Sync Type Selection -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Sync Type</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center">
+                            <input type="radio" name="sync_type" value="single_date" checked class="mr-2 text-orange-500">
+                            <span class="text-sm">Single Date</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="sync_type" value="date_range" class="mr-2 text-orange-500">
+                            <span class="text-sm">Date Range</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Single Date -->
+                <div id="singleDateDiv" class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Sync Date</label>
+                    <input type="date" id="syncDate" name="sync_date" 
+                           value="{{ now.date().isoformat() if now else '' }}"
+                           class="w-full md:w-64 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                
+                <!-- Date Range (hidden by default) -->
+                <div id="dateRangeDiv" class="mb-5 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">From Date</label>
+                            <input type="date" id="fromDate" name="from_date" 
+                                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">To Date</label>
+                            <input type="date" id="toDate" name="to_date" 
+                                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Info Box -->
+                <div class="info-box rounded-lg p-4 mb-6 bg-blue-50 border-l-4 border-blue-500">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800 mb-1">How SchoolPay Sync Works</p>
+                            <p class="text-xs text-gray-600">1. The system will fetch payments from SchoolPay API using your configured credentials.</p>
+                            <p class="text-xs text-gray-600">2. For each payment, it will look up the student using their payment code.</p>
+                            <p class="text-xs text-gray-600">3. If the student is found, the payment is recorded in your local database.</p>
+                            <p class="text-xs text-gray-600">4. Students not found will be listed and can be downloaded for reference.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sync Button -->
+                <button type="submit" id="syncBtn" 
+                        class="w-full md:w-auto px-6 py-2.5 btn-gradient text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-cloud-download-alt"></i>
+                    Start Sync
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results Section (hidden initially) -->
+    <div id="resultsSection" class="hidden">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500">
+                <p class="text-gray-500 text-sm">Synced Successfully</p>
+                <p class="text-2xl font-bold text-green-600" id="syncedCount">0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-red-500">
+                <p class="text-gray-500 text-sm">Failed</p>
+                <p class="text-2xl font-bold text-red-600" id="failedCount">0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-yellow-500">
+                <p class="text-gray-500 text-sm">Students Not Found</p>
+                <p class="text-2xl font-bold text-yellow-600" id="notFoundCount">0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500">
+                <p class="text-gray-500 text-sm">Total Processed</p>
+                <p class="text-2xl font-bold text-blue-600" id="totalProcessed">0</p>
+            </div>
+        </div>
+        
+        <!-- Synced Payments Table -->
+        <div id="syncedSection" class="bg-white rounded-xl shadow-md overflow-hidden mb-6 hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="text-lg font-semibold text-gray-800">Successfully Synced Payments</h3>
+            </div>
+            <div class="overflow-x-auto p-4">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student ID</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Receipt No.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="syncedTableBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Failed Payments Table -->
+        <div id="failedSection" class="bg-white rounded-xl shadow-md overflow-hidden mb-6 hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="text-lg font-semibold text-gray-800">Failed Payments</h3>
+            </div>
+            <div class="overflow-x-auto p-4">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="failedTableBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Not Found Students Table -->
+        <div id="notFoundSection" class="bg-white rounded-xl shadow-md overflow-hidden mb-6 hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-gray-800">Students Not Found in System</h3>
+                <button id="downloadNotFoundBtn" class="px-3 py-1 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600">
+                    <i class="fas fa-download"></i> Download List
+                </button>
+            </div>
+            <div class="overflow-x-auto p-4">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Code</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="notFoundTableBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Modal -->
+<div id="progressModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 transform transition-all modal-container">
+        <div class="text-center">
+            <div class="loader mx-auto mb-4"></div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Syncing Payments</h3>
+            <p class="text-sm text-gray-600 mb-3" id="progressMessage">Fetching data from SchoolPay...</p>
+            <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div id="progressBar" class="sync-progress bg-orange-500 h-2 rounded-full" style="width: 0%"></div>
+            </div>
+            <p class="text-xs text-gray-400" id="progressDetail">Please wait</p>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-5 text-center transform transition-all modal-container">
+        <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-check-circle text-2xl text-green-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-1">Sync Complete!</h3>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage"></p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-5 py-1.5 rounded-lg text-white text-sm font-medium">
+            Continue
+        </button>
+    </div>
+</div>
+
+<script>
+    let notFoundStudentsData = [];
+    
+    // Toggle between single date and date range
+    document.querySelectorAll('input[name="sync_type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const singleDateDiv = document.getElementById('singleDateDiv');
+            const dateRangeDiv = document.getElementById('dateRangeDiv');
+            
+            if (this.value === 'single_date') {
+                singleDateDiv.classList.remove('hidden');
+                dateRangeDiv.classList.add('hidden');
+            } else {
+                singleDateDiv.classList.add('hidden');
+                dateRangeDiv.classList.remove('hidden');
+            }
+        });
+    });
+    
+    // Set default dates
+    const today = new Date().toISOString().split('T')[0];
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    document.getElementById('syncDate').value = today;
+    document.getElementById('fromDate').value = sevenDaysAgo;
+    document.getElementById('toDate').value = today;
+    
+    document.getElementById('syncForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const syncType = document.querySelector('input[name="sync_type"]:checked').value;
+        let requestData = { sync_type: syncType };
+        
+        if (syncType === 'single_date') {
+            requestData.sync_date = document.getElementById('syncDate').value;
+        } else {
+            requestData.from_date = document.getElementById('fromDate').value;
+            requestData.to_date = document.getElementById('toDate').value;
+        }
+        
+        // Show progress modal
+        const modal = document.getElementById('progressModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 10;
+            if (progress <= 90) {
+                document.getElementById('progressBar').style.width = progress + '%';
+            }
+        }, 500);
+        
+        try {
+            const response = await fetch('/sync-schoolpay/api/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+            
+            const result = await response.json();
+            
+            clearInterval(progressInterval);
+            document.getElementById('progressBar').style.width = '100%';
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = '';
+            }, 500);
+            
+            if (result.success) {
+                // Store not found students for download
+                notFoundStudentsData = result.not_found || [];
+                
+                // Update stats
+                document.getElementById('syncedCount').textContent = result.synced_count || 0;
+                document.getElementById('failedCount').textContent = result.failed_count || 0;
+                document.getElementById('notFoundCount').textContent = result.not_found_count || 0;
+                document.getElementById('totalProcessed').textContent = (result.synced_count || 0) + (result.failed_count || 0) + (result.not_found_count || 0);
+                
+                // Render synced payments
+                if (result.synced && result.synced.length > 0) {
+                    const tbody = document.getElementById('syncedTableBody');
+                    tbody.innerHTML = result.synced.map(p => `
+                        <tr>
+                            <td class="px-4 py-2 text-sm">${escapeHtml(p.student_name)}</td>
+                            <td class="px-4 py-2 text-sm">${escapeHtml(p.student_id)}</td>
+                            <td class="px-4 py-2 text-sm text-right">UGX ${formatNumber(p.amount)}</td>
+                            <td class="px-4 py-2 text-sm font-mono">${escapeHtml(p.receipt_number)}</td>
+                        </tr>
+                    `).join('');
+                    document.getElementById('syncedSection').classList.remove('hidden');
+                } else {
+                    document.getElementById('syncedSection').classList.add('hidden');
+                }
+                
+                // Render failed payments
+                if (result.failed && result.failed.length > 0) {
+                    const tbody = document.getElementById('failedTableBody');
+                    tbody.innerHTML = result.failed.map(p => `
+                        <tr>
+                            <td class="px-4 py-2 text-sm">${escapeHtml(p.student_name)}</td>
+                            <td class="px-4 py-2 text-sm text-right">UGX ${formatNumber(p.amount)}</td>
+                            <td class="px-4 py-2 text-sm">${escapeHtml(p.reason)}</td>
+                        </tr>
+                    `).join('');
+                    document.getElementById('failedSection').classList.remove('hidden');
+                } else {
+                    document.getElementById('failedSection').classList.add('hidden');
+                }
+                
+                // Render not found students
+                if (result.not_found && result.not_found.length > 0) {
+                    const tbody = document.getElementById('notFoundTableBody');
+                    tbody.innerHTML = result.not_found.map(s => `
+                        <tr>
+                            <td class="px-4 py-2 text-sm font-mono">${escapeHtml(s.student_payment_code)}</td>
+                            <td class="px-4 py-2 text-sm">${escapeHtml(s.student_name)}</td>
+                            <td class="px-4 py-2 text-sm">${escapeHtml(s.student_class)}</td>
+                            <td class="px-4 py-2 text-sm text-right">UGX ${formatNumber(s.amount)}</td>
+                            <td class="px-4 py-2 text-sm">${s.payment_date}</td>
+                        </tr>
+                    `).join('');
+                    document.getElementById('notFoundSection').classList.remove('hidden');
+                } else {
+                    document.getElementById('notFoundSection').classList.add('hidden');
+                }
+                
+                // Show results section
+                document.getElementById('resultsSection').classList.remove('hidden');
+                
+                // Show success message
+                document.getElementById('successMessage').innerHTML = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                
+                setTimeout(() => closeSuccessModal(), 3000);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            clearInterval(progressInterval);
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = '';
+            showMessage('Failed to sync payments: ' + error.message, 'error');
+        }
+    });
+    
+    // Download not found students
+    document.getElementById('downloadNotFoundBtn')?.addEventListener('click', async () => {
+        if (notFoundStudentsData.length === 0) return;
+        
+        try {
+            const response = await fetch('/sync-schoolpay/api/download-not-found', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ not_found_students: notFoundStudentsData })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `not_found_students_${new Date().toISOString().slice(0, 19)}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showMessage('File downloaded successfully', 'success');
+            } else {
+                showMessage('Failed to download file', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Failed to download file', 'error');
+        }
+    });
+    
+    function formatNumber(num) {
+        return new Intl.NumberFormat('en-US').format(num);
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+</script>
+{% endblock %}

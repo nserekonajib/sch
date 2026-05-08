@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # feesReports.py - Fee Reports Blueprint
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -7,6 +8,7 @@ import io
 from datetime import datetime, timedelta
 from functools import wraps
 from dotenv import load_dotenv
+from routes.accounts.accounts import get_institute_id
 
 load_dotenv()
 
@@ -26,36 +28,30 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
 
 @fee_reports_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Fee Reports Dashboard"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('fees/reports.html', institute=None, classes=[])
     
     try:
+        # Get institute details for display
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else None
+        
         # Get classes for filter
         classes_response = supabase.table('classes')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('name')\
             .execute()
         
@@ -65,16 +61,17 @@ def index():
         
     except Exception as e:
         print(f"Error loading reports page: {e}")
-        return render_template('fees/reports.html', institute=institute, classes=[])
+        return render_template('fees/reports.html', institute=None, classes=[])
+
 
 @fee_reports_bp.route('/daily-collection', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_daily_collection():
     """Get daily collection report"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -90,7 +87,7 @@ def get_daily_collection():
         # Get payments within date range
         payments_response = supabase.table('payments')\
             .select('*, students(name, student_id, classes(name))')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .gte('payment_date', start_date)\
             .lte('payment_date', end_date)\
             .order('payment_date', desc=True)\
@@ -140,16 +137,19 @@ def get_daily_collection():
         
     except Exception as e:
         print(f"Error getting daily collection: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @fee_reports_bp.route('/balance-report', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_balance_report():
     """Get fees balance report"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -161,7 +161,7 @@ def get_balance_report():
         # Build query for students
         students_query = supabase.table('students')\
             .select('*, classes(name)')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')
         
         if class_id:
@@ -181,7 +181,7 @@ def get_balance_report():
             invoices_query = supabase.table('invoices')\
                 .select('*')\
                 .eq('student_id', student['id'])\
-                .eq('institute_id', institute['id'])
+                .eq('institute_id', institute_id)
             
             if start_date:
                 invoices_query = invoices_query.gte('created_at', f"{start_date}T00:00:00")
@@ -228,16 +228,19 @@ def get_balance_report():
         
     except Exception as e:
         print(f"Error getting balance report: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @fee_reports_bp.route('/general-report', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_general_report():
     """Get general fees report with statistics"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -248,7 +251,7 @@ def get_general_report():
         # Get all students
         students_response = supabase.table('students')\
             .select('id')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .execute()
         
@@ -257,7 +260,7 @@ def get_general_report():
         # Get all invoices
         invoices_query = supabase.table('invoices')\
             .select('*')\
-            .eq('institute_id', institute['id'])
+            .eq('institute_id', institute_id)
         
         if start_date:
             invoices_query = invoices_query.gte('created_at', f"{start_date}T00:00:00")
@@ -294,16 +297,19 @@ def get_general_report():
         
     except Exception as e:
         print(f"Error getting general report: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-    
+
+
 @fee_reports_bp.route('/send-reminders', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def send_fee_reminders():
     """Send fee reminders to students with balance"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -315,8 +321,15 @@ def send_fee_reminders():
         if not student_ids:
             return jsonify({'success': False, 'message': 'No student IDs provided'}), 400
         
+        # Get institute details for message
+        institute_response = supabase.table('institutes')\
+            .select('institute_name')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute_name = institute_response.data[0]['institute_name'] if institute_response.data else 'School Administration'
+        
         # Check if the IDs are internal UUIDs or display student_ids
-        # Internal UUIDs are 36 characters with hyphens, display IDs are like PRI202604-KBML-004
         internal_ids = []
         display_ids = []
         
@@ -332,7 +345,7 @@ def send_fee_reminders():
                 student_response = supabase.table('students')\
                     .select('id')\
                     .eq('student_id', display_id)\
-                    .eq('institute_id', institute['id'])\
+                    .eq('institute_id', institute_id)\
                     .execute()
                 
                 if student_response.data:
@@ -346,7 +359,7 @@ def send_fee_reminders():
         # Get SMS settings
         sms_response = supabase.table('sms_settings')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('enabled', True)\
             .execute()
         
@@ -364,7 +377,7 @@ def send_fee_reminders():
             student_response = supabase.table('students')\
                 .select('name, student_id, contact_number')\
                 .eq('id', student_uuid)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .execute()
             
             if not student_response.data:
@@ -382,7 +395,7 @@ def send_fee_reminders():
             invoices_response = supabase.table('invoices')\
                 .select('balance')\
                 .eq('student_id', student_uuid)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .neq('status', 'paid')\
                 .execute()
             
@@ -405,7 +418,7 @@ This is to remind you that your child {student['name']} (ID: {student['student_i
 
 Please clear the balance to avoid any inconvenience.
 
-{institute.get('institute_name', 'School Administration')}
+{institute_name}
 Thank you."""
             
             # Send SMS
@@ -442,14 +455,15 @@ Thank you."""
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @fee_reports_bp.route('/export-excel', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def export_to_excel():
     """Export report data to Excel"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -501,4 +515,6 @@ def export_to_excel():
         
     except Exception as e:
         print(f"Error exporting to Excel: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500

@@ -7,6 +7,8 @@ from datetime import datetime
 import json
 from functools import wraps
 from dotenv import load_dotenv
+from routes.accounts.accounts import get_institute_id
+from routes.auth.auth import role_required
 
 load_dotenv()
 
@@ -26,23 +28,23 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('id')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute_id(user_id):
+#     """Get institute for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('id')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]['id']
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]['id']
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute: {e}")
+#         return None
 
 @grading_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Exam Grading Settings Page"""
     user = session.get('user')
@@ -79,7 +81,7 @@ def index():
         return render_template('grading/index.html', grades=[], fail_criteria={'overall_percentage': 30, 'subject_percentage': 15})
 
 @grading_bp.route('/api/grades', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_grades():
     """Get all grade settings"""
     user = session.get('user')
@@ -104,7 +106,7 @@ def get_grades():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @grading_bp.route('/api/grades/save', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def save_grades():
     """Save grade settings"""
     user = session.get('user')
@@ -173,7 +175,7 @@ def save_grades():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @grading_bp.route('/api/fail-criteria/save', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def save_fail_criteria():
     """Save fail criteria settings"""
     user = session.get('user')
@@ -232,7 +234,7 @@ def save_fail_criteria():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @grading_bp.route('/api/reset-default', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def reset_default():
     """Reset to default grading settings"""
     user = session.get('user')
@@ -309,7 +311,7 @@ def reset_default():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @grading_bp.route('/api/calculate-grade', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def calculate_grade():
     """Calculate grade based on percentage"""
     user = session.get('user')
@@ -360,3 +362,5 @@ def calculate_grade():
     except Exception as e:
         print(f"Error calculating grade: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+    

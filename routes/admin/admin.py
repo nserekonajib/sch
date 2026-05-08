@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # admin.py - Fixed with discount logic for 6 and 12 months
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client

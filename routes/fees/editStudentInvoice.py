@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # editStudentInvoice.py - Edit Student Invoice Management
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
@@ -7,6 +8,7 @@ from datetime import datetime
 import json
 from functools import wraps
 from dotenv import load_dotenv
+from routes.accounts.accounts import get_institute_id
 
 load_dotenv()
 
@@ -26,23 +28,23 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute ID for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('id')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute_id(user_id):
+#     """Get institute ID for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('id')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]['id']
-        return None
-    except Exception as e:
-        print(f"Error getting institute ID: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]['id']
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute ID: {e}")
+#         return None
 
 @edit_invoice_bp.route('/')
-@login_required
+@role_required(['owner'])
 def index():
     """Edit Student Invoice Page"""
     user = session.get('user')
@@ -54,7 +56,7 @@ def index():
     return render_template('edit_invoice/index.html', institute_id=institute_id)
 
 @edit_invoice_bp.route('/api/search-students', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def search_students():
     """Search students by name or ID"""
     user = session.get('user')
@@ -98,7 +100,7 @@ def search_students():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @edit_invoice_bp.route('/api/student-invoices/<student_id>', methods=['GET'])
-@login_required
+@role_required(['owner','accountant'])
 def get_student_invoices(student_id):
     """Get all invoices for a student with balance > 0"""
     user = session.get('user')
@@ -150,7 +152,7 @@ def get_student_invoices(student_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @edit_invoice_bp.route('/api/invoice/<invoice_id>', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_invoice(invoice_id):
     """Get single invoice details"""
     user = session.get('user')
@@ -185,7 +187,7 @@ def get_invoice(invoice_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @edit_invoice_bp.route('/api/invoice/<invoice_id>/update', methods=['PUT'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def update_invoice(invoice_id):
     """Update invoice details"""
     user = session.get('user')
@@ -260,7 +262,7 @@ def update_invoice(invoice_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @edit_invoice_bp.route('/api/invoice/<invoice_id>/delete', methods=['DELETE'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def delete_invoice(invoice_id):
     """Delete an invoice"""
     user = session.get('user')

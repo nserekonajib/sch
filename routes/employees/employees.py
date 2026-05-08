@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # employees.py - Employee Management Blueprint (Fixed - No separate users table)
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -13,7 +14,7 @@ from dotenv import load_dotenv
 import cloudinary
 import cloudinary.uploader
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from routes.accounts.accounts import get_institute_id
 load_dotenv()
 
 # Initialize Supabase client
@@ -40,20 +41,20 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute ID for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('id')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute_id(user_id):
+#     """Get institute ID for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('id')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]['id']
-        return None
-    except Exception as e:
-        print(f"Error getting institute ID: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]['id']
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute ID: {e}")
+#         return None
 
 def generate_employee_id(institute_id):
     """Generate unique employee ID with proper uniqueness check"""
@@ -105,7 +106,7 @@ def generate_employee_id(institute_id):
     return f"EMP-{uuid.uuid4().hex[:8].upper()}"
 
 @employees_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Employees Management Page"""
     user = session.get('user')
@@ -117,7 +118,7 @@ def index():
     return render_template('employees/index.html', institute_id=institute_id)
 
 @employees_bp.route('/api/employees', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_employees():
     """Get all employees via API"""
     user = session.get('user')
@@ -147,7 +148,7 @@ def get_employees():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employees_bp.route('/api/employees/<employee_id>', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_employee(employee_id):
     """Get single employee details"""
     user = session.get('user')
@@ -177,7 +178,7 @@ def get_employee(employee_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employees_bp.route('/api/employees/create', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def create_employee():
     """Create new employee"""
     user = session.get('user')
@@ -306,7 +307,7 @@ def create_employee():
         return jsonify({'success': False, 'message': error_msg}), 500
 
 @employees_bp.route('/api/employees/update/<employee_id>', methods=['PUT'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def update_employee(employee_id):
     """Update employee details"""
     user = session.get('user')
@@ -414,7 +415,7 @@ def update_employee(employee_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employees_bp.route('/api/employees/delete/<employee_id>', methods=['DELETE'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def delete_employee(employee_id):
     """Delete employee"""
     user = session.get('user')
@@ -453,7 +454,7 @@ def delete_employee(employee_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employees_bp.route('/api/employees/toggle-status/<employee_id>', methods=['PUT'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def toggle_status(employee_id):
     """Toggle employee status (active/inactive)"""
     user = session.get('user')
@@ -482,7 +483,7 @@ def toggle_status(employee_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employees_bp.route('/api/employees/reset-password/<employee_id>', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def reset_password(employee_id):
     """Reset employee password to default (123)"""
     user = session.get('user')
@@ -515,7 +516,7 @@ def reset_password(employee_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employees_bp.route('/api/stats', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_stats():
     """Get employee statistics"""
     user = session.get('user')
@@ -609,7 +610,7 @@ def employee_login():
 
 # Optional: Endpoint to clean up any orphaned employee_id duplicates (Admin only)
 @employees_bp.route('/api/cleanup-duplicate-ids', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def cleanup_duplicate_ids():
     """Clean up duplicate employee_ids (run this if you have duplicates)"""
     user = session.get('user')

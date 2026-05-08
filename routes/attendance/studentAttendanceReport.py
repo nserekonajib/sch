@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # studentAttendanceReport.py - Attendance Report Blueprint
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -7,7 +8,7 @@ import pandas as pd
 import io
 from functools import wraps
 from dotenv import load_dotenv
-
+from routes.accounts.accounts import get_institute_id 
 load_dotenv()
 
 # Initialize Supabase client
@@ -26,23 +27,23 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute ID for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('id')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute_id(user_id):
+#     """Get institute ID for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('id')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]['id']
-        return None
-    except Exception as e:
-        print(f"Error getting institute ID: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]['id']
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute ID: {e}")
+#         return None
 
 @attendance_report_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Attendance Report Page"""
     user = session.get('user')
@@ -81,7 +82,7 @@ def index():
         return render_template('attendance_report/index.html', classes=[], students=[], institute_id=None)
 
 @attendance_report_bp.route('/data', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_attendance_data():
     """Get attendance data based on filters"""
     user = session.get('user')
@@ -220,7 +221,7 @@ def get_attendance_data():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @attendance_report_bp.route('/export-excel', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def export_excel():
     """Export attendance data to Excel"""
     user = session.get('user')
@@ -321,7 +322,7 @@ def export_excel():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @attendance_report_bp.route('/student-summary/<student_id>', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_student_summary(student_id):
     """Get attendance summary for a specific student"""
     user = session.get('user')

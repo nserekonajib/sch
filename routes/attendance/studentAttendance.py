@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # studentAttendance.py - Fixed without marked_by column
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
@@ -6,7 +7,7 @@ from datetime import datetime, timedelta
 import uuid
 from functools import wraps
 from dotenv import load_dotenv
-
+from routes.accounts.accounts import get_institute_id as get_institute
 load_dotenv()
 
 # Initialize Supabase client
@@ -25,23 +26,23 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute(user_id):
-    """Get institute for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute(user_id):
+#     """Get institute for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('*')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute: {e}")
+#         return None
 
 @attendance_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Attendance Scanner Page"""
     user = session.get('user')
@@ -77,7 +78,7 @@ def index():
         return render_template('attendance/index.html', institute=institute, classes=[], students=[])
 
 @attendance_bp.route('/scan', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def scan_qr():
     """Process QR code scan and record attendance"""
     user = session.get('user')
@@ -125,7 +126,7 @@ def scan_qr():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @attendance_bp.route('/manual', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def manual_attendance():
     """Record manual attendance for a student"""
     user = session.get('user')
@@ -148,7 +149,7 @@ def manual_attendance():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @attendance_bp.route('/bulk', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def bulk_attendance():
     """Record bulk attendance for multiple students"""
     user = session.get('user')
@@ -287,7 +288,7 @@ def record_attendance_by_id(student_uuid, institute, silent=False):
         return {'success': False, 'message': 'Failed to record attendance'}
 
 @attendance_bp.route('/today', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_today_attendance():
     """Get today's attendance records"""
     user = session.get('user')
@@ -320,7 +321,7 @@ def get_today_attendance():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @attendance_bp.route('/stats', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_attendance_stats():
     """Get attendance statistics"""
     user = session.get('user')
@@ -374,7 +375,7 @@ def get_attendance_stats():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @attendance_bp.route('/students/search', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def search_students():
     """Search students for manual attendance"""
     user = session.get('user')

@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # assignSubjectsToClass.py - Fixed with correct table relationship
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
@@ -7,7 +8,7 @@ from datetime import datetime
 import json
 from functools import wraps
 from dotenv import load_dotenv
-
+from routes.accounts.accounts import get_institute_id
 load_dotenv()
 
 # Initialize Supabase client
@@ -26,23 +27,23 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute ID for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('id')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute_id(user_id):
+#     """Get institute ID for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('id')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]['id']
-        return None
-    except Exception as e:
-        print(f"Error getting institute ID: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]['id']
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute ID: {e}")
+#         return None
 
 @subjects_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Classes With Subjects Page"""
     user = session.get('user')
@@ -117,7 +118,7 @@ def index():
         return render_template('subjects/index.html', classes_data=[], teachers=[], institute_id=institute_id)
 
 @subjects_bp.route('/api/teachers/search', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def search_teachers():
     """Search teachers for assignment"""
     user = session.get('user')
@@ -148,7 +149,7 @@ def search_teachers():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @subjects_bp.route('/api/classes', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_classes():
     """Get all classes for dropdown"""
     user = session.get('user')
@@ -173,7 +174,7 @@ def get_classes():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @subjects_bp.route('/api/class-subjects', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_class_subjects():
     """Get subjects for a specific class"""
     user = session.get('user')
@@ -214,7 +215,7 @@ def get_class_subjects():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @subjects_bp.route('/api/assign', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def assign_subjects():
     """Assign subjects to a class with teacher"""
     user = session.get('user')
@@ -338,7 +339,7 @@ def assign_subjects():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @subjects_bp.route('/api/subject/delete/<class_subject_id>', methods=['DELETE'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def delete_subject(class_subject_id):
     """Remove a subject from a class"""
     user = session.get('user')

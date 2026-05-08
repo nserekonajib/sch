@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # staffAttendance.py - Staff Attendance with QR Code Scanning (Fixed)
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
@@ -6,6 +7,7 @@ from datetime import datetime, timedelta
 import uuid
 from functools import wraps
 from dotenv import load_dotenv
+from routes.accounts.accounts import get_institute_id
 
 load_dotenv()
 
@@ -25,36 +27,30 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute(user_id):
-    """Get institute for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
 
 @staff_attendance_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Staff Attendance Page"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('staff_attendance/index.html', institute=None, roles=[], employees=[])
     
     try:
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else None
+        
         # Get all roles for filter
         roles_response = supabase.table('employees')\
             .select('role')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .execute()
         
@@ -63,7 +59,7 @@ def index():
         # Get all active employees
         employees_response = supabase.table('employees')\
             .select('id, name, employee_id, role, photo_url')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .order('name')\
             .execute()
@@ -74,19 +70,31 @@ def index():
         
     except Exception as e:
         print(f"Error loading staff attendance page: {e}")
-        return render_template('staff_attendance/index.html', institute=institute, roles=[], employees=[])
+        return render_template('staff_attendance/index.html', institute=None, roles=[], employees=[])
+
 
 @staff_attendance_bp.route('/scan', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def scan_qr():
     """Process QR code scan and record staff attendance"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
+        # Get institute details for QR validation
+        institute_response = supabase.table('institutes')\
+            .select('institute_code')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        if not institute_response.data:
+            return jsonify({'success': False, 'message': 'Institute not found'}), 404
+        
+        institute = institute_response.data[0]
+        
         data = request.get_json()
         qr_data = data.get('qr_data', '')
         
@@ -118,7 +126,7 @@ def scan_qr():
         employee_response = supabase.table('employees')\
             .select('id, name, employee_id, role, photo_url, status')\
             .eq('employee_id', employee_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not employee_response.data:
@@ -135,7 +143,7 @@ def scan_qr():
         today_check = supabase.table('staff_attendance')\
             .select('id')\
             .eq('employee_id', employee['id'])\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('attendance_date', today)\
             .execute()
         
@@ -149,7 +157,7 @@ def scan_qr():
         attendance_id = str(uuid.uuid4())
         attendance_data = {
             'id': attendance_id,
-            'institute_id': institute['id'],
+            'institute_id': institute_id,
             'employee_id': employee['id'],
             'employee_name': employee['name'],
             'employee_number': employee['employee_id'],
@@ -186,14 +194,15 @@ def scan_qr():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @staff_attendance_bp.route('/manual', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def manual_attendance():
     """Record manual attendance for a staff member"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -207,7 +216,7 @@ def manual_attendance():
         employee_response = supabase.table('employees')\
             .select('id, name, employee_id, role, photo_url, status')\
             .eq('id', employee_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not employee_response.data:
@@ -224,7 +233,7 @@ def manual_attendance():
         today_check = supabase.table('staff_attendance')\
             .select('id')\
             .eq('employee_id', employee['id'])\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('attendance_date', today)\
             .execute()
         
@@ -238,7 +247,7 @@ def manual_attendance():
         attendance_id = str(uuid.uuid4())
         attendance_data = {
             'id': attendance_id,
-            'institute_id': institute['id'],
+            'institute_id': institute_id,
             'employee_id': employee['id'],
             'employee_name': employee['name'],
             'employee_number': employee['employee_id'],
@@ -271,16 +280,19 @@ def manual_attendance():
             
     except Exception as e:
         print(f"Error processing manual attendance: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @staff_attendance_bp.route('/bulk', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def bulk_attendance():
     """Record bulk attendance for multiple staff members"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -296,7 +308,7 @@ def bulk_attendance():
             employees_response = supabase.table('employees')\
                 .select('id')\
                 .eq('role', role)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .eq('status', 'active')\
                 .execute()
             
@@ -315,7 +327,7 @@ def bulk_attendance():
             today_check = supabase.table('staff_attendance')\
                 .select('id')\
                 .eq('employee_id', employee_id)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .eq('attendance_date', today)\
                 .execute()
             
@@ -327,7 +339,7 @@ def bulk_attendance():
             employee_response = supabase.table('employees')\
                 .select('id, name, employee_id, role, photo_url')\
                 .eq('id', employee_id)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .execute()
             
             if not employee_response.data:
@@ -340,7 +352,7 @@ def bulk_attendance():
             attendance_id = str(uuid.uuid4())
             attendance_data = {
                 'id': attendance_id,
-                'institute_id': institute['id'],
+                'institute_id': institute_id,
                 'employee_id': employee['id'],
                 'employee_name': employee['name'],
                 'employee_number': employee['employee_id'],
@@ -369,16 +381,19 @@ def bulk_attendance():
         
     except Exception as e:
         print(f"Error processing bulk attendance: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @staff_attendance_bp.route('/today', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_today_attendance():
     """Get today's staff attendance records"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -386,7 +401,7 @@ def get_today_attendance():
         
         response = supabase.table('staff_attendance')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('attendance_date', today)\
             .order('check_in_time', desc=True)\
             .execute()
@@ -399,14 +414,15 @@ def get_today_attendance():
         print(f"Error getting today's attendance: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @staff_attendance_bp.route('/stats', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_attendance_stats():
     """Get staff attendance statistics - FIXED"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -414,7 +430,7 @@ def get_attendance_stats():
         today = datetime.now().date().isoformat()
         today_response = supabase.table('staff_attendance')\
             .select('id', count='exact')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('attendance_date', today)\
             .execute()
         
@@ -423,7 +439,7 @@ def get_attendance_stats():
         # Get total active employees
         employees_response = supabase.table('employees')\
             .select('id', count='exact')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .execute()
         
@@ -433,7 +449,7 @@ def get_attendance_stats():
         week_ago = (datetime.now() - timedelta(days=7)).date().isoformat()
         week_response = supabase.table('staff_attendance')\
             .select('id', count='exact')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .gte('attendance_date', week_ago)\
             .execute()
         
@@ -442,7 +458,7 @@ def get_attendance_stats():
         # Get attendance by role - FIXED: Properly query and count by role
         role_response = supabase.table('staff_attendance')\
             .select('role')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('attendance_date', today)\
             .execute()
         
@@ -469,14 +485,15 @@ def get_attendance_stats():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @staff_attendance_bp.route('/employees/search', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def search_employees():
     """Search employees for manual attendance"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -485,7 +502,7 @@ def search_employees():
         
         query = supabase.table('employees')\
             .select('id, name, employee_id, role, photo_url, status')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')
         
         if role:
@@ -503,7 +520,7 @@ def search_employees():
         today = datetime.now().date().isoformat()
         present_response = supabase.table('staff_attendance')\
             .select('employee_id')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('attendance_date', today)\
             .execute()
         
@@ -516,4 +533,6 @@ def search_employees():
         
     except Exception as e:
         print(f"Error searching employees: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500

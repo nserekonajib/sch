@@ -33,3 +33,5 @@ comms_sdk
 waitress
 docx2pdf
 docxtpl
+xlrd
+xlwt

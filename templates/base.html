@@ -294,6 +294,8 @@ enable-ga="false"
                         <a href="{{ url_for('fees.index') }}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fees Particulars</a>
                      <a href="{{ url_for('auth.profile') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Profile</a>
                          <a href="{{ url_for('edit_invoice.index') }}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Edit Invoice</a>
+                         <a href="{{url_for('sms_settings.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">SMS Settings</a>
+                         <a href="{{url_for('schoolpay.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">SchoolPay Settings</a>
                         <!--<a href="#" @click.prevent="activeMenu = 'accounts-fees'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Accounts For Fees Invoice</a>
                         <a href="#" @click.prevent="activeMenu = 'rules-regulations'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Rules & Regulations</a>-->
                         <a href="{{ url_for('grading.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Marks Grading</a>
@@ -413,9 +415,11 @@ enable-ga="false"
                     </button>
                     <div x-show="openMenus.fees" x-cloak class="pl-11 mt-2 space-y-1.5">
 
-                       <a href="{{url_for('sms_settings.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">SMS Settings</a>
+                       
 
                         <a href="{{url_for('collect.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Collect Fees</a>
+
+                         <a href="{{url_for('sync.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">School Pay</a>
 
                          <a href="{{url_for('discount.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Discounts</a>
 

@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # createClass.py - Updated with modal-based edit functionality
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from supabase import create_client, Client
@@ -6,6 +7,7 @@ from functools import wraps
 from datetime import datetime
 import uuid
 from dotenv import load_dotenv
+from routes.accounts.accounts import get_institute_id
 
 load_dotenv()
 
@@ -26,23 +28,23 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute ID for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('id')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute_id(user_id):
+#     """Get institute ID for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('id')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]['id']
-        return None
-    except Exception as e:
-        print(f"Error getting institute ID: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]['id']
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute ID: {e}")
+#         return None
 
 @class_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """List all classes"""
     user = session.get('user')
@@ -93,7 +95,7 @@ def index():
         return render_template('classes/index.html', classes=[], sections=[])
 
 @class_bp.route('/create', methods=['GET', 'POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def create():
     """Create a new class"""
     user = session.get('user')
@@ -169,7 +171,7 @@ def create():
     return render_template('classes/create.html', sections=sections)
 
 @class_bp.route('/api/class/<class_id>', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_class(class_id):
     """Get class data for editing via API"""
     user = session.get('user')
@@ -220,7 +222,7 @@ def get_class(class_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @class_bp.route('/api/class/<class_id>/update', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def update_class(class_id):
     """Update class via API"""
     user = session.get('user')
@@ -287,7 +289,7 @@ def update_class(class_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @class_bp.route('/<class_id>/delete', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def delete(class_id):
     """Delete a class"""
     user = session.get('user')
@@ -328,7 +330,7 @@ def delete(class_id):
 
 # Section Management APIs
 @class_bp.route('/api/sections', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_sections():
     """Get all sections for dropdown"""
     user = session.get('user')
@@ -351,7 +353,7 @@ def get_sections():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @class_bp.route('/api/sections/create', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def create_section():
     """Create a new section via API"""
     user = session.get('user')

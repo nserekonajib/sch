@@ -1,4 +1,4 @@
-# studentID.py - Updated with Class Name Fix and Print All
+# studentID.py - Updated with Institute ID Fix
 from flask import Blueprint, render_template, request, jsonify, send_file, session
 from supabase import create_client, Client
 import os
@@ -23,6 +23,8 @@ import cloudinary.uploader
 import requests
 from functools import wraps
 from dotenv import load_dotenv
+from routes.accounts.accounts import get_institute_id
+from routes.auth.auth import role_required
 
 load_dotenv()
 
@@ -50,36 +52,30 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute ID for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute ID: {e}")
-        return None
 
 @id_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Student ID Card Generation Page"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('student_id/index.html', classes=[], institute=None)
     
     try:
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else None
+        
         # Get classes for dropdown
         classes_response = supabase.table('classes')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('name')\
             .execute()
         
@@ -89,16 +85,17 @@ def index():
         
     except Exception as e:
         print(f"Error loading ID page: {e}")
-        return render_template('student_id/index.html', classes=[], institute=institute)
+        return render_template('student_id/index.html', classes=[], institute=None)
+
 
 @id_bp.route('/generate', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def generate_ids():
     """Generate ID cards for selected class"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -108,6 +105,17 @@ def generate_ids():
         
         if not class_id:
             return jsonify({'success': False, 'message': 'Please select a class'}), 400
+        
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else None
+        
+        if not institute:
+            return jsonify({'success': False, 'message': 'Institute not found'}), 404
         
         # Get class name
         class_response = supabase.table('classes')\
@@ -121,7 +129,7 @@ def generate_ids():
         students_response = supabase.table('students')\
             .select('*, classes(name)')\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .order('name')\
             .execute()
@@ -179,16 +187,19 @@ def generate_ids():
         
     except Exception as e:
         print(f"Error generating IDs: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @id_bp.route('/download-pdf', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def download_pdf():
     """Download ID cards as PDF"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -197,6 +208,14 @@ def download_pdf():
         
         if not students:
             return jsonify({'success': False, 'message': 'No students to export'}), 400
+        
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
         
         # Create PDF in memory
         buffer = BytesIO()
@@ -272,6 +291,7 @@ def download_pdf():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 def generate_qr_code(data):
     """Generate QR code as base64 string"""
     try:
@@ -295,6 +315,7 @@ def generate_qr_code(data):
     except Exception as e:
         print(f"QR generation error: {e}")
         return None
+
 
 def create_id_card_pdf(student, institute):
     """Create a single ID card for PDF - Vertical Layout"""
@@ -427,22 +448,34 @@ def create_id_card_pdf(student, institute):
     
     return d
 
+
 @id_bp.route('/preview/<student_id>', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def preview_card(student_id):
     """Preview single ID card"""
     user = session.get('user')
-    institute = get_institute_id(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else None
+        
+        if not institute:
+            return jsonify({'success': False, 'message': 'Institute not found'}), 404
+        
         # Get student details with class info
         student_response = supabase.table('students')\
             .select('*, classes(name)')\
             .eq('id', student_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not student_response.data:
@@ -489,4 +522,6 @@ def preview_card(student_id):
         
     except Exception as e:
         print(f"Error previewing card: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500

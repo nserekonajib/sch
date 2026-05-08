@@ -1,0 +1,479 @@
+<!-- templates/schoolpay/index.html - SchoolPay Integration Settings -->
+{% extends "base.html" %}
+
+{% block title %}SchoolPay Integration - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .settings-card {
+        transition: all 0.3s ease;
+    }
+    .settings-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .info-box {
+        background: linear-gradient(135deg, #fef9e7 0%, #fff 100%);
+        border-left: 4px solid #ffa500;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .status-active {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .status-inactive {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">SchoolPay Integration</h1>
+        <p class="text-sm text-gray-600">Configure your SchoolPay payment gateway settings</p>
+    </div>
+
+    <!-- Settings Card -->
+    <div class="settings-card bg-white rounded-xl shadow-md overflow-hidden mb-6">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-credit-card text-orange-500"></i>
+                API Configuration
+            </h2>
+        </div>
+        
+        <div class="p-6">
+            <form id="schoolpayForm">
+                <!-- School Code -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        School Code <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="schoolCode" name="school_code" 
+                           value="{{ settings.school_code if settings else '' }}"
+                           placeholder="Enter your SchoolPay school code"
+                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <p class="text-xs text-gray-500 mt-1">Your unique school identifier provided by SchoolPay</p>
+                </div>
+                
+                <!-- API Username -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        API Username
+                    </label>
+                    <input type="text" id="apiUsername" name="api_username" 
+                           value="{{ settings.api_username if settings else '' }}"
+                           placeholder="Enter your API username (optional)"
+                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <p class="text-xs text-gray-500 mt-1">Some SchoolPay integrations require an API username</p>
+                </div>
+                
+                <!-- API Password -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        API Password <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="apiPassword" name="api_password" 
+                               value="{{ settings.api_password if settings else '' }}"
+                               placeholder="Enter your SchoolPay API password"
+                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm pr-10">
+                        <button type="button" onclick="togglePassword()" 
+                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-eye" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Your API password/key for SchoolPay integration</p>
+                </div>
+                
+                <!-- Environment -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Environment</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center">
+                            <input type="radio" name="environment" value="sandbox" 
+                                   {% if not settings or settings.environment == 'sandbox' %}checked{% endif %}
+                                   class="mr-2 text-orange-500">
+                            <span class="text-sm">Sandbox (Testing)</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="environment" value="production" 
+                                   {% if settings and settings.environment == 'production' %}checked{% endif %}
+                                   class="mr-2 text-orange-500">
+                            <span class="text-sm">Production (Live)</span>
+                        </label>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Use Sandbox for testing, Production for live payments</p>
+                </div>
+                
+                <!-- Enable/Disable Toggle -->
+                <div class="mb-6 flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                        <label class="font-semibold text-gray-800">Enable SchoolPay Integration</label>
+                        <p class="text-xs text-gray-500 mt-1">Turn on/off SchoolPay payment gateway</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="isActive" class="sr-only peer" 
+                               {% if settings and settings.is_active %}checked{% endif %}>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                    </label>
+                </div>
+                
+                <!-- Info Box -->
+                <div class="info-box rounded-lg p-4 mb-6">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-info-circle text-orange-500 mt-0.5"></i>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800 mb-1">How to get your SchoolPay credentials?</p>
+                            <p class="text-xs text-gray-600">1. Contact SchoolPay support to get your school code and API credentials.</p>
+                            <p class="text-xs text-gray-600">2. Use Sandbox environment for testing before going live.</p>
+                            <p class="text-xs text-gray-600">3. Keep your API password secure and never share it.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex gap-3">
+                    <button type="button" onclick="testConnection()" 
+                            class="px-6 py-2.5 border border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50 transition-all flex items-center gap-2">
+                        <i class="fas fa-vial"></i>
+                        Test Connection
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 px-6 py-2.5 btn-gradient text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Status Card (if settings exist) -->
+    {% if settings %}
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-info-circle text-orange-500"></i>
+                Integration Status
+            </h2>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span class="text-sm text-gray-600">Status:</span>
+                    <span class="status-badge {% if settings.is_active %}status-active{% else %}status-inactive{% endif %}">
+                        {{ 'Active' if settings.is_active else 'Inactive' }}
+                    </span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span class="text-sm text-gray-600">Environment:</span>
+                    <span class="text-sm font-medium text-gray-800">{{ settings.environment|title }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span class="text-sm text-gray-600">School Code:</span>
+                    <span class="text-sm font-mono text-gray-800">{{ settings.school_code }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span class="text-sm text-gray-600">Last Updated:</span>
+                    <span class="text-sm text-gray-500">{{ settings.updated_at[:10] if settings.updated_at else 'N/A' }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Test Connection Modal -->
+<div id="testModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Test Connection</h3>
+            <button onclick="closeTestModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-6">
+            <div class="text-center" id="testContent">
+                <div class="loader-spinner mb-4"></div>
+                <p class="text-gray-600">Testing connection...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 p-5 text-center transform transition-all modal-container">
+        <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-check-circle text-2xl text-green-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-1">Success!</h3>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage">Settings saved successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-5 py-1.5 rounded-lg text-white text-sm font-medium">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-5 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mb-3"></div>
+        <p class="text-gray-600 text-sm">Processing...</p>
+    </div>
+</div>
+
+<style>
+    .loader-spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<script>
+    function togglePassword() {
+        const passwordInput = document.getElementById('apiPassword');
+        const icon = document.getElementById('toggleIcon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+    
+    async function testConnection() {
+        const schoolCode = document.getElementById('schoolCode').value.trim();
+        const apiPassword = document.getElementById('apiPassword').value.trim();
+        const apiUsername = document.getElementById('apiUsername').value.trim();
+        const environment = document.querySelector('input[name="environment"]:checked').value;
+        
+        if (!schoolCode) {
+            showMessage('Please enter school code', 'error');
+            return;
+        }
+        
+        if (!apiPassword) {
+            showMessage('Please enter API password', 'error');
+            return;
+        }
+        
+        const modal = document.getElementById('testModal');
+        const content = document.getElementById('testContent');
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        
+        content.innerHTML = `
+            <div class="text-center">
+                <div class="loader-spinner mb-4"></div>
+                <p class="text-gray-600">Testing connection...</p>
+            </div>
+        `;
+        
+        try {
+            const response = await fetch('/schoolpay/api/settings/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    school_code: schoolCode,
+                    api_password: apiPassword,
+                    api_username: apiUsername,
+                    environment: environment
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                content.innerHTML = `
+                    <div class="text-center">
+                        <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-check-circle text-2xl text-green-500"></i>
+                        </div>
+                        <p class="text-green-600 font-medium mb-2">Connection Successful!</p>
+                        <p class="text-sm text-gray-500">${result.message}</p>
+                        <button onclick="closeTestModal()" class="mt-4 px-4 py-2 btn-gradient rounded-lg text-white text-sm">Close</button>
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div class="text-center">
+                        <div class="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-exclamation-circle text-2xl text-red-500"></i>
+                        </div>
+                        <p class="text-red-600 font-medium mb-2">Connection Failed!</p>
+                        <p class="text-sm text-gray-500">${result.message}</p>
+                        <button onclick="closeTestModal()" class="mt-4 px-4 py-2 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600">Close</button>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            content.innerHTML = `
+                <div class="text-center">
+                    <div class="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-exclamation-circle text-2xl text-red-500"></i>
+                    </div>
+                    <p class="text-red-600 font-medium mb-2">Connection Failed!</p>
+                    <p class="text-sm text-gray-500">${error.message}</p>
+                    <button onclick="closeTestModal()" class="mt-4 px-4 py-2 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600">Close</button>
+                </div>
+            `;
+        }
+    }
+    
+    function closeTestModal() {
+        const modal = document.getElementById('testModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    document.getElementById('schoolpayForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const schoolCode = document.getElementById('schoolCode').value.trim();
+        const apiPassword = document.getElementById('apiPassword').value.trim();
+        
+        if (!schoolCode) {
+            showMessage('Please enter school code', 'error');
+            return;
+        }
+        
+        if (!apiPassword) {
+            showMessage('Please enter API password', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const data = {
+            school_code: schoolCode,
+            api_password: apiPassword,
+            api_username: document.getElementById('apiUsername').value.trim(),
+            environment: document.querySelector('input[name="environment"]:checked').value,
+            is_active: document.getElementById('isActive').checked
+        };
+        
+        try {
+            const response = await fetch('/schoolpay/api/settings/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to save settings', 'error');
+        }
+    });
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+    
+    window.onclick = function(event) {
+        const modal = document.getElementById('successModal');
+        const testModal = document.getElementById('testModal');
+        if (event.target === modal) closeSuccessModal();
+        if (event.target === testModal) closeTestModal();
+    };
+</script>
+{% endblock %}

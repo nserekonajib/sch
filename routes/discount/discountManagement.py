@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # discountManagement.py - Fixed version with proper date handling
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
@@ -7,6 +8,7 @@ from datetime import datetime
 import json
 from functools import wraps
 from dotenv import load_dotenv
+from routes.accounts.accounts import get_institute_id
 
 load_dotenv()
 
@@ -26,23 +28,23 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
+# def get_institute_id(user_id):
+#     """Get institute for the current user"""
+#     try:
+#         response = supabase.table('institutes')\
+#             .select('*')\
+#             .eq('user_id', user_id)\
+#             .execute()
         
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
+#         if response.data and len(response.data) > 0:
+#             return response.data[0]
+#         return None
+#     except Exception as e:
+#         print(f"Error getting institute: {e}")
+#         return None
 
 @discount_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Discount Management Page"""
     user = session.get('user')
@@ -92,7 +94,7 @@ def index():
         return render_template('discounts/index.html', discounts=[], students=[], classes=[], institute=institute, now=datetime.now())
 
 @discount_bp.route('/create', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def create_discount():
     """Create a new discount"""
     user = session.get('user')
@@ -196,11 +198,11 @@ def create_discount():
     except Exception as e:
         print(f"Error creating discount: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-
+   
 @discount_bp.route('/apply-to-invoice', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def apply_discount_to_invoice():
-    """Apply discount to specific invoice"""
+    """Apply discount to an invoice"""
     user = session.get('user')
     institute = get_institute_id(user['id'])
     
@@ -219,7 +221,7 @@ def apply_discount_to_invoice():
         
         # Get invoice details
         invoice_response = supabase.table('invoices')\
-            .select('*, students(name, student_id)')\
+            .select('*')\
             .eq('id', invoice_id)\
             .eq('institute_id', institute['id'])\
             .execute()
@@ -229,38 +231,54 @@ def apply_discount_to_invoice():
         
         invoice = invoice_response.data[0]
         
-        # Calculate discount amount
+        # Calculate discount amount based on current balance
         if discount_type == 'percentage':
-            discount_amount = (discount_value / 100) * invoice['total_amount']
+            discount_amount = (discount_value / 100) * invoice['balance']
         else:
-            discount_amount = discount_value
+            discount_amount = min(discount_value, abs(invoice['balance']))
         
-        discount_amount = min(discount_amount, invoice['balance'])
-        
-        # Apply discount to invoice
+        # Apply discount to invoice - only update balance, not discount_applied
         new_balance = invoice['balance'] - discount_amount
         
+        # Update status
+        if new_balance == 0:
+            new_status = 'paid'
+        elif new_balance < 0:
+            new_status = 'credit'
+        else:
+            new_status = 'partial' if invoice['paid_amount'] > 0 else 'pending'
+        
+        # Update invoice - remove discount_applied from update
         supabase.table('invoices')\
             .update({
                 'balance': new_balance,
-                'discount_applied': discount_amount,
+                'status': new_status,
                 'updated_at': datetime.now().isoformat()
             })\
             .eq('id', invoice_id)\
+            .eq('institute_id', institute['id'])\
             .execute()
         
-        # Create discount record
+        # Get student details
+        student_response = supabase.table('students')\
+            .select('name, student_id')\
+            .eq('id', invoice['student_id'])\
+            .execute()
+        
+        student_name = student_response.data[0]['name'] if student_response.data else 'Unknown'
+        
+        # Create discount record for tracking
         discount_id = str(uuid.uuid4())
         discount_data = {
             'id': discount_id,
             'institute_id': institute['id'],
             'student_id': invoice['student_id'],
-            'student_name': invoice['students']['name'],
+            'student_name': student_name,
             'invoice_id': invoice_id,
             'discount_type': discount_type,
             'discount_value': discount_value,
             'discount_amount': discount_amount,
-            'reason': reason if reason else None,
+            'reason': reason,
             'apply_to': 'invoice',
             'is_active': True,
             'created_at': datetime.now().isoformat(),
@@ -271,17 +289,101 @@ def apply_discount_to_invoice():
         
         return jsonify({
             'success': True,
-            'message': f'Discount of UGX {discount_amount:,.0f} applied to invoice {invoice["invoice_number"]}',
+            'message': f'Discount of UGX {discount_amount:,.0f} applied successfully',
             'new_balance': new_balance,
-            'discount_amount': discount_amount
+            'discount_amount': discount_amount,
+            'invoice_balance': new_balance
         })
         
     except Exception as e:
         print(f"Error applying discount: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+# @discount_bp.route('/apply-to-invoice', methods=['POST'])
+# @role_required(['owner', 'teacher', 'accountant'])
+# def apply_discount_to_invoice():
+#     """Apply discount to specific invoice"""
+#     user = session.get('user')
+#     institute = get_institute_id(user['id'])
+    
+#     if not institute:
+#         return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+#     try:
+#         data = request.get_json()
+#         invoice_id = data.get('invoice_id')
+#         discount_type = data.get('discount_type')
+#         discount_value = float(data.get('discount_value', 0))
+#         reason = data.get('reason', '')
+        
+#         if not invoice_id or discount_value <= 0:
+#             return jsonify({'success': False, 'message': 'Invalid discount value'}), 400
+        
+#         # Get invoice details
+#         invoice_response = supabase.table('invoices')\
+#             .select('*, students(name, student_id)')\
+#             .eq('id', invoice_id)\
+#             .eq('institute_id', institute['id'])\
+#             .execute()
+        
+#         if not invoice_response.data:
+#             return jsonify({'success': False, 'message': 'Invoice not found'}), 404
+        
+#         invoice = invoice_response.data[0]
+        
+#         # Calculate discount amount
+#         if discount_type == 'percentage':
+#             discount_amount = (discount_value / 100) * invoice['total_amount']
+#         else:
+#             discount_amount = discount_value
+        
+#         discount_amount = min(discount_amount, invoice['balance'])
+        
+#         # Apply discount to invoice
+#         new_balance = invoice['balance'] - discount_amount
+        
+#         supabase.table('invoices')\
+#             .update({
+#                 'balance': new_balance,
+#                 'discount_applied': discount_amount,
+#                 'updated_at': datetime.now().isoformat()
+#             })\
+#             .eq('id', invoice_id)\
+#             .execute()
+        
+#         # Create discount record
+#         discount_id = str(uuid.uuid4())
+#         discount_data = {
+#             'id': discount_id,
+#             'institute_id': institute['id'],
+#             'student_id': invoice['student_id'],
+#             'student_name': invoice['students']['name'],
+#             'invoice_id': invoice_id,
+#             'discount_type': discount_type,
+#             'discount_value': discount_value,
+#             'discount_amount': discount_amount,
+#             'reason': reason if reason else None,
+#             'apply_to': 'invoice',
+#             'is_active': True,
+#             'created_at': datetime.now().isoformat(),
+#             'updated_at': datetime.now().isoformat()
+#         }
+        
+#         supabase.table('discounts').insert(discount_data).execute()
+        
+#         return jsonify({
+#             'success': True,
+#             'message': f'Discount of UGX {discount_amount:,.0f} applied to invoice {invoice["invoice_number"]}',
+#             'new_balance': new_balance,
+#             'discount_amount': discount_amount
+#         })
+        
+#     except Exception as e:
+#         print(f"Error applying discount: {e}")
+#         return jsonify({'success': False, 'message': str(e)}), 500
+
 @discount_bp.route('/<discount_id>/toggle', methods=['PUT'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def toggle_discount(discount_id):
     """Enable or disable a discount"""
     user = session.get('user')
@@ -314,7 +416,7 @@ def toggle_discount(discount_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @discount_bp.route('/<discount_id>', methods=['DELETE'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def delete_discount(discount_id):
     """Delete a discount"""
     user = session.get('user')

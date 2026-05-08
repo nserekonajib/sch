@@ -1,3 +1,4 @@
+from routes.auth.auth import role_required
 # exams.py - Fixed with only exam_date (no start_date/end_date)
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -14,6 +15,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from functools import wraps
 from dotenv import load_dotenv
+from routes.accounts.accounts import get_institute_id as get_institute
 
 load_dotenv()
 
@@ -32,37 +34,32 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute(user_id):
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
 
 @exams_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('exams/index.html', exams=[], institute=None, datetime=datetime)
     
     try:
+        # Get institute details for template
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else None
+        
         # Get all exams with optional date filtering
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
         query = supabase.table('exams')\
             .select('*')\
-            .eq('institute_id', institute['id'])
+            .eq('institute_id', institute_id)
         
         if start_date:
             query = query.gte('exam_date', start_date)
@@ -77,22 +74,30 @@ def index():
         
     except Exception as e:
         print(f"Error loading exams page: {e}")
-        return render_template('exams/index.html', exams=[], institute=institute, datetime=datetime)
+        return render_template('exams/index.html', exams=[], institute=None, datetime=datetime)
 
 @exams_bp.route('/marks')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def marks():
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('exams/marks.html', exams=[], classes=[], institute=None, current_year=datetime.now().year)
     
     try:
+        # Get institute details for template
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else None
+        
         # Get all exams
         exams_response = supabase.table('exams')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('exam_date', desc=True)\
             .execute()
         
@@ -101,7 +106,7 @@ def marks():
         # Get all classes
         classes_response = supabase.table('classes')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('name')\
             .execute()
         
@@ -111,15 +116,15 @@ def marks():
         
     except Exception as e:
         print(f"Error loading marks page: {e}")
-        return render_template('exams/marks.html', exams=[], classes=[], institute=institute, current_year=datetime.now().year)
+        return render_template('exams/marks.html', exams=[], classes=[], institute=None, current_year=datetime.now().year)
 
 @exams_bp.route('/api/exams', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_exams():
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -129,7 +134,7 @@ def get_exams():
         
         query = supabase.table('exams')\
             .select('*')\
-            .eq('institute_id', institute['id'])
+            .eq('institute_id', institute_id)
         
         if start_date:
             query = query.gte('exam_date', start_date)
@@ -147,12 +152,12 @@ def get_exams():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @exams_bp.route('/api/exams/create', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def create_exam():
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -171,7 +176,7 @@ def create_exam():
         exam_id = str(uuid.uuid4())
         exam_data = {
             'id': exam_id,
-            'institute_id': institute['id'],
+            'institute_id': institute_id,
             'exam_name': exam_name,
             'total_marks': total_marks,
             'exam_date': exam_date,
@@ -192,19 +197,19 @@ def create_exam():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @exams_bp.route('/api/exams/date-range', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_exam_date_range():
     """Get min and max exam dates for filtering"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
         response = supabase.table('exams')\
             .select('exam_date')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         dates = [e['exam_date'] for e in response.data if e.get('exam_date')] if response.data else []
@@ -223,12 +228,12 @@ def get_exam_date_range():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @exams_bp.route('/api/exams/<exam_id>/toggle-publish', methods=['PUT'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def toggle_publish(exam_id):
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -238,7 +243,7 @@ def toggle_publish(exam_id):
         result = supabase.table('exams')\
             .update({'is_published': is_published, 'updated_at': datetime.now().isoformat()})\
             .eq('id', exam_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if result.data:
@@ -251,25 +256,25 @@ def toggle_publish(exam_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @exams_bp.route('/api/exams/<exam_id>', methods=['DELETE'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def delete_exam(exam_id):
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
         supabase.table('exam_marks')\
             .delete()\
             .eq('exam_id', exam_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         result = supabase.table('exams')\
             .delete()\
             .eq('id', exam_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if result.data:
@@ -282,14 +287,13 @@ def delete_exam(exam_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-
 @exams_bp.route('/api/subjects', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_subjects():
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -301,7 +305,7 @@ def get_subjects():
         response = supabase.table('class_subjects')\
             .select('*, subjects(name)')\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         print(f"Subjects query result for class {class_id}: {response.data}")  # Debug log
@@ -323,85 +327,15 @@ def get_subjects():
     except Exception as e:
         print(f"Error getting subjects: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-    
-# @exams_bp.route('/api/debug/class-data', methods=['GET'])
-# @login_required
-# def debug_class_data():
-#     """Debug endpoint to check class data"""
-#     user = session.get('user')
-#     institute = get_institute(user['id'])
-    
-#     if not institute:
-#         return jsonify({'success': False, 'message': 'Institute not found'}), 400
-    
-#     try:
-#         class_id = request.args.get('class_id')
-        
-#         if not class_id:
-#             return jsonify({'success': False, 'message': 'Class ID required'}), 400
-        
-#         debug_info = {}
-        
-#         # 1. Check class exists
-#         class_response = supabase.table('classes')\
-#             .select('*')\
-#             .eq('id', class_id)\
-#             .execute()
-#         debug_info['class'] = class_response.data[0] if class_response.data else None
-        
-#         # 2. Check class_subjects
-#         subjects_response = supabase.table('class_subjects')\
-#             .select('*, subjects(name)')\
-#             .eq('class_id', class_id)\
-#             .eq('institute_id', institute['id'])\
-#             .execute()
-#         debug_info['class_subjects'] = subjects_response.data if subjects_response.data else []
-#         debug_info['class_subjects_count'] = len(subjects_response.data) if subjects_response.data else 0
-        
-#         # 3. Check if subjects table has names
-#         subject_ids = [s['subject_id'] for s in debug_info['class_subjects']] if debug_info['class_subjects'] else []
-#         if subject_ids:
-#             subjects_table = supabase.table('subjects')\
-#                 .select('id, name')\
-#                 .in_('id', subject_ids)\
-#                 .execute()
-#             debug_info['subjects_table'] = subjects_table.data if subjects_table.data else []
-        
-#         # 4. Check class enrollments
-#         enrollments_response = supabase.table('class_enrollments')\
-#             .select('student_id, academic_year')\
-#             .eq('class_id', class_id)\
-#             .eq('academic_year', 2026)\
-#             .execute()
-#         debug_info['enrollments'] = enrollments_response.data if enrollments_response.data else []
-#         debug_info['enrollments_count'] = len(enrollments_response.data) if enrollments_response.data else 0
-        
-#         # 5. Get student details if any
-#         if debug_info['enrollments']:
-#             student_ids = [e['student_id'] for e in debug_info['enrollments']]
-#             students_response = supabase.table('students')\
-#                 .select('id, name, student_id')\
-#                 .eq('institute_id', institute['id'])\
-#                 .in_('id', student_ids)\
-#                 .execute()
-#             debug_info['students'] = students_response.data if students_response.data else []
-        
-#         return jsonify({'success': True, 'debug': debug_info})
-        
-#     except Exception as e:
-#         print(f"Debug error: {e}")
-#         import traceback
-#         traceback.print_exc()
-#         return jsonify({'success': False, 'message': str(e), 'traceback': traceback.format_exc()}), 500
-    
-    
+
+
 @exams_bp.route('/api/class-students', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_class_students():
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -424,7 +358,7 @@ def get_class_students():
         
         students_response = supabase.table('students')\
             .select('id, name, student_id')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .in_('id', student_ids)\
             .order('name')\
             .execute()
@@ -436,15 +370,16 @@ def get_class_students():
     except Exception as e:
         print(f"Error getting class students: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-    
+
+
 @exams_bp.route('/api/marks', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_marks():
     """Get marks for an exam and class for a specific academic year"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -473,7 +408,7 @@ def get_marks():
         subjects_response = supabase.table('class_subjects')\
             .select('*, subjects!inner(name)')\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         subjects = subjects_response.data if subjects_response.data else []
@@ -514,7 +449,7 @@ def get_marks():
             # Get ALL students from the institute
             all_students_response = supabase.table('students')\
                 .select('id, name, student_id')\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .order('name')\
                 .execute()
             
@@ -556,7 +491,7 @@ def get_marks():
         # Get student details for enrolled students
         students_response = supabase.table('students')\
             .select('id, name, student_id')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .in_('id', student_ids)\
             .order('name')\
             .execute()
@@ -569,7 +504,7 @@ def get_marks():
                 .select('*')\
                 .eq('exam_id', exam_id)\
                 .eq('class_id', class_id)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .eq('record_date', history_date)\
                 .in_('student_id', student_ids)\
                 .execute()
@@ -579,7 +514,7 @@ def get_marks():
                     .select('*')\
                     .eq('exam_id', exam_id)\
                     .eq('class_id', class_id)\
-                    .eq('institute_id', institute['id'])\
+                    .eq('institute_id', institute_id)\
                     .in_('student_id', student_ids)\
                     .execute()
             else:
@@ -587,7 +522,7 @@ def get_marks():
                     .select('*')\
                     .eq('exam_id', exam_id)\
                     .eq('class_id', class_id)\
-                    .eq('institute_id', institute['id'])\
+                    .eq('institute_id', institute_id)\
                     .execute()
         
         existing_marks = {}
@@ -650,15 +585,15 @@ def get_marks():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-    
-    
+
+
 @exams_bp.route('/api/marks/save', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def save_marks():
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -692,7 +627,7 @@ def save_marks():
                     .eq('class_id', class_id)\
                     .eq('student_id', student_id)\
                     .eq('subject_id', subject_id)\
-                    .eq('institute_id', institute['id'])\
+                    .eq('institute_id', institute_id)\
                     .execute()
                 
                 if existing.data:
@@ -705,7 +640,7 @@ def save_marks():
                     if old_mark.data:
                         history_data = {
                             'id': str(uuid.uuid4()),
-                            'institute_id': institute['id'],
+                            'institute_id': institute_id,
                             'exam_id': exam_id,
                             'class_id': class_id,
                             'student_id': student_id,
@@ -729,7 +664,7 @@ def save_marks():
                     mark_id = str(uuid.uuid4())
                     mark_data = {
                         'id': mark_id,
-                        'institute_id': institute['id'],
+                        'institute_id': institute_id,
                         'exam_id': exam_id,
                         'class_id': class_id,
                         'student_id': student_id,
@@ -743,7 +678,7 @@ def save_marks():
                     # Save initial entry to history as well
                     history_data = {
                         'id': str(uuid.uuid4()),
-                        'institute_id': institute['id'],
+                        'institute_id': institute_id,
                         'exam_id': exam_id,
                         'class_id': class_id,
                         'student_id': student_id,
@@ -768,16 +703,16 @@ def save_marks():
     except Exception as e:
         print(f"Error saving marks: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-# Fix the get_history_dates endpoint in exams.py
+
 
 @exams_bp.route('/api/marks/history/dates', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_history_dates():
     """Get available history dates for an exam and class"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -794,7 +729,7 @@ def get_history_dates():
             .select('record_date')\
             .eq('exam_id', exam_id)\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         print(f"History query response: {response.data}")
@@ -819,13 +754,13 @@ def get_history_dates():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @exams_bp.route('/api/marks/history/snapshot', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def create_history_snapshot():
     """Manually create a history snapshot of current marks"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -841,7 +776,7 @@ def create_history_snapshot():
             .select('*')\
             .eq('exam_id', exam_id)\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not marks_response.data:
@@ -862,7 +797,7 @@ def create_history_snapshot():
             if not existing.data:
                 history_data = {
                     'id': str(uuid.uuid4()),
-                    'institute_id': institute['id'],
+                    'institute_id': institute_id,
                     'exam_id': exam_id,
                     'class_id': class_id,
                     'student_id': mark['student_id'],
@@ -885,12 +820,12 @@ def create_history_snapshot():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @exams_bp.route('/api/marksheet/excel', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def export_marksheet_excel():
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -903,6 +838,14 @@ def export_marksheet_excel():
         
         if not exam_id or not class_id:
             return jsonify({'success': False, 'message': 'Exam ID and Class ID required'}), 400
+        
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
         
         # Get exam details
         exam_response = supabase.table('exams')\
@@ -931,7 +874,7 @@ def export_marksheet_excel():
         if student_ids:
             students_response = supabase.table('students')\
                 .select('id, name, student_id')\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .in_('id', student_ids)\
                 .order('name')\
                 .execute()
@@ -941,7 +884,7 @@ def export_marksheet_excel():
         subjects_response = supabase.table('class_subjects')\
             .select('*, subjects(name)')\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('created_at')\
             .execute()
         subjects = subjects_response.data if subjects_response.data else []
@@ -952,7 +895,7 @@ def export_marksheet_excel():
                 .select('*')\
                 .eq('exam_id', exam_id)\
                 .eq('class_id', class_id)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .eq('record_date', history_date)\
                 .execute()
         else:
@@ -961,7 +904,7 @@ def export_marksheet_excel():
                     .select('*')\
                     .eq('exam_id', exam_id)\
                     .eq('class_id', class_id)\
-                    .eq('institute_id', institute['id'])\
+                    .eq('institute_id', institute_id)\
                     .in_('student_id', student_ids)\
                     .execute()
             else:
@@ -969,7 +912,7 @@ def export_marksheet_excel():
                     .select('*')\
                     .eq('exam_id', exam_id)\
                     .eq('class_id', class_id)\
-                    .eq('institute_id', institute['id'])\
+                    .eq('institute_id', institute_id)\
                     .execute()
         
         # Group marks by student
@@ -1116,16 +1059,16 @@ def export_marksheet_excel():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-    
-    
+
+
 @exams_bp.route('/api/marks/historical', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_historical_marks():
     """Get historical marks for an exam and class on a specific date"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -1147,7 +1090,7 @@ def get_historical_marks():
             .select('*')\
             .eq('exam_id', exam_id)\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('record_date', history_date)\
             .execute()
         
@@ -1164,7 +1107,7 @@ def get_historical_marks():
         # Get student details
         students_response = supabase.table('students')\
             .select('id, name, student_id')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .in_('id', student_ids)\
             .order('name')\
             .execute()
@@ -1177,7 +1120,7 @@ def get_historical_marks():
         subjects_response = supabase.table('class_subjects')\
             .select('*, subjects(name)')\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         subjects = subjects_response.data if subjects_response.data else []
@@ -1242,18 +1185,18 @@ def get_historical_marks():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-    
-    
+
+
 # Add these new endpoints to exams.py
 
 @exams_bp.route('/api/marksheet/generate-id', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def generate_marksheet_id():
     """Generate a unique marksheet ID for the current marks entry session"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -1283,7 +1226,7 @@ def generate_marksheet_id():
         # Create marksheet record
         marksheet_data = {
             'id': marksheet_id,
-            'institute_id': institute['id'],
+            'institute_id': institute_id,
             'exam_id': exam_id,
             'class_id': class_id,
             'academic_year': academic_year,
@@ -1306,13 +1249,13 @@ def generate_marksheet_id():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @exams_bp.route('/api/marks/save-with-marksheet', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def save_marks_with_marksheet():
     """Save exam marks with marksheet ID for historical tracking"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -1341,7 +1284,7 @@ def save_marks_with_marksheet():
             
             marksheet_data = {
                 'id': marksheet_id,
-                'institute_id': institute['id'],
+                'institute_id': institute_id,
                 'exam_id': exam_id,
                 'class_id': class_id,
                 'academic_year': academic_year,
@@ -1373,7 +1316,7 @@ def save_marks_with_marksheet():
                     .eq('student_id', student_id)\
                     .eq('subject_id', subject_id)\
                     .eq('marksheet_id', marksheet_id)\
-                    .eq('institute_id', institute['id'])\
+                    .eq('institute_id', institute_id)\
                     .execute()
                 
                 if existing.data:
@@ -1390,7 +1333,7 @@ def save_marks_with_marksheet():
                     mark_id = str(uuid.uuid4())
                     mark_data = {
                         'id': mark_id,
-                        'institute_id': institute['id'],
+                        'institute_id': institute_id,
                         'exam_id': exam_id,
                         'class_id': class_id,
                         'student_id': student_id,
@@ -1420,13 +1363,13 @@ def save_marks_with_marksheet():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @exams_bp.route('/api/marks/history/by-student', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_student_marks_history():
     """Get historical marks for a student across different marksheets"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -1439,7 +1382,7 @@ def get_student_marks_history():
         response = supabase.table('exam_marks')\
             .select('*, exams(exam_name, exam_date, total_marks), exam_marksheets(marksheet_number, generated_at)')\
             .eq('student_id', student_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('created_at', desc=True)\
             .execute()
         
@@ -1481,15 +1424,15 @@ def get_student_marks_history():
     except Exception as e:
         print(f"Error getting student marks history: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-    
+
 @exams_bp.route('/api/marks/by-marksheet', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def get_marks_by_marksheet():
     """Get marks for a specific marksheet - works regardless of current student class"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -1502,7 +1445,7 @@ def get_marks_by_marksheet():
         marksheet_response = supabase.table('exam_marksheets')\
             .select('*, exams(exam_name, total_marks, exam_date), classes(name)')\
             .eq('id', marksheet_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not marksheet_response.data:
@@ -1516,7 +1459,7 @@ def get_marks_by_marksheet():
         marks_response = supabase.table('exam_marks')\
             .select('*, students(name, student_id)')\
             .eq('marksheet_id', marksheet_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         marks = marks_response.data if marks_response.data else []
@@ -1525,7 +1468,7 @@ def get_marks_by_marksheet():
         subjects_response = supabase.table('class_subjects')\
             .select('*, subjects(name)')\
             .eq('class_id', marksheet['class_id'])\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         subjects = subjects_response.data if subjects_response.data else []
@@ -1602,13 +1545,13 @@ def get_marks_by_marksheet():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @exams_bp.route('/api/marksheets/list', methods=['GET'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def list_marksheets():
     """List all marksheets for an institute"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -1616,7 +1559,7 @@ def list_marksheets():
         
         query = supabase.table('exam_marksheets')\
             .select('*, exams(exam_name), classes(name)')\
-            .eq('institute_id', institute['id'])
+            .eq('institute_id', institute_id)
         
         if exam_id:
             query = query.eq('exam_id', exam_id)

@@ -15,6 +15,8 @@ from docx.shared import Mm, Inches
 import tempfile
 import subprocess
 import sys
+from routes.auth.auth import role_required
+from routes.accounts.accounts import get_institute_id as get_institute_id_func
 
 # Try to import docx2pdf, but don't fail if not installed
 try:
@@ -41,20 +43,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute(user_id):
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
-
 def parse_exam_name(exam_name):
     patterns = {
         'A': re.compile(r'^A\d+$', re.IGNORECASE),
@@ -68,18 +56,26 @@ def parse_exam_name(exam_name):
     return 'OTHER'
 
 @competence_bp.route('/')
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def index():
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('competence/index.html', exams=[], classes=[], students=[], institute=None)
     
     try:
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
+        
         exams_response = supabase.table('exams')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('exam_date', desc=True)\
             .execute()
         
@@ -87,7 +83,7 @@ def index():
         
         classes_response = supabase.table('classes')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('name')\
             .execute()
         
@@ -95,7 +91,7 @@ def index():
         
         students_response = supabase.table('students')\
             .select('id, name, student_id, class_id, classes(name), photo_url, gender, category')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .order('name')\
             .execute()
@@ -106,15 +102,15 @@ def index():
         
     except Exception as e:
         print(f"Error loading competence page: {e}")
-        return render_template('competence/index.html', exams=[], classes=[], students=[], institute=institute)
+        return render_template('competence/index.html', exams=[], classes=[], students=[], institute=None)
 
 @competence_bp.route('/api/exams/classify', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def classify_exams():
     user = session.get('user')
-    institute = get_institute(user['id'])
-    
-    if not institute:
+    institute_id = get_institute_id_func(user['id'])
+   
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -160,12 +156,12 @@ def classify_exams():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @competence_bp.route('/generate', methods=['POST'])
-@login_required
+@role_required(['owner', 'teacher', 'accountant'])
 def generate_report():
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     # Store temp files for cleanup
@@ -182,11 +178,19 @@ def generate_report():
         if not student_id or not exam_ids or not term:
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
         
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
+        
         # Get student details
         student_response = supabase.table('students')\
             .select('*, classes(name)')\
             .eq('id', student_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not student_response.data:
@@ -194,6 +198,7 @@ def generate_report():
         
         student = student_response.data[0]
         print(student)
+        
         # Get exams
         exams_response = supabase.table('exams')\
             .select('*')\
@@ -226,7 +231,7 @@ def generate_report():
         subjects_response = supabase.table('class_subjects')\
             .select('*, subjects(name)')\
             .eq('class_id', class_id)\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         subjects = subjects_response.data if subjects_response.data else []
@@ -238,7 +243,7 @@ def generate_report():
                 .select('*')\
                 .eq('exam_id', exam['id'])\
                 .eq('student_id', student_id)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .execute()
             
             marks_dict = {}
@@ -534,9 +539,7 @@ def convert_docx_to_pdf(docx_buffer):
                     print(f"Cleaned up temp file: {file_path}")
             except Exception as e:
                 print(f"Warning: Could not delete temp file {file_path}: {e}")
-                
-                
-                
+
 def create_default_template(template_path):
     """Create a default Word template that works properly with docxtpl"""
     from docx import Document
