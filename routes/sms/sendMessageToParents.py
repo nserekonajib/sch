@@ -1,4 +1,3 @@
-from routes.auth.auth import role_required
 # sendMessageToParents.py - Complete rewrite with balance checking and SMS logging
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
@@ -8,7 +7,8 @@ import re
 from datetime import datetime
 from functools import wraps
 from dotenv import load_dotenv
-from routes.accounts.accounts import get_institute_id as get_institute
+from routes.accounts.accounts import get_institute_id as get_institute_id_func
+from routes.auth.auth import role_required
 load_dotenv()
 
 # Initialize Supabase client
@@ -31,20 +31,20 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# def get_institute(user_id):
-#     """Get institute for the current user"""
-#     try:
-#         response = supabase.table('institutes')\
-#             .select('*')\
-#             .eq('user_id', user_id)\
-#             .execute()
+def get_institute_details(institute_id):
+    """Get full institute details by ID"""
+    try:
+        response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
         
-#         if response.data and len(response.data) > 0:
-#             return response.data[0]
-#         return None
-#     except Exception as e:
-#         print(f"Error getting institute: {e}")
-#         return None
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
+    except Exception as e:
+        print(f"Error getting institute details: {e}")
+        return None
 
 def get_sms_settings(institute_id):
     """Get SMS settings for the institute"""
@@ -165,16 +165,19 @@ def log_sms_sent(institute_id, student_id, phone_number, message, segments, cost
 def index():
     """Send Message to Parents Page"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('message/index.html', classes=[], students=[], institute=None, sms_settings=None, balance=0)
     
     try:
+        # Get institute details
+        institute = get_institute_details(institute_id)
+        
         # Get all classes
         classes_response = supabase.table('classes')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('name')\
             .execute()
         
@@ -183,7 +186,7 @@ def index():
         # Get all students with their contact numbers (limit for performance)
         students_response = supabase.table('students')\
             .select('id, name, student_id, class_id, classes(name), contact_number, father_name, mother_name')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .order('name')\
             .limit(500)\
@@ -192,10 +195,10 @@ def index():
         students = students_response.data if students_response.data else []
         
         # Get SMS settings
-        sms_settings = get_sms_settings(institute['id'])
+        sms_settings = get_sms_settings(institute_id)
         
         # Get current balance
-        current_balance = institute.get('balance', 0)
+        current_balance = institute.get('balance', 0) if institute else 0
         
         return render_template('message/index.html', 
                              classes=classes, 
@@ -206,16 +209,16 @@ def index():
         
     except Exception as e:
         print(f"Error loading message page: {e}")
-        return render_template('message/index.html', classes=[], students=[], institute=institute, sms_settings=None, balance=0)
+        return render_template('message/index.html', classes=[], students=[], institute=None, sms_settings=None, balance=0)
 
 @message_bp.route('/api/get-recipients', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def get_recipients():
     """Get recipients based on selected criteria"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -230,7 +233,7 @@ def get_recipients():
             # Get all students with valid contact numbers
             response = supabase.table('students')\
                 .select('id, name, student_id, contact_number')\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .eq('status', 'active')\
                 .execute()
             
@@ -248,7 +251,7 @@ def get_recipients():
             # Get students in specific class with valid contact numbers
             response = supabase.table('students')\
                 .select('id, name, student_id, contact_number')\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .eq('class_id', class_id)\
                 .eq('status', 'active')\
                 .execute()
@@ -267,7 +270,7 @@ def get_recipients():
             # Get selected students
             response = supabase.table('students')\
                 .select('id, name, student_id, contact_number')\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .in_('id', student_ids)\
                 .execute()
             
@@ -296,9 +299,9 @@ def get_recipients():
 def search_students():
     """Fast live search for students"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -312,7 +315,7 @@ def search_students():
         # Build query
         query = supabase.table('students')\
             .select('id, name, student_id, class_id, classes(name), contact_number, father_name, mother_name')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')
         
         # Apply class filter if provided
@@ -356,9 +359,9 @@ def search_students():
 def calculate_cost():
     """Calculate SMS cost before sending"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -367,7 +370,7 @@ def calculate_cost():
         recipient_count = data.get('recipient_count', 1)
         
         # Get SMS settings
-        sms_settings = get_sms_settings(institute['id'])
+        sms_settings = get_sms_settings(institute_id)
         cost_per_sms = sms_settings.get('cost_per_sms', 35) if sms_settings else 35
         
         # Calculate cost for one message
@@ -377,7 +380,8 @@ def calculate_cost():
         total_cost = cost_info['cost'] * recipient_count
         
         # Get current balance
-        current_balance = institute.get('balance', 0)
+        institute = get_institute_details(institute_id)
+        current_balance = institute.get('balance', 0) if institute else 0
         
         return jsonify({
             'success': True,
@@ -400,9 +404,9 @@ def calculate_cost():
 def send_message():
     """Send SMS messages to selected recipients with balance checking"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -417,8 +421,14 @@ def send_message():
         if not message:
             return jsonify({'success': False, 'message': 'Message cannot be empty'}), 400
         
+        # Get institute details
+        institute = get_institute_details(institute_id)
+        
+        if not institute:
+            return jsonify({'success': False, 'message': 'Institute not found'}), 400
+        
         # Get SMS settings
-        sms_settings = get_sms_settings(institute['id'])
+        sms_settings = get_sms_settings(institute_id)
         
         if not sms_settings:
             return jsonify({'success': False, 'message': 'SMS settings not configured. Please configure SMS settings first.'}), 400
@@ -499,7 +509,7 @@ def send_message():
                     for phone in batch:
                         recipient = recipient_map.get(phone, {})
                         log_sms_sent(
-                            institute_id=institute['id'],
+                            institute_id=institute_id,
                             student_id=recipient.get('id'),
                             phone_number=phone,
                             message=full_message,
@@ -514,7 +524,7 @@ def send_message():
                     for phone in batch:
                         recipient = recipient_map.get(phone, {})
                         log_sms_sent(
-                            institute_id=institute['id'],
+                            institute_id=institute_id,
                             student_id=recipient.get('id'),
                             phone_number=phone,
                             message=full_message,
@@ -531,7 +541,7 @@ def send_message():
                 actual_cost = cost_info['cost'] * success_count
                 
                 # Deduct from balance
-                deduct_success, result = deduct_from_balance(institute['id'], actual_cost)
+                deduct_success, result = deduct_from_balance(institute_id, actual_cost)
                 
                 if not deduct_success:
                     print(f"Warning: SMS sent but balance deduction failed: {result}")
@@ -543,7 +553,7 @@ def send_message():
                     })
                 
                 # Get updated balance for response
-                updated_institute = get_institute(user['id'])
+                updated_institute = get_institute_details(institute_id)
                 new_balance = updated_institute.get('balance', 0) if updated_institute else 0
                 
                 response_message = f'Message sent successfully to {success_count} of {total_recipients} recipient(s).'
@@ -586,9 +596,9 @@ def send_message():
 def get_message_history():
     """Get SMS sending history from sms_log table"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -597,7 +607,7 @@ def get_message_history():
         # Get SMS history from sms_log table
         response = supabase.table('sms_log')\
             .select('*, students(name, student_id)')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('sent_at', desc=True)\
             .limit(limit)\
             .execute()
@@ -623,7 +633,7 @@ def get_message_history():
         # Get summary stats
         stats_response = supabase.table('sms_log')\
             .select('status', count='exact')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         total_sent = 0
@@ -640,7 +650,7 @@ def get_message_history():
         # Get total cost
         cost_response = supabase.table('sms_log')\
             .select('cost')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'sent')\
             .execute()
         
@@ -666,13 +676,15 @@ def get_message_history():
 def get_balance():
     """Get current institute balance"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'balance': 0}), 400
+    
+    institute = get_institute_details(institute_id)
     
     return jsonify({
         'success': True,
-        'balance': institute.get('balance', 0),
-        'total_spent': institute.get('total_spent', 0)
+        'balance': institute.get('balance', 0) if institute else 0,
+        'total_spent': institute.get('total_spent', 0) if institute else 0
     })

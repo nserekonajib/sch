@@ -1,5 +1,5 @@
+# studentAttendance.py - Fixed with proper institute_id handling
 from routes.auth.auth import role_required
-# studentAttendance.py - Fixed without marked_by column
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
 import os
@@ -7,7 +7,8 @@ from datetime import datetime, timedelta
 import uuid
 from functools import wraps
 from dotenv import load_dotenv
-from routes.accounts.accounts import get_institute_id as get_institute
+from routes.accounts.accounts import get_institute_id as get_institute_id_func
+
 load_dotenv()
 
 # Initialize Supabase client
@@ -26,36 +27,30 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# def get_institute(user_id):
-#     """Get institute for the current user"""
-#     try:
-#         response = supabase.table('institutes')\
-#             .select('*')\
-#             .eq('user_id', user_id)\
-#             .execute()
-        
-#         if response.data and len(response.data) > 0:
-#             return response.data[0]
-#         return None
-#     except Exception as e:
-#         print(f"Error getting institute: {e}")
-#         return None
 
 @attendance_bp.route('/')
 @role_required(['owner', 'teacher', 'accountant'])
 def index():
     """Attendance Scanner Page"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('attendance/index.html', institute=None, classes=[], students=[])
     
     try:
+        # Get institute details for display
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else None
+        
         # Get all classes for manual attendance
         classes_response = supabase.table('classes')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .order('name')\
             .execute()
         
@@ -64,7 +59,7 @@ def index():
         # Get all active students
         students_response = supabase.table('students')\
             .select('id, name, student_id, class_id, classes(name)')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .order('name')\
             .execute()
@@ -75,16 +70,17 @@ def index():
         
     except Exception as e:
         print(f"Error loading attendance page: {e}")
-        return render_template('attendance/index.html', institute=institute, classes=[], students=[])
+        return render_template('attendance/index.html', institute=None, classes=[], students=[])
+
 
 @attendance_bp.route('/scan', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def scan_qr():
     """Process QR code scan and record attendance"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -95,6 +91,17 @@ def scan_qr():
             return jsonify({'success': False, 'message': 'No QR data received'}), 400
         
         print(f"Received QR data: {qr_data}")
+        
+        # Get institute details for QR verification
+        institute_response = supabase.table('institutes')\
+            .select('institute_code')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        if not institute_response.data:
+            return jsonify({'success': False, 'message': 'Institute not found'}), 404
+        
+        institute = institute_response.data[0]
         
         # Parse QR data format: "institute_code|student_id|name"
         parts = qr_data.split('|')
@@ -117,7 +124,7 @@ def scan_qr():
                 'message': f'QR code belongs to different institution. Expected: {institute.get("institute_code")}, Got: {scanned_institute_code}'
             }), 403
         
-        return record_attendance(student_id, institute)
+        return record_attendance(student_id, institute_id)
             
     except Exception as e:
         print(f"Error processing QR scan: {e}")
@@ -125,14 +132,15 @@ def scan_qr():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @attendance_bp.route('/manual', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def manual_attendance():
     """Record manual attendance for a student"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -142,20 +150,21 @@ def manual_attendance():
         if not student_id:
             return jsonify({'success': False, 'message': 'Student ID required'}), 400
         
-        return record_attendance_by_id(student_id, institute)
+        return record_attendance_by_id(student_id, institute_id)
         
     except Exception as e:
         print(f"Error processing manual attendance: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @attendance_bp.route('/bulk', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def bulk_attendance():
     """Record bulk attendance for multiple students"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -171,7 +180,7 @@ def bulk_attendance():
             students_response = supabase.table('students')\
                 .select('id')\
                 .eq('class_id', class_id)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .eq('status', 'active')\
                 .execute()
             
@@ -185,7 +194,7 @@ def bulk_attendance():
         failed = []
         
         for student_id in student_ids:
-            result = record_attendance_by_id(student_id, institute, silent=True)
+            result = record_attendance_by_id(student_id, institute_id, silent=True)
             if result.get('success'):
                 successful.append(student_id)
             else:
@@ -203,13 +212,14 @@ def bulk_attendance():
         print(f"Error processing bulk attendance: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-def record_attendance(student_id, institute):
+
+def record_attendance(student_id, institute_id):
     """Record attendance using student_id (string like PRI202600001)"""
     # Check if student exists in database
     student_response = supabase.table('students')\
         .select('id, name, student_id, class_id, classes(name), status, contact_number')\
         .eq('student_id', student_id)\
-        .eq('institute_id', institute['id'])\
+        .eq('institute_id', institute_id)\
         .execute()
     
     print(f"Student lookup result: {student_response.data}")
@@ -219,15 +229,16 @@ def record_attendance(student_id, institute):
     
     student = student_response.data[0]
     
-    return record_attendance_by_id(student['id'], institute)
+    return record_attendance_by_id(student['id'], institute_id)
 
-def record_attendance_by_id(student_uuid, institute, silent=False):
+
+def record_attendance_by_id(student_uuid, institute_id, silent=False):
     """Record attendance using student UUID"""
     # Get student details
     student_response = supabase.table('students')\
         .select('id, name, student_id, class_id, classes(name), status, contact_number')\
         .eq('id', student_uuid)\
-        .eq('institute_id', institute['id'])\
+        .eq('institute_id', institute_id)\
         .execute()
     
     if not student_response.data:
@@ -244,7 +255,7 @@ def record_attendance_by_id(student_uuid, institute, silent=False):
     today_check = supabase.table('attendance')\
         .select('id')\
         .eq('student_id', student['id'])\
-        .eq('institute_id', institute['id'])\
+        .eq('institute_id', institute_id)\
         .eq('scan_date', today)\
         .execute()
     
@@ -255,7 +266,7 @@ def record_attendance_by_id(student_uuid, institute, silent=False):
     attendance_id = str(uuid.uuid4())
     attendance_data = {
         'id': attendance_id,
-        'institute_id': institute['id'],
+        'institute_id': institute_id,
         'student_id': student['id'],
         'student_name': student['name'],
         'student_number': student['student_id'],
@@ -287,14 +298,15 @@ def record_attendance_by_id(student_uuid, institute, silent=False):
     else:
         return {'success': False, 'message': 'Failed to record attendance'}
 
+
 @attendance_bp.route('/today', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def get_today_attendance():
     """Get today's attendance records"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -302,7 +314,7 @@ def get_today_attendance():
         
         response = supabase.table('attendance')\
             .select('*, students(photo_url)')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('scan_date', today)\
             .order('created_at', desc=True)\
             .execute()
@@ -320,14 +332,15 @@ def get_today_attendance():
         print(f"Error getting today's attendance: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @attendance_bp.route('/stats', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def get_attendance_stats():
     """Get attendance statistics"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -335,7 +348,7 @@ def get_attendance_stats():
         today = datetime.now().date().isoformat()
         today_response = supabase.table('attendance')\
             .select('id', count='exact')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('scan_date', today)\
             .execute()
         
@@ -344,7 +357,7 @@ def get_attendance_stats():
         # Get total active students
         students_response = supabase.table('students')\
             .select('id', count='exact')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .execute()
         
@@ -354,7 +367,7 @@ def get_attendance_stats():
         week_ago = (datetime.now() - timedelta(days=7)).date().isoformat()
         week_response = supabase.table('attendance')\
             .select('id', count='exact')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .gte('scan_date', week_ago)\
             .execute()
         
@@ -374,14 +387,15 @@ def get_attendance_stats():
         print(f"Error getting attendance stats: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @attendance_bp.route('/students/search', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def search_students():
     """Search students for manual attendance"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id_func(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -390,7 +404,7 @@ def search_students():
         
         query = supabase.table('students')\
             .select('id, name, student_id, class_id, classes(name), status')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('status', 'active')
         
         if class_id:
@@ -407,7 +421,7 @@ def search_students():
         today = datetime.now().date().isoformat()
         present_response = supabase.table('attendance')\
             .select('student_id')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .eq('scan_date', today)\
             .execute()
         
@@ -420,4 +434,4 @@ def search_students():
         
     except Exception as e:
         print(f"Error searching students: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500 

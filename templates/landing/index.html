@@ -278,57 +278,79 @@
     </section>
 
     <div id="videoModal" class="video-modal"><div class="video-container"><button class="close-video" id="closeVideoBtn"><i class="fas fa-times"></i></button><iframe id="videoIframe" src="https://www.youtube.com/embed/AzSSIliDmf4?autoplay=0&rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>
-
-    <!-- Features Section with new additions: SCHOOL PAY SYNC + BUDGETING MODULE COMING SOON -->
-    <section id="features" class="py-20 bg-gray-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl lg:text-4xl font-bold text-gray-800 mb-4">Powerful Features</h2>
-                <p class="text-gray-600 max-w-2xl mx-auto">Everything you need to run your institution efficiently</p>
+<!-- Features Section with new additions: SCHOOL PAY SYNC + BUDGETING MODULE + INTERNATIONAL LIBRARY + ENTERTAINMENT -->
+<section id="features" class="py-20 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl lg:text-4xl font-bold text-gray-800 mb-4">Powerful Features</h2>
+            <p class="text-gray-600 max-w-2xl mx-auto">Everything you need to run your institution efficiently</p>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            
+            <!-- Original feature cards -->
+            <div class="feature-card rounded-xl p-6">
+                <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-chart-line text-orange-500 text-2xl"></i></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Finance Management</h3>
+                <p class="text-gray-600">Complete financial management including fee collection, expense tracking, payroll, and comprehensive financial reports.</p>
             </div>
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Original feature cards with added SCHOOL PAY SYNC and BUDGETING COMING SOON -->
-                <div class="feature-card rounded-xl p-6">
-                    <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-chart-line text-orange-500 text-2xl"></i></div>
-                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Finance Management</h3>
-                    <p class="text-gray-600">Complete financial management including fee collection, expense tracking, payroll, and comprehensive financial reports.</p>
+            
+            <div class="feature-card rounded-xl p-6 relative">
+                <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-university text-orange-500 text-2xl"></i></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">School Pay Sync <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full ml-2">NEW</span></h3>
+                <p class="text-gray-600">Real-time synchronization of school fees, parent payments, and financial institutions. Automatic reconciliation, instant payment notifications, and multi-channel collection (Mobile Money, Bank, Card). Seamless integration with URA e-systems and automated receipts.</p>
+            </div>
+            
+            <div class="feature-card rounded-xl p-6">
+                <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-file-alt text-orange-500 text-2xl"></i></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Report Cards</h3>
+                <p class="text-gray-600">Generate professional report cards, transcripts, and certificates with customizable templates and grading systems.</p>
+            </div>
+            
+            <div class="feature-card rounded-xl p-6">
+                <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-envelope text-orange-500 text-2xl"></i></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">SMS Notifications</h3>
+                <p class="text-gray-600">Automated SMS alerts for fee reminders, attendance updates, exam results, and important announcements.</p>
+            </div>
+            
+            <div class="feature-card rounded-xl p-6">
+                <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-users text-orange-500 text-2xl"></i></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">HR & Staff Management</h3>
+                <p class="text-gray-600">Complete employee lifecycle management including recruitment, attendance, leave, payroll, and performance tracking.</p>
+            </div>
+            
+            <!-- INTERNATIONAL LIBRARY - New Massive Library Card -->
+            <div class="feature-card rounded-xl p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 relative">
+                <div class="absolute -top-3 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">📚 15M+ BOOKS</div>
+                <div class="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-globe-americas text-blue-600 text-2xl"></i></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">International Library <i class="fas fa-book-open text-blue-500 ml-1"></i></h3>
+                <p class="text-gray-600">Access a <strong class="text-blue-600">massive library of over 15 million books</strong> from around the world. Digital textbooks, academic journals, research papers, literature classics, and reference materials. Cross-curriculum resources for all subjects and grade levels.</p>
+                <div class="mt-3 flex items-center text-sm text-blue-700"><i class="fas fa-download mr-1"></i> Unlimited downloads • 24/7 access</div>
+            </div>
+            
+            <!-- ENTERTAINMENT - Movie Relaxation Card -->
+            <div class="feature-card rounded-xl p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 relative">
+                <div class="absolute -top-3 right-4 bg-purple-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">🎬 RELAX & UNWIND</div>
+                <div class="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-film text-purple-600 text-2xl"></i></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Entertainment Hub <i class="fas fa-mask text-purple-500 ml-1"></i></h3>
+                <p class="text-gray-600">Take a break when exhausted! Stream <strong class="text-purple-600">educational movies, documentaries, motivational films, and relaxing content</strong>. Curated library of age-appropriate entertainment to recharge your mind before returning to work.</p>
+                <div class="mt-3 flex flex-wrap gap-2 text-sm">
+                    <span class="bg-purple-100 text-purple-700 px-2 py-1 rounded-full"><i class="fas fa-clock mr-1"></i> Quick breaks</span>
+                    <span class="bg-purple-100 text-purple-700 px-2 py-1 rounded-full"><i class="fas fa-brain mr-1"></i> Mental refresh</span>
+                    <span class="bg-purple-100 text-purple-700 px-2 py-1 rounded-full"><i class="fas fa-star mr-1"></i> Curated content</span>
                 </div>
-                
-                <div class="feature-card rounded-xl p-6 relative">
-                    <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-university text-orange-500 text-2xl"></i></div>
-                    <h3 class="text-xl font-semibold text-gray-800 mb-2">School Pay Sync <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full ml-2">NEW</span></h3>
-                    <p class="text-gray-600">Real-time synchronization of school fees, parent payments, and financial institutions. Automatic reconciliation, instant payment notifications, and multi-channel collection (Mobile Money, Bank, Card). Seamless integration with URA e-systems and automated receipts.</p>
-                </div>
-                
-                <div class="feature-card rounded-xl p-6">
-                    <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-file-alt text-orange-500 text-2xl"></i></div>
-                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Report Cards</h3>
-                    <p class="text-gray-600">Generate professional report cards, transcripts, and certificates with customizable templates and grading systems.</p>
-                </div>
-                
-                <div class="feature-card rounded-xl p-6">
-                    <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-envelope text-orange-500 text-2xl"></i></div>
-                    <h3 class="text-xl font-semibold text-gray-800 mb-2">SMS Notifications</h3>
-                    <p class="text-gray-600">Automated SMS alerts for fee reminders, attendance updates, exam results, and important announcements.</p>
-                </div>
-                
-                <div class="feature-card rounded-xl p-6">
-                    <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-users text-orange-500 text-2xl"></i></div>
-                    <h3 class="text-xl font-semibold text-gray-800 mb-2">HR & Staff Management</h3>
-                    <p class="text-gray-600">Complete employee lifecycle management including recruitment, attendance, leave, payroll, and performance tracking.</p>
-                </div>
-                
-                <!-- Budgeting Module - Coming Soon Feature Card -->
-                <div class="feature-card rounded-xl p-6 bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-dashed border-amber-400 relative">
-                    <div class="absolute -top-3 right-4 bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">COMING SOON</div>
-                    <div class="w-14 h-14 bg-amber-200 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-calculator text-amber-600 text-2xl"></i></div>
-                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Budgeting Module <i class="fas fa-hourglass-half text-amber-500 ml-1"></i></h3>
-                    <p class="text-gray-600">Advanced budgeting, forecasting, and financial planning tools. Multi-year budget comparisons, variance analysis, department-wise allocation, and real-time budget tracking. <strong class="text-amber-600">Launching Q2 2026 – Be the first to access!</strong></p>
-                    <div class="mt-3 flex items-center text-sm text-amber-700"><i class="fas fa-clock mr-1"></i> Early access registration now open</div>
-                </div>
+            </div>
+            
+            <!-- Budgeting Module - Coming Soon Feature Card -->
+            <div class="feature-card rounded-xl p-6 bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-dashed border-amber-400 relative">
+                <div class="absolute -top-3 right-4 bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">COMING SOON</div>
+                <div class="w-14 h-14 bg-amber-200 rounded-xl flex items-center justify-center mb-4"><i class="fas fa-calculator text-amber-600 text-2xl"></i></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Budgeting Module <i class="fas fa-hourglass-half text-amber-500 ml-1"></i></h3>
+                <p class="text-gray-600">Advanced budgeting, forecasting, and financial planning tools. Multi-year budget comparisons, variance analysis, department-wise allocation, and real-time budget tracking. <strong class="text-amber-600">Launching Q2 2026 – Be the first to access!</strong></p>
+                <div class="mt-3 flex items-center text-sm text-amber-700"><i class="fas fa-clock mr-1"></i> Early access registration now open</div>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
     <!-- Pricing Section (unchanged) -->
    
