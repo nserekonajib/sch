@@ -8,7 +8,7 @@
     <meta name="keywords" content="school management, erp, education, lurnserk, lunker">
     <meta name="author" content="Lunserk Inc.">
     <title>Lunserk ERP - {% block title %}School Management System{% endblock %}</title>
-    
+      <link rel="icon" type="image/png" href="{{ url_for('static', filename='n.png') }}">
     <!-- Tailwind CSS CDN + Font Awesome + Google Fonts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -628,12 +628,12 @@ enable-ga="false"
                     </div>
                 </div>-->
 
-                <!-- Live Class -->
+                <!-- Live Class 
                 <a href="#" @click.prevent="activeMenu = 'live-class'" 
                    :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'live-class'}" 
                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
                     <i class="fas fa-video text-lg w-5 group-hover:text-[#ffa500]"></i>
-                    <span class="font-medium">Live Class</span>
+                    <span class="font-medium">Live Class</span>-->
                 </a>
 
                 <!-- Question Paper 
@@ -713,7 +713,7 @@ enable-ga="false"
                     </div>
                 </div> -->
 
-                <!-- Certificates -->
+                <!-- Certificates 
                 <div>
                     <button @click="toggleMenu('certificates')" 
                         class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
@@ -727,7 +727,7 @@ enable-ga="false"
                         <a href="#" @click.prevent="activeMenu = 'generate-certificate'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Generate Certificate</a>
                         <a href="#" @click.prevent="activeMenu = 'certificate-templates'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Certificate Templates</a>
                     </div>
-                </div>
+                </div>-->
             </nav>
 
             <!-- Footer / User Info - Dynamic from session -->
