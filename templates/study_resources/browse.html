@@ -1,0 +1,190 @@
+<!-- templates/study_resources/browse.html -->
+{% extends "base.html" %}
+
+{% block title %}Study Resources - Shule{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">📚 Study Resources</h1>
+        <p class="text-gray-600">Access exams, lessons, and learning materials for all classes</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+        <div class="grid md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Class</label>
+                <select id="classSelect" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-orange-500 focus:border-orange-500">
+                    <option value="">Select Class</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                <select id="subjectSelect" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-orange-500 focus:border-orange-500">
+                    <option value="">Select Subject</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
+                <select id="termSelect" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-orange-500 focus:border-orange-500">
+                    <option value="">Select Term</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Resource Type</label>
+                <select id="resourceTypeSelect" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-orange-500 focus:border-orange-500">
+                    <option value="">All Resources</option>
+                </select>
+            </div>
+        </div>
+        <div class="mt-4 flex justify-end">
+            <button id="loadResourcesBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition">
+                Load Resources
+            </button>
+        </div>
+    </div>
+
+    <!-- Resources Grid -->
+    <div id="resourcesContainer" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="col-span-full text-center py-12 text-gray-500">
+            Select filters and click "Load Resources" to view materials
+        </div>
+    </div>
+</div>
+
+<script>
+    let classes = [];
+    let subjects = [];
+    let terms = [];
+    let resourceTypes = [];
+
+    // Load initial filter data
+    async function loadFilterData() {
+        try {
+            const response = await fetch('/study-resources/api/filter-data');
+            const data = await response.json();
+            
+            classes = data.classes || [];
+            terms = data.terms || [];
+            resourceTypes = data.resource_types || [];
+            
+            populateSelect('classSelect', classes, 'id', 'name');
+            populateSelect('termSelect', terms, 'id', 'name');
+            populateSelect('resourceTypeSelect', resourceTypes, 'id', 'name');
+        } catch (error) {
+            console.error('Error loading filters:', error);
+        }
+    }
+
+    function populateSelect(selectId, items, valueKey, textKey) {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '<option value="">Select ' + selectId.replace('Select', '') + '</option>';
+        
+        items.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item[valueKey];
+            option.textContent = item[textKey];
+            select.appendChild(option);
+        });
+    }
+
+    // Load subjects when class changes
+    document.getElementById('classSelect').addEventListener('change', async (e) => {
+        const classId = e.target.value;
+        if (!classId) {
+            document.getElementById('subjectSelect').innerHTML = '<option value="">Select Subject</option>';
+            return;
+        }
+        
+        try {
+            const response = await fetch('/study-resources/api/subjects', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({class_id: classId})
+            });
+            subjects = await response.json();
+            populateSelect('subjectSelect', subjects, 'id', 'name');
+        } catch (error) {
+            console.error('Error loading subjects:', error);
+        }
+    });
+
+    // Load resources
+    document.getElementById('loadResourcesBtn').addEventListener('click', async () => {
+        const classId = document.getElementById('classSelect').value;
+        const subjectId = document.getElementById('subjectSelect').value;
+        const termId = document.getElementById('termSelect').value;
+        const resourceTypeId = document.getElementById('resourceTypeSelect').value;
+        
+        if (!classId) {
+            alert('Please select a class first');
+            return;
+        }
+        
+        const container = document.getElementById('resourcesContainer');
+        container.innerHTML = '<div class="col-span-full text-center py-12"><i class="fas fa-spinner fa-spin text-2xl text-orange-500"></i><p class="mt-2">Loading resources...</p></div>';
+        
+        try {
+            let url = '/study-resources/api/resources';
+            let payload = {class_id: classId};
+            if (subjectId) payload.subject_id = subjectId;
+            if (termId) payload.term_id = termId;
+            if (resourceTypeId) payload.resource_type_id = resourceTypeId;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const resources = await response.json();
+            
+            displayResources(resources);
+        } catch (error) {
+            container.innerHTML = '<div class="col-span-full text-center py-12 text-red-500">Error loading resources. Please try again.</div>';
+        }
+    });
+    
+    function displayResources(resources) {
+        const container = document.getElementById('resourcesContainer');
+        
+        if (!resources || resources.length === 0) {
+            container.innerHTML = '<div class="col-span-full text-center py-12 text-gray-500">No resources found for the selected filters.</div>';
+            return;
+        }
+        
+        container.innerHTML = resources.map(resource => `
+            <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition p-6">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-file-pdf text-orange-500 text-2xl"></i>
+                    </div>
+                    ${resource.is_downloadable === 'yes' ? '<span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Downloadable</span>' : ''}
+                </div>
+                <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2">${escapeHtml(resource.name)}</h3>
+                <p class="text-sm text-gray-500 mb-4">Views: ${resource.count_views || 0}</p>
+                <div class="flex gap-2">
+                    <a href="${resource.pdf_url || '#'}" target="_blank" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-center px-3 py-2 rounded-lg text-sm transition">
+                        <i class="fas fa-eye mr-1"></i> View
+                    </a>
+                    ${resource.is_downloadable === 'yes' && resource.pdf_url ? `
+                    <a href="${resource.pdf_url}" download class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm transition">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Initialize
+    loadFilterData();
+</script>
+{% endblock %}

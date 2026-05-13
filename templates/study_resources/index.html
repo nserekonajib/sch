@@ -1,0 +1,799 @@
+<!-- templates/study_resources/index.html - Study Resources Main Page with Lesson Pagination -->
+{% extends "base.html" %}
+
+{% block title %}Study Resources - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .resource-card, .video-card {
+        transition: all 0.3s ease;
+    }
+    .resource-card:hover, .video-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .pagination-btn {
+        transition: all 0.2s;
+    }
+    .pagination-btn:hover:not(:disabled) {
+        background-color: #ffa500;
+        color: white;
+        transform: translateY(-1px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .video-wrapper {
+        position: relative;
+        width: 100%;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .video-wrapper iframe {
+        width: 100%;
+        height: 500px;
+        border: 0;
+    }
+    @media (max-width: 768px) {
+        .video-wrapper iframe {
+            height: 300px;
+        }
+    }
+    .skeleton {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 8px;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    .pdf-viewer {
+        width: 100%;
+        height: 80vh;
+        border: none;
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .lesson-pagination {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Study Resources</h1>
+        <p class="text-sm text-gray-600">Access educational videos, PDFs, and other learning materials</p>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="bg-white rounded-xl shadow-md p-5 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Class</label>
+                <select id="classFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">-- Select Class --</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                <select id="subjectFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm" disabled>
+                    <option value="">-- First Select Class --</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
+                <select id="termFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">-- All Terms --</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button onclick="loadTopics()" class="w-full btn-gradient px-4 py-2 rounded-lg text-white font-medium">
+                    <i class="fas fa-search"></i> Load Content
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Topics Section -->
+    <div id="topicsSection" class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <i class="fas fa-book-open text-orange-500"></i>
+            Topics
+        </h2>
+        <div id="topicsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="col-span-full text-center py-8">
+                <div class="skeleton h-32 w-full rounded-xl"></div>
+                <div class="skeleton h-20 w-3/4 mx-auto mt-3 rounded-lg"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lessons Section with Pagination -->
+    <div id="lessonsSection" class="hidden">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-video text-orange-500"></i>
+                Lessons
+            </h2>
+            <button onclick="backToTopics()" class="text-orange-500 hover:text-orange-600 text-sm">
+                <i class="fas fa-arrow-left"></i> Back to Topics
+            </button>
+        </div>
+        <div id="lessonsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Lessons will be loaded here -->
+        </div>
+        <!-- Lesson Pagination -->
+        <div id="lessonPagination" class="lesson-pagination flex justify-center items-center gap-2 mt-6">
+            <!-- Pagination buttons will be inserted here -->
+        </div>
+    </div>
+
+    <!-- PDF Resources Section -->
+    <div id="resourcesSection" class="mt-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <i class="fas fa-file-pdf text-orange-500"></i>
+            PDF Resources
+        </h2>
+        <div id="resourcesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="col-span-full text-center py-8">
+                <div class="skeleton h-32 w-full rounded-xl"></div>
+                <div class="skeleton h-20 w-3/4 mx-auto mt-3 rounded-lg"></div>
+            </div>
+        </div>
+        
+        <!-- PDF Pagination -->
+        <div id="pdfPagination" class="flex justify-center items-center gap-2 mt-6">
+            <!-- Pagination buttons will be inserted here -->
+        </div>
+    </div>
+</div>
+
+<!-- Video Modal -->
+<div id="videoModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-5xl w-full mx-4 transform transition-all modal-container">
+        <div class="sticky top-0 bg-white rounded-t-xl border-b border-gray-200 px-5 py-3 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800" id="videoModalTitle">Video Player</h3>
+            <button onclick="closeVideoModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="p-5">
+            <div class="video-wrapper">
+                <div id="playerLoading" class="absolute inset-0 flex items-center justify-center bg-black z-10 hidden">
+                    <div class="loader"></div>
+                </div>
+                <div id="player"></div>
+            </div>
+            <div class="mt-4">
+                <p class="text-gray-600" id="videoDescription"></p>
+                <div class="flex items-center gap-4 mt-3">
+                    <span class="text-sm text-gray-500"><i class="fas fa-eye"></i> <span id="videoViews">0</span> views</span>
+                    <span class="text-sm text-gray-500"><i class="fas fa-thumbs-up"></i> <span id="videoLikes">0</span> likes</span>
+                    <span class="text-sm text-gray-500"><i class="fas fa-user"></i> <span id="videoTeacher"></span></span>
+                </div>
+            </div>
+        </div>
+        <div class="px-5 py-4 border-t border-gray-200 flex gap-3">
+            <button onclick="closeVideoModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- PDF Modal -->
+<div id="pdfModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 transform transition-all modal-container">
+        <div class="sticky top-0 bg-white rounded-t-xl border-b border-gray-200 px-5 py-3 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800" id="pdfModalTitle">PDF Viewer</h3>
+            <button onclick="closePdfModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="p-5">
+            <div id="pdfLoading" class="flex items-center justify-center py-20 hidden">
+                <div class="loader"></div>
+                <span class="ml-3 text-gray-600">Loading PDF...</span>
+            </div>
+            <iframe id="pdfViewer" class="pdf-viewer" src="" style="display: none;"></iframe>
+        </div>
+        <div class="px-5 py-4 border-t border-gray-200 flex gap-3">
+            <button onclick="closePdfModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="loader mb-4"></div>
+        <p class="text-gray-700">Loading...</p>
+    </div>
+</div>
+
+<script>
+    let currentClassId = null;
+    let currentSubjectId = null;
+    let currentTermId = null;
+    let currentTopicId = null;
+    
+    // PDF Resources
+    let allResources = [];
+    let currentPdfPage = 1;
+    let pdfItemsPerPage = 25;
+    
+    // Lessons
+    let allLessons = [];
+    let currentLessonPage = 1;
+    let lessonItemsPerPage = 20;
+
+    // Load initial filter data
+    async function loadFilters() {
+        try {
+            const response = await fetch('/study-resources/api/filter-data');
+            const data = await response.json();
+            
+            if (data.success) {
+                const classSelect = document.getElementById('classFilter');
+                classSelect.innerHTML = '<option value="">-- Select Class --</option>' + 
+                    data.data.classes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+                
+                const termSelect = document.getElementById('termFilter');
+                termSelect.innerHTML = '<option value="">-- All Terms --</option>' + 
+                    data.data.terms.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+            }
+        } catch (error) {
+            console.error('Error loading filters:', error);
+        }
+    }
+
+    document.getElementById('classFilter').addEventListener('change', async function() {
+        currentClassId = this.value;
+        currentSubjectId = null;
+        
+        const subjectSelect = document.getElementById('subjectFilter');
+        const topicsGrid = document.getElementById('topicsGrid');
+        
+        if (!currentClassId) {
+            subjectSelect.innerHTML = '<option value="">-- First Select Class --</option>';
+            subjectSelect.disabled = true;
+            topicsGrid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-400">Select a class to view topics</div>';
+            return;
+        }
+        
+        subjectSelect.disabled = false;
+        subjectSelect.innerHTML = '<option value="">-- Loading... --</option>';
+        
+        try {
+            const response = await fetch('/study-resources/api/subjects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ class_id: currentClassId })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>' + 
+                    data.data.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+            }
+        } catch (error) {
+            console.error('Error loading subjects:', error);
+            subjectSelect.innerHTML = '<option value="">-- Error loading subjects --</option>';
+        }
+    });
+
+    document.getElementById('subjectFilter').addEventListener('change', function() {
+        currentSubjectId = this.value;
+        if (currentClassId && currentSubjectId) {
+            loadTopics();
+        }
+    });
+
+    document.getElementById('termFilter').addEventListener('change', function() {
+        currentTermId = this.value;
+        if (currentClassId && currentSubjectId) {
+            loadTopics();
+        }
+    });
+
+    async function loadTopics() {
+        if (!currentClassId || !currentSubjectId) return;
+        
+        const topicsGrid = document.getElementById('topicsGrid');
+        topicsGrid.innerHTML = '<div class="col-span-full text-center py-8"><div class="loader mx-auto"></div><p class="mt-2">Loading topics...</p></div>';
+        
+        try {
+            const response = await fetch('/study-resources/api/topics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    class_id: currentClassId,
+                    subject_id: currentSubjectId,
+                    term_id: currentTermId || null
+                })
+            });
+            const data = await response.json();
+            
+            if (data.success && data.data.length > 0) {
+                displayTopics(data.data);
+                loadResources();
+            } else {
+                topicsGrid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-400">No topics found for this selection</div>';
+            }
+        } catch (error) {
+            console.error('Error loading topics:', error);
+            topicsGrid.innerHTML = '<div class="col-span-full text-center py-8 text-red-500">Error loading topics</div>';
+        }
+    }
+
+    function displayTopics(topics) {
+        const topicsGrid = document.getElementById('topicsGrid');
+        topicsGrid.innerHTML = topics.map(topic => `
+            <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all cursor-pointer" onclick="loadLessons('${topic.id}', '${escapeHtml(topic.name)}')">
+                <div class="p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-gray-800">${escapeHtml(topic.name)}</h3>
+                        <i class="fas fa-chevron-right text-orange-500"></i>
+                    </div>
+                    <p class="text-sm text-gray-500">Click to view lessons</p>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function loadLessons(topicId, topicName) {
+        currentTopicId = topicId;
+        currentLessonPage = 1;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/study-resources/api/lessons', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ topic_id: topicId })
+            });
+            const data = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (data.success && data.data.length > 0) {
+                allLessons = data.data;
+                renderLessons();
+                document.getElementById('topicsSection').classList.add('hidden');
+                document.getElementById('lessonsSection').classList.remove('hidden');
+                document.getElementById('lessonsSection').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                showMessage('No lessons found for this topic', 'info');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Error loading lessons', 'error');
+        }
+    }
+
+    function renderLessons() {
+        const start = (currentLessonPage - 1) * lessonItemsPerPage;
+        const end = start + lessonItemsPerPage;
+        const paginatedLessons = allLessons.slice(start, end);
+        
+        const lessonsGrid = document.getElementById('lessonsGrid');
+        
+        if (paginatedLessons.length === 0) {
+            lessonsGrid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-400">No lessons found</div>';
+            document.getElementById('lessonPagination').innerHTML = '';
+            return;
+        }
+        
+        lessonsGrid.innerHTML = paginatedLessons.map(lesson => `
+            <div class="video-card bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="relative cursor-pointer" onclick="playVideo('${lesson.youtube_url}', '${escapeHtml(lesson.name)}', ${lesson.views || 0}, ${lesson.likes || 0}, '${escapeHtml(lesson.teacher_name || 'N/A')}')">
+                    <div class="bg-gray-900 h-48 relative">
+                        <img src="https://img.youtube.com/vi/${getYouTubeId(lesson.youtube_url)}/mqdefault.jpg" 
+                             class="w-full h-full object-cover" alt="${escapeHtml(lesson.name)}"
+                             onerror="this.src='https://via.placeholder.com/400x225?text=No+Thumbnail'">
+                        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 hover:bg-opacity-30 transition-all">
+                            <div class="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center">
+                                <i class="fas fa-play text-white text-2xl ml-1"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-800 mb-1">${escapeHtml(lesson.name)}</h3>
+                    <p class="text-xs text-gray-500 mb-2">Teacher: ${escapeHtml(lesson.teacher_name || 'N/A')}</p>
+                    <div class="flex items-center gap-3 text-xs text-gray-400">
+                        <span><i class="fas fa-eye"></i> ${lesson.views || 0} views</span>
+                        <span><i class="fas fa-thumbs-up"></i> ${lesson.likes || 0} likes</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        renderLessonPagination();
+    }
+
+    function renderLessonPagination() {
+        const totalPages = Math.ceil(allLessons.length / lessonItemsPerPage);
+        const paginationDiv = document.getElementById('lessonPagination');
+        
+        if (totalPages <= 1) {
+            paginationDiv.innerHTML = '';
+            return;
+        }
+        
+        let paginationHtml = `
+            <button onclick="changeLessonPage(${currentLessonPage - 1})" ${currentLessonPage === 1 ? 'disabled' : ''}
+                    class="pagination-btn px-3 py-1 border rounded-lg text-sm ${currentLessonPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:border-orange-500'}">
+                Previous
+            </button>
+        `;
+        
+        let startPage = Math.max(1, currentLessonPage - 2);
+        let endPage = Math.min(totalPages, currentLessonPage + 2);
+        
+        if (startPage > 1) {
+            paginationHtml += `<button onclick="changeLessonPage(1)" class="pagination-btn px-3 py-1 border rounded-lg text-sm hover:border-orange-500">1</button>`;
+            if (startPage > 2) paginationHtml += `<span class="px-2">...</span>`;
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHtml += `
+                <button onclick="changeLessonPage(${i})" 
+                        class="pagination-btn px-3 py-1 border rounded-lg text-sm ${i === currentLessonPage ? 'bg-orange-500 text-white border-orange-500' : 'hover:border-orange-500'}">
+                    ${i}
+                </button>
+            `;
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) paginationHtml += `<span class="px-2">...</span>`;
+            paginationHtml += `<button onclick="changeLessonPage(${totalPages})" class="pagination-btn px-3 py-1 border rounded-lg text-sm hover:border-orange-500">${totalPages}</button>`;
+        }
+        
+        paginationHtml += `
+            <button onclick="changeLessonPage(${currentLessonPage + 1})" ${currentLessonPage === totalPages ? 'disabled' : ''}
+                    class="pagination-btn px-3 py-1 border rounded-lg text-sm ${currentLessonPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:border-orange-500'}">
+                Next
+            </button>
+        `;
+        
+        paginationDiv.innerHTML = paginationHtml;
+    }
+
+    function changeLessonPage(page) {
+        if (page < 1 || page > Math.ceil(allLessons.length / lessonItemsPerPage)) return;
+        currentLessonPage = page;
+        renderLessons();
+        document.getElementById('lessonsSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function getYouTubeId(url) {
+        if (!url) return '';
+        if (url.includes('youtu.be/')) {
+            return url.split('/').pop().split('?')[0];
+        }
+        if (url.includes('watch?v=')) {
+            return url.split('watch?v=')[1].split('&')[0];
+        }
+        if (url.includes('v=')) {
+            return url.split('v=')[1].split('&')[0];
+        }
+        return '';
+    }
+
+    function playVideo(youtubeUrl, title, views, likes, teacher) {
+        const videoId = getYouTubeId(youtubeUrl);
+        if (!videoId) {
+            showMessage('Invalid video URL', 'error');
+            return;
+        }
+        
+        const modal = document.getElementById('videoModal');
+        const playerDiv = document.getElementById('player');
+        const loading = document.getElementById('playerLoading');
+        
+        document.getElementById('videoModalTitle').textContent = title;
+        document.getElementById('videoDescription').innerHTML = `<strong>${title}</strong>`;
+        document.getElementById('videoViews').textContent = views;
+        document.getElementById('videoLikes').textContent = likes;
+        document.getElementById('videoTeacher').textContent = teacher;
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        
+        loading.classList.remove('hidden');
+        
+        const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&controls=1&enablejsapi=1`;
+        
+        playerDiv.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; fullscreen" allowfullscreen style="width:100%; height:500px; border:0;"></iframe>`;
+        
+        const iframe = playerDiv.querySelector('iframe');
+        iframe.onload = () => {
+            loading.classList.add('hidden');
+        };
+    }
+
+    function closeVideoModal() {
+        const modal = document.getElementById('videoModal');
+        const playerDiv = document.getElementById('player');
+        playerDiv.innerHTML = '';
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function openPdfModal(pdfUrl, title) {
+        const modal = document.getElementById('pdfModal');
+        const pdfViewer = document.getElementById('pdfViewer');
+        const loading = document.getElementById('pdfLoading');
+        
+        document.getElementById('pdfModalTitle').textContent = title;
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        
+        loading.classList.remove('hidden');
+        pdfViewer.style.display = 'none';
+        
+        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+        pdfViewer.src = viewerUrl;
+        
+        pdfViewer.onload = () => {
+            loading.classList.add('hidden');
+            pdfViewer.style.display = 'block';
+        };
+        
+        setTimeout(() => {
+            if (loading.classList.contains('hidden') === false) {
+                loading.classList.add('hidden');
+                pdfViewer.style.display = 'block';
+            }
+        }, 5000);
+    }
+
+    function closePdfModal() {
+        const modal = document.getElementById('pdfModal');
+        const pdfViewer = document.getElementById('pdfViewer');
+        pdfViewer.src = '';
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    async function loadResources() {
+        if (!currentClassId) return;
+        
+        const resourcesGrid = document.getElementById('resourcesGrid');
+        resourcesGrid.innerHTML = '<div class="col-span-full text-center py-8"><div class="loader mx-auto"></div><p class="mt-2">Loading resources...</p></div>';
+        
+        try {
+            const payload = { class_id: currentClassId };
+            if (currentSubjectId) payload.subject_id = currentSubjectId;
+            if (currentTermId) payload.term_id = currentTermId;
+            
+            const response = await fetch('/study-resources/api/resources', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                allResources = data.data;
+                renderResources();
+            } else {
+                resourcesGrid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-400">No resources found</div>';
+            }
+        } catch (error) {
+            console.error('Error loading resources:', error);
+            resourcesGrid.innerHTML = '<div class="col-span-full text-center py-8 text-red-500">Error loading resources</div>';
+        }
+    }
+
+    function renderResources() {
+        const start = (currentPdfPage - 1) * pdfItemsPerPage;
+        const end = start + pdfItemsPerPage;
+        const paginatedResources = allResources.slice(start, end);
+        
+        const resourcesGrid = document.getElementById('resourcesGrid');
+        
+        if (paginatedResources.length === 0) {
+            resourcesGrid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-400">No resources found</div>';
+            document.getElementById('pdfPagination').innerHTML = '';
+            return;
+        }
+        
+        resourcesGrid.innerHTML = paginatedResources.map(resource => `
+            <div class="resource-card bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full">${resource.type || 'PDF'}</span>
+                        <span class="text-xs text-gray-400">
+                            <i class="fas fa-eye"></i> ${resource.views || 0} views
+                        </span>
+                    </div>
+                    <h3 class="font-semibold text-gray-800 mb-2">${escapeHtml(resource.name)}</h3>
+                    <p class="text-sm text-gray-600 mb-3 line-clamp-2">${escapeHtml(resource.description || 'No description available')}</p>
+                    <div class="flex gap-2">
+                        <button onclick="openPdfModal('${resource.pdf_url}', '${escapeHtml(resource.name)}')" class="flex-1 btn-gradient px-3 py-2 rounded-lg text-white text-sm font-medium text-center">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        ${resource.downloadable ? `
+                        <a href="${resource.pdf_url}" download class="px-3 py-2 border border-orange-500 text-orange-500 rounded-lg text-sm font-medium text-center hover:bg-orange-50">
+                            <i class="fas fa-download"></i>
+                        </a>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        renderPdfPagination();
+    }
+
+    function renderPdfPagination() {
+        const totalPages = Math.ceil(allResources.length / pdfItemsPerPage);
+        const paginationDiv = document.getElementById('pdfPagination');
+        
+        if (totalPages <= 1) {
+            paginationDiv.innerHTML = '';
+            return;
+        }
+        
+        let paginationHtml = `
+            <button onclick="changePdfPage(${currentPdfPage - 1})" ${currentPdfPage === 1 ? 'disabled' : ''}
+                    class="pagination-btn px-3 py-1 border rounded-lg text-sm ${currentPdfPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:border-orange-500'}">
+                Previous
+            </button>
+        `;
+        
+        let startPage = Math.max(1, currentPdfPage - 2);
+        let endPage = Math.min(totalPages, currentPdfPage + 2);
+        
+        if (startPage > 1) {
+            paginationHtml += `<button onclick="changePdfPage(1)" class="pagination-btn px-3 py-1 border rounded-lg text-sm hover:border-orange-500">1</button>`;
+            if (startPage > 2) paginationHtml += `<span class="px-2">...</span>`;
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHtml += `
+                <button onclick="changePdfPage(${i})" 
+                        class="pagination-btn px-3 py-1 border rounded-lg text-sm ${i === currentPdfPage ? 'bg-orange-500 text-white border-orange-500' : 'hover:border-orange-500'}">
+                    ${i}
+                </button>
+            `;
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) paginationHtml += `<span class="px-2">...</span>`;
+            paginationHtml += `<button onclick="changePdfPage(${totalPages})" class="pagination-btn px-3 py-1 border rounded-lg text-sm hover:border-orange-500">${totalPages}</button>`;
+        }
+        
+        paginationHtml += `
+            <button onclick="changePdfPage(${currentPdfPage + 1})" ${currentPdfPage === totalPages ? 'disabled' : ''}
+                    class="pagination-btn px-3 py-1 border rounded-lg text-sm ${currentPdfPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:border-orange-500'}">
+                Next
+            </button>
+        `;
+        
+        paginationDiv.innerHTML = paginationHtml;
+    }
+
+    function changePdfPage(page) {
+        if (page < 1 || page > Math.ceil(allResources.length / pdfItemsPerPage)) return;
+        currentPdfPage = page;
+        renderResources();
+        document.getElementById('resourcesSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function backToTopics() {
+        document.getElementById('lessonsSection').classList.add('hidden');
+        document.getElementById('topicsSection').classList.remove('hidden');
+        currentTopicId = null;
+        allLessons = [];
+        currentLessonPage = 1;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        
+        setTimeout(() => {
+            flashMsg.style.opacity = '0';
+            setTimeout(() => flashMsg.remove(), 300);
+        }, 5000);
+    }
+
+    // Initialize
+    loadFilters();
+    
+    // Close modals on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const videoModal = document.getElementById('videoModal');
+            const pdfModal = document.getElementById('pdfModal');
+            if (!videoModal.classList.contains('hidden')) {
+                closeVideoModal();
+            }
+            if (!pdfModal.classList.contains('hidden')) {
+                closePdfModal();
+            }
+        }
+    });
+    
+    window.onclick = function(event) {
+        const videoModal = document.getElementById('videoModal');
+        const pdfModal = document.getElementById('pdfModal');
+        if (event.target === videoModal) closeVideoModal();
+        if (event.target === pdfModal) closePdfModal();
+    };
+</script>
+{% endblock %}

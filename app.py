@@ -79,6 +79,7 @@ from routes.schoolpay.schoolPayIntegration import schoolpay_bp
 from routes.schoolpay.syncSchoolPayToDb import sync_bp
 from routes.library.library import library_bp
 from routes.entertainment.entertainment import entertainment_bp
+from routes.resources.studyresources import studyresource_bp as resources_bp
 
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -118,6 +119,7 @@ app.register_blueprint(schoolpay_bp, url_prefix='/schoolpay')
 app.register_blueprint(sync_bp, url_prefix='/sync-schoolpay')
 app.register_blueprint(library_bp, url_prefix='/library')
 app.register_blueprint(entertainment_bp, url_prefix='/entertainment')
+app.register_blueprint(resources_bp, url_prefix='/study-resources')
 
 
 
@@ -146,6 +148,6 @@ def serve_static(filename):
     return send_from_directory('static', filename)
 
 if __name__ == '__main__':
-     app.run(host="0.0.0.0", port=40000)
-    # from waitress import serve
-    # serve(app, host='0.0.0.0', port=40000)
+    #  app.run(host="0.0.0.0", port=40000)
+    from waitress import serve
+    serve(app, host='0.0.0.0', port=40000)
