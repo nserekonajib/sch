@@ -1,354 +1,647 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Infotrust Property Consultants - SMC Ltd | Affordable Land Uganda</title>
-  <!-- Tailwind CSS v3 + Font Awesome Icons + Google Fonts -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-  <style>
-    * {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    }
-    html {
-      scroll-behavior: smooth;
-    }
-    .gradient-hero {
-      background: linear-gradient(135deg, #0A2F1F 0%, #1B4D2E 100%);
-    }
-    .card-hover {
-      transition: all 0.3s ease;
-    }
-    .card-hover:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.15);
-    }
-    .whatsapp-float {
-      transition: all 0.2s ease;
-    }
-    .whatsapp-float:hover {
-      transform: scale(1.08);
-      background-color: #075e54;
-    }
-    .bg-soft-cream {
-      background-color: #FEF9E6;
-    }
-    .border-leaf {
-      border-left: 4px solid #2B7A4B;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>EduSphere | 3D School Management System</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            overflow-x: hidden;
+            font-family: 'Inter', sans-serif;
+            color: #fff;
+            background-color: #0a0f1c;
+        }
+
+        /* Canvas 3D background */
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* Overlay content */
+        .content {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(3px);
+            background: radial-gradient(circle at 20% 30%, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.7) 100%);
+        }
+
+        /* Navbar */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            flex-wrap: wrap;
+            background: rgba(10, 15, 28, 0.6);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #FFFFFF, #8B5CF6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .logo span {
+            font-size: 1.9rem;
+            background: none;
+            color: #a855f7;
+        }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        .nav-links a {
+            color: #f0f0f0;
+            text-decoration: none;
+            font-weight: 500;
+            transition: 0.3s;
+            font-size: 1rem;
+        }
+        .nav-links a:hover {
+            color: #c084fc;
+        }
+        .btn-outline {
+            border: 1px solid rgba(168,85,247,0.6);
+            padding: 0.5rem 1.2rem;
+            border-radius: 40px;
+            background: transparent;
+            transition: 0.3s;
+        }
+        .btn-outline:hover {
+            background: #8b5cf6;
+            border-color: #8b5cf6;
+            color: white;
+        }
+
+        /* Hero Section */
+        .hero {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 3rem 5% 6rem;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+        .hero-text {
+            flex: 1;
+            min-width: 280px;
+            animation: fadeUp 0.8s ease-out;
+        }
+        .hero-text h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+            background: linear-gradient(to right, #ffffff, #c084fc, #a855f7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+        }
+        .hero-text p {
+            font-size: 1.2rem;
+            color: #cfd9ff;
+            max-width: 550px;
+            margin-bottom: 2rem;
+        }
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .btn-primary {
+            background: #8b5cf6;
+            border: none;
+            padding: 0.9rem 2rem;
+            border-radius: 40px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 8px 20px rgba(139,92,246,0.3);
+            font-size: 1rem;
+        }
+        .btn-primary:hover {
+            background: #7c3aed;
+            transform: translateY(-3px);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 0.9rem 2rem;
+            border-radius: 40px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-3px);
+        }
+        .stats {
+            display: flex;
+            gap: 2rem;
+            margin-top: 2.5rem;
+        }
+        .stat-item h3 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 0;
+            color: #c084fc;
+        }
+        .stat-item p {
+            font-size: 0.9rem;
+            margin: 0;
+            color: #b9c3e6;
+        }
+
+        /* Feature Cards Section */
+        .features {
+            padding: 4rem 5%;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(6px);
+            text-align: center;
+        }
+        .section-title {
+            font-size: 2.3rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+        }
+        .cards-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .card {
+            background: rgba(20, 25, 45, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            padding: 1.8rem;
+            width: 260px;
+            transition: 0.3s;
+            border: 1px solid rgba(139,92,246,0.3);
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.3);
+        }
+        .card:hover {
+            transform: translateY(-10px);
+            border-color: #8b5cf6;
+            box-shadow: 0 25px 40px -12px rgba(139,92,246,0.4);
+        }
+        .card i {
+            font-size: 2.8rem;
+            color: #c084fc;
+            margin-bottom: 1rem;
+        }
+        .card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 0.8rem;
+        }
+        .card p {
+            font-size: 0.9rem;
+            color: #b9c3e6;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(0,0,0,0.6);
+            font-size: 0.85rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .hero-text h1 {
+                font-size: 2.5rem;
+            }
+            .navbar {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .nav-links {
+                gap: 1.2rem;
+            }
+            .stats {
+                justify-content: flex-start;
+            }
+        }
+        @media (max-width: 600px) {
+            .hero {
+                flex-direction: column;
+                text-align: center;
+            }
+            .hero-text p {
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .cta-buttons {
+                justify-content: center;
+            }
+            .stats {
+                justify-content: center;
+            }
+        }
+    </style>
 </head>
-<body class="bg-white text-gray-800">
+<body>
 
-  <!-- Floating WhatsApp & Call CTA (Mobile/Desktop) -->
-  <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-    <a href="https://wa.me/256774322305?text=Hello%20Infotrust%2C%20I'm%20interested%20in%20affordable%20land%20in%20Uganda" 
-       target="_blank" 
-       class="bg-green-600 text-white p-3 rounded-full shadow-xl flex items-center justify-center w-14 h-14 hover:bg-green-700 transition-all duration-200 whatsapp-float"
-       aria-label="WhatsApp">
-      <i class="fab fa-whatsapp text-3xl"></i>
-    </a>
-    <a href="tel:+256774322305" 
-       class="bg-blue-600 text-white p-3 rounded-full shadow-xl flex items-center justify-center w-14 h-14 hover:bg-blue-700 transition-all duration-200"
-       aria-label="Call">
-      <i class="fas fa-phone-alt text-2xl"></i>
-    </a>
-  </div>
+    <!-- 3D Canvas will be injected here by Three.js -->
+    <div class="content">
+        <nav class="navbar">
+            <div class="logo"><span>📚</span> EduSphere</div>
+            <ul class="nav-links">
+                <li><a href="#">Home</a></li>
+                <li><a href="#">Features</a></li>
+                <li><a href="#">Solutions</a></li>
+                <li><a href="#">Pricing</a></li>
+                <li><a href="#" class="btn-outline">Contact</a></li>
+            </ul>
+        </nav>
 
-  <!-- Navigation -->
-  <nav class="bg-white shadow-md sticky top-0 z-40 border-b border-gray-100">
-    <div class="max-w-7xl mx-auto px-5 md:px-8 py-3 flex flex-wrap justify-between items-center">
-      <div class="flex items-center space-x-2">
-        <i class="fas fa-home text-emerald-700 text-2xl"></i>
-        <span class="font-bold text-xl tracking-tight text-gray-800">Infotrust<span class="text-emerald-700"> Property</span></span>
-        <span class="hidden md:inline-block text-xs font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full ml-2">SMC Ltd</span>
-      </div>
-      <div class="flex gap-4 md:gap-6 text-sm font-medium">
-        <a href="#home" class="hover:text-emerald-700 transition">Home</a>
-        <a href="#projects" class="hover:text-emerald-700 transition">Projects</a>
-        <a href="#services" class="hover:text-emerald-700 transition">Services</a>
-        <a href="#contact" class="hover:text-emerald-700 transition">Contact</a>
-      </div>
-    </div>
-  </nav>
-
-  <!-- Hero Section (Home) -->
-  <section id="home" class="gradient-hero text-white">
-    <div class="max-w-7xl mx-auto px-6 md:px-10 py-16 md:py-24 flex flex-col md:flex-row items-center gap-10">
-      <div class="flex-1 space-y-5">
-        <span class="inline-block bg-white/20 backdrop-blur-sm text-emerald-50 text-sm font-semibold px-4 py-1 rounded-full">🇺🇬 Uganda's Trusted Real Estate</span>
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight">Your Land Journey <br> Starts <span class="text-emerald-300">From 4.5M UGX</span></h1>
-        <p class="text-lg text-gray-100 max-w-lg">Affordable titled land, expert property management & development — empowering humble beginners & diaspora Ugandans to own a piece of Uganda.</p>
-        <div class="flex flex-wrap gap-4 pt-2">
-          <a href="#contact" class="bg-white text-emerald-800 font-semibold px-6 py-3 rounded-xl shadow-md hover:bg-gray-100 transition flex items-center gap-2"><i class="fas fa-map-marker-alt"></i> Book Site Visit</a>
-          <a href="https://wa.me/256709981937?text=I'm%20interested%20in%20land%20along%20Masaka%20Road" target="_blank" class="bg-transparent border-2 border-white text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/10 transition flex items-center gap-2"><i class="fab fa-whatsapp"></i> WhatsApp Us</a>
-        </div>
-        <div class="flex items-center gap-5 text-sm text-emerald-100 pt-3">
-          <span><i class="fas fa-check-circle"></i> Titled Land</span>
-          <span><i class="fas fa-check-circle"></i> Site Visits</span>
-          <span><i class="fas fa-check-circle"></i> Diaspora Support</span>
-        </div>
-      </div>
-      <div class="flex-1 flex justify-center">
-        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 w-full max-w-sm border border-white/20 shadow-xl">
-          <div class="text-center">
-            <i class="fas fa-landmark text-5xl text-emerald-300 mb-3"></i>
-            <h3 class="text-2xl font-bold">Start from 4.5M UGX</h3>
-            <p class="text-sm opacity-90">Own titled plots around Mpigi & Masaka Road corridor</p>
-            <hr class="my-4 border-white/30">
-            <div class="grid grid-cols-2 gap-3 text-left text-sm">
-              <div><i class="fas fa-road mr-1"></i> Masaka Road</div>
-              <div><i class="fas fa-tree mr-1"></i> Mpigi Green Zone</div>
-              <div><i class="fas fa-file-signature mr-1"></i> Freehold titles</div>
-              <div><i class="fas fa-globe mr-1"></i> Diaspora friendly</div>
+        <div class="hero">
+            <div class="hero-text">
+                <h1>Next-Gen<br>School Management</h1>
+                <p>Orchestrate academics, finance, and communication in one intelligent ecosystem. Real-time insights, AI-driven analytics, and seamless collaboration.</p>
+                <div class="cta-buttons">
+                    <button class="btn-primary">Get Started <i class="fas fa-arrow-right"></i></button>
+                    <button class="btn-secondary">Live Demo</button>
+                </div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <h3>10K+</h3>
+                        <p>Schools Worldwide</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>98%</h3>
+                        <p>Parent Satisfaction</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>24/7</h3>
+                        <p>Smart Support</p>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-      </div>
-    </div>
-  </section>
 
-  <!-- Key Highlights / Trust Badges -->
-  <div class="bg-soft-cream border-b border-emerald-100">
-    <div class="max-w-7xl mx-auto px-6 py-8 flex flex-wrap justify-between items-center gap-6 text-center md:text-left">
-      <div class="flex items-center gap-3"><i class="fas fa-building text-emerald-700 text-2xl"></i><span class="font-medium">📍 Kiwatule, Emessa Complex</span></div>
-      <div class="flex items-center gap-3"><i class="fas fa-hand-holding-usd text-emerald-700 text-2xl"></i><span class="font-medium">Affordable for beginners</span></div>
-      <div class="flex items-center gap-3"><i class="fab fa-facebook text-emerald-700 text-2xl"></i><a href="#" class="hover:underline font-medium">Follow on Facebook</a></div>
-      <div class="flex items-center gap-3"><i class="fas fa-tiktok text-emerald-700 text-2xl"></i><span class="font-medium">Updates on TikTok</span></div>
-    </div>
-  </div>
-
-  <!-- Projects: Mpigi & Masaka Road Focus -->
-  <section id="projects" class="py-20 px-5 bg-white">
-    <div class="max-w-7xl mx-auto">
-      <div class="text-center max-w-2xl mx-auto mb-14">
-        <span class="text-emerald-600 font-semibold tracking-wide">LAND FOR EVERY DREAM</span>
-        <h2 class="text-3xl md:text-4xl font-bold mt-2 text-gray-800">Prime Locations <span class="text-emerald-700">Along Masaka Road</span></h2>
-        <p class="text-gray-500 mt-3">Titled plots near Mpigi town, with easy access to Kampala. Perfect for investment, farming, or building a future home.</p>
-      </div>
-
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <!-- Project 1 -->
-        <div class="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-100 card-hover">
-          <div class="h-48 bg-gradient-to-br from-emerald-800 to-emerald-600 flex items-center justify-center text-white">
-            <i class="fas fa-mountain text-6xl opacity-80"></i>
-          </div>
-          <div class="p-5">
-            <div class="flex justify-between items-start">
-              <h3 class="text-xl font-bold">Mpigi Green Valley</h3>
-              <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full">Hot Offer</span>
+        <div class="features">
+            <h2 class="section-title">Intelligent Features for Modern Education</h2>
+            <div class="cards-grid">
+                <div class="card"><i class="fas fa-chalkboard-user"></i><h3>Smart Classes</h3><p>Virtual classrooms, attendance automation, and curriculum planning.</p></div>
+                <div class="card"><i class="fas fa-chart-line"></i><h3>Analytics Hub</h3><p>Real-time performance dashboards and predictive insights.</p></div>
+                <div class="card"><i class="fas fa-users"></i><h3>Parent Portal</h3><p>Transparent progress reports & instant communication.</p></div>
+                <div class="card"><i class="fas fa-coins"></i><h3>Fee Management</h3><p>Automated invoicing, online payments, and ledger sync.</p></div>
             </div>
-            <p class="text-gray-500 text-sm mt-1">Along Masaka Road, 5km from Mpigi town centre</p>
-            <div class="mt-3 flex items-baseline gap-1"><span class="text-2xl font-extrabold">4.5M UGX</span><span class="text-gray-400 text-sm">/plot</span></div>
-            <ul class="mt-4 space-y-2 text-sm text-gray-600">
-              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Surveyed & Registered titles</li>
-              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Access road & nearby schools</li>
-              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Flexible payment plans</li>
-            </ul>
-            <button onclick="openInquiry('Mpigi Green Valley')" class="mt-5 w-full bg-emerald-50 text-emerald-700 font-semibold py-2 rounded-xl hover:bg-emerald-100 transition flex items-center justify-center gap-2"><i class="fas fa-phone-alt"></i> Request site visit</button>
-          </div>
         </div>
 
-        <!-- Project 2 - Masaka Road Frontier -->
-        <div class="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-100 card-hover">
-          <div class="h-48 bg-gradient-to-br from-amber-700 to-yellow-800 flex items-center justify-center text-white">
-            <i class="fas fa-road text-6xl opacity-80"></i>
-          </div>
-          <div class="p-5">
-            <h3 class="text-xl font-bold">Masaka Road Frontier</h3>
-            <p class="text-gray-500 text-sm mt-1">Near Buwama, high visibility corridor</p>
-            <div class="mt-3 flex items-baseline gap-1"><span class="text-2xl font-extrabold">6.2M UGX</span><span class="text-gray-400 text-sm">/plot</span></div>
-            <ul class="mt-4 space-y-2 text-sm text-gray-600">
-              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Near main tarmac road</li>
-              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Ideal for commercial/residential</li>
-              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Verified land title included</li>
-            </ul>
-            <button onclick="openInquiry('Masaka Road Frontier')" class="mt-5 w-full bg-emerald-50 text-emerald-700 font-semibold py-2 rounded-xl hover:bg-emerald-100 transition"><i class="fas fa-calendar-alt mr-2"></i> Schedule visit</button>
-          </div>
-        </div>
-
-        <!-- Project 3 - Diaspora Special Package -->
-        <div class="rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-100 card-hover">
-          <div class="h-48 bg-gradient-to-br from-blue-800 to-indigo-700 flex items-center justify-center text-white">
-            <i class="fas fa-plane-departure text-6xl opacity-80"></i>
-          </div>
-          <div class="p-5">
-            <h3 class="text-xl font-bold">Diaspora Investment Zone</h3>
-            <p class="text-gray-500 text-sm mt-1">Mpigi West - remote purchase & title transfer support</p>
-            <div class="mt-3 flex items-baseline gap-1"><span class="text-2xl font-extrabold">5.9M UGX</span><span class="text-gray-400 text-sm">/plot</span></div>
-            <ul class="mt-4 space-y-2 text-sm text-gray-600">
-              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Digital documentation</li>
-              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Dedicated diaspora manager</li>
-              <li><i class="fas fa-check-circle text-emerald-600 w-5"></i> Virtual site tour option</li>
-            </ul>
-            <button onclick="openInquiry('Diaspora Investment Zone')" class="mt-5 w-full bg-emerald-50 text-emerald-700 font-semibold py-2 rounded-xl hover:bg-emerald-100 transition"><i class="fab fa-whatsapp mr-2"></i> WhatsApp diaspora team</button>
-          </div>
-        </div>
-      </div>
+        <footer>
+            <p>© 2025 EduSphere — Revolutionizing school administration with AI & 3D innovation.</p>
+        </footer>
     </div>
-  </section>
 
-  <!-- Services Section: Property Management, Development & Sales -->
-  <section id="services" class="py-20 px-5 bg-gray-50">
-    <div class="max-w-7xl mx-auto">
-      <div class="text-center mb-14">
-        <span class="text-emerald-600 font-semibold">WHAT WE OFFER</span>
-        <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mt-2">Comprehensive <span class="text-emerald-700">Real Estate Solutions</span></h2>
-        <p class="text-gray-500 max-w-2xl mx-auto mt-3">From land acquisition to property management, we guide humble beginners and seasoned investors alike.</p>
-      </div>
-      <div class="grid md:grid-cols-3 gap-8">
-        <div class="bg-white p-7 rounded-2xl shadow-md border-l-4 border-l-emerald-500 transition-all hover:shadow-lg">
-          <div class="bg-emerald-100 w-14 h-14 flex items-center justify-center rounded-xl mb-5"><i class="fas fa-map-marked-alt text-emerald-700 text-2xl"></i></div>
-          <h3 class="text-xl font-bold mb-2">Affordable Land Sales</h3>
-          <p class="text-gray-600">Titled plots starting from 4.5M UGX. Focus on Mpigi, Masaka Road corridor. Flexible payment options for first-time buyers.</p>
-        </div>
-        <div class="bg-white p-7 rounded-2xl shadow-md border-l-4 border-l-emerald-500 transition-all hover:shadow-lg">
-          <div class="bg-emerald-100 w-14 h-14 flex items-center justify-center rounded-xl mb-5"><i class="fas fa-building text-emerald-700 text-2xl"></i></div>
-          <h3 class="text-xl font-bold mb-2">Property Management</h3>
-          <p class="text-gray-600">Let us manage your rentals, tenant sourcing, and maintenance. Maximize returns while you focus elsewhere.</p>
-        </div>
-        <div class="bg-white p-7 rounded-2xl shadow-md border-l-4 border-l-emerald-500 transition-all hover:shadow-lg">
-          <div class="bg-emerald-100 w-14 h-14 flex items-center justify-center rounded-xl mb-5"><i class="fas fa-hard-hat text-emerald-700 text-2xl"></i></div>
-          <h3 class="text-xl font-bold mb-2">Development Consultancy</h3>
-          <p class="text-gray-600">Guidance for building your dream home, land subdivision, and feasibility studies for small developers.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Why Choose & Verification section -->
-  <section class="py-16 px-5 bg-white">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row gap-12 items-center">
-      <div class="flex-1">
-        <img src="https://placehold.co/600x400/EAEFE5/2B7A4B?text=Office+Verification+%26+Site+Visit" alt="Office and land verification" class="rounded-2xl shadow-xl w-full object-cover border border-emerald-100">
-        <p class="text-xs text-center text-gray-400 mt-3">Visit our active office at Emessa Complex, Kiwatule</p>
-      </div>
-      <div class="flex-1 space-y-5">
-        <div class="inline-block bg-emerald-100 text-emerald-800 px-4 py-1 rounded-full text-sm font-semibold">Trust & Transparency</div>
-        <h2 class="text-3xl font-bold">Verify Before You Commit</h2>
-        <p class="text-gray-600">We strongly recommend visiting our registered office for site visits and physical verification of land titles. Infotrust Property Consultants - SMC Ltd ensures full due diligence, with active operations in Kiwatule (Emessa Complex).</p>
-        <ul class="space-y-3">
-          <li class="flex gap-3"><i class="fas fa-check-circle text-emerald-600 text-xl mt-0.5"></i><span>Physical title verification & land survey reports</span></li>
-          <li class="flex gap-3"><i class="fas fa-check-circle text-emerald-600 text-xl mt-0.5"></i><span>Official office location: Emessa Complex, Kiwatule</span></li>
-          <li class="flex gap-3"><i class="fas fa-check-circle text-emerald-600 text-xl mt-0.5"></i><span>Experienced team for diaspora & local buyers</span></li>
-        </ul>
-        <div class="pt-4 flex flex-wrap gap-4">
-          <a href="#contact" class="bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-semibold shadow hover:bg-emerald-800 transition">Schedule office visit</a>
-          <a href="tel:+256709981937" class="border border-emerald-600 text-emerald-700 px-6 py-2.5 rounded-xl font-semibold hover:bg-emerald-50 transition"><i class="fas fa-phone-alt mr-2"></i>Call +256 709 981 937</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Contact & Office Location -->
-  <section id="contact" class="py-20 px-5 bg-emerald-900 text-white">
-    <div class="max-w-7xl mx-auto">
-      <div class="text-center mb-12">
-        <h2 class="text-3xl md:text-4xl font-bold">Get in Touch</h2>
-        <p class="text-emerald-100 max-w-lg mx-auto mt-2">Reach out for land inquiries, site visits, or property management needs.</p>
-      </div>
-      <div class="grid md:grid-cols-2 gap-10 items-start">
-        <div class="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/20">
-          <h3 class="text-2xl font-semibold mb-4 flex items-center gap-2"><i class="fas fa-map-pin"></i> Visit Our Office</h3>
-          <p class="text-emerald-50 mb-5"><strong>📍 Infotrust Property Consultants - SMC Ltd</strong><br> Emessa Complex, Kiwatule, Kampala (Opposite TotalEnergies)<br> Former locations: Kamwokya / Ntinda (now fully centralized at Kiwatule)</p>
-          <div class="space-y-3 mt-6">
-            <p><i class="fas fa-phone-alt w-6"></i> Call: <a href="tel:+256774322305" class="hover:underline">+256 774 322 305</a> / <a href="tel:+256709981937" class="hover:underline">+256 709 981 937</a></p>
-            <p><i class="fab fa-whatsapp w-6"></i> WhatsApp: <a href="https://wa.me/256774322305" target="_blank" class="hover:underline">+256 774 322 305</a></p>
-            <p><i class="fab fa-facebook w-6"></i> Facebook: <a href="#" class="hover:underline">@InfotrustPropertyConsultants</a> (Updates on new listings)</p>
-            <p><i class="fab fa-tiktok w-6"></i> TikTok: Property insights & project tours</p>
-          </div>
-        </div>
-        <div class="bg-white/5 rounded-2xl p-6 border border-white/10">
-          <h3 class="text-2xl font-semibold mb-4">Request a Callback</h3>
-          <form id="callbackForm" class="space-y-4">
-            <input type="text" id="nameInput" placeholder="Full Name" class="w-full px-4 py-3 rounded-xl bg-white text-gray-800 placeholder-gray-400 border-0 focus:ring-2 focus:ring-emerald-400" required>
-            <input type="tel" id="phoneInput" placeholder="Phone Number (e.g., 07XX XXX XXX)" class="w-full px-4 py-3 rounded-xl bg-white text-gray-800 placeholder-gray-400 border-0 focus:ring-2 focus:ring-emerald-400" required>
-            <select id="inquirySelect" class="w-full px-4 py-3 rounded-xl bg-white text-gray-800 border-0 focus:ring-2 focus:ring-emerald-400">
-              <option value="Land in Mpigi">Land in Mpigi / Masaka Road (from 4.5M)</option>
-              <option value="Property Management">Property Management</option>
-              <option value="Site Visit Booking">Site Visit Booking</option>
-              <option value="Diaspora Services">Diaspora land services</option>
-            </select>
-            <textarea rows="3" id="msgInput" placeholder="Additional message..." class="w-full px-4 py-3 rounded-xl bg-white text-gray-800 placeholder-gray-400 border-0 focus:ring-2 focus:ring-emerald-400"></textarea>
-            <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 transition w-full font-bold py-3 rounded-xl text-white flex items-center justify-center gap-2"><i class="fas fa-paper-plane"></i> Send & We'll Call You</button>
-            <p class="text-xs text-emerald-200 text-center">Our team responds within 24 hours. Office visits strictly by appointment & verification.</p>
-          </form>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="bg-gray-900 text-gray-300 py-10 px-5 border-t border-gray-800">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-      <div class="text-center md:text-left">
-        <div class="flex items-center gap-2 text-white text-xl font-bold"><i class="fas fa-home text-emerald-400"></i> Infotrust Property Consultants <span class="text-sm font-normal text-gray-400">- SMC Ltd</span></div>
-        <p class="text-sm mt-1">Empowering humble beginners & diaspora to own titled land in Uganda.</p>
-        <p class="text-xs text-gray-500 mt-3">© 2025 Infotrust Property Consultants - SMC Ltd. All rights reserved.</p>
-      </div>
-      <div class="flex gap-6 text-2xl">
-        <a href="#" class="hover:text-emerald-400 transition"><i class="fab fa-facebook"></i></a>
-        <a href="#" class="hover:text-emerald-400 transition"><i class="fab fa-tiktok"></i></a>
-        <a href="https://wa.me/256774322305" class="hover:text-emerald-400 transition"><i class="fab fa-whatsapp"></i></a>
-        <a href="tel:+256774322305" class="hover:text-emerald-400 transition"><i class="fas fa-phone"></i></a>
-      </div>
-    </div>
-  </footer>
-
-  <script>
-    // openInquiry for project buttons - fill form or generate WhatsApp message
-    function openInquiry(projectName) {
-      const selectEl = document.getElementById('inquirySelect');
-      if (selectEl) {
-        selectEl.value = "Land in Mpigi";
-        // optional custom message for each project
-        const msgBox = document.getElementById('msgInput');
-        if (msgBox) msgBox.value = `I am interested in the project: ${projectName}. Please contact me for site visit and pricing details.`;
-        document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
-      } else {
-        // fallback direct WhatsApp
-        let whatsappNumber = "256774322305";
-        let text = `Hello Infotrust, I'm interested in ${projectName} (affordable titled land). Please share more details.`;
-        window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
-      }
-    }
-
-    // callback form handler
-    const form = document.getElementById('callbackForm');
-    if (form) {
-      form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const name = document.getElementById('nameInput').value.trim();
-        const phone = document.getElementById('phoneInput').value.trim();
-        const inquiry = document.getElementById('inquirySelect').value;
-        const message = document.getElementById('msgInput').value;
-        if (!name || !phone) {
-          alert("Please provide your name and phone number so we can assist you.");
-          return;
+    <!-- Three.js libraries -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
         }
-        // prepare WhatsApp or call alert: we can forward to company WhatsApp
-        const whatsappMsg = `*New Inquiry from Website*%0A%0AName: ${name}%0APhone: ${phone}%0AInquiry: ${inquiry}%0AMessage: ${message}%0A%0APlease contact customer.`;
-        const whatsappNumber = "256774322305"; // main line
-        window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMsg}`, '_blank');
-        alert(`Thank you ${name}! We will contact you via ${phone} within few hours. You can also WhatsApp us directly.`);
-        form.reset();
-      });
-    }
+    </script>
 
-    // smooth anchor links for navigation
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function(e) {
-        const targetId = this.getAttribute('href');
-        if (targetId === "#" || targetId === "") return;
-        const targetElem = document.querySelector(targetId);
-        if (targetElem) {
-          e.preventDefault();
-          targetElem.scrollIntoView({ behavior: 'smooth' });
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- Setup Scene, Cameras, Renderers ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050b1a);
+        scene.fog = new THREE.FogExp2(0x050b1a, 0.008); // subtle fog for depth
+
+        // Main WebGL Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true; // enable shadows for better depth
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        // CSS2 Renderer for floating text labels
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        labelRenderer.domElement.style.zIndex = '5';
+        document.body.appendChild(labelRenderer.domElement);
+
+        // --- Camera: Perspective with slight tilt
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 3, 8);
+        camera.lookAt(0, 0, 0);
+
+        // --- Controls: allow subtle auto-rotation but also interactive? We'll do auto-rotate with user override
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.2;
+        controls.enableZoom = true;
+        controls.enablePan = false;
+        controls.target.set(0, 1, 0);
+        
+        // --- Lights: Create a vibrant atmosphere
+        // Ambient light
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+        // Main directional light
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(3, 5, 2);
+        dirLight.castShadow = true;
+        dirLight.receiveShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+        // Fill light from below
+        const fillLight = new THREE.PointLight(0x8b5cf6, 0.5);
+        fillLight.position.set(0, -1, 0);
+        scene.add(fillLight);
+        // Back rim light
+        const rimLight = new THREE.PointLight(0xff8c00, 0.4);
+        rimLight.position.set(-2, 2, -3);
+        scene.add(rimLight);
+        // Additional colorful lights for ambiance
+        const colorLight1 = new THREE.PointLight(0xa855f7, 0.6);
+        colorLight1.position.set(2, 1, 3);
+        scene.add(colorLight1);
+        const colorLight2 = new THREE.PointLight(0x3b82f6, 0.5);
+        colorLight2.position.set(-1, 2, 4);
+        scene.add(colorLight2);
+        
+        // --- Helpers: Floor grid (reflective style)
+        const gridHelper = new THREE.GridHelper(20, 25, 0x8b5cf6, 0x3b3b5e);
+        gridHelper.position.y = -0.8;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.35;
+        scene.add(gridHelper);
+        
+        // Decorative floating particles background
+        const particleCount = 1200;
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount; i++) {
+            particlePositions[i*3] = (Math.random() - 0.5) * 60;
+            particlePositions[i*3+1] = (Math.random() - 0.5) * 12 + 1;
+            particlePositions[i*3+2] = (Math.random() - 0.5) * 35 - 15;
         }
-      });
-    });
-  </script>
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particlesMaterial = new THREE.PointsMaterial({
+            color: 0x9b6eff,
+            size: 0.08,
+            transparent: true,
+            opacity: 0.5,
+            blending: THREE.AdditiveBlending
+        });
+        const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particleSystem);
+        
+        // --- MAIN 3D OBJECT: A stylish central geometric "atom" + rotating rings to symbolize school management system
+        
+        // Central glowing core
+        const coreGeometry = new THREE.IcosahedronGeometry(0.65, 0);
+        const coreMaterial = new THREE.MeshStandardMaterial({
+            color: 0xc084fc,
+            emissive: 0x4c1d95,
+            emissiveIntensity: 0.7,
+            roughness: 0.3,
+            metalness: 0.8
+        });
+        const core = new THREE.Mesh(coreGeometry, coreMaterial);
+        core.castShadow = true;
+        scene.add(core);
+        
+        // Outer ring 1 (horizontal)
+        const ring1Geo = new THREE.TorusGeometry(1.1, 0.05, 64, 200);
+        const ringMat1 = new THREE.MeshStandardMaterial({ color: 0xa78bfa, emissive: 0x6d28d9, emissiveIntensity: 0.4 });
+        const ring1 = new THREE.Mesh(ring1Geo, ringMat1);
+        ring1.rotation.x = Math.PI / 2;
+        scene.add(ring1);
+        
+        // Outer ring 2 (diagonal)
+        const ring2Geo = new THREE.TorusGeometry(1.3, 0.05, 64, 200);
+        const ringMat2 = new THREE.MeshStandardMaterial({ color: 0x818cf8, emissive: 0x4338ca, emissiveIntensity: 0.3 });
+        const ring2 = new THREE.Mesh(ring2Geo, ringMat2);
+        ring2.rotation.z = Math.PI / 3;
+        ring2.rotation.x = Math.PI / 3;
+        scene.add(ring2);
+        
+        // Outer ring 3 (vertical-ish)
+        const ring3Geo = new THREE.TorusGeometry(1.5, 0.045, 64, 200);
+        const ringMat3 = new THREE.MeshStandardMaterial({ color: 0xc4b5fd, emissive: 0x5b21b6, emissiveIntensity: 0.25 });
+        const ring3 = new THREE.Mesh(ring3Geo, ringMat3);
+        ring3.rotation.y = Math.PI / 2;
+        ring3.rotation.x = 0.8;
+        scene.add(ring3);
+        
+        // Floating cubes / satellites around rings
+        const satellites = [];
+        const satColors = [0xf472b6, 0x60a5fa, 0x34d399, 0xfbbf24];
+        for (let i = 0; i < 12; i++) {
+            const size = 0.12;
+            const cubeMat = new THREE.MeshStandardMaterial({ color: satColors[i % satColors.length], emissive: 0x3b0764, emissiveIntensity: 0.5 });
+            const cube = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), cubeMat);
+            cube.castShadow = true;
+            scene.add(cube);
+            satellites.push(cube);
+        }
+        
+        // --- Floating "Book" and "Gear" models to represent school management (using groups)
+        const bookGroup = new THREE.Group();
+        const coverMat = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, emissive: 0x2e1065 });
+        const pageMat = new THREE.MeshStandardMaterial({ color: 0xfde047, emissive: 0x854d0e });
+        const bookCover = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.1, 0.5), coverMat);
+        bookCover.position.y = 0.05;
+        const bookPages = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.08, 0.45), pageMat);
+        bookPages.position.y = 0;
+        bookGroup.add(bookCover);
+        bookGroup.add(bookPages);
+        bookGroup.position.set(-1.8, 0.2, 1.4);
+        scene.add(bookGroup);
+        
+        const gearGroup = new THREE.Group();
+        const gearMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, metalness: 0.7, roughness: 0.3 });
+        const gearCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.12, 32), gearMat);
+        gearCyl.rotation.x = Math.PI / 2;
+        gearGroup.add(gearCyl);
+        // add small spikes
+        for (let i = 0; i < 8; i++) {
+            const spike = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.35), gearMat);
+            const angle = (i / 8) * Math.PI * 2;
+            spike.position.set(Math.cos(angle) * 0.58, Math.sin(angle) * 0.58, 0);
+            gearGroup.add(spike);
+        }
+        gearGroup.position.set(1.9, -0.3, 1.7);
+        scene.add(gearGroup);
+        
+        // CSS2D floating labels: "Attendance", "Grades", "Analytics"
+        function makeLabel(text, color, position) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            div.style.color = color;
+            div.style.fontSize = '18px';
+            div.style.fontWeight = 'bold';
+            div.style.fontFamily = 'Inter, sans-serif';
+            div.style.textShadow = '0 0 10px rgba(0,0,0,0.5)';
+            div.style.background = 'rgba(20, 25, 55, 0.7)';
+            div.style.padding = '6px 16px';
+            div.style.borderRadius = '40px';
+            div.style.borderLeft = `3px solid ${color}`;
+            div.style.backdropFilter = 'blur(8px)';
+            div.style.pointerEvents = 'none';
+            const labelObj = new CSS2DObject(div);
+            labelObj.position.copy(position);
+            scene.add(labelObj);
+            return labelObj;
+        }
+        
+        makeLabel('📊 Real-time Analytics', '#c084fc', new THREE.Vector3(-1.2, 1.8, 1.5));
+        makeLabel('✅ Smart Attendance', '#86efac', new THREE.Vector3(1.5, 2.1, -1.2));
+        makeLabel('📈 Performance Tracker', '#facc15', new THREE.Vector3(-1.8, 0.9, -1.9));
+        makeLabel('🔐 Secure Portal', '#f472b6', new THREE.Vector3(2.3, -0.5, 1.1));
+        
+        // --- Floating small glowing orbs
+        const orbMat = new THREE.MeshStandardMaterial({ color: 0xbf8af0, emissive: 0x7e22ce, emissiveIntensity: 0.8 });
+        for (let i = 0; i < 30; i++) {
+            const orb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), orbMat);
+            orb.position.set((Math.random() - 0.5) * 6, Math.random() * 3 - 0.5, (Math.random() - 0.5) * 6);
+            scene.add(orb);
+        }
+        
+        // ---- Animation loop variables ----
+        let time = 0;
+        
+        // Simple rotating stars / glowing particles inside the rings
+        const starField = new THREE.Points(new THREE.BufferGeometry(), particlesMaterial);
+        // Already added particleSystem, just animate
+        
+        // --- 3D floating "data nodes" orbiting
+        const orbitingNodes = [];
+        const nodeCount = 16;
+        for (let i = 0; i < nodeCount; i++) {
+            const nodeGeo = new THREE.SphereGeometry(0.08, 8, 8);
+            const nodeMatGlow = new THREE.MeshStandardMaterial({ color: 0xd8b4fe, emissive: 0xa855f7 });
+            const node = new THREE.Mesh(nodeGeo, nodeMatGlow);
+            scene.add(node);
+            orbitingNodes.push(node);
+        }
+        
+        // --- Animate everything
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.012;
+            
+            // rotate rings
+            ring1.rotation.z += 0.008;
+            ring2.rotation.x += 0.005;
+            ring2.rotation.y += 0.007;
+            ring3.rotation.y += 0.006;
+            ring3.rotation.z += 0.004;
+            
+            // core pulsation
+            const scale = 1 + Math.sin(time * 5) * 0.03;
+            core.scale.set(scale, scale, scale);
+            
+            // satellites movement: revolve around center with variable radius
+            satellites.forEach((sat, idx) => {
+                const angle = time * 0.8 + idx * (Math.PI * 2 / satellites.length);
+                const radius = 1.95;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                const y = Math.sin(angle * 1.7) * 0.6;
+                sat.position.set(x, y + 0.2, z);
+            });
+            
+            // orbiting nodes around the system (larger orbit)
+            orbitingNodes.forEach((node, idx) => {
+                const ang = time * 0.5 + idx * (Math.PI * 2 / nodeCount);
+                const rad = 2.5;
+                const x = Math.cos(ang) * rad;
+                const z = Math.sin(ang) * rad;
+                const y = Math.cos(ang * 1.3) * 0.7;
+                node.position.set(x, y + 0.5, z);
+            });
+            
+            // animate book and gear gently
+            bookGroup.rotation.y = Math.sin(time * 0.7) * 0.2;
+            bookGroup.position.y = 0.2 + Math.sin(time * 1.2) * 0.05;
+            gearGroup.rotation.z = time * 0.8;
+            gearGroup.rotation.x = Math.sin(time * 0.5) * 0.2;
+            
+            // particle system gentle drift
+            particleSystem.rotation.y = time * 0.02;
+            particleSystem.rotation.x = Math.sin(time * 0.1) * 0.1;
+            
+            // dynamic color light intensity
+            colorLight1.intensity = 0.6 + Math.sin(time) * 0.2;
+            colorLight2.intensity = 0.5 + Math.cos(time * 1.3) * 0.2;
+            
+            // update controls if auto-rotate enabled
+            controls.update();
+            
+            // render
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // handle resize
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // small console greeting
+        console.log('EduSphere 3D Landing Page Loaded');
+    </script>
 </body>
 </html>
