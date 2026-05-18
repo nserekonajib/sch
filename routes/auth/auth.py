@@ -567,3 +567,56 @@ def get_user_role():
         'role': user.get('role', 'owner'),
         'employee_id': user.get('employee_id') if user.get('is_employee') else None
     })
+    
+    
+# Add this to your auth.py file
+
+@auth_bp.route('/demo-login')
+def demo_login():
+    """Demo route for automatic login with predefined credentials"""
+    email = "nserekonajib3@gmail.com"
+    password = "Nabirah1@"
+    
+    try:
+        # Attempt to sign in with Supabase
+        response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+        
+        if response.user:
+            # Get institute info
+            institute_data = None
+            try:
+                institute_response = supabase.table('institutes')\
+                    .select('*')\
+                    .eq('user_id', response.user.id)\
+                    .execute()
+                if institute_response.data:
+                    institute_data = institute_response.data[0]
+            except Exception as e:
+                print(f"Institute fetch error: {e}")
+            
+            # Store user info in session
+            session['user'] = {
+                'id': response.user.id,
+                'email': response.user.email,
+                'is_employee': False,
+                'role': 'owner',
+                'institute_id': institute_data.get('id') if institute_data else None,
+                'institute_name': institute_data.get('institute_name') if institute_data else None
+            }
+            
+            flash('Demo login successful! Welcome back!', 'success')
+            return redirect(url_for('dashboard.index'))
+        else:
+            flash('Demo login failed. Invalid credentials.', 'error')
+            return redirect(url_for('auth.login'))
+            
+    except Exception as e:
+        error_msg = str(e)
+        if 'Invalid login credentials' in error_msg:
+            flash('Demo login failed. Invalid email or password.', 'error')
+        else:
+            flash(f'Demo login failed: {error_msg}', 'error')
+        return redirect(url_for('auth.login'))

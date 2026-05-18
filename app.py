@@ -80,6 +80,7 @@ from routes.schoolpay.syncSchoolPayToDb import sync_bp
 from routes.library.library import library_bp
 from routes.entertainment.entertainment import entertainment_bp
 from routes.resources.studyresources import studyresource_bp as resources_bp
+from routes.resultsCard.report_templates import templates_bp
 
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -120,7 +121,7 @@ app.register_blueprint(sync_bp, url_prefix='/sync-schoolpay')
 app.register_blueprint(library_bp, url_prefix='/library')
 app.register_blueprint(entertainment_bp, url_prefix='/entertainment')
 app.register_blueprint(resources_bp, url_prefix='/study-resources')
-
+app.register_blueprint(templates_bp, url_prefix='/report-templates')
 
 
 @app.route('/')

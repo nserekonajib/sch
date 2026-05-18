@@ -1,4 +1,4 @@
-<!-- templates/fees/index.html - Professional redesign with modern toggle chips replacing radio selections -->
+<!-- templates/fees/index.html - Complete with multiple class selection -->
 {% extends "base.html" %}
 
 {% block title %}Fee Particulars - Lunserk ERP{% endblock %}
@@ -130,7 +130,7 @@
         box-shadow: 0 2px 6px rgba(245,166,35,0.2);
     }
 
-    /* search container - FIXED POSITIONING */
+    /* search container */
     .search-container {
         position: relative;
         width: 100%;
@@ -206,12 +206,25 @@
         padding: 12px 16px;
         margin-top: 12px;
     }
+
+    /* multiple classes scrollbar */
+    .class-checkboxes-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    .class-checkboxes-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .class-checkboxes-container::-webkit-scrollbar-thumb {
+        background: #f5a623;
+        border-radius: 10px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
-    <!-- Header with modern orange accent -->
+    <!-- Header -->
     <div class="mb-7 flex flex-wrap justify-between items-end">
         <div>
             <h1 class="text-2xl font-bold text-gray-800 mb-1 flex items-center gap-2">
@@ -225,7 +238,7 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-7">
-        <!-- LEFT PANEL - Settings with toggle chips (no radio buttons) -->
+        <!-- LEFT PANEL -->
         <div class="lg:col-span-1">
             <div class="settings-panel shadow-sm">
                 <h3 class="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2 border-b border-orange-100 pb-2">
@@ -234,18 +247,19 @@
                 </h3>
                 
                 <form id="feeSettingsForm">
-                    <!-- Apply To - modern chip group -->
+                    <!-- Apply To -->
                     <div class="mb-5">
                         <div class="label-modern"><i class="fas fa-users mr-1"></i> Apply To</div>
                         <div class="toggle-chip-group" id="applyToGroup">
                             <div data-value="all" class="toggle-chip active"><i class="fas fa-globe-americas"></i> All Students</div>
                             <div data-value="class" class="toggle-chip"><i class="fas fa-graduation-cap"></i> Specific Class</div>
                             <div data-value="student" class="toggle-chip"><i class="fas fa-user-graduate"></i> Specific Student</div>
+                            <div data-value="multiple-classes" class="toggle-chip"><i class="fas fa-layer-group"></i> Multiple Classes</div>
                         </div>
                         <input type="hidden" name="apply_to" id="applyToHidden" value="all">
                     </div>
                     
-                    <!-- Class Select (conditional) -->
+                    <!-- Class Select -->
                     <div id="classSelectGroup" class="mb-5 hidden">
                         <div class="label-modern"><i class="fas fa-chalkboard"></i> Select Class</div>
                         <select id="classSelect" class="modern-select">
@@ -256,7 +270,7 @@
                         </select>
                     </div>
                     
-                    <!-- Student Live Search (conditional) - FIXED CONTAINER -->
+                    <!-- Student Live Search -->
                     <div id="studentSelectGroup" class="mb-5 hidden">
                         <div class="label-modern"><i class="fas fa-search"></i> Search Student</div>
                         <div class="search-container">
@@ -283,7 +297,28 @@
                         </div>
                     </div>
                     
-                    <!-- Student Category - modern pills -->
+                    <!-- Multiple Classes Selection -->
+                    <div id="multipleClassesGroup" class="mb-5 hidden">
+                        <div class="label-modern"><i class="fas fa-chalkboard"></i> Select Classes</div>
+                        <div class="class-checkboxes-container space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50/30">
+                            <div id="classCheckboxesList" class="space-y-2">
+                                <div class="text-center text-gray-500 py-4">Loading classes...</div>
+                            </div>
+                        </div>
+                        <div class="mt-2 flex justify-between items-center">
+                            <div class="flex gap-2">
+                                <button type="button" onclick="selectAllClasses()" class="text-xs text-orange-600 hover:text-orange-700 font-medium">
+                                    <i class="fas fa-check-double mr-1"></i> Select All
+                                </button>
+                                <button type="button" onclick="deselectAllClasses()" class="text-xs text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-times mr-1"></i> Deselect All
+                                </button>
+                            </div>
+                            <span id="selectedClassesCount" class="text-xs text-gray-500">0 classes selected</span>
+                        </div>
+                    </div>
+
+                    <!-- Student Category -->
                     <div class="mb-5">
                         <div class="label-modern"><i class="fas fa-tag"></i> Student Category</div>
                         <div class="category-pills" id="categoryPills">
@@ -296,7 +331,7 @@
                     
                     <hr class="soft">
                     
-                    <!-- Default Fee Type - chip toggles (fixed/editable) -->
+                    <!-- Default Fee Type -->
                     <div class="mb-4">
                         <div class="label-modern"><i class="fas fa-edit"></i> Default Fee Type</div>
                         <div class="toggle-chip-group" id="defaultFeeTypeGroup">
@@ -309,7 +344,7 @@
             </div>
         </div>
         
-        <!-- RIGHT PANEL - Fee Items Configuration (modern cards) -->
+        <!-- RIGHT PANEL -->
         <div class="lg:col-span-2">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-6 py-5 border-b border-orange-50 bg-gradient-to-r from-orange-50/40 to-white flex items-center justify-between">
@@ -403,8 +438,10 @@
                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">All Students</span>
                                 {% elif particular.apply_to == 'class' %}
                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700">Specific Class</span>
+                                {% elif particular.apply_to == 'multiple_classes' %}
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700">Multiple Classes</span>
                                 {% else %}
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700">Specific Student</span>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">Specific Student</span>
                                 {% endif %}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-500">{{ particular.fee_items|length if particular.fee_items is iterable else 0 }} item(s)</td>
@@ -429,7 +466,7 @@
                 <i class="fas fa-check-circle text-3xl text-green-500"></i>
             </div>
             <h3 class="text-xl font-semibold text-gray-800 mb-2" id="successTitle">Success!</h3>
-            <p class="text-gray-600 mb-6" id="successMessage">Invoices generated successfully</p>
+            <div class="text-gray-600 mb-6" id="successMessage">Invoices generated successfully</div>
             <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-xl text-white font-medium">Continue</button>
         </div>
     </div>
@@ -444,43 +481,88 @@
 </div>
 
 <script>
-    // ----- TOGGLE CHIPS REPLACING RADIOS -----
+    // DOM Elements
     const applyToggles = document.querySelectorAll('#applyToGroup .toggle-chip');
     const applyToHidden = document.getElementById('applyToHidden');
     const classGroup = document.getElementById('classSelectGroup');
     const studentGroup = document.getElementById('studentSelectGroup');
+    const multipleClassesGroup = document.getElementById('multipleClassesGroup');
+    const categoryPills = document.querySelectorAll('#categoryPills .pill');
+    const categoryHidden = document.getElementById('categoryHidden');
+    const defaultTypeToggles = document.querySelectorAll('#defaultFeeTypeGroup .toggle-chip');
+    const defaultTypeHidden = document.getElementById('defaultTypeHidden');
     
+    let allClasses = [];
+    let searchTimeout;
+    const studentSearchInput = document.getElementById('studentSearchInput');
+    const searchResults = document.getElementById('studentSearchResults');
+    
+    // Helper Functions
+    function escapeHtml(str) { 
+        if(!str) return ''; 
+        return String(str).replace(/[&<>]/g, function(m){
+            if(m==='&') return '&amp;'; 
+            if(m==='<') return '&lt;'; 
+            if(m==='>') return '&gt;'; 
+            return m;
+        });
+    }
+    
+    function showMessage(msg, type) {
+        let container = document.getElementById('flashMessages');
+        if(!container) { 
+            container = document.createElement('div'); 
+            container.id='flashMessages'; 
+            container.className='fixed top-4 right-4 z-50 space-y-2'; 
+            document.body.appendChild(container); 
+        }
+        const flash = document.createElement('div');
+        flash.className = `p-3 rounded-xl shadow-lg text-white text-sm ${type==='error'?'bg-red-500':'bg-green-500'} flex items-center gap-2`;
+        flash.innerHTML = `<i class="fas ${type==='error'?'fa-exclamation-circle':'fa-check-circle'}"></i> ${msg}`;
+        container.appendChild(flash);
+        setTimeout(()=>{ flash.style.opacity='0'; setTimeout(()=>flash.remove(),300); }, 4000);
+    }
+    
+    // Apply To Toggle Handler
     applyToggles.forEach(toggle => {
         toggle.addEventListener('click', () => {
             applyToggles.forEach(t => t.classList.remove('active'));
             toggle.classList.add('active');
             const value = toggle.dataset.value;
             applyToHidden.value = value;
-            classGroup.classList.add('hidden');
-            studentGroup.classList.add('hidden');
-            if (value === 'class') classGroup.classList.remove('hidden');
-            else if (value === 'student') studentGroup.classList.remove('hidden');
+            
+            // Hide all conditional groups
+            classGroup?.classList.add('hidden');
+            studentGroup?.classList.add('hidden');
+            if (multipleClassesGroup) multipleClassesGroup.classList.add('hidden');
+            
+            // Show appropriate group
+            if (value === 'class') {
+                classGroup.classList.remove('hidden');
+            } else if (value === 'student') {
+                studentGroup.classList.remove('hidden');
+            } else if (value === 'multiple-classes') {
+                multipleClassesGroup.classList.remove('hidden');
+                if (allClasses.length === 0) {
+                    loadClasses();
+                }
+            }
         });
     });
     
-    // Category Pills
-    const categoryPills = document.querySelectorAll('#categoryPills .pill');
-    const categoryHidden = document.getElementById('categoryHidden');
+    // Category Pills Handler
     categoryPills.forEach(pill => {
         pill.addEventListener('click', () => {
             categoryPills.forEach(p => p.classList.remove('active-pill'));
             pill.classList.add('active-pill');
             categoryHidden.value = pill.dataset.cat;
-            const searchInput = document.getElementById('studentSearchInput');
-            if (searchInput && searchInput.value.trim().length >= 2) {
+            if (studentSearchInput && studentSearchInput.value.trim().length >= 2) {
                 performStudentSearch();
             }
         });
     });
     
-    // Default Fee Type group
-    const defaultTypeToggles = document.querySelectorAll('#defaultFeeTypeGroup .toggle-chip');
-    const defaultTypeHidden = document.getElementById('defaultTypeHidden');
+    // Default Fee Type Handler
     defaultTypeToggles.forEach(toggle => {
         toggle.addEventListener('click', () => {
             defaultTypeToggles.forEach(t => t.classList.remove('active'));
@@ -494,11 +576,7 @@
         });
     });
     
-    // ---- LIVE STUDENT SEARCH - FIXED ----
-    let searchTimeout;
-    const studentSearchInput = document.getElementById('studentSearchInput');
-    const searchResults = document.getElementById('studentSearchResults');
-    
+    // Student Search Functions
     async function performStudentSearch() {
         const query = studentSearchInput.value.trim();
         if (query.length < 2) {
@@ -540,16 +618,6 @@
         }
     }
     
-    function escapeHtml(str) { 
-        if(!str) return ''; 
-        return String(str).replace(/[&<>]/g, function(m){
-            if(m==='&') return '&amp;'; 
-            if(m==='<') return '&lt;'; 
-            if(m==='>') return '&gt;'; 
-            return m;
-        });
-    }
-    
     if (studentSearchInput) {
         studentSearchInput.addEventListener('input', () => {
             clearTimeout(searchTimeout);
@@ -563,7 +631,6 @@
         });
     }
     
-    // Close search results when clicking outside
     document.addEventListener('click', function(e) {
         const searchContainer = document.querySelector('.search-container');
         if (searchContainer && !searchContainer.contains(e.target)) {
@@ -589,7 +656,85 @@
         }
     };
     
-    // Fee Items Logic
+    // Multiple Classes Functions
+    async function loadClasses() {
+        try {
+            const response = await fetch('/fees/classes');
+            const data = await response.json();
+            
+            if (data.success && data.classes) {
+                allClasses = data.classes;
+                renderClassCheckboxes(allClasses);
+            } else {
+                document.getElementById('classCheckboxesList').innerHTML = '<div class="text-center text-red-500 py-4">Failed to load classes</div>';
+            }
+        } catch(e) {
+            console.error('Error loading classes:', e);
+            document.getElementById('classCheckboxesList').innerHTML = '<div class="text-center text-red-500 py-4">Error loading classes</div>';
+        }
+    }
+    
+    function renderClassCheckboxes(classes) {
+        const container = document.getElementById('classCheckboxesList');
+        if (!container) return;
+        
+        if (classes.length === 0) {
+            container.innerHTML = '<div class="text-center text-gray-500 py-4">No classes found</div>';
+            return;
+        }
+        
+        container.innerHTML = classes.map(cls => `
+            <label class="flex items-start p-2 hover:bg-white rounded-lg cursor-pointer transition border border-transparent hover:border-orange-200">
+                <input type="checkbox" name="selected_classes" value="${cls.id}" 
+                       class="class-checkbox mt-1 mr-3 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
+                       onchange="updateClassSelectionCount()">
+                <div class="flex-1">
+                    <div class="font-medium text-gray-800">${escapeHtml(cls.name)}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">
+                        <span class="inline-flex items-center mr-3">
+                            <i class="fas fa-users mr-1 text-xs"></i> ${cls.total_students || 0} students
+                        </span>
+                        <span class="inline-flex items-center mr-3">
+                            <i class="fas fa-bed mr-1 text-xs"></i> Boarding: ${cls.boarding_students || 0}
+                        </span>
+                        <span class="inline-flex items-center">
+                            <i class="fas fa-sun mr-1 text-xs"></i> Day: ${cls.day_students || 0}
+                        </span>
+                    </div>
+                </div>
+            </label>
+        `).join('');
+        
+        updateClassSelectionCount();
+    }
+    
+    window.selectAllClasses = function() {
+        const checkboxes = document.querySelectorAll('.class-checkbox');
+        checkboxes.forEach(cb => cb.checked = true);
+        updateClassSelectionCount();
+    };
+    
+    window.deselectAllClasses = function() {
+        const checkboxes = document.querySelectorAll('.class-checkbox');
+        checkboxes.forEach(cb => cb.checked = false);
+        updateClassSelectionCount();
+    };
+    
+    window.updateClassSelectionCount = function() {
+        const checkboxes = document.querySelectorAll('.class-checkbox:checked');
+        const count = checkboxes.length;
+        const countSpan = document.getElementById('selectedClassesCount');
+        if (countSpan) {
+            countSpan.textContent = `${count} class${count !== 1 ? 'es' : ''} selected`;
+        }
+    };
+    
+    window.getSelectedClassIds = function() {
+        const checkboxes = document.querySelectorAll('.class-checkbox:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    };
+    
+    // Fee Items Functions
     function addFeeItem() {
         const container = document.getElementById('feeItemsList');
         const defaultType = document.querySelector('#defaultFeeTypeGroup .toggle-chip.active').dataset.type;
@@ -628,6 +773,7 @@
         if(applyToggles.length) applyToggles[0].click();
         classGroup?.classList.add('hidden');
         studentGroup?.classList.add('hidden');
+        if (multipleClassesGroup) multipleClassesGroup.classList.add('hidden');
         clearSelectedStudent();
         updateTotal();
     };
@@ -643,59 +789,92 @@
     window.generateInvoices = async function() {
         const applyTo = applyToHidden.value;
         let targetId = null;
+        let classIds = null;
+        
         if (applyTo === 'class') {
             targetId = document.getElementById('classSelect').value;
             if (!targetId) return showMessage('Please select a class', 'error');
         } else if (applyTo === 'student') {
             targetId = document.getElementById('selectedStudentId').value;
             if (!targetId) return showMessage('Please select a student', 'error');
+        } else if (applyTo === 'multiple-classes') {
+            classIds = getSelectedClassIds();
+            if (classIds.length === 0) return showMessage('Please select at least one class', 'error');
         }
+        
         const category = categoryHidden.value === 'all' ? 'all' : categoryHidden.value;
         const labels = document.querySelectorAll('input[name="particular_label[]"]');
         const amounts = document.querySelectorAll('input[name="amount[]"]');
         const types = document.querySelectorAll('select[name="type[]"]');
         const feeItems = [];
+        
         for (let i=0; i<labels.length; i++) {
             const label = labels[i].value.trim();
             const amount = parseFloat(amounts[i].value) || 0;
             if (label && amount > 0) feeItems.push({ label, amount, type: types[i].value });
         }
+        
         if (feeItems.length === 0) return showMessage('Add at least one valid fee item', 'error');
         
         const loading = document.getElementById('loadingOverlay');
-        loading.classList.remove('hidden'); loading.classList.add('flex');
+        loading.classList.remove('hidden'); 
+        loading.classList.add('flex');
+        
         try {
-            const resp = await fetch('/fees/particulars/create', {
+            let endpoint = '/fees/particulars/create';
+            let requestBody = { 
+                fee_items: feeItems, 
+                category: category 
+            };
+            
+            if (applyTo === 'multiple-classes') {
+                endpoint = '/fees/particulars/create-multiple-classes';
+                requestBody.class_ids = classIds;
+            } else {
+                requestBody.apply_to = applyTo;
+                requestBody.target_id = targetId;
+            }
+            
+            const resp = await fetch(endpoint, {
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    apply_to: applyTo, 
-                    target_id: targetId, 
-                    fee_items: feeItems, 
-                    category: category 
-                })
+                body: JSON.stringify(requestBody)
             });
+            
             const result = await resp.json();
-            loading.classList.add('hidden'); loading.classList.remove('flex');
+            loading.classList.add('hidden'); 
+            loading.classList.remove('flex');
+            
             if (result.success) {
                 document.getElementById('successTitle').innerText = 'Invoices Generated!';
                 let invoicesHtml = '';
                 if (result.invoices && result.invoices.length) {
+                    const displayInvoices = result.invoices.slice(0, 10);
                     invoicesHtml = `<div class="mt-3 text-left bg-gray-50 p-3 rounded-xl max-h-40 overflow-y-auto">
-                        ${result.invoices.map(inv => `<div class="text-sm py-1 border-b border-gray-100"><span class="font-medium">${escapeHtml(inv.student)}</span><br><span class="text-xs text-gray-500">${inv.invoice_number} - UGX ${(inv.total_amount || 0).toLocaleString()}</span></div>`).join('')}
+                        ${displayInvoices.map(inv => `<div class="text-sm py-1 border-b border-gray-100">
+                            <span class="font-medium">${escapeHtml(inv.student)}</span>
+                            ${inv.class ? `<br><span class="text-xs text-gray-500">${escapeHtml(inv.class)}</span>` : ''}
+                            <div class="text-xs text-gray-500">${inv.invoice_number} - UGX ${(inv.total_amount || 0).toLocaleString()}</div>
+                        </div>`).join('')}
+                        ${result.invoices.length > 10 ? `<div class="text-xs text-center text-gray-500 mt-2">... and ${result.invoices.length - 10} more</div>` : ''}
                     </div>`;
                 }
-                document.getElementById('successMessage').innerHTML = `${result.message}${invoicesHtml}`;
+                if (result.summary) {
+                    document.getElementById('successMessage').innerHTML = `${result.message}<br><small class="text-gray-500">Total students: ${result.summary.total_students} | Invoices: ${result.summary.total_invoices}</small>${invoicesHtml}`;
+                } else {
+                    document.getElementById('successMessage').innerHTML = `${result.message}${invoicesHtml}`;
+                }
                 document.getElementById('successModal').classList.remove('hidden');
                 document.getElementById('successModal').classList.add('flex');
                 document.body.style.overflow = 'hidden';
-                setTimeout(() => window.location.reload(), 2500);
+                setTimeout(() => window.location.reload(), 3000);
             } else {
                 showMessage(result.message || 'Failed to generate invoices', 'error');
             }
         } catch(e) { 
             loading.classList.add('hidden'); 
             loading.classList.remove('flex'); 
+            console.error('Generation error:', e);
             showMessage('Network error: Failed to generate invoices', 'error');
         }
     };
@@ -706,22 +885,10 @@
         document.body.style.overflow = '';
     };
     
-    function showMessage(msg, type) {
-        let container = document.getElementById('flashMessages');
-        if(!container) { 
-            container = document.createElement('div'); 
-            container.id='flashMessages'; 
-            container.className='fixed top-4 right-4 z-50 space-y-2'; 
-            document.body.appendChild(container); 
-        }
-        const flash = document.createElement('div');
-        flash.className = `p-3 rounded-xl shadow-lg text-white text-sm ${type==='error'?'bg-red-500':'bg-green-500'} flex items-center gap-2`;
-        flash.innerHTML = `<i class="fas ${type==='error'?'fa-exclamation-circle':'fa-check-circle'}"></i> ${msg}`;
-        container.appendChild(flash);
-        setTimeout(()=>{ flash.style.opacity='0'; setTimeout(()=>flash.remove(),300); }, 4000);
-    }
-    
-    document.addEventListener('input', function(e) { if(e.target.name === 'amount[]') updateTotal(); });
+    // Initialize
+    document.addEventListener('input', function(e) { 
+        if(e.target.name === 'amount[]') updateTotal(); 
+    });
     updateTotal();
 </script>
 {% endblock %}

@@ -667,8 +667,8 @@ enable-ga="false"
                         <a href="{{ url_for('exams.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Create New Exam</a>
                         <a href="{{ url_for('exams.marks') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Add / Update Exam Marks</a>
                         <a href="{{ url_for('results.r') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Result Card</a>
-                         <!--<a href="#" @click.prevent="activeMenu = 'result-sheet'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Result Sheet</a>
-                        <a href="#" @click.prevent="activeMenu = 'exam-schedule'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Exam Schedule</a>
+                     <!--<a href="{{ url_for('templates.designer') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Design</a>
+                            <a href="#" @click.prevent="activeMenu = 'exam-schedule'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Exam Schedule</a>
                         <a href="#" @click.prevent="activeMenu = 'date-sheet'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Date Sheet</a>
                         <a href="#" @click.prevent="activeMenu = 'blank-award'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Blank Award List</a>-->
                     </div>
@@ -1063,6 +1063,91 @@ window.addEventListener('pageshow', function() {
         checkSubscriptionStatus();
     }
 });
+
+(() => {
+    const WARNING_TIME = 3 * 60 * 1000;  // Show warning after 3 minutes
+    const LOGOUT_TIME = 5 * 60 * 1000;   // Logout after 5 minutes (2 minutes after warning)
+
+    let warningTimer;
+    let logoutTimer;
+    let countdownInterval;
+    let popup;
+
+    function createPopup() {
+        popup = document.createElement("div");
+        popup.id = "inactive-popup";
+        popup.innerHTML = `
+            <div class="inactive-popup-content">
+                <h3>Session Expiring</h3>
+                <p>You will be logged out in <span id="countdown">120</span> seconds due to inactivity.</p>
+                <button id="stay-active-btn">Stay Here</button>
+            </div>
+        `;
+
+        document.body.appendChild(popup);
+
+        document.getElementById("stay-active-btn").addEventListener("click", () => {
+            resetTimers();
+            removePopup();
+        });
+    }
+
+    function removePopup() {
+        if (popup) {
+            popup.remove();
+            popup = null;
+        }
+
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+        }
+    }
+
+    function showWarning() {
+        if (!popup) {
+            createPopup();
+        }
+
+        let seconds = Math.floor((LOGOUT_TIME - WARNING_TIME) / 1000); // 120 seconds (2 minutes)
+
+        countdownInterval = setInterval(() => {
+            seconds--;
+            
+            const countdown = document.getElementById("countdown");
+            if (countdown) {
+                countdown.textContent = seconds;
+            }
+
+            if (seconds <= 0) {
+                clearInterval(countdownInterval);
+            }
+        }, 1000);
+    }
+
+    function logoutUser() {
+        window.location.href = "/auth/logout";
+    }
+
+    function resetTimers() {
+        clearTimeout(warningTimer);
+        clearTimeout(logoutTimer);
+        clearInterval(countdownInterval);
+        removePopup();
+
+        warningTimer = setTimeout(showWarning, WARNING_TIME);
+        logoutTimer = setTimeout(logoutUser, LOGOUT_TIME);
+    }
+
+    // Add event listeners for user activity
+    ["mousemove", "keydown", "click", "scroll", "touchstart"].forEach(event => {
+        document.addEventListener(event, resetTimers);
+    });
+
+    // Initial start
+    resetTimers();
+})();
+
+
 </script>
 
 {% block extra_js %}{% endblock %}

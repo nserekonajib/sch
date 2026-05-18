@@ -37,21 +37,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# def get_institute_id(user_id):
-#     """Get institute ID for the current user"""
-#     try:
-#         response = supabase.table('institutes')\
-#             .select('*')\
-#             .eq('user_id', user_id)\
-#             .execute()
-        
-#         if response.data and len(response.data) > 0:
-#             return response.data[0]
-#         return None
-#     except Exception as e:
-#         print(f"Error getting institute ID: {e}")
-#         return None
-    
+
     
 MASTER_API_USERNAME = os.getenv('COMMS_API_USERNAME', '')
 MASTER_API_KEY = os.getenv('COMMS_API_KEY', '')
@@ -377,6 +363,8 @@ def search_student():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+    
 @collect_bp.route('/get-student-fees/<student_id>', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def get_student_fees(student_id):
@@ -447,7 +435,7 @@ def get_student_fees(student_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-# Update the process_payment function in collectFees.py
+
 
 @collect_bp.route('/process-payment', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])

@@ -484,66 +484,147 @@
     }
     
     // Load Chart of Accounts
-    async function loadChartOfAccounts() {
-        try {
-            const response = await fetch('/accounts/chart-of-accounts');
-            const result = await response.json();
+   // Load Chart of Accounts with delete buttons
+async function loadChartOfAccounts() {
+    try {
+        const response = await fetch('/accounts/chart-of-accounts');
+        const result = await response.json();
+        
+        if (result.success) {
+            const container = document.getElementById('chartOfAccountsContainer');
+            const accounts = result.accounts;
             
-            if (result.success) {
-                const container = document.getElementById('chartOfAccountsContainer');
-                const accounts = result.accounts;
-                
-                let html = '';
-                const typeNames = {
-                    'asset': 'Assets',
-                    'liability': 'Liabilities',
-                    'equity': 'Equity',
-                    'income': 'Income',
-                    'expense': 'Expenses'
-                };
-                
-                for (const [type, typeAccounts] of Object.entries(accounts)) {
-                    if (typeAccounts.length > 0) {
-                        html += `
-                            <div class="mb-6">
-                                <h3 class="text-md font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-200">
-                                    ${typeNames[type] || type.toUpperCase()}
-                                </h3>
-                                <div class="space-y-2">
-                                    ${typeAccounts.map(account => `
-                                        <div class="account-card flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-gray-50 rounded-lg hover:bg-orange-50 transition-all gap-2 sm:gap-0">
-                                            <div class="flex-1 w-full sm:w-auto">
-                                                <p class="font-medium text-gray-800">${account.account_name}</p>
-                                                <p class="text-xs text-gray-500">${account.account_code}</p>
-                                                ${account.description ? `<p class="text-xs text-gray-400 mt-1">${account.description}</p>` : ''}
-                                            </div>
-                                            <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-                                                <span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">${account.account_type}</span>
-                                                <button onclick="openReportModal('${account.id}', '${account.account_name}')" 
-                                                        class="report-btn px-3 py-1 bg-orange-500 text-white rounded-lg text-xs hover:bg-orange-600 transition-all">
-                                                    <i class="fas fa-chart-line"></i> <span class="hidden xs:inline">Run Report</span>
-                                                </button>
-                                            </div>
+            let html = '';
+            const typeNames = {
+                'asset': 'Assets',
+                'liability': 'Liabilities',
+                'equity': 'Equity',
+                'income': 'Income',
+                'expense': 'Expenses'
+            };
+            
+            for (const [type, typeAccounts] of Object.entries(accounts)) {
+                if (typeAccounts.length > 0) {
+                    html += `
+                        <div class="mb-6">
+                            <h3 class="text-md font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-200">
+                                ${typeNames[type] || type.toUpperCase()}
+                            </h3>
+                            <div class="space-y-2">
+                                ${typeAccounts.map(account => `
+                                    <div class="account-card flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-gray-50 rounded-lg hover:bg-orange-50 transition-all gap-2 sm:gap-0">
+                                        <div class="flex-1 w-full sm:w-auto">
+                                            <p class="font-medium text-gray-800">${escapeHtml(account.account_name)}</p>
+                                            <p class="text-xs text-gray-500">${account.account_code}</p>
+                                            ${account.description ? `<p class="text-xs text-gray-400 mt-1">${escapeHtml(account.description)}</p>` : ''}
                                         </div>
-                                    `).join('')}
-                                </div>
+                                        <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                                            <span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">${account.account_type}</span>
+                                            <button onclick="openReportModal('${account.id}', '${escapeHtml(account.account_name)}')" 
+                                                    class="report-btn px-3 py-1 bg-orange-500 text-white rounded-lg text-xs hover:bg-orange-600 transition-all">
+                                                <i class="fas fa-chart-line"></i> <span class="hidden xs:inline">Run Report</span>
+                                            </button>
+                                            <button onclick="deleteAccount('${account.id}', '${escapeHtml(account.account_name)}')" 
+                                                    class="delete-btn px-3 py-1 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 transition-all">
+                                                <i class="fas fa-trash"></i> <span class="hidden xs:inline">Delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
                             </div>
-                        `;
-                    }
+                        </div>
+                    `;
                 }
-                
-                if (html === '') {
-                    html = '<div class="text-center py-8"><p class="text-gray-500">No accounts created yet. Click "New Account" to get started.</p></div>';
-                }
-                
-                container.innerHTML = html;
             }
-        } catch (error) {
-            console.error('Error loading accounts:', error);
-            document.getElementById('chartOfAccountsContainer').innerHTML = '<div class="text-center py-8 text-red-500">Error loading accounts</div>';
+            
+            if (html === '') {
+                html = '<div class="text-center py-8"><p class="text-gray-500">No accounts created yet. Click "New Account" to get started.</p></div>';
+            }
+            
+            container.innerHTML = html;
         }
+    } catch (error) {
+        console.error('Error loading accounts:', error);
+        document.getElementById('chartOfAccountsContainer').innerHTML = '<div class="text-center py-8 text-red-500">Error loading accounts</div>';
+    }
+}
+
+// Delete Account Function
+async function deleteAccount(accountId, accountName) {
+    // Show confirmation dialog
+    const confirmDelete = confirm(`Are you sure you want to delete "${accountName}"?\n\nThis action cannot be undone.`);
+    
+    if (!confirmDelete) {
+        return;
     }
     
+    try {
+        // Show loading state
+        const deleteBtn = document.querySelector(`button[onclick*="deleteAccount('${accountId}']`);
+        if (deleteBtn) {
+            const originalHTML = deleteBtn.innerHTML;
+            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            deleteBtn.disabled = true;
+        }
+        
+        const response = await fetch(`/accounts/chart-of-accounts/delete/${accountId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.soft_delete) {
+                // Show warning that account was deactivated instead of deleted
+                showNotification(result.message, 'warning');
+            } else {
+                showNotification(result.message, 'success');
+            }
+            
+            // Reload the chart of accounts
+            await loadChartOfAccounts();
+            
+            // Also reload the account dropdown if it exists on the page
+            if (typeof loadAccountSelectors === 'function') {
+                await loadAccountSelectors();
+            }
+        } else {
+            showNotification(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        showNotification('Error deleting account. Please try again.', 'error');
+    }
+}
+
+// Helper function to escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Helper function to show notifications
+function showNotification(message, type = 'info') {
+    // Check if toast notification is available
+    if (typeof toast === 'object' && toast.show) {
+        toast.show(message, type);
+        return;
+    }
+    
+    // Fallback to alert
+    if (type === 'error') {
+        alert('Error: ' + message);
+    } else if (type === 'success') {
+        alert('Success: ' + message);
+    } else {
+        alert(message);
+    }
+}
     // Load income transactions with responsive table
     async function loadIncome() {
         try {

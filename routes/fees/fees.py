@@ -34,20 +34,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# def get_institute_id(user_id):
-#     """Get institute ID for the current user"""
-#     try:
-#         response = supabase.table('institutes')\
-#             .select('id')\
-#             .eq('user_id', user_id)\
-#             .execute()
-        
-#         if response.data and len(response.data) > 0:
-#             return response.data[0]['id']
-#         return None
-#     except Exception as e:
-#         print(f"Error getting institute ID: {e}")
-#         return None
+
 
 @fees_bp.route('/')
 @role_required(['owner', 'teacher', 'accountant'])
@@ -551,3 +538,221 @@ def generate_receipt_number(institute_id):
     except Exception as e:
         print(f"Error generating receipt number: {e}")
         return f"RCP-{datetime.now().strftime('%Y%m%d%H%M%S')}-{random.randint(1000, 9999)}"
+    
+    
+@fees_bp.route('/particulars/create-multiple-classes', methods=['POST'])
+@role_required(['owner', 'teacher', 'accountant'])
+def create_particulars_multiple_classes():
+    """Create fee particulars for multiple classes with category filtering"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        data = request.get_json()
+        
+        class_ids = data.get('class_ids', [])  # Array of class IDs
+        fee_items = data.get('fee_items', [])
+        category_filter = data.get('category', 'all')  # 'all', 'Boarding', 'Day'
+        
+        if not class_ids:
+            return jsonify({'success': False, 'message': 'Please select at least one class'}), 400
+        
+        if not fee_items:
+            return jsonify({'success': False, 'message': 'No fee items provided'}), 400
+        
+        # Get all students from selected classes with category filter
+        all_students = []
+        
+        for class_id in class_ids:
+            # Build query for each class
+            query = supabase.table('students')\
+                .select('id, name, student_id, class_id, category, classes(name)')\
+                .eq('institute_id', institute_id)\
+                .eq('class_id', class_id)\
+                .eq('status', 'active')
+            
+            # Apply category filter
+            if category_filter != 'all':
+                query = query.eq('category', category_filter)
+            
+            response = query.execute()
+            
+            if response.data:
+                # Add class name to each student
+                class_name = response.data[0].get('classes', {}).get('name', 'Unknown') if response.data else 'Unknown'
+                for student in response.data:
+                    student['class_name'] = class_name
+                all_students.extend(response.data)
+        
+        if not all_students:
+            return jsonify({'success': False, 'message': 'No students found in selected classes with the specified category'}), 404
+        
+        # Create fee particulars and generate invoices
+        invoices_created = 0
+        particulars_created = []
+        errors = []
+        
+        # Get all existing invoice numbers
+        existing_invoices_response = supabase.table('invoices')\
+            .select('invoice_number')\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        existing_numbers = set()
+        if existing_invoices_response.data:
+            for inv in existing_invoices_response.data:
+                existing_numbers.add(inv['invoice_number'])
+        
+        for student in all_students:
+            try:
+                # Calculate total amount from fee items
+                total_amount = sum(item.get('amount', 0) for item in fee_items)
+                
+                # Create fee particulars record
+                particulars_id = str(uuid.uuid4())
+                particulars_data = {
+                    'id': particulars_id,
+                    'institute_id': institute_id,
+                    'student_id': student['id'],
+                    'class_id': student.get('class_id'),
+                    'apply_to': 'multiple_classes',
+                    'fee_items': json.dumps(fee_items),
+                    'total_amount': total_amount,
+                    'created_at': datetime.now().isoformat(),
+                    'updated_at': datetime.now().isoformat()
+                }
+                
+                particulars_result = supabase.table('fee_particulars').insert(particulars_data).execute()
+                
+                if particulars_result.data:
+                    # Generate unique invoice number
+                    invoice_number = generate_unique_invoice_number(institute_id, existing_numbers)
+                    existing_numbers.add(invoice_number)
+                    
+                    invoice_id = str(uuid.uuid4())
+                    due_date = datetime.now() + timedelta(days=30)
+                    
+                    invoice_data = {
+                        'id': invoice_id,
+                        'institute_id': institute_id,
+                        'student_id': student['id'],
+                        'particulars_id': particulars_id,
+                        'invoice_number': invoice_number,
+                        'total_amount': total_amount,
+                        'paid_amount': 0,
+                        'balance': total_amount,
+                        'status': 'pending',
+                        'due_date': due_date.date().isoformat(),
+                        'created_at': datetime.now().isoformat(),
+                        'updated_at': datetime.now().isoformat()
+                    }
+                    
+                    invoice_result = supabase.table('invoices').insert(invoice_data).execute()
+                    
+                    if invoice_result.data:
+                        invoices_created += 1
+                        particulars_created.append({
+                            'student': student['name'],
+                            'student_id': student['student_id'],
+                            'class': student.get('class_name', 'N/A'),
+                            'category': student.get('category', 'N/A'),
+                            'invoice_number': invoice_number,
+                            'total_amount': total_amount,
+                            'type': 'invoice'
+                        })
+                    else:
+                        errors.append(f"Failed to create invoice for {student['name']}")
+                else:
+                    errors.append(f"Failed to create fee particulars for {student['name']}")
+                    
+            except Exception as e:
+                errors.append(f"Error processing {student['name']}: {str(e)}")
+                print(f"Error processing student {student['name']}: {e}")
+        
+        if invoices_created > 0:
+            return jsonify({
+                'success': True,
+                'message': f'Successfully created {invoices_created} invoice(s) for {len(class_ids)} class(es)',
+                'invoices': particulars_created,
+                'errors': errors if errors else None,
+                'summary': {
+                    'total_students': len(all_students),
+                    'total_invoices': invoices_created,
+                    'classes_processed': len(class_ids)
+                }
+            })
+        else:
+            return jsonify({
+                'success': False, 
+                'message': 'Failed to create invoices',
+                'errors': errors
+            }), 500
+        
+    except Exception as e:
+        print(f"Error creating fee particulars for multiple classes: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@fees_bp.route('/classes', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def get_classes():
+    """Get all classes for the institute"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        response = supabase.table('classes')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .order('name')\
+            .execute()
+        
+        classes = response.data if response.data else []
+        
+        # Get student counts for each class with category breakdown
+        for class_item in classes:
+            # Get total active students
+            total_response = supabase.table('students')\
+                .select('id', count='exact')\
+                .eq('institute_id', institute_id)\
+                .eq('class_id', class_item['id'])\
+                .eq('status', 'active')\
+                .execute()
+            
+            class_item['total_students'] = total_response.count or 0
+            
+            # Get boarding students count
+            boarding_response = supabase.table('students')\
+                .select('id', count='exact')\
+                .eq('institute_id', institute_id)\
+                .eq('class_id', class_item['id'])\
+                .eq('category', 'Boarding')\
+                .eq('status', 'active')\
+                .execute()
+            
+            class_item['boarding_students'] = boarding_response.count or 0
+            
+            # Get day students count
+            day_response = supabase.table('students')\
+                .select('id', count='exact')\
+                .eq('institute_id', institute_id)\
+                .eq('class_id', class_item['id'])\
+                .eq('category', 'Day')\
+                .eq('status', 'active')\
+                .execute()
+            
+            class_item['day_students'] = day_response.count or 0
+        
+        return jsonify({'success': True, 'classes': classes})
+        
+    except Exception as e:
+        print(f"Error getting classes: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500

@@ -1,4 +1,3 @@
-<!-- templates/competence/index.html - Selection Interface for DOCX Reports -->
 {% extends "base.html" %}
 
 {% block title %}Competence Report Card - Lunserk ERP{% endblock %}
@@ -23,6 +22,12 @@
     }
     .btn-pdf:hover {
         background: linear-gradient(135deg, #ea384d 0%, #d31027 100%);
+    }
+    .btn-class {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    }
+    .btn-class:hover {
+        background: linear-gradient(135deg, #047857 0%, #059669 100%);
     }
     .exam-badge {
         display: inline-block;
@@ -50,11 +55,13 @@
         display: flex;
         gap: 15px;
         justify-content: center;
+        flex-wrap: wrap;
     }
     .format-btn {
         padding: 12px 24px;
         font-size: 16px;
         transition: all 0.3s ease;
+        min-width: 200px;
     }
     .format-btn i {
         margin-right: 8px;
@@ -92,6 +99,23 @@
         background-color: #fff7ed;
         border-color: #ffa500;
     }
+    .progress-bar {
+        height: 4px;
+        background: linear-gradient(90deg, #10b981 0%, #ffa500 50%, #ef4444 100%);
+        transition: width 0.3s ease;
+    }
+    .class-selector {
+        border: 2px solid #e5e7eb;
+        transition: all 0.3s ease;
+    }
+    .class-selector:hover {
+        border-color: #ffa500;
+        background-color: #fff7ed;
+    }
+    .class-selector.selected {
+        border-color: #ffa500;
+        background-color: #fff7ed;
+    }
 </style>
 {% endblock %}
 
@@ -102,7 +126,126 @@
         <p class="text-sm text-gray-600">Generate competence-based report cards with A-series and EOT exams (Microsoft Word & PDF formats)</p>
     </div>
 
-    <!-- Student Info Card (if student selected) -->
+    <!-- Mode Selection Tabs -->
+    <div class="mb-6 border-b border-gray-200">
+        <nav class="flex space-x-8">
+            <button onclick="setMode('single')" id="singleModeBtn" 
+                    class="mode-btn py-2 px-1 border-b-2 font-medium text-sm transition-all border-orange-500 text-orange-600">
+                <i class="fas fa-user mr-2"></i>Single Student
+            </button>
+            <button onclick="setMode('class')" id="classModeBtn" 
+                    class="mode-btn py-2 px-1 border-b-2 font-medium text-sm transition-all border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                <i class="fas fa-users mr-2"></i>Whole Class
+            </button>
+        </nav>
+    </div>
+
+    <!-- Single Student Mode -->
+    <div id="singleMode" class="mode-content">
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-user text-orange-500 mr-1"></i> Select Student *
+                    </label>
+                    <select id="studentSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">-- Select Student --</option>
+                        {% for student in students %}
+                        <option value="{{ student.id }}" data-class="{{ student.classes.name if student.classes else 'N/A' }}" data-name="{{ student.name }}">
+                            {{ student.name }} ({{ student.student_id }}) - {{ student.classes.name if student.classes else 'N/A' }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-graduation-cap text-orange-500 mr-1"></i> Term
+                    </label>
+                    <select id="termSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">-- Select Term --</option>
+                        <option value="ONE">Term One</option>
+                        <option value="TWO">Term Two</option>
+                        <option value="THREE">Term Three</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-calendar text-orange-500 mr-1"></i> Academic Year
+                    </label>
+                    <select id="yearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="2024">2024</option>
+                        <option value="2025" selected>2025</option>
+                        <option value="2026">2026</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="classifyExams()" class="w-full btn-gradient px-4 py-2 rounded-lg text-white font-medium transition-all">
+                        <i class="fas fa-magic"></i> Analyze & Classify
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Whole Class Mode -->
+    <div id="classMode" class="mode-content hidden">
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-school text-orange-500 mr-1"></i> Select Class *
+                    </label>
+                    <select id="classSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">-- Select Class --</option>
+                        {% for class in classes %}
+                        <option value="{{ class.id }}">{{ class.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-graduation-cap text-orange-500 mr-1"></i> Term
+                    </label>
+                    <select id="classTermSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">-- Select Term --</option>
+                        <option value="ONE">Term One</option>
+                        <option value="TWO">Term Two</option>
+                        <option value="THREE">Term Three</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-calendar text-orange-500 mr-1"></i> Academic Year
+                    </label>
+                    <select id="classYearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="2024">2024</option>
+                        <option value="2025" selected>2025</option>
+                        <option value="2026">2026</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="classifyExamsForClass()" class="w-full btn-gradient px-4 py-2 rounded-lg text-white font-medium transition-all">
+                        <i class="fas fa-magic"></i> Analyze & Classify
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Class Info Display -->
+            <div id="classInfo" class="hidden mt-4 p-3 bg-blue-50 rounded-lg">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <i class="fas fa-users text-blue-600 mr-2"></i>
+                        <span id="studentCount" class="font-semibold"></span> students in this class
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        <i class="fas fa-info-circle"></i> Reports will be generated for all students
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Info Card (single mode) -->
     <div id="studentInfoCard" class="hidden student-info-card">
         <div class="flex justify-between items-center">
             <div>
@@ -113,50 +256,6 @@
             <div>
                 <i class="fas fa-calendar-alt mr-1"></i>
                 <span id="selectedTermYear"></span>
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-xl shadow-md p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="fas fa-user text-orange-500 mr-1"></i> Select Student *
-                </label>
-                <select id="studentSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                    <option value="">-- Select Student --</option>
-                    {% for student in students %}
-                    <option value="{{ student.id }}" data-class="{{ student.classes.name if student.classes else 'N/A' }}" data-name="{{ student.name }}">
-                        {{ student.name }} ({{ student.student_id }}) - {{ student.classes.name if student.classes else 'N/A' }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="fas fa-graduation-cap text-orange-500 mr-1"></i> Term
-                </label>
-                <select id="termSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                    <option value="">-- Select Term --</option>
-                    <option value="ONE">Term One</option>
-                    <option value="TWO">Term Two</option>
-                    <option value="THREE">Term Three</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="fas fa-calendar text-orange-500 mr-1"></i> Academic Year
-                </label>
-                <select id="yearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                    <option value="2024">2024</option>
-                    <option value="2025" selected>2025</option>
-                    <option value="2026">2026</option>
-                </select>
-            </div>
-            <div class="flex items-end">
-                <button onclick="classifyExams()" class="w-full btn-gradient px-4 py-2 rounded-lg text-white font-medium transition-all">
-                    <i class="fas fa-magic"></i> Analyze & Classify
-                </button>
             </div>
         </div>
     </div>
@@ -248,21 +347,26 @@
 
     <!-- Generate Buttons -->
     <div class="format-buttons">
-        <button onclick="generateReport('docx')" id="generateWordBtn" 
+        <button onclick="generateReport()" id="generateWordBtn" 
                 class="format-btn btn-word px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
             <i class="fab fa-microsoft-word text-xl"></i>
             Generate Word Document
         </button>
-        <button onclick="generateReport('pdf')" id="generatePdfBtn" 
+        <button onclick="generateReportPDF()" id="generatePdfBtn" 
                 class="format-btn btn-pdf px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
             <i class="fas fa-file-pdf text-xl"></i>
             Generate PDF
+        </button>
+        <button onclick="generateClassReports()" id="generateClassBtn" 
+                class="format-btn btn-class px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 hidden">
+            <i class="fas fa-download text-xl"></i>
+            Generate Class Reports (ZIP)
         </button>
     </div>
     
     <!-- Info Text -->
     <div class="text-center mt-4 text-xs text-gray-400">
-        <i class="fas fa-print"></i> Word documents can be edited before printing | PDFs are ready for immediate distribution
+        <i class="fas fa-print"></i> Word documents can be edited before printing | PDFs are ready for immediate distribution | Class reports are bundled as ZIP
     </div>
 </div>
 
@@ -272,11 +376,51 @@
         <div class="loader"></div>
         <p class="text-gray-700 mt-4 font-semibold" id="loadingMessage">Generating report...</p>
         <p class="text-gray-500 text-sm mt-2" id="loadingSubMessage">This may take a few seconds</p>
+        <div class="w-full mt-4">
+            <div class="progress-bar rounded-full" style="width: 0%"></div>
+        </div>
     </div>
 </div>
 
 <script>
     let classifiedData = null;
+    let currentMode = 'single';
+    let currentFormat = 'docx';
+    
+    // Mode switching
+    function setMode(mode) {
+        currentMode = mode;
+        
+        // Update buttons
+        document.getElementById('singleModeBtn').classList.toggle('border-orange-500', mode === 'single');
+        document.getElementById('singleModeBtn').classList.toggle('text-orange-600', mode === 'single');
+        document.getElementById('singleModeBtn').classList.toggle('border-transparent', mode !== 'single');
+        document.getElementById('singleModeBtn').classList.toggle('text-gray-500', mode !== 'single');
+        
+        document.getElementById('classModeBtn').classList.toggle('border-orange-500', mode === 'class');
+        document.getElementById('classModeBtn').classList.toggle('text-orange-600', mode === 'class');
+        document.getElementById('classModeBtn').classList.toggle('border-transparent', mode !== 'class');
+        document.getElementById('classModeBtn').classList.toggle('text-gray-500', mode !== 'class');
+        
+        // Show/hide content
+        document.getElementById('singleMode').classList.toggle('hidden', mode !== 'single');
+        document.getElementById('classMode').classList.toggle('hidden', mode !== 'class');
+        
+        // Update generate buttons
+        const classBtn = document.getElementById('generateClassBtn');
+        const wordBtn = document.getElementById('generateWordBtn');
+        const pdfBtn = document.getElementById('generatePdfBtn');
+        
+        if (mode === 'class') {
+            classBtn.classList.remove('hidden');
+            wordBtn.classList.add('hidden');
+            pdfBtn.classList.add('hidden');
+        } else {
+            classBtn.classList.add('hidden');
+            wordBtn.classList.remove('hidden');
+            pdfBtn.classList.remove('hidden');
+        }
+    }
     
     // Track exam selection count
     function updateSelectedCount() {
@@ -299,7 +443,7 @@
             cb.checked = true;
         });
         updateSelectedCount();
-        if (classifiedData) classifyExams(); // Reclassify if needed
+        if (classifiedData) classifyExams();
     }
     
     function deselectAllExams() {
@@ -307,11 +451,11 @@
             cb.checked = false;
         });
         updateSelectedCount();
-        if (classifiedData) classifyExams(); // Reclassify if needed
+        if (classifiedData) classifyExams();
     }
     
-    // Update student info card
-    document.getElementById('studentSelect').addEventListener('change', function() {
+    // Update student info card (single mode)
+    document.getElementById('studentSelect')?.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         if (this.value) {
             const studentName = selectedOption.getAttribute('data-name');
@@ -326,15 +470,31 @@
     
     // Update term/year display
     function updateStudentInfoCard() {
-        const term = document.getElementById('termSelect').value;
-        const year = document.getElementById('yearSelect').value;
-        if (document.getElementById('studentSelect').value && term) {
+        const term = document.getElementById('termSelect')?.value;
+        const year = document.getElementById('yearSelect')?.value;
+        if (document.getElementById('studentSelect')?.value && term) {
             document.getElementById('selectedTermYear').innerHTML = `${term} - ${year}`;
         }
     }
     
-    document.getElementById('termSelect').addEventListener('change', updateStudentInfoCard);
-    document.getElementById('yearSelect').addEventListener('change', updateStudentInfoCard);
+    document.getElementById('termSelect')?.addEventListener('change', updateStudentInfoCard);
+    document.getElementById('yearSelect')?.addEventListener('change', updateStudentInfoCard);
+    
+    // Class selection
+    document.getElementById('classSelect')?.addEventListener('change', async function() {
+        if (this.value) {
+            try {
+                const response = await fetch(`/api/classes/${this.value}/students/count`);
+                const data = await response.json();
+                document.getElementById('studentCount').innerHTML = data.count;
+                document.getElementById('classInfo').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error fetching student count:', error);
+            }
+        } else {
+            document.getElementById('classInfo').classList.add('hidden');
+        }
+    });
     
     // Listen to checkbox changes
     document.addEventListener('change', function(e) {
@@ -347,17 +507,17 @@
     updateSelectedCount();
     
     async function classifyExams() {
-        const selectedExams = [];
-        document.querySelectorAll('.exam-cb:checked').forEach(cb => {
-            selectedExams.push(cb.value);
-        });
+        const selectedExams = getSelectedExams();
         
         if (selectedExams.length === 0) {
             showMessage('Please select at least one exam', 'error');
             return;
         }
         
-        const term = document.getElementById('termSelect').value;
+        const term = currentMode === 'single' 
+            ? document.getElementById('termSelect').value 
+            : document.getElementById('classTermSelect').value;
+            
         if (!term) {
             showMessage('Please select a term', 'error');
             return;
@@ -384,21 +544,14 @@
                 const hasEOT = classifiedData.eot !== null;
                 const aCount = classifiedData.a_series.length;
                 
-                if (!hasEOT) {
-                    document.getElementById('eotWarning').classList.remove('hidden');
-                } else {
-                    document.getElementById('eotWarning').classList.add('hidden');
-                }
+                document.getElementById('eotWarning').classList.toggle('hidden', hasEOT);
+                document.getElementById('aSeriesWarning').classList.toggle('hidden', aCount === 3);
                 
                 if (aCount !== 3) {
-                    document.getElementById('aSeriesWarning').classList.remove('hidden');
-                    if (aCount < 3) {
-                        document.getElementById('aSeriesWarning').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Need exactly 3 A-series exams (currently ' + aCount + ')';
-                    } else {
-                        document.getElementById('aSeriesWarning').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Too many A-series exams (max 3)';
-                    }
-                } else {
-                    document.getElementById('aSeriesWarning').classList.add('hidden');
+                    const warningMsg = aCount < 3 
+                        ? `Need exactly 3 A-series exams (currently ${aCount})`
+                        : `Too many A-series exams (max 3)`;
+                    document.getElementById('aSeriesWarning').innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${warningMsg}`;
                 }
                 
                 if (!hasEOT || aCount !== 3) {
@@ -414,6 +567,19 @@
             showMessage('Failed to classify exams', 'error');
             console.error(error);
         }
+    }
+    
+    function classifyExamsForClass() {
+        // Similar to classifyExams but for class mode
+        classifyExams();
+    }
+    
+    function getSelectedExams() {
+        const selectedExams = [];
+        document.querySelectorAll('.exam-cb:checked').forEach(cb => {
+            selectedExams.push(cb.value);
+        });
+        return selectedExams;
     }
     
     function displayClassification(data) {
@@ -433,15 +599,19 @@
         document.getElementById('otherContainer').innerHTML = otherHtml;
     }
     
-    async function generateReport(format) {  // 'docx' or 'pdf'
+    async function generateReport() {
+        await generateReportWithFormat('docx');
+    }
+    
+    async function generateReportPDF() {
+        await generateReportWithFormat('pdf');
+    }
+    
+    async function generateReportWithFormat(format) {
         const studentId = document.getElementById('studentSelect').value;
         const term = document.getElementById('termSelect').value;
         const year = document.getElementById('yearSelect').value;
-        
-        const selectedExams = [];
-        document.querySelectorAll('.exam-cb:checked').forEach(cb => {
-            selectedExams.push(cb.value);
-        });
+        const selectedExams = getSelectedExams();
         
         // Validation
         if (!studentId) {
@@ -459,7 +629,6 @@
             return;
         }
         
-        // Show proper loading message based on format
         const formatName = format === 'docx' ? 'Word document' : 'PDF';
         showLoading(`Generating ${formatName}...`, 'Preparing competence-based report card');
         
@@ -472,7 +641,7 @@
                     exam_ids: selectedExams,
                     term: term,
                     year: year,
-                    format: format  // Send format preference
+                    format: format
                 })
             });
             
@@ -503,13 +672,89 @@
         }
     }
     
+    async function generateClassReports() {
+        const classId = document.getElementById('classSelect').value;
+        const term = document.getElementById('classTermSelect').value;
+        const year = document.getElementById('classYearSelect').value;
+        const selectedExams = getSelectedExams();
+        
+        // Validation
+        if (!classId) {
+            showMessage('Please select a class', 'error');
+            return;
+        }
+        
+        if (selectedExams.length === 0) {
+            showMessage('Please select at least one exam', 'error');
+            return;
+        }
+        
+        if (!term) {
+            showMessage('Please select the term', 'error');
+            return;
+        }
+        
+        showLoading('Generating class reports...', 'This may take a moment depending on class size');
+        
+        try {
+            const response = await fetch('/competence-report/generate-class', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    class_id: classId,
+                    exam_ids: selectedExams,
+                    term: term,
+                    year: year,
+                    format: 'docx'
+                })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                const className = document.getElementById('classSelect').options[document.getElementById('classSelect').selectedIndex]?.text || 'class';
+                a.download = `competence_reports_${className.replace(/\s/g, '_')}_term${term}_${year}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                hideLoading();
+                showMessage(`✓ Class reports generated successfully! Downloaded as ZIP file.`, 'success');
+            } else {
+                const error = await response.json();
+                hideLoading();
+                showMessage(error.message || 'Failed to generate class reports', 'error');
+            }
+        } catch (error) {
+            hideLoading();
+            console.error('Error:', error);
+            showMessage('Failed to generate class reports. Please try again.', 'error');
+        }
+    }
+    
+    function updateProgress(percent, message) {
+        const progressBar = document.querySelector('#loadingOverlay .progress-bar');
+        if (progressBar) {
+            progressBar.style.width = `${percent}%`;
+        }
+        if (message) {
+            document.getElementById('loadingSubMessage').innerHTML = message;
+        }
+    }
+    
     function showLoading(message, subMessage) {
         const overlay = document.getElementById('loadingOverlay');
         const msgElem = document.getElementById('loadingMessage');
         const subMsgElem = document.getElementById('loadingSubMessage');
+        const progressBar = document.querySelector('#loadingOverlay .progress-bar');
         
         if (msgElem) msgElem.innerHTML = message;
         if (subMsgElem) subMsgElem.innerHTML = subMessage || 'Please wait...';
+        if (progressBar) progressBar.style.width = '0%';
         
         overlay.classList.remove('hidden');
         overlay.classList.add('flex');
@@ -522,7 +767,6 @@
     }
     
     function showMessage(message, type) {
-        // Create or get flash container
         let flashContainer = document.getElementById('flashMessages');
         if (!flashContainer) {
             flashContainer = document.createElement('div');
@@ -561,6 +805,14 @@
     
     .animate-slide-in {
         animation: slide-in 0.3s ease-out;
+    }
+    
+    .mode-btn {
+        transition: all 0.2s ease;
+    }
+    
+    .progress-bar {
+        transition: width 0.3s ease;
     }
 </style>
 {% endblock %}

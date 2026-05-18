@@ -15,16 +15,9 @@ from docx.shared import Mm, Inches
 import tempfile
 import subprocess
 import sys
+import zipfile
 from routes.auth.auth import role_required
 from routes.accounts.accounts import get_institute_id as get_institute_id_func
-
-# Try to import docx2pdf, but don't fail if not installed
-try:
-    from docx2pdf import convert
-    DOCX2PDF_AVAILABLE = True
-except ImportError:
-    DOCX2PDF_AVAILABLE = False
-    print("Warning: docx2pdf not installed. PDF conversion will not be available.")
 
 load_dotenv()
 
@@ -54,6 +47,126 @@ def parse_exam_name(exam_name):
         if pattern.match(exam_name.strip().upper()):
             return pattern_type
     return 'OTHER'
+
+def convert_docx_to_pdf_with_fallback(input_path, output_dir, output_filename=None):
+    """
+    Convert DOCX to PDF with two methods:
+    1. Try docx2pdf first (Windows with Microsoft Word)
+    2. Fallback to LibreOffice (cross-platform)
+    """
+    temp_files = []
+    
+    # Ensure output_dir exists
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Determine output PDF path
+    if output_filename:
+        pdf_path = os.path.join(output_dir, output_filename)
+    else:
+        base_name = os.path.splitext(os.path.basename(input_path))[0]
+        pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
+    
+    # Method 1: Try docx2pdf (Windows with MS Word)
+    try:
+        print(f"Attempt 1: Converting {input_path} to PDF using docx2pdf...")
+        from docx2pdf import convert
+        convert(input_path, pdf_path)
+        
+        # Check if conversion was successful
+        if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
+            print(f"✓ PDF conversion successful with docx2pdf! Size: {os.path.getsize(pdf_path)} bytes")
+            return pdf_path
+        else:
+            raise Exception("docx2pdf produced empty or missing file")
+            
+    except ImportError:
+        print("docx2pdf not installed, trying LibreOffice...")
+    except Exception as e:
+        print(f"docx2pdf conversion failed: {e}, trying LibreOffice...")
+    
+    # Method 2: Try LibreOffice (cross-platform)
+    try:
+        print(f"Attempt 2: Converting {input_path} to PDF using LibreOffice...")
+        
+        # Check if soffice is available
+        soffice_paths = [
+            "soffice",  # Default in PATH
+            "/usr/bin/soffice",  # Linux
+            "/Applications/LibreOffice.app/Contents/MacOS/soffice",  # macOS
+            "C:\\Program Files\\LibreOffice\\program\\soffice.exe",  # Windows
+            "C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe",  # Windows 32-bit
+        ]
+        
+        soffice_cmd = None
+        for path in soffice_paths:
+            if os.path.exists(path) or (path == "soffice" and subprocess.run(["which", "soffice"], capture_output=True).returncode == 0):
+                soffice_cmd = path
+                break
+        
+        if not soffice_cmd:
+            raise Exception("LibreOffice (soffice) not found on system")
+        
+        # Run LibreOffice conversion
+        result = subprocess.run([
+            soffice_cmd,
+            "--headless",
+            "--convert-to", "pdf",
+            "--outdir", output_dir,
+            input_path
+        ], capture_output=True, text=True, timeout=60)
+        
+        # Check if PDF was created (LibreOffice saves with original name)
+        expected_pdf = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(input_path))[0]}.pdf")
+        
+        if os.path.exists(expected_pdf) and os.path.getsize(expected_pdf) > 0:
+            # Rename to desired output path if different
+            if expected_pdf != pdf_path:
+                os.rename(expected_pdf, pdf_path)
+            print(f"✓ PDF conversion successful with LibreOffice! Size: {os.path.getsize(pdf_path)} bytes")
+            return pdf_path
+        else:
+            raise Exception(f"LibreOffice conversion failed: {result.stderr}")
+            
+    except subprocess.TimeoutExpired:
+        print("LibreOffice conversion timed out after 60 seconds")
+        raise Exception("PDF conversion timed out")
+    except Exception as e:
+        print(f"LibreOffice conversion failed: {e}")
+        raise Exception(f"All PDF conversion methods failed: {str(e)}")
+
+def merge_pdfs(pdf_paths, output_path):
+    """
+    Merge multiple PDF files into a single PDF
+    """
+    try:
+        from PyPDF2 import PdfMerger
+        merger = PdfMerger()
+        
+        for pdf_path in pdf_paths:
+            if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
+                merger.append(pdf_path)
+            else:
+                print(f"Warning: PDF {pdf_path} is missing or empty")
+        
+        merger.write(output_path)
+        merger.close()
+        print(f"✓ Merged {len(pdf_paths)} PDFs into {output_path}")
+        return True
+        
+    except ImportError:
+        print("PyPDF2 not installed, trying pdfkit alternative...")
+        # Alternative: Use pdfunite (Linux command line)
+        try:
+            cmd = ["pdfunite"] + pdf_paths + [output_path]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f"✓ Merged PDFs using pdfunite")
+                return True
+            else:
+                raise Exception("pdfunite failed")
+        except Exception as e:
+            print(f"PDF merge failed: {e}")
+            return False
 
 @competence_bp.route('/')
 @role_required(['owner', 'teacher', 'accountant'])
@@ -197,7 +310,6 @@ def generate_report():
             return jsonify({'success': False, 'message': 'Student not found'}), 404
         
         student = student_response.data[0]
-        print(student)
         
         # Get exams
         exams_response = supabase.table('exams')\
@@ -356,12 +468,11 @@ def generate_report():
         
         doc = DocxTemplate(template_path)
         
-        # ========== IMAGE HANDLING ==========
-        # Handle Institute Logo
+        # Handle images (same as before)
         logo_url = institute.get('logo_url', '')
+        context_logo = ""
         if logo_url and logo_url.startswith(('http://', 'https://')):
             try:
-                print(f"Loading logo from: {logo_url}")
                 response = requests.get(logo_url, timeout=10)
                 if response.status_code == 200:
                     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_logo:
@@ -369,22 +480,13 @@ def generate_report():
                         tmp_logo_path = tmp_logo.name
                         temp_files.append(tmp_logo_path)
                         context_logo = InlineImage(doc, tmp_logo_path, width=Mm(25))
-                        print("✓ Logo loaded successfully")
-                else:
-                    context_logo = ""
-                    print(f"Failed to load logo: HTTP {response.status_code}")
             except Exception as e:
                 print(f"Error loading logo: {e}")
-                context_logo = ""
-        else:
-            context_logo = ""
-            print(f"No logo URL provided: {logo_url}")
         
-        # Handle Student Photo
         photo_url = student.get('photo_url', '')
+        context_photo = ""
         if photo_url and photo_url.startswith(('http://', 'https://')):
             try:
-                print(f"Loading student photo from: {photo_url}")
                 response = requests.get(photo_url, timeout=10)
                 if response.status_code == 200:
                     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_photo:
@@ -392,18 +494,10 @@ def generate_report():
                         tmp_photo_path = tmp_photo.name
                         temp_files.append(tmp_photo_path)
                         context_photo = InlineImage(doc, tmp_photo_path, width=Mm(25))
-                        print("✓ Student photo loaded successfully")
-                else:
-                    context_photo = ""
-                    print(f"Failed to load photo: HTTP {response.status_code}")
             except Exception as e:
                 print(f"Error loading photo: {e}")
-                context_photo = ""
-        else:
-            context_photo = ""
-            print(f"No photo URL provided: {photo_url}")
         
-        # Prepare context with images
+        # Prepare context
         context = {
             'logo': context_logo,
             'student_photo': context_photo,
@@ -422,12 +516,12 @@ def generate_report():
             'overall_ident': overall_ident,
             'overall_achievement': overall_achievement,
             'overall_grade': overall_grade,
-            'teacher_comment': f"{safe_get(student, 'name', 'The student')} is making good progress. Focus on continuous improvement in all subjects.",
+            'teacher_comment': f"{safe_get(student, 'name', 'The student')} is making good progress.",
             'next_term_date': f"05/{datetime.now().year + 1 if datetime.now().month > 8 else datetime.now().month}/2026",
             'printed_date': datetime.now().strftime('%d/%m/%Y'),
         }
         
-        # Render the template
+        # Render template
         doc.render(context)
         
         # Save to bytes buffer
@@ -437,17 +531,21 @@ def generate_report():
         
         # Handle PDF conversion if requested
         if format_type == 'pdf':
-            if not DOCX2PDF_AVAILABLE:
-                print("docx2pdf not installed. Returning DOCX instead.")
-                return send_file(
-                    docx_buffer,
-                    as_attachment=True,
-                    download_name=f"competence_report_{student['name']}_{term}_{year}.docx",
-                    mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-                )
-            
             try:
-                pdf_buffer = convert_docx_to_pdf(docx_buffer)
+                # Save DOCX to temp file
+                with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as tmp_docx:
+                    tmp_docx.write(docx_buffer.getvalue())
+                    docx_path = tmp_docx.name
+                    temp_files.append(docx_path)
+                
+                # Convert with fallback
+                pdf_path = convert_docx_to_pdf_with_fallback(docx_path, tempfile.gettempdir())
+                temp_files.append(pdf_path)
+                
+                # Read PDF
+                with open(pdf_path, 'rb') as f:
+                    pdf_buffer = io.BytesIO(f.read())
+                
                 return send_file(
                     pdf_buffer,
                     as_attachment=True,
@@ -479,66 +577,368 @@ def generate_report():
         return jsonify({'success': False, 'message': str(e)}), 500
     
     finally:
-        # Clean up temporary image files
+        # Clean up temporary files
         for temp_file in temp_files:
             try:
                 if os.path.exists(temp_file):
                     os.unlink(temp_file)
-                    print(f"Cleaned up temp file: {temp_file}")
             except Exception as e:
-                print(f"Warning: Could not delete temp file {temp_file}: {e}")
+                print(f"Warning: Could not delete {temp_file}: {e}")
 
-def convert_docx_to_pdf(docx_buffer):
+@competence_bp.route('/generate-class', methods=['POST'])
+@role_required(['owner', 'teacher', 'accountant'])
+def generate_class_reports():
     """
-    Convert DOCX to PDF using docx2pdf (works on Windows with Microsoft Word installed)
+    Generate competence reports for all students in a class
+    Returns a single merged PDF containing all student reports
     """
+    user = session.get('user')
+    institute_id = get_institute_id_func(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
     temp_files = []
-    result_buffer = None
+    pdf_files = []
     
     try:
-        # Save DOCX to temporary file
-        with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as tmp_docx:
-            tmp_docx.write(docx_buffer.getvalue())
-            docx_path = tmp_docx.name
-            temp_files.append(docx_path)
-            print(f"Temporary DOCX saved to: {docx_path}")
+        data = request.get_json()
+        class_id = data.get('class_id')
+        exam_ids = data.get('exam_ids', [])
+        term = data.get('term', '')
+        year = data.get('year', datetime.now().year)
         
-        # Convert to PDF (same name, different extension)
-        pdf_path = docx_path.replace('.docx', '.pdf')
-        temp_files.append(pdf_path)
+        if not class_id or not exam_ids or not term:
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
         
-        # Use docx2pdf to convert
-        print(f"Converting {docx_path} to PDF using docx2pdf...")
-        convert(docx_path, pdf_path)
+        # Get all active students in the class
+        students_response = supabase.table('students')\
+            .select('*')\
+            .eq('class_id', class_id)\
+            .eq('institute_id', institute_id)\
+            .eq('status', 'active')\
+            .order('name')\
+            .execute()
         
-        # Wait a moment for the file to be written
-        import time
-        time.sleep(1)
+        students = students_response.data if students_response.data else []
         
-        # Check if PDF was created
-        if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
-            # Read the PDF
-            with open(pdf_path, 'rb') as f:
-                result_buffer = io.BytesIO(f.read())
-            print(f"PDF conversion successful! PDF size: {os.path.getsize(pdf_path)} bytes")
-            return result_buffer
+        if not students:
+            return jsonify({'success': False, 'message': 'No students found in this class'}), 404
+        
+        print(f"Generating reports for {len(students)} students...")
+        
+        # Create a temporary directory for individual reports
+        temp_dir = tempfile.mkdtemp()
+        temp_files.append(temp_dir)
+        
+        # Generate report for each student
+        for idx, student in enumerate(students):
+            print(f"Processing {idx+1}/{len(students)}: {student.get('name')}")
+            
+            # Generate single student report
+            report_result = generate_single_student_report(
+                student=student,
+                institute_id=institute_id,
+                exam_ids=exam_ids,
+                term=term,
+                year=year,
+                temp_dir=temp_dir
+            )
+            
+            if report_result:
+                pdf_files.append(report_result)
+        
+        if not pdf_files:
+            return jsonify({'success': False, 'message': 'No reports were generated'}), 500
+        
+        # Merge all PDFs into a single PDF
+        merged_pdf_path = os.path.join(temp_dir, f"class_reports_{class_id}_term{term}_{year}.pdf")
+        
+        if len(pdf_files) == 1:
+            # Only one student, just rename the file
+            os.rename(pdf_files[0], merged_pdf_path)
         else:
-            raise Exception(f"PDF file was not created or is empty. Path: {pdf_path}")
+            # Merge multiple PDFs
+            merge_success = merge_pdfs(pdf_files, merged_pdf_path)
+            if not merge_success:
+                # If merge fails, return as ZIP
+                return create_zip_archive(pdf_files, class_id, term, year)
+        
+        # Send the merged PDF
+        if os.path.exists(merged_pdf_path) and os.path.getsize(merged_pdf_path) > 0:
+            # Get class name
+            class_response = supabase.table('classes')\
+                .select('name')\
+                .eq('id', class_id)\
+                .execute()
+            class_name = class_response.data[0]['name'] if class_response.data else f"class_{class_id}"
+            
+            with open(merged_pdf_path, 'rb') as f:
+                pdf_buffer = io.BytesIO(f.read())
+            
+            return send_file(
+                pdf_buffer,
+                as_attachment=True,
+                download_name=f"competence_reports_{class_name}_term{term}_{year}.pdf",
+                mimetype='application/pdf'
+            )
+        else:
+            return jsonify({'success': False, 'message': 'Failed to create merged PDF'}), 500
             
     except Exception as e:
-        print(f"PDF conversion error details: {e}")
+        print(f"Error generating class reports: {e}")
         import traceback
         traceback.print_exc()
-        raise Exception(f"PDF conversion failed: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
     finally:
         # Clean up temporary files
-        for file_path in temp_files:
+        for temp_file in temp_files:
             try:
-                if os.path.exists(file_path):
-                    os.unlink(file_path)
-                    print(f"Cleaned up temp file: {file_path}")
+                if os.path.exists(temp_file):
+                    if os.path.isdir(temp_file):
+                        import shutil
+                        shutil.rmtree(temp_file)
+                    else:
+                        os.unlink(temp_file)
             except Exception as e:
-                print(f"Warning: Could not delete temp file {file_path}: {e}")
+                print(f"Warning: Could not delete {temp_file}: {e}")
+
+def generate_single_student_report(student, institute_id, exam_ids, term, year, temp_dir):
+    """
+    Generate a single student report and return the PDF path
+    """
+    try:
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        institute = institute_response.data[0] if institute_response.data else {}
+        
+        # Get exams
+        exams_response = supabase.table('exams')\
+            .select('*')\
+            .in_('id', exam_ids)\
+            .execute()
+        exams = exams_response.data if exams_response.data else []
+        
+        # Classify exams
+        a_series = []
+        eot_exam = None
+        for exam in exams:
+            exam_type = parse_exam_name(exam['exam_name'])
+            if exam_type == 'A':
+                match = re.search(r'(\d+)', exam['exam_name'])
+                number = int(match.group(1)) if match else 0
+                a_series.append({
+                    'id': exam['id'], 
+                    'name': exam['exam_name'], 
+                    'total_marks': exam['total_marks'], 
+                    'number': number
+                })
+            elif exam_type == 'EOT':
+                eot_exam = exam
+        a_series.sort(key=lambda x: x['number'])
+        
+        # Get subjects
+        class_id = student.get('class_id')
+        subjects_response = supabase.table('class_subjects')\
+            .select('*, subjects(name)')\
+            .eq('class_id', class_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        subjects = subjects_response.data if subjects_response.data else []
+        
+        # Get marks for each exam
+        all_marks = {}
+        for exam in exams:
+            marks_response = supabase.table('exam_marks')\
+                .select('*')\
+                .eq('exam_id', exam['id'])\
+                .eq('student_id', student['id'])\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            marks_dict = {}
+            for mark in marks_response.data if marks_response.data else []:
+                marks_dict[mark['subject_id']] = float(mark['obtained_marks'])
+            all_marks[exam['id']] = marks_dict
+        
+        # Prepare subject data
+        subject_results = []
+        for subject in subjects:
+            subject_name = subject['subjects']['name'] if subject.get('subjects') else 'N/A'
+            
+            a_series_marks = []
+            for a_exam in a_series:
+                obtained = all_marks.get(a_exam['id'], {}).get(subject['subject_id'])
+                a_series_marks.append(obtained if obtained is not None else 0)
+            
+            while len(a_series_marks) < 3:
+                a_series_marks.append(0)
+            
+            a_series_avg = sum(a_series_marks) / len(a_series_marks) if a_series_marks else 0
+            
+            if a_series and a_series[0]['total_marks'] > 0:
+                twenty_percent = (a_series_avg / a_series[0]['total_marks']) * 20
+            else:
+                twenty_percent = 0
+            
+            if eot_exam and eot_exam.get('total_marks', 0) > 0:
+                eot_mark = all_marks.get(eot_exam['id'], {}).get(subject['subject_id'], 0)
+                eighty_percent = (eot_mark / eot_exam['total_marks']) * 80
+            else:
+                eighty_percent = 0
+            
+            total_percentage = twenty_percent + eighty_percent
+            
+            identifier = '1' if total_percentage < 40 else ('2' if total_percentage < 70 else '3')
+            
+            if total_percentage >= 80:
+                grade = 'A'
+                remark = 'Exceptional'
+            elif total_percentage >= 70:
+                grade = 'B'
+                remark = 'Outstanding'
+            elif total_percentage >= 60:
+                grade = 'C'
+                remark = 'Satisfactory'
+            elif total_percentage >= 40:
+                grade = 'D'
+                remark = 'Basic'
+            else:
+                grade = 'E'
+                remark = 'Insufficient'
+            
+            subject_results.append({
+                'name': subject_name,
+                'a1': f"{a_series_marks[0]:.1f}",
+                'a2': f"{a_series_marks[1]:.1f}",
+                'a3': f"{a_series_marks[2]:.1f}",
+                'avg': f"{a_series_avg:.1f}",
+                'twenty': f"{twenty_percent:.1f}",
+                'eighty': f"{eighty_percent:.1f}",
+                'total': f"{total_percentage:.1f}",
+                'identifier': identifier,
+                'grade': grade,
+                'remark': remark
+            })
+        
+        if subject_results:
+            overall_percentage = sum([float(s['total']) for s in subject_results]) / len(subject_results)
+        else:
+            overall_percentage = 0
+        
+        if overall_percentage >= 80:
+            overall_grade = 'A'
+            overall_achievement = 'EXCELLENT'
+        elif overall_percentage >= 70:
+            overall_grade = 'B'
+            overall_achievement = 'VERY GOOD'
+        elif overall_percentage >= 60:
+            overall_grade = 'C'
+            overall_achievement = 'GOOD'
+        elif overall_percentage >= 40:
+            overall_grade = 'D'
+            overall_achievement = 'AVERAGE'
+        else:
+            overall_grade = 'E'
+            overall_achievement = 'NEEDS IMPROVEMENT'
+        
+        overall_ident = '3' if overall_percentage >= 70 else ('2' if overall_percentage >= 40 else '1')
+        
+        def safe_upper(value, default='N/A'):
+            if value is None:
+                return default
+            return str(value).upper()
+        
+        def safe_get(dict_obj, key, default=''):
+            value = dict_obj.get(key, default)
+            if value is None:
+                return default
+            return value
+        
+        # Load template
+        template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+        template_path = os.path.join(template_dir, 'competence_report_template.docx')
+        
+        if not os.path.exists(template_path):
+            os.makedirs(template_dir, exist_ok=True)
+            create_default_template(template_path)
+        
+        doc = DocxTemplate(template_path)
+        
+        # Prepare context (simplified without images for class reports to improve performance)
+        context = {
+            'logo': '',
+            'student_photo': '',
+            'SCHOOL_NAME': safe_upper(institute.get('institute_name'), 'ST CHARLES LWANGA SS-AKASHANDA'),
+            'ADDRESS': safe_get(institute, 'address', 'Kampala, Uganda'),
+            'PHONE_NUMBER': safe_get(institute, 'phone_number', '+256757632756'),
+            'EMAIL': safe_get(institute, 'email', 'info@school.ac.ug'),
+            'TERM': safe_upper(term, term),
+            'YEAR': str(year),
+            'STUDENT_NAME': safe_upper(student.get('name'), 'STUDENT'),
+            'GENDER': safe_upper(student.get('gender'), 'NOT SPECIFIED'),
+            'CLASS_NAME': safe_upper(student.get('class_name', 'N/A')),
+            'SECTION': safe_upper(student.get('category'), 'DAY'),
+            'subjects': subject_results,
+            'overall_avg': f"{overall_percentage:.1f}",
+            'overall_ident': overall_ident,
+            'overall_achievement': overall_achievement,
+            'overall_grade': overall_grade,
+            'teacher_comment': f"{safe_get(student, 'name', 'The student')} is making good progress.",
+            'next_term_date': f"05/{datetime.now().year + 1 if datetime.now().month > 8 else datetime.now().month}/2026",
+            'printed_date': datetime.now().strftime('%d/%m/%Y'),
+        }
+        
+        # Render template
+        doc.render(context)
+        
+        # Save DOCX to temp file
+        docx_path = os.path.join(temp_dir, f"report_{student['id']}_{student['name'].replace(' ', '_')}.docx")
+        doc.save(docx_path)
+        
+        # Convert to PDF
+        pdf_path = convert_docx_to_pdf_with_fallback(docx_path, temp_dir, f"report_{student['id']}_{student['name'].replace(' ', '_')}.pdf")
+        
+        return pdf_path if os.path.exists(pdf_path) else None
+        
+    except Exception as e:
+        print(f"Error generating report for student {student.get('name', 'Unknown')}: {e}")
+        return None
+
+def create_zip_archive(pdf_files, class_id, term, year):
+    """
+    Create a ZIP archive of PDF files as fallback when merging fails
+    """
+    try:
+        zip_buffer = io.BytesIO()
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for pdf_file in pdf_files:
+                arcname = os.path.basename(pdf_file)
+                zip_file.write(pdf_file, arcname)
+        
+        zip_buffer.seek(0)
+        
+        # Get class name
+        class_response = supabase.table('classes')\
+            .select('name')\
+            .eq('id', class_id)\
+            .execute()
+        class_name = class_response.data[0]['name'] if class_response.data else f"class_{class_id}"
+        
+        return send_file(
+            zip_buffer,
+            as_attachment=True,
+            download_name=f"competence_reports_{class_name}_term{term}_{year}.zip",
+            mimetype='application/zip'
+        )
+    except Exception as e:
+        print(f"Error creating ZIP archive: {e}")
+        return jsonify({'success': False, 'message': 'Failed to create reports'}), 500
 
 def create_default_template(template_path):
     """Create a default Word template that works properly with docxtpl"""
@@ -648,7 +1048,7 @@ def create_default_template(template_path):
     
     doc.add_paragraph()
     
-    # Subjects Table - Using proper Jinja2 syntax for docxtpl with loop
+    # Subjects Table
     subjects_table = doc.add_table(rows=1, cols=11)
     subjects_table.style = 'Table Grid'
     
@@ -671,9 +1071,7 @@ def create_default_template(template_path):
     loop_start_row = subjects_table.add_row()
     loop_start_cell = loop_start_row.cells[0]
     loop_start_cell.text = '{% for subject in subjects %}'
-    # Merge cells to hide the loop tag across all columns
     loop_start_cell.merge(loop_start_row.cells[10])
-    # Make the text very small to be less visible
     loop_start_cell.paragraphs[0].runs[0].font.size = Pt(1)
     loop_start_cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(255, 255, 255)
     
@@ -699,9 +1097,7 @@ def create_default_template(template_path):
     loop_end_row = subjects_table.add_row()
     loop_end_cell = loop_end_row.cells[0]
     loop_end_cell.text = '{% endfor %}'
-    # Merge cells to hide the loop tag across all columns
     loop_end_cell.merge(loop_end_row.cells[10])
-    # Make the text very small to be less visible
     loop_end_cell.paragraphs[0].runs[0].font.size = Pt(1)
     loop_end_cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(255, 255, 255)
     

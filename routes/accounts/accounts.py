@@ -453,6 +453,102 @@ def create_account():
         print(f"Error creating account: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
+@accounts_bp.route('/chart-of-accounts/delete/<account_id>', methods=['DELETE'])
+@role_required(['owner', 'teacher', 'accountant'])
+def delete_account(account_id):
+    """Delete a chart of account for the current institute"""
+    institute = get_institute_from_session()
+    
+    if not institute:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # First, check if the account exists and belongs to this institute
+        check_response = supabase.table('chart_of_accounts')\
+            .select('*')\
+            .eq('id', account_id)\
+            .eq('institute_id', institute['id'])\
+            .execute()
+        
+        if not check_response.data:
+            return jsonify({'success': False, 'message': 'Account not found or access denied'}), 404
+        
+        account = check_response.data[0]
+        
+        # Check if the account has any transactions linked to it
+        # You might want to check different transaction tables based on your schema
+        has_transactions = False
+        
+        # Check journal entries
+        try:
+            journal_response = supabase.table('journal_entries')\
+                .select('id', count='exact')\
+                .eq('account_id', account_id)\
+                .limit(1)\
+                .execute()
+            
+            if journal_response.count and journal_response.count > 0:
+                has_transactions = True
+        except:
+            pass
+        
+        # Check general ledger entries
+        if not has_transactions:
+            try:
+                ledger_response = supabase.table('general_ledger')\
+                    .select('id', count='exact')\
+                    .eq('account_id', account_id)\
+                    .limit(1)\
+                    .execute()
+                
+                if ledger_response.count and ledger_response.count > 0:
+                    has_transactions = True
+            except:
+                pass
+        
+        # If account has transactions, prevent deletion
+        if has_transactions:
+            # Option 1: Soft delete (mark as inactive)
+            update_response = supabase.table('chart_of_accounts')\
+                .update({
+                    'is_active': False,
+                    'updated_at': datetime.now().isoformat()
+                })\
+                .eq('id', account_id)\
+                .execute()
+            
+            if update_response.data:
+                return jsonify({
+                    'success': True, 
+                    'message': 'Account has existing transactions. It has been deactivated instead of deleted.',
+                    'soft_delete': True
+                })
+            else:
+                return jsonify({
+                    'success': False, 
+                    'message': 'Account cannot be deleted due to existing transactions'
+                }), 400
+        
+        # No transactions, safe to delete
+        delete_response = supabase.table('chart_of_accounts')\
+            .delete()\
+            .eq('id', account_id)\
+            .eq('institute_id', institute['id'])\
+            .execute()
+        
+        if delete_response.data:
+            return jsonify({
+                'success': True,
+                'message': f'Account "{account.get("account_name")}" deleted successfully'
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to delete account'}), 500
+            
+    except Exception as e:
+        print(f"Error deleting account: {e}")
+        return jsonify({'success': False, 'message': 'An error occurred while deleting the account'}), 500
+
 @accounts_bp.route('/income/create', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def create_income():

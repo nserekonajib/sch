@@ -1,4 +1,3 @@
-from routes.auth.auth import role_required
 # sms_settings.py - Complete SMS Integration with Balance Deduction
 from flask import Blueprint, render_template, request, jsonify, session, url_for
 from supabase import create_client, Client
@@ -9,7 +8,8 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import uuid
 import re
-from routes.accounts.accounts import get_institute_id as get_institute
+from routes.accounts.accounts import get_institute_id
+from routes.auth.auth import role_required
 
 load_dotenv()
 
@@ -31,18 +31,6 @@ def login_required(f):
             return jsonify({'success': False, 'message': 'Please login'}), 401
         return f(*args, **kwargs)
     return decorated_function
-
-def get_institute(user_id):
-    """Get institute for current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .execute()
-        return response.data[0] if response.data else None
-    except Exception as e:
-        print(f"Error getting institute: {e}")
-        return None
 
 def calculate_sms_cost(message, cost_per_sms=35):
     """Calculate SMS cost based on message length"""
@@ -131,16 +119,24 @@ def add_to_balance(institute_id, amount, description=""):
 def index():
     """SMS Settings Page"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return render_template('sms/settings.html', settings=None, institute=None)
     
     try:
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else None
+        
         # Get SMS settings
         response = supabase.table('sms_settings')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         settings = response.data[0] if response.data else None
@@ -149,39 +145,54 @@ def index():
         
     except Exception as e:
         print(f"Error loading SMS settings: {e}")
-        return render_template('sms/settings.html', settings=None, institute=institute)
+        return render_template('sms/settings.html', settings=None, institute=None)
 
 @sms_settings_bp.route('/get-balance', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def get_balance():
     """Get current institute balance"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
-        return jsonify({'success': False, 'balance': 0}), 400
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found', 'balance': 0}), 400
     
-    return jsonify({
-        'success': True, 
-        'balance': institute.get('balance', 0),
-        'total_spent': institute.get('total_spent', 0)
-    })
+    try:
+        # Get institute details with balance
+        institute_response = supabase.table('institutes')\
+            .select('balance, total_spent')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        if not institute_response.data:
+            return jsonify({'success': False, 'message': 'Institute not found', 'balance': 0}), 400
+        
+        institute = institute_response.data[0]
+        
+        return jsonify({
+            'success': True, 
+            'balance': institute.get('balance', 0),
+            'total_spent': institute.get('total_spent', 0)
+        })
+    except Exception as e:
+        print(f"Error getting balance: {e}")
+        return jsonify({'success': False, 'message': str(e), 'balance': 0}), 500
 
 @sms_settings_bp.route('/save', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def save_settings():
     """Save SMS API settings"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
         data = request.get_json()
         
         settings_data = {
-            'institute_id': institute['id'],
+            'institute_id': institute_id,
             'api_username': data.get('api_username', '').strip(),
             'api_key': data.get('api_key', '').strip(),
             'sender_id': data.get('sender_id', 'SCHOOL').strip()[:11],
@@ -194,13 +205,13 @@ def save_settings():
         # Check if settings exist
         existing = supabase.table('sms_settings')\
             .select('id')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if existing.data:
             result = supabase.table('sms_settings')\
                 .update(settings_data)\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .execute()
         else:
             settings_data['created_at'] = datetime.now().isoformat()
@@ -225,13 +236,13 @@ def calculate_cost():
         
         # Get cost per SMS from settings
         user = session.get('user')
-        institute = get_institute(user['id'])
+        institute_id = get_institute_id(user['id'])
         
         cost_per_sms = 35  # default
-        if institute:
+        if institute_id:
             settings_response = supabase.table('sms_settings')\
                 .select('cost_per_sms')\
-                .eq('institute_id', institute['id'])\
+                .eq('institute_id', institute_id)\
                 .execute()
             if settings_response.data:
                 cost_per_sms = settings_response.data[0].get('cost_per_sms', 35)
@@ -246,9 +257,9 @@ def calculate_cost():
 def test_sms():
     """Test SMS sending with balance deduction"""
     user = session.get('user')
-    institute = get_institute(user['id'])
+    institute_id = get_institute_id(user['id'])
     
-    if not institute:
+    if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
@@ -262,10 +273,21 @@ def test_sms():
         if not re.match(r'^\+?[0-9]{10,15}$', test_phone):
             return jsonify({'success': False, 'message': 'Invalid phone number format'}), 400
         
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        if not institute_response.data:
+            return jsonify({'success': False, 'message': 'Institute not found'}), 400
+        
+        institute = institute_response.data[0]
+        
         # Get SMS settings
         response = supabase.table('sms_settings')\
             .select('*')\
-            .eq('institute_id', institute['id'])\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if not response.data:
@@ -312,7 +334,7 @@ def test_sms():
             
             # Deduct from balance
             deduct_success, result = deduct_from_balance(
-                institute['id'], 
+                institute_id, 
                 cost_info['cost'],
                 f"Test SMS to {test_phone}"
             )
@@ -321,7 +343,7 @@ def test_sms():
                 # Log SMS
                 supabase.table('sms_log').insert({
                     'id': str(uuid.uuid4()),
-                    'institute_id': institute['id'],
+                    'institute_id': institute_id,
                     'phone_number': test_phone,
                     'message': test_message,
                     'message_length': cost_info['length'],
@@ -355,10 +377,18 @@ def initiate_payment():
     """Initiate payment to top up balance"""
     try:
         user = session.get('user')
-        institute = get_institute(user['id'])
+        institute_id = get_institute_id(user['id'])
         
-        if not institute:
+        if not institute_id:
             return jsonify({'success': False, 'message': 'Institute not found'}), 400
+        
+        # Get institute details for payment
+        institute_response = supabase.table('institutes')\
+            .select('institute_name, email')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
         
         data = request.get_json()
         amount = int(data.get('amount', 0))
@@ -367,7 +397,7 @@ def initiate_payment():
             return jsonify({'success': False, 'message': 'Minimum top-up amount is UGX 5,000'}), 400
         
         # Generate unique reference
-        reference_id = f"TOPUP_{institute['id']}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        reference_id = f"TOPUP_{institute_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
         
         # Callback URL for modal
         callback_url = f"{request.host_url.rstrip('/')}/sms-settings/payment-callback"
@@ -391,7 +421,7 @@ def initiate_payment():
             payment_id = str(uuid.uuid4())
             payment_data = {
                 'id': payment_id,
-                'institute_id': institute['id'],
+                'institute_id': institute_id,
                 'order_tracking_id': result['order_tracking_id'],
                 'merchant_reference': reference_id,
                 'amount': amount,
@@ -480,10 +510,6 @@ def send_payment_sms(institute_id, student_name, amount, balance, receipt_no, pa
         if not settings.get('send_on_payment'):
             return False, "SMS on payment disabled"
         
-        # Get student phone
-        # This should be passed from billing module
-        # For now, we'll need to get it from student record
-        
         # Prepare message
         message = f"""Payment Received! 🎓
 
@@ -508,14 +534,8 @@ Thank you for your payment!"""
         if not institute_response.data or institute_response.data[0].get('balance', 0) < cost_info['cost']:
             return False, "Insufficient balance"
         
-        # Send SMS
-        from comms_sdk import CommsSDK, MessagePriority
-        sdk = CommsSDK.authenticate(MASTER_API_USERNAME, MASTER_API_KEY)
-        
-        # Get student phone number (implement based on your schema)
-        # phone_number = get_student_phone(student_id)
-        
-        # sdk.send_sms([phone_number], message, sender_id=settings.get('sender_id', 'SCHOOL'))
+        # Send SMS (implement actual sending based on your setup)
+        # This part needs to be implemented with actual phone number retrieval
         
         # Deduct from balance
         deduct_from_balance(institute_id, cost_info['cost'], f"SMS for payment {receipt_no}")
@@ -525,18 +545,16 @@ Thank you for your payment!"""
     except Exception as e:
         print(f"Error sending payment SMS: {e}")
         return False, str(e)
-    
-    
-    
+
 @sms_settings_bp.route('/store-manual-request', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def store_manual_request():
     """Store manual payment request for tracking"""
     try:
         user = session.get('user')
-        institute = get_institute(user['id'])
+        institute_id = get_institute_id(user['id'])
         
-        if not institute:
+        if not institute_id:
             return jsonify({'success': False, 'message': 'Institute not found'}), 400
         
         data = request.get_json()
@@ -546,7 +564,7 @@ def store_manual_request():
         # Store manual payment request
         manual_request = {
             'id': str(uuid.uuid4()),
-            'institute_id': institute['id'],
+            'institute_id': institute_id,
             'amount': amount,
             'reference': reference,
             'status': 'pending',
@@ -562,6 +580,7 @@ def store_manual_request():
 
 # Add to sms_settings.py - Manual Payment Management Routes
 from routes.admin.admin import admin_required
+
 @sms_settings_bp.route('/admin/manual-payments', methods=['GET'])
 @admin_required
 def admin_manual_payments():

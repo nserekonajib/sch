@@ -1,0 +1,828 @@
+<!-- templates/results/template_designer.html -->
+{% extends "base.html" %}
+
+{% block title %}Report Card Template Designer{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.css" rel="stylesheet">
+<style>
+    .designer-container {
+        display: flex;
+        gap: 20px;
+        min-height: 600px;
+    }
+    
+    /* Components Panel */
+    .components-panel {
+        width: 280px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .component-item {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 12px;
+        cursor: move;
+        transition: all 0.2s;
+        user-select: none;
+    }
+    
+    .component-item:hover {
+        border-color: #ffa500;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transform: translateX(4px);
+    }
+    
+    .component-icon {
+        font-size: 20px;
+        margin-right: 8px;
+    }
+    
+    /* Canvas Area */
+    .canvas-area {
+        flex: 1;
+        background: #f0f2f5;
+        border-radius: 12px;
+        padding: 20px;
+        overflow-y: auto;
+        max-height: 80vh;
+    }
+    
+    .report-canvas {
+        background: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 8px;
+        min-height: 800px;
+        padding: 40px;
+        position: relative;
+    }
+    
+    /* Canvas Elements */
+    .canvas-element {
+        position: relative;
+        margin-bottom: 16px;
+        padding: 12px;
+        border: 2px dashed transparent;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    
+    .canvas-element:hover {
+        border-color: #ffa500;
+        background: #fff7ed;
+    }
+    
+    .canvas-element.selected {
+        border-color: #ffa500;
+        background: #fff7ed;
+        box-shadow: 0 0 0 2px rgba(255,165,0,0.2);
+    }
+    
+    .element-toolbar {
+        position: absolute;
+        top: -30px;
+        right: 0;
+        display: none;
+        gap: 8px;
+        background: white;
+        border-radius: 6px;
+        padding: 4px 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        z-index: 10;
+    }
+    
+    .canvas-element:hover .element-toolbar {
+        display: flex;
+    }
+    
+    .toolbar-btn {
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .toolbar-btn.edit {
+        background: #3b82f6;
+        color: white;
+    }
+    
+    .toolbar-btn.delete {
+        background: #ef4444;
+        color: white;
+    }
+    
+    .toolbar-btn.clone {
+        background: #10b981;
+        color: white;
+    }
+    
+    /* Properties Panel */
+    .properties-panel {
+        width: 320px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .property-group {
+        margin-bottom: 20px;
+    }
+    
+    .property-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+        display: block;
+    }
+    
+    .property-input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+    }
+    
+    .property-input:focus {
+        outline: none;
+        border-color: #ffa500;
+        ring: 2px solid rgba(255,165,0,0.2);
+    }
+    
+    /* Drop Zones */
+    .drop-zone {
+        min-height: 60px;
+        border: 2px dashed #cbd5e1;
+        border-radius: 8px;
+        margin: 8px 0;
+        transition: all 0.2s;
+    }
+    
+    .drop-zone.drag-over {
+        border-color: #ffa500;
+        background: #fff7ed;
+    }
+    
+    /* Grid Layout */
+    .grid-layout {
+        display: grid;
+        gap: 16px;
+    }
+    
+    .grid-2col {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .grid-3col {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+    
+    .grid-4col {
+        grid-template-columns: repeat(4, 1fr);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-full px-4 py-6">
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Report Card Template Designer</h1>
+            <p class="text-sm text-gray-600">Drag and drop components to design your report card</p>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="saveTemplate()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">
+                <i class="fas fa-save"></i> Save Template
+            </button>
+            <button onclick="previewTemplate()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                <i class="fas fa-eye"></i> Preview
+            </button>
+            <button onclick="loadTemplate()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                <i class="fas fa-folder-open"></i> Load Template
+            </button>
+        </div>
+    </div>
+
+    <div class="designer-container">
+        <!-- Left Panel - Components -->
+        <div class="components-panel">
+            <h3 class="font-semibold text-gray-800 mb-4">Components</h3>
+            <div id="componentsList">
+                <div class="component-item" data-type="header">
+                    <i class="fas fa-heading component-icon"></i>
+                    <strong>Header</strong>
+                    <div class="text-xs text-gray-500 mt-1">Institute logo, name, motto</div>
+                </div>
+                
+                <div class="component-item" data-type="student-info">
+                    <i class="fas fa-user component-icon"></i>
+                    <strong>Student Information</strong>
+                    <div class="text-xs text-gray-500 mt-1">Name, ID, class, photo</div>
+                </div>
+                
+                <div class="component-item" data-type="marks-table">
+                    <i class="fas fa-table component-icon"></i>
+                    <strong>Marks Table</strong>
+                    <div class="text-xs text-gray-500 mt-1">Subject-wise marks table</div>
+                </div>
+                
+                <div class="component-item" data-type="summary-cards">
+                    <i class="fas fa-chart-simple component-icon"></i>
+                    <strong>Summary Cards</strong>
+                    <div class="text-xs text-gray-500 mt-1">Percentage, grade, position</div>
+                </div>
+                
+                <div class="component-item" data-type="text-field">
+                    <i class="fas fa-font component-icon"></i>
+                    <strong>Text Field</strong>
+                    <div class="text-xs text-gray-500 mt-1">Custom text or remarks</div>
+                </div>
+                
+                <div class="component-item" data-type="signature">
+                    <i class="fas fa-signature component-icon"></i>
+                    <strong>Signature Lines</strong>
+                    <div class="text-xs text-gray-500 mt-1">Teacher, parent signatures</div>
+                </div>
+                
+                <div class="component-item" data-type="grade-scale">
+                    <i class="fas fa-chart-line component-icon"></i>
+                    <strong>Grade Scale</strong>
+                    <div class="text-xs text-gray-500 mt-1">Grading legend</div>
+                </div>
+                
+                <div class="component-item" data-type="footer">
+                    <i class="fas fa-file-alt component-icon"></i>
+                    <strong>Footer</strong>
+                    <div class="text-xs text-gray-500 mt-1">Date, report ID, copyright</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center - Canvas -->
+        <div class="canvas-area">
+            <div id="reportCanvas" class="report-canvas">
+                <!-- Default empty canvas with drop zones -->
+                <div id="canvas-container" class="canvas-container">
+                    <div class="drop-zone" data-zone="top"></div>
+                    <div id="canvas-elements"></div>
+                    <div class="drop-zone" data-zone="bottom"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Properties -->
+        <div class="properties-panel" id="propertiesPanel">
+            <h3 class="font-semibold text-gray-800 mb-4">Properties</h3>
+            <div id="propertyContent">
+                <p class="text-sm text-gray-500 text-center py-8">
+                    Select an element to edit its properties
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div id="previewModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-xl w-11/12 max-w-5xl h-5/6 overflow-hidden flex flex-col">
+        <div class="flex justify-between items-center p-4 border-b">
+            <h3 class="text-lg font-semibold">Template Preview</h3>
+            <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-auto p-6" id="previewContent">
+            <!-- Preview will be rendered here -->
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+    let currentElements = [];
+    let selectedElementId = null;
+    let sortable = null;
+    
+    // Component templates
+    const componentTemplates = {
+        header: {
+            type: 'header',
+            content: `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <img src="{{institute.logo_url}}" style="height: 60px; margin: 0 auto;">
+                    <h1 style="font-size: 24px; font-weight: bold; margin: 10px 0;">{{institute.institute_name}}</h1>
+                    <p style="color: #666;">{{institute.target_line}}</p>
+                </div>
+            `,
+            properties: {
+                alignment: 'center',
+                showLogo: true,
+                showMotto: true,
+                fontSize: 24
+            }
+        },
+        
+        'student-info': {
+            type: 'student-info',
+            content: `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <div>
+                        <p><strong>Student Name:</strong> {{student.name}}</p>
+                        <p><strong>Student ID:</strong> {{student.student_id}}</p>
+                        <p><strong>Class:</strong> {{class_name}}</p>
+                    </div>
+                    <div>
+                        <img src="{{student.photo_url}}" style="width: 80px; height: 80px; border-radius: 50%;">
+                    </div>
+                </div>
+            `,
+            properties: {
+                showPhoto: true,
+                layout: 'horizontal',
+                fields: ['name', 'id', 'class', 'roll_number']
+            }
+        },
+        
+        'marks-table': {
+            type: 'marks-table',
+            content: `
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <thead>
+                        <tr style="background: #1a237e; color: white;">
+                            <th style="padding: 10px;">Subject</th>
+                            {% for exam in exams %}
+                            <th style="padding: 10px;">{{exam.exam_name}}</th>
+                            {% endfor %}
+                            <th style="padding: 10px;">Average</th>
+                            <th style="padding: 10px;">Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subject in subjects %}
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;">{{subject.name}}</td>
+                            {% for exam in exams %}
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                                {{subject.exam_marks[loop.index0].obtained}}
+                            </td>
+                            {% endfor %}
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                                {{subject.average}}%
+                            </td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                                {{subject.grade}}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            `,
+            properties: {
+                showAverage: true,
+                showGrade: true,
+                showRemarks: true,
+                tableStyle: 'bordered'
+            }
+        },
+        
+        'summary-cards': {
+            type: 'summary-cards',
+            content: `
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0;">
+                    <div style="border: 1px solid #ffa500; background: #fffbf0; padding: 15px; text-align: center;">
+                        <div style="font-size: 12px; color: #666;">Overall Percentage</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #1a237e;">{{overall_percentage}}%</div>
+                    </div>
+                    <div style="border: 1px solid #ffa500; background: #fffbf0; padding: 15px; text-align: center;">
+                        <div style="font-size: 12px; color: #666;">Total Marks</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #1a237e;">{{total_obtained}}/{{total_possible}}</div>
+                    </div>
+                    <div style="border: 1px solid #ffa500; background: #fffbf0; padding: 15px; text-align: center;">
+                        <div style="font-size: 12px; color: #666;">Grade</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #1a237e;">{{grade}}</div>
+                    </div>
+                </div>
+            `,
+            properties: {
+                cardColor: '#fffbf0',
+                borderColor: '#ffa500',
+                showPosition: true,
+                cards: ['percentage', 'marks', 'grade', 'position']
+            }
+        },
+        
+        'text-field': {
+            type: 'text-field',
+            content: '<div class="custom-text" contenteditable="true">Double-click to edit this text</div>',
+            properties: {
+                text: 'Double-click to edit this text',
+                fontSize: 14,
+                fontColor: '#333',
+                alignment: 'left'
+            }
+        },
+        
+        signature: {
+            type: 'signature',
+            content: `
+                <div style="display: flex; justify-content: space-between; margin: 40px 0 20px;">
+                    <div style="text-align: center;">
+                        <div style="border-top: 1px solid #333; width: 150px;"></div>
+                        <div style="margin-top: 8px;">Class Teacher</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="border-top: 1px solid #333; width: 150px;"></div>
+                        <div style="margin-top: 8px;">Principal</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="border-top: 1px solid #333; width: 150px;"></div>
+                        <div style="margin-top: 8px;">Parent/Guardian</div>
+                    </div>
+                </div>
+            `,
+            properties: {
+                signatures: ['teacher', 'principal', 'parent'],
+                lineWidth: 150
+            }
+        },
+        
+        footer: {
+            type: 'footer',
+            content: `
+                <div style="text-align: center; font-size: 10px; color: #666; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">
+                    Generated on: {{generated_date}} | Report ID: {{report_id}}
+                </div>
+            `,
+            properties: {
+                showDate: true,
+                showReportId: true,
+                copyrightText: ''
+            }
+        }
+    };
+    
+    // Initialize Sortable for drag-and-drop
+    function initDragAndDrop() {
+        const container = document.getElementById('canvas-elements');
+        sortable = new Sortable(container, {
+            animation: 150,
+            onEnd: function() {
+                saveLayout();
+            }
+        });
+        
+        // Make components draggable
+        const components = document.querySelectorAll('.component-item');
+        components.forEach(comp => {
+            comp.addEventListener('dragstart', handleDragStart);
+            comp.setAttribute('draggable', 'true');
+        });
+        
+        // Setup drop zones
+        const dropZones = document.querySelectorAll('.drop-zone');
+        dropZones.forEach(zone => {
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('drag-over');
+            });
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('drag-over');
+            });
+            zone.addEventListener('drop', handleDrop);
+        });
+    }
+    
+    let draggedType = null;
+    
+    function handleDragStart(e) {
+        draggedType = e.target.closest('.component-item').dataset.type;
+        e.dataTransfer.setData('text/plain', draggedType);
+    }
+    
+    function handleDrop(e) {
+        e.preventDefault();
+        const zone = e.target.closest('.drop-zone');
+        zone.classList.remove('drag-over');
+        
+        const componentType = e.dataTransfer.getData('text/plain');
+        if (componentType) {
+            addElement(componentType);
+        }
+    }
+    
+    function addElement(type, customProps = null) {
+        const template = componentTemplates[type];
+        if (!template) return;
+        
+        const elementId = 'elem_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        const element = {
+            id: elementId,
+            type: type,
+            content: template.content,
+            properties: customProps || {...template.properties},
+            order: currentElements.length
+        };
+        
+        currentElements.push(element);
+        renderCanvas();
+        saveLayout();
+    }
+    
+    function renderCanvas() {
+        const container = document.getElementById('canvas-elements');
+        container.innerHTML = '';
+        
+        currentElements.forEach((element, index) => {
+            const elementDiv = document.createElement('div');
+            elementDiv.className = 'canvas-element';
+            if (element.id === selectedElementId) {
+                elementDiv.classList.add('selected');
+            }
+            elementDiv.id = element.id;
+            elementDiv.setAttribute('data-type', element.type);
+            
+            // Toolbar
+            const toolbar = document.createElement('div');
+            toolbar.className = 'element-toolbar';
+            toolbar.innerHTML = `
+                <button class="toolbar-btn edit" onclick="editElement('${element.id}')">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="toolbar-btn clone" onclick="cloneElement('${element.id}')">
+                    <i class="fas fa-copy"></i> Clone
+                </button>
+                <button class="toolbar-btn delete" onclick="deleteElement('${element.id}')">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            `;
+            
+            // Content
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'element-content';
+            contentDiv.innerHTML = element.content;
+            
+            // Apply custom styles
+            applyElementStyles(contentDiv, element.properties);
+            
+            elementDiv.appendChild(toolbar);
+            elementDiv.appendChild(contentDiv);
+            
+            elementDiv.onclick = (e) => {
+                e.stopPropagation();
+                selectElement(element.id);
+            };
+            
+            container.appendChild(elementDiv);
+        });
+    }
+    
+    function applyElementStyles(element, properties) {
+        if (properties.fontSize) {
+            element.style.fontSize = properties.fontSize + 'px';
+        }
+        if (properties.fontColor) {
+            element.style.color = properties.fontColor;
+        }
+        if (properties.alignment) {
+            element.style.textAlign = properties.alignment;
+        }
+    }
+    
+    function selectElement(elementId) {
+        selectedElementId = elementId;
+        renderCanvas();
+        showProperties(elementId);
+    }
+    
+    function showProperties(elementId) {
+        const element = currentElements.find(e => e.id === elementId);
+        if (!element) return;
+        
+        const template = componentTemplates[element.type];
+        const propertyPanel = document.getElementById('propertyContent');
+        
+        let propertiesHtml = `
+            <div class="property-group">
+                <label class="property-label">Element Type</label>
+                <input type="text" class="property-input" value="${element.type}" disabled>
+            </div>
+        `;
+        
+        // Generate property inputs based on element type
+        for (const [key, value] of Object.entries(element.properties)) {
+            if (typeof value === 'string') {
+                propertiesHtml += `
+                    <div class="property-group">
+                        <label class="property-label">${key.replace(/([A-Z])/g, ' $1').trim()}</label>
+                        <input type="text" class="property-input" data-prop="${key}" value="${value}">
+                    </div>
+                `;
+            } else if (typeof value === 'number') {
+                propertiesHtml += `
+                    <div class="property-group">
+                        <label class="property-label">${key.replace(/([A-Z])/g, ' $1').trim()}</label>
+                        <input type="number" class="property-input" data-prop="${key}" value="${value}">
+                    </div>
+                `;
+            } else if (typeof value === 'boolean') {
+                propertiesHtml += `
+                    <div class="property-group">
+                        <label class="property-label">
+                            <input type="checkbox" data-prop="${key}" ${value ? 'checked' : ''}>
+                            ${key.replace(/([A-Z])/g, ' $1').trim()}
+                        </label>
+                    </div>
+                `;
+            }
+        }
+        
+        propertiesHtml += `
+            <div class="property-group">
+                <button onclick="updateElementProperties('${elementId}')" class="bg-blue-500 text-white px-3 py-1 rounded text-sm">
+                    Apply Changes
+                </button>
+            </div>
+        `;
+        
+        propertyPanel.innerHTML = propertiesHtml;
+        
+        // Add event listeners for real-time updates
+        document.querySelectorAll('.property-input').forEach(input => {
+            input.addEventListener('change', () => updateElementProperties(elementId));
+        });
+    }
+    
+    function updateElementProperties(elementId) {
+        const element = currentElements.find(e => e.id === elementId);
+        if (!element) return;
+        
+        const inputs = document.querySelectorAll('.property-input');
+        inputs.forEach(input => {
+            const prop = input.dataset.prop;
+            if (prop) {
+                if (input.type === 'checkbox') {
+                    element.properties[prop] = input.checked;
+                } else if (input.type === 'number') {
+                    element.properties[prop] = parseFloat(input.value);
+                } else {
+                    element.properties[prop] = input.value;
+                }
+            }
+        });
+        
+        renderCanvas();
+        saveLayout();
+    }
+    
+    function deleteElement(elementId) {
+        if (confirm('Delete this element?')) {
+            currentElements = currentElements.filter(e => e.id !== elementId);
+            if (selectedElementId === elementId) {
+                selectedElementId = null;
+            }
+            renderCanvas();
+            saveLayout();
+            document.getElementById('propertyContent').innerHTML = `
+                <p class="text-sm text-gray-500 text-center py-8">
+                    Select an element to edit its properties
+                </p>
+            `;
+        }
+    }
+    
+    function cloneElement(elementId) {
+        const element = currentElements.find(e => e.id === elementId);
+        if (element) {
+            const newId = elementId + '_clone_' + Date.now();
+            const clone = {...element, id: newId};
+            const index = currentElements.findIndex(e => e.id === elementId);
+            currentElements.splice(index + 1, 0, clone);
+            renderCanvas();
+            saveLayout();
+        }
+    }
+    
+    function editElement(elementId) {
+        selectElement(elementId);
+        document.getElementById('propertiesPanel').scrollIntoView({behavior: 'smooth'});
+    }
+    
+    function saveLayout() {
+        const templateData = {
+            elements: currentElements,
+            version: '1.0',
+            updatedAt: new Date().toISOString()
+        };
+        
+        // Save to localStorage temporarily
+        localStorage.setItem('report_template_draft', JSON.stringify(templateData));
+    }
+    
+    function saveTemplate() {
+        const templateName = prompt('Enter template name:');
+        if (!templateName) return;
+        
+        const templateData = {
+            name: templateName,
+            template_data: {
+                elements: currentElements
+            },
+            html_template: generateHtmlFromElements()
+        };
+        
+        fetch('/report-templates/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(templateData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Template saved successfully!');
+            } else {
+                alert('Error saving template: ' + data.message);
+            }
+        });
+    }
+    
+    function generateHtmlFromElements() {
+        let html = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
+        html += '<style>@page { size: A4; margin: 1cm; } body { font-family: Arial, sans-serif; }</style>';
+        html += '</head><body>';
+        
+        currentElements.forEach(element => {
+            html += element.content;
+        });
+        
+        html += '</body></html>';
+        return html;
+    }
+    
+    function previewTemplate() {
+        const previewHtml = generateHtmlFromElements();
+        const previewContent = document.getElementById('previewContent');
+        previewContent.innerHTML = previewHtml;
+        document.getElementById('previewModal').style.display = 'flex';
+    }
+    
+    function closePreview() {
+        document.getElementById('previewModal').style.display = 'none';
+    }
+    
+    function loadTemplate() {
+        // Fetch saved templates from server
+        fetch('/report-templates/list')
+            .then(response => response.json())
+            .then(templates => {
+                if (templates.length === 0) {
+                    alert('No saved templates found');
+                    return;
+                }
+                
+                const templateList = templates.map(t => 
+                    `<option value="${t.id}">${t.name}</option>`
+                ).join('');
+                
+                const templateId = prompt('Select template ID:\n' + 
+                    templates.map(t => `${t.id}: ${t.name}`).join('\n'));
+                
+                if (templateId) {
+                    fetch(`/report-templates/load/${templateId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                currentElements = data.template_data.elements;
+                                renderCanvas();
+                                alert('Template loaded successfully!');
+                            }
+                        });
+                }
+            });
+    }
+    
+    // Initialize
+    initDragAndDrop();
+    
+    // Load draft if exists
+    const draft = localStorage.getItem('report_template_draft');
+    if (draft) {
+        const templateData = JSON.parse(draft);
+        if (templateData.elements && templateData.elements.length > 0) {
+            if (confirm('Load unsaved draft?')) {
+                currentElements = templateData.elements;
+                renderCanvas();
+            }
+        }
+    }
+</script>
+{% endblock %}
