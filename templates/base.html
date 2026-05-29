@@ -411,8 +411,8 @@ enable-ga="false"
 
                         <a href="{{url_for('student.index')}}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student Management</a>
 
-                        <!--<a href="#" @click.prevent="activeMenu = 'manage-families'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Families</a>
-                        <a href="#" @click.prevent="activeMenu = 'active-inactive'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Active / Inactive</a>
+                        <a href="{{url_for('houses.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student Houses</a>
+                        <!--<a href="#" @click.prevent="activeMenu = 'active-inactive'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Active / Inactive</a>
                         <a href="#" @click.prevent="activeMenu = 'admission-letter'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Admission Letter</a> -->
 
 
@@ -481,6 +481,8 @@ enable-ga="false"
 
                          <a href="{{url_for('sync.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">School Pay</a>
 
+                         <a href="{{url_for('payments_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">transaction list</a>
+
                          <a href="{{url_for('discount.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Discounts</a>
 
                       <a href="{{url_for('requirements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Requirements</a>
@@ -503,8 +505,8 @@ enable-ga="false"
                     </button>
                     <div x-show="openMenus.salary" x-cloak class="pl-11 mt-2 space-y-1.5">
                         <a href="{{ url_for('payroll.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Pay Salary</a>
-                       <!-- <a href="#" @click.prevent="activeMenu = 'salary-slip'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Paid Slip</a>
-                        <a href="#" @click.prevent="activeMenu = 'salary-sheet'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Sheet</a>
+                       <a href="{{ url_for('advance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Advance</a>
+                        <!-- <a href="#" @click.prevent="activeMenu = 'salary-sheet'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Sheet</a>
                         <a href="#" @click.prevent="activeMenu = 'salary-report'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Report</a>-->
                     </div>
                 </div>

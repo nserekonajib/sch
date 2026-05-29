@@ -1,0 +1,655 @@
+{% extends "base.html" %}
+
+{% block title %}Payments - Payment Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-bar {
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    .stat-card {
+        transition: all 0.3s ease;
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    .status-credit {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .status-due {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    .status-paid {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .checkbox-select {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    .payment-row:hover {
+        background-color: #f9fafb;
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    .institute-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Payment Management</h1>
+            <p class="text-sm text-gray-600">View, filter, export, and manage fee payments</p>
+        </div>
+        {% if institute %}
+        <div class="institute-badge">
+            <i class="fas fa-building mr-2"></i>
+            {{ institute.institute_name }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" id="statsContainer">
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Payments</p>
+                    <p class="text-2xl font-bold text-gray-800" id="totalPayments">-</p>
+                </div>
+                <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-receipt text-blue-500"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Amount</p>
+                    <p class="text-2xl font-bold text-green-600" id="totalAmount">UGX 0</p>
+                </div>
+                <div class="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-money-bill-wave text-green-500"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Average Payment</p>
+                    <p class="text-2xl font-bold text-purple-600" id="avgPayment">UGX 0</p>
+                </div>
+                <div class="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-chart-line text-purple-500"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Payment Methods</p>
+                    <p class="text-2xl font-bold text-orange-600" id="methodCount">-</p>
+                </div>
+                <div class="h-10 w-10 bg-orange-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-credit-card text-orange-500"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input type="date" id="startDateFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input type="date" id="endDateFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <select id="methodFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">All Methods</option>
+                    <option value="cash">Cash</option>
+                    <option value="mobile_money">Mobile Money</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="card">Card</option>
+                </select>
+            </div>
+            <div id="instituteFilterDiv" style="display: {% if is_admin %}block{% else %}none{% endif %};">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Institute</label>
+                <select id="instituteFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">All Institutes</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <input type="text" id="searchFilter" placeholder="Name, Receipt, Student ID..." 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+            </div>
+        </div>
+        <div class="flex gap-2 mt-4">
+            <button onclick="loadPayments()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm">
+                <i class="fas fa-search"></i> Apply Filters
+            </button>
+            <button onclick="resetFilters()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-undo"></i> Reset
+            </button>
+            <button onclick="exportPayments('excel')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <i class="fas fa-file-excel"></i> Export Excel
+            </button>
+            <button onclick="exportPayments('csv')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <i class="fas fa-file-csv"></i> Export CSV
+            </button>
+            <button id="bulkDeleteBtn" onclick="bulkDeletePayments()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" style="display: none;">
+                <i class="fas fa-trash"></i> Delete Selected
+            </button>
+        </div>
+    </div>
+
+    <!-- Payments Table -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-gray-800">Payment Records</h2>
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-600">Select All</label>
+                <input type="checkbox" id="selectAllCheckbox" class="checkbox-select" onclick="toggleSelectAll()">
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-10">Select</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt #</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                        {% if is_admin %}
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Institute</th>
+                        {% endif %}
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="paymentsTableBody" class="divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="12" class="px-4 py-8 text-center">
+                            <div class="loader mx-auto"></div>
+                            <p class="mt-2 text-gray-400">Loading payments...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
+            <div class="text-sm text-gray-600">
+                Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalRecords">0</span> records
+            </div>
+            <div class="flex gap-2">
+                <button id="prevPageBtn" onclick="changePage(-1)" class="px-3 py-1 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50" disabled>
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <span id="pageInfo" class="px-3 py-1 text-gray-600">Page 1</span>
+                <button id="nextPageBtn" onclick="changePage(1)" class="px-3 py-1 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50" disabled>
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+        <div class="px-5 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Confirm Delete</h3>
+        </div>
+        <div class="p-5">
+            <p class="text-gray-600 mb-4">Are you sure you want to delete this payment? This action cannot be undone.</p>
+            <p class="text-sm text-red-600 mb-4">Warning: This will also reverse the payment from the student's invoice.</p>
+            <div class="flex gap-3">
+                <button onclick="confirmDelete()" class="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700">Delete</button>
+                <button onclick="closeDeleteModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    let totalPages = 1;
+    let selectedPaymentId = null;
+    let selectedPayments = new Set();
+    let isAdmin = {{ is_admin|tojson }};
+
+    async function loadPayments() {
+        const tbody = document.getElementById('paymentsTableBody');
+        tbody.innerHTML = '<tr><td colspan="12" class="px-4 py-8 text-center"><div class="loader mx-auto"></div><p>Loading...</p></td></tr>';
+        
+        const startDate = document.getElementById('startDateFilter').value;
+        const endDate = document.getElementById('endDateFilter').value;
+        const method = document.getElementById('methodFilter').value;
+        const search = document.getElementById('searchFilter').value;
+        const instituteId = document.getElementById('instituteFilter')?.value || '';
+        
+        let url = `/payments/api/list?page=${currentPage}&per_page=20`;
+        if (startDate) url += `&start_date=${startDate}`;
+        if (endDate) url += `&end_date=${endDate}`;
+        if (method) url += `&payment_method=${method}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (instituteId && isAdmin) url += `&institute_id=${instituteId}`;
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                renderPayments(data.payments);
+                updatePagination(data.page, data.total_pages, data.total);
+                loadSummary();
+            } else {
+                tbody.innerHTML = `<tr><td colspan="12" class="px-4 py-8 text-center text-red-500">${data.message}</td></tr>`;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            tbody.innerHTML = '<tr><td colspan="12" class="px-4 py-8 text-center text-red-500">Error loading payments</td></tr>';
+        }
+    }
+
+    function renderPayments(payments) {
+        const tbody = document.getElementById('paymentsTableBody');
+        
+        if (!payments || payments.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="12" class="px-4 py-8 text-center text-gray-400">No payments found</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = payments.map(payment => {
+            const statusClass = payment.balance_status === 'credit' ? 'status-credit' : 
+                               (payment.balance_status === 'due' ? 'status-due' : 'status-paid');
+            const statusText = payment.balance_status === 'credit' ? 'Credit' :
+                              (payment.balance_status === 'due' ? 'Due' : 'Paid');
+            
+            const balanceDisplay = payment.current_balance < 0 ? 
+                `(UGX ${Math.abs(payment.current_balance).toLocaleString()})` : 
+                `UGX ${payment.current_balance.toLocaleString()}`;
+            
+            const isSelected = selectedPayments.has(payment.id);
+            
+            let rowHtml = '<tr class="payment-row hover:bg-gray-50">';
+            
+            rowHtml += `<td class="px-4 py-3 text-center">
+                            <input type="checkbox" class="checkbox-select payment-checkbox" 
+                                   data-id="${payment.id}" ${isSelected ? 'checked' : ''} 
+                                   onclick="togglePaymentSelection('${payment.id}')">
+                         </td>`;
+            
+            rowHtml += `
+                <td class="px-4 py-3 text-sm font-medium text-gray-800">${payment.receipt_number}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">${payment.payment_date}</td>
+                <td class="px-4 py-3">
+                    <div>
+                        <p class="text-sm font-medium text-gray-800">${escapeHtml(payment.student_name)}</p>
+                        <p class="text-xs text-gray-500">ID: ${payment.student_id_display}</p>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">${payment.class_name}</td>`;
+            
+            if (isAdmin) {
+                rowHtml += `<td class="px-4 py-3 text-sm text-gray-600">${payment.institute_name}</td>`;
+            }
+            
+            rowHtml += `
+                <td class="px-4 py-3 text-sm text-right font-semibold text-green-600">UGX ${payment.amount.toLocaleString()}</td>
+                <td class="px-4 py-3 text-sm">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100">
+                        ${payment.payment_method.toUpperCase().replace('_', ' ')}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-sm text-right ${payment.current_balance < 0 ? 'text-green-600' : 'text-red-600'}">
+                    ${balanceDisplay}
+                </td>
+                <td class="px-4 py-3">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">${statusText}</span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <button onclick="viewReceipt('${payment.receipt_number}')" class="text-blue-600 hover:text-blue-800 mr-2" title="View Receipt">
+                        <i class="fas fa-print"></i>
+                    </button>
+                    <button onclick="deletePayment('${payment.id}', '${payment.receipt_number}')" class="text-red-600 hover:text-red-800" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+            
+            return rowHtml;
+        }).join('');
+        
+        updateBulkDeleteButton();
+    }
+
+    function togglePaymentSelection(paymentId) {
+        if (selectedPayments.has(paymentId)) {
+            selectedPayments.delete(paymentId);
+        } else {
+            selectedPayments.add(paymentId);
+        }
+        updateBulkDeleteButton();
+        
+        // Update select all checkbox
+        const checkboxes = document.querySelectorAll('.payment-checkbox');
+        const allChecked = checkboxes.length > 0 && Array.from(checkboxes).every(cb => cb.checked);
+        if (document.getElementById('selectAllCheckbox')) {
+            document.getElementById('selectAllCheckbox').checked = allChecked;
+        }
+    }
+
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAllCheckbox').checked;
+        const checkboxes = document.querySelectorAll('.payment-checkbox');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAll;
+            const paymentId = checkbox.getAttribute('data-id');
+            if (selectAll) {
+                selectedPayments.add(paymentId);
+            } else {
+                selectedPayments.delete(paymentId);
+            }
+        });
+        
+        updateBulkDeleteButton();
+    }
+
+    function updateBulkDeleteButton() {
+        const btn = document.getElementById('bulkDeleteBtn');
+        if (btn) {
+            btn.style.display = selectedPayments.size > 0 ? 'block' : 'none';
+        }
+    }
+
+    function updatePagination(page, totalPagesVal, total) {
+        currentPage = page;
+        totalPages = totalPagesVal;
+        
+        const startRange = (page - 1) * 20 + 1;
+        const endRange = Math.min(page * 20, total);
+        
+        document.getElementById('startRange').textContent = total > 0 ? startRange : 0;
+        document.getElementById('endRange').textContent = endRange;
+        document.getElementById('totalRecords').textContent = total;
+        document.getElementById('pageInfo').textContent = `Page ${page} of ${totalPages || 1}`;
+        
+        document.getElementById('prevPageBtn').disabled = page <= 1;
+        document.getElementById('nextPageBtn').disabled = page >= totalPages;
+    }
+
+    function changePage(delta) {
+        const newPage = currentPage + delta;
+        if (newPage >= 1 && newPage <= totalPages) {
+            currentPage = newPage;
+            loadPayments();
+        }
+    }
+
+    async function loadSummary() {
+        try {
+            const startDate = document.getElementById('startDateFilter').value;
+            const endDate = document.getElementById('endDateFilter').value;
+            const instituteId = document.getElementById('instituteFilter')?.value || '';
+            
+            let url = `/payments/api/summary`;
+            const params = [];
+            if (startDate) params.push(`start_date=${startDate}`);
+            if (endDate) params.push(`end_date=${endDate}`);
+            if (instituteId && isAdmin) params.push(`institute_id=${instituteId}`);
+            if (params.length) url += '?' + params.join('&');
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('totalPayments').textContent = data.summary.total_payments;
+                document.getElementById('totalAmount').textContent = `UGX ${data.summary.total_amount.toLocaleString()}`;
+                document.getElementById('avgPayment').textContent = `UGX ${Math.round(data.summary.average_payment).toLocaleString()}`;
+                document.getElementById('methodCount').textContent = Object.keys(data.summary.method_breakdown).length;
+            }
+        } catch (error) {
+            console.error('Error loading summary:', error);
+        }
+    }
+
+    async function loadInstitutes() {
+        if (!isAdmin) return;
+        
+        if (!document.getElementById('instituteFilterDiv') || 
+            document.getElementById('instituteFilterDiv').style.display !== 'block') {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/payments/api/institutes');
+            const data = await response.json();
+            
+            if (data.success) {
+                const select = document.getElementById('instituteFilter');
+                select.innerHTML = '<option value="">All Institutes</option>' + 
+                    data.institutes.map(inst => `<option value="${inst.id}">${escapeHtml(inst.institute_name)}</option>`).join('');
+            }
+        } catch (error) {
+            console.error('Error loading institutes:', error);
+        }
+    }
+
+    async function exportPayments(format) {
+        const startDate = document.getElementById('startDateFilter').value;
+        const endDate = document.getElementById('endDateFilter').value;
+        const method = document.getElementById('methodFilter').value;
+        const search = document.getElementById('searchFilter').value;
+        const instituteId = document.getElementById('instituteFilter')?.value || '';
+        
+        try {
+            const response = await fetch('/payments/api/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    format: format,
+                    start_date: startDate,
+                    end_date: endDate,
+                    payment_method: method,
+                    search: search,
+                    institute_id: instituteId
+                })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = response.headers.get('Content-Disposition')?.split('filename=')[1] || 
+                            `payments_export.${format === 'excel' ? 'xlsx' : 'csv'}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showMessage('Export completed successfully', 'success');
+            } else {
+                showMessage('Export failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error exporting:', error);
+            showMessage('Export failed', 'error');
+        }
+    }
+
+    function deletePayment(paymentId, receiptNumber) {
+        selectedPaymentId = paymentId;
+        document.getElementById('deleteModal').classList.remove('hidden');
+        document.getElementById('deleteModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    async function confirmDelete() {
+        if (!selectedPaymentId) return;
+        
+        closeDeleteModal();
+        
+        try {
+            const response = await fetch(`/payments/api/delete/${selectedPaymentId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showMessage(result.message, 'success');
+                loadPayments();
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting:', error);
+            showMessage('Failed to delete payment', 'error');
+        }
+        
+        selectedPaymentId = null;
+    }
+
+    async function bulkDeletePayments() {
+        if (selectedPayments.size === 0) {
+            showMessage('No payments selected', 'warning');
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to delete ${selectedPayments.size} payment(s)? This action cannot be undone.`)) {
+            return;
+        }
+        
+        const paymentIds = Array.from(selectedPayments);
+        
+        try {
+            const response = await fetch('/payments/api/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payment_ids: paymentIds })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showMessage(result.message, 'success');
+                selectedPayments.clear();
+                loadPayments();
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error bulk deleting:', error);
+            showMessage('Failed to delete payments', 'error');
+        }
+    }
+
+    function viewReceipt(receiptNumber) {
+        window.open(`/collect-fees/print-receipt/${receiptNumber}`, '_blank');
+    }
+
+    function resetFilters() {
+        document.getElementById('startDateFilter').value = '';
+        document.getElementById('endDateFilter').value = '';
+        document.getElementById('methodFilter').value = '';
+        document.getElementById('searchFilter').value = '';
+        if (document.getElementById('instituteFilter')) {
+            document.getElementById('instituteFilter').value = '';
+        }
+        currentPage = 1;
+        loadPayments();
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.add('hidden');
+        document.getElementById('deleteModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `<div class="flex items-center gap-2">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-exclamation-circle'}"></i>
+            <span>${message}</span>
+        </div>`;
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
+    }
+
+    // Initialize
+    if (isAdmin) {
+        loadInstitutes();
+    }
+    loadPayments();
+</script>
+{% endblock %}

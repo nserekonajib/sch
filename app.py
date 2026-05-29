@@ -81,7 +81,9 @@ from routes.library.library import library_bp
 from routes.entertainment.entertainment import entertainment_bp
 from routes.resources.studyresources import studyresource_bp as resources_bp
 from routes.resultsCard.report_templates import templates_bp
-
+from routes.fees.listEnDelete import payments_bp as list_delete_bp
+from routes.employees.advance import advance_bp
+from routes.houses.house import houses_bp
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
@@ -122,6 +124,9 @@ app.register_blueprint(library_bp, url_prefix='/library')
 app.register_blueprint(entertainment_bp, url_prefix='/entertainment')
 app.register_blueprint(resources_bp, url_prefix='/study-resources')
 app.register_blueprint(templates_bp, url_prefix='/report-templates')
+app.register_blueprint(list_delete_bp)
+app.register_blueprint(advance_bp, url_prefix='/advance')
+app.register_blueprint(houses_bp) 
 
 
 @app.route('/')
@@ -149,6 +154,6 @@ def serve_static(filename):
     return send_from_directory('static', filename)
 
 if __name__ == '__main__':
-    #  app.run(host="0.0.0.0", port=40000)
-    from waitress import serve
-    serve(app, host='0.0.0.0', port=40000)
+     app.run(host="0.0.0.0", port=40000)
+    # from waitress import serve
+    # serve(app, host='0.0.0.0', port=40000)

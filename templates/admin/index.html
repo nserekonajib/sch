@@ -1,4 +1,4 @@
-<!-- templates/admin/index.html - Fixed with proper number formatting -->
+<!-- templates/admin/index.html - Fixed with proper number formatting and editable dates -->
 {% extends "base.html" %}
 
 {% block title %}Admin Dashboard - Lunserk ERP{% endblock %}
@@ -71,6 +71,20 @@
         position: relative;
         height: 300px;
         width: 100%;
+    }
+    .date-input-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .date-input-group input {
+        flex: 1;
+    }
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
     }
 </style>
 {% endblock %}
@@ -235,7 +249,7 @@
     </div>
 </div>
 
-<!-- Payment Modal -->
+<!-- Payment Modal with Editable Dates -->
 <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
         <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -246,6 +260,7 @@
         </div>
         <form id="paymentForm" class="p-5">
             <input type="hidden" id="paymentInstituteId">
+            
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Select Plan *</label>
                 <select id="paymentMonths" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
@@ -254,6 +269,27 @@
                     <option value="12">12 Months - UGX {{ "{:,.0f}".format(subscription_price * 12 * (1 - discount_12_months/100)) }} (Save {{ discount_12_months|round(0)|int }}%)</option>
                 </select>
             </div>
+            
+            <!-- Editable Dates Section -->
+            <div class="mb-4">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="customDatesCheckbox" onchange="toggleCustomDates()">
+                    <label class="text-sm font-medium text-gray-700">Set custom start and expiry dates</label>
+                </div>
+                
+                <div id="customDatesSection" style="display: none;">
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                        <input type="date" id="customStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
+                        <input type="date" id="customExpiryDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                        <p class="text-xs text-gray-500 mt-1">Leave empty to auto-calculate from start date</p>
+                    </div>
+                </div>
+            </div>
+            
             <div class="mb-4 p-3 bg-gray-50 rounded-lg">
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-gray-600">Price per month:</span>
@@ -268,13 +304,51 @@
                     <span class="text-lg font-bold text-orange-600" id="totalAmount">UGX {{ "{:,.0f}".format(subscription_price) }}</span>
                 </div>
             </div>
+            
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
                 <textarea id="paymentNotes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
             </div>
+            
             <div class="flex gap-3">
                 <button type="submit" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium">Add Subscription</button>
                 <button type="button" onclick="closePaymentModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Subscription Modal -->
+<div id="editSubscriptionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Edit Subscription Dates</h3>
+            <button onclick="closeEditSubscriptionModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <form id="editSubscriptionForm" class="p-5">
+            <input type="hidden" id="editSubscriptionId">
+            <input type="hidden" id="editInstituteId">
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Institution</label>
+                <p id="editInstituteName" class="text-gray-800 font-medium"></p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Start Date *</label>
+                <input type="date" id="editStartDate" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Expiry Date *</label>
+                <input type="date" id="editExpiryDate" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            
+            <div class="flex gap-3">
+                <button type="submit" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium">Update Dates</button>
+                <button type="button" onclick="closeEditSubscriptionModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
             </div>
         </form>
     </div>
@@ -320,11 +394,6 @@
         </div>
     </div>
 </div>
-<!-- Add to admin sidebar/navigation -->
-<a href="/admin/manual-payments" class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-    <i class="fas fa-money-bill-wave text-orange-500"></i>
-    <span>Manual Payments</span>
-</a>
 
 <!-- Loading Overlay -->
 <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
@@ -354,6 +423,18 @@
             return pricePerMonth * months * (1 - discount12Months / 100);
         } else {
             return pricePerMonth * months;
+        }
+    }
+
+    function toggleCustomDates() {
+        const checkbox = document.getElementById('customDatesCheckbox');
+        const section = document.getElementById('customDatesSection');
+        section.style.display = checkbox.checked ? 'block' : 'none';
+        
+        if (checkbox.checked) {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('customStartDate').value = today;
+            document.getElementById('customExpiryDate').value = '';
         }
     }
 
@@ -476,7 +557,7 @@
             const isActive = inst.subscription && inst.subscription.expiry_date >= today;
             const subStatus = isActive ? 'status-active' : 'status-expired';
             const subText = inst.subscription ? 
-                `Expires: ${new Date(inst.subscription.expiry_date).toLocaleDateString()}` : 'No subscription';
+                `Start: ${inst.subscription.start_date}<br>Expires: ${inst.subscription.expiry_date}` : 'No subscription';
             
             return `
                 <tr class="hover:bg-gray-50">
@@ -485,23 +566,27 @@
                             <p class="font-medium text-gray-800">${escapeHtml(inst.institute_name || 'N/A')}</p>
                             <p class="text-xs text-gray-500">${inst.institute_code || 'N/A'}</p>
                         </div>
-                     </td>
+                      </td>
                     <td class="px-6 py-4 text-sm text-gray-600">${inst.email || 'N/A'}</td>
                     <td class="px-6 py-4 text-sm text-gray-600">${inst.phone_number || 'N/A'}</td>
                     <td class="px-6 py-4">
                         <span class="px-2 py-1 rounded-full text-xs font-medium ${subStatus}">${subText}</span>
-                     </td>
+                      </td>
                     <td class="px-6 py-4 text-sm text-gray-500">${new Date(inst.created_at).toLocaleDateString()}</td>
                     <td class="px-6 py-4 text-center">
                         <button onclick="openPaymentModal('${inst.id}', '${escapeHtml(inst.institute_name)}')" 
                                 class="text-green-600 hover:text-green-800 mr-2" title="Add Subscription">
                             <i class="fas fa-money-bill-wave"></i>
                         </button>
+                        <button onclick="openEditSubscriptionModal('${inst.id}', '${escapeHtml(inst.institute_name)}', '${inst.subscription ? inst.subscription.id : ''}', '${inst.subscription ? inst.subscription.start_date : ''}', '${inst.subscription ? inst.subscription.expiry_date : ''}')" 
+                                class="text-blue-600 hover:text-blue-800 mr-2" title="Edit Dates">
+                            <i class="fas fa-calendar-edit"></i>
+                        </button>
                         <button onclick="viewInstitutionDetails('${inst.id}')" 
-                                class="text-blue-600 hover:text-blue-800" title="View Details">
+                                class="text-purple-600 hover:text-purple-800" title="View Details">
                             <i class="fas fa-eye"></i>
                         </button>
-                     </td>
+                      </td>
                 </tr>
             `;
         }).join('');
@@ -516,6 +601,10 @@
     function openPaymentModal(instituteId, instituteName) {
         document.getElementById('paymentInstituteId').value = instituteId;
         document.getElementById('paymentNotes').value = '';
+        document.getElementById('customDatesCheckbox').checked = false;
+        document.getElementById('customDatesSection').style.display = 'none';
+        document.getElementById('customStartDate').value = '';
+        document.getElementById('customExpiryDate').value = '';
         document.getElementById('paymentModal').classList.remove('hidden');
         document.getElementById('paymentModal').classList.add('flex');
         document.body.style.overflow = 'hidden';
@@ -525,6 +614,23 @@
     function closePaymentModal() {
         document.getElementById('paymentModal').classList.add('hidden');
         document.getElementById('paymentModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function openEditSubscriptionModal(instituteId, instituteName, subscriptionId, startDate, expiryDate) {
+        document.getElementById('editSubscriptionId').value = subscriptionId;
+        document.getElementById('editInstituteId').value = instituteId;
+        document.getElementById('editInstituteName').textContent = instituteName;
+        document.getElementById('editStartDate').value = startDate;
+        document.getElementById('editExpiryDate').value = expiryDate;
+        document.getElementById('editSubscriptionModal').classList.remove('hidden');
+        document.getElementById('editSubscriptionModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeEditSubscriptionModal() {
+        document.getElementById('editSubscriptionModal').classList.add('hidden');
+        document.getElementById('editSubscriptionModal').classList.remove('flex');
         document.body.style.overflow = '';
     }
 
@@ -543,6 +649,25 @@
         const instituteId = document.getElementById('paymentInstituteId').value;
         const months = parseInt(document.getElementById('paymentMonths').value);
         const notes = document.getElementById('paymentNotes').value;
+        const useCustomDates = document.getElementById('customDatesCheckbox').checked;
+        
+        const requestBody = {
+            institute_id: instituteId,
+            months: months,
+            notes: notes
+        };
+        
+        if (useCustomDates) {
+            const startDate = document.getElementById('customStartDate').value;
+            const expiryDate = document.getElementById('customExpiryDate').value;
+            
+            if (startDate) {
+                requestBody.start_date = startDate;
+            }
+            if (expiryDate) {
+                requestBody.expiry_date = expiryDate;
+            }
+        }
         
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
@@ -552,11 +677,7 @@
             const response = await fetch('/admin/api/institution/add-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    institute_id: instituteId,
-                    months: months,
-                    notes: notes
-                })
+                body: JSON.stringify(requestBody)
             });
             
             const result = await response.json();
@@ -575,6 +696,54 @@
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             showMessage('Failed to add subscription', 'error');
+        }
+    });
+
+    document.getElementById('editSubscriptionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const subscriptionId = document.getElementById('editSubscriptionId').value;
+        const instituteId = document.getElementById('editInstituteId').value;
+        const startDate = document.getElementById('editStartDate').value;
+        const expiryDate = document.getElementById('editExpiryDate').value;
+        
+        if (!startDate || !expiryDate) {
+            showMessage('Please enter both start and expiry dates', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/admin/api/institution/update-subscription', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    subscription_id: subscriptionId,
+                    institute_id: instituteId,
+                    start_date: startDate,
+                    expiry_date: expiryDate
+                })
+            });
+            
+            const result = await response.json();
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeEditSubscriptionModal();
+                showMessage(result.message, 'success');
+                loadInstitutions();
+                loadStats();
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to update subscription dates', 'error');
         }
     });
 
@@ -782,8 +951,10 @@
     window.onclick = function(event) {
         const modal = document.getElementById('paymentModal');
         const reportModal = document.getElementById('reportModal');
+        const editModal = document.getElementById('editSubscriptionModal');
         if (event.target === modal) closePaymentModal();
         if (event.target === reportModal) closeReportModal();
+        if (event.target === editModal) closeEditSubscriptionModal();
     };
 
     // Initialize

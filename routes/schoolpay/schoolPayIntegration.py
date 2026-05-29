@@ -1,4 +1,4 @@
-# schoolPayIntegration.py - SchoolPay Payment Gateway Integration (Updated with MD5 hash)
+# schoolPayIntegration.py - SchoolPay Payment Gateway Integration (Multi-Account Support)
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
 import os
@@ -53,27 +53,58 @@ def index():
     institute_id = get_institute_id(user['id'])
     
     if not institute_id:
-        return render_template('schoolpay/index.html', settings=None, institute_id=None)
+        return render_template('schoolpay/index.html', accounts=[], institute_id=None)
     
     try:
-        # Get SchoolPay settings for this institute
-        response = supabase.table('schoolpay_settings')\
+        # Get all SchoolPay accounts for this institute
+        response = supabase.table('schoolpay_accounts')\
             .select('*')\
             .eq('institute_id', institute_id)\
+            .order('created_at', desc=True)\
             .execute()
         
-        settings = response.data[0] if response.data else None
+        accounts = response.data if response.data else []
         
-        return render_template('schoolpay/index.html', settings=settings, institute_id=institute_id)
+        return render_template('schoolpay/index.html', accounts=accounts, institute_id=institute_id)
         
     except Exception as e:
-        print(f"Error loading SchoolPay settings: {e}")
-        return render_template('schoolpay/index.html', settings=None, institute_id=institute_id)
+        print(f"Error loading SchoolPay accounts: {e}")
+        return render_template('schoolpay/index.html', accounts=[], institute_id=institute_id)
 
-@schoolpay_bp.route('/api/settings/save', methods=['POST'])
+@schoolpay_bp.route('/api/accounts', methods=['GET'])
 @login_required
-def save_settings():
-    """Save SchoolPay API credentials"""
+def get_accounts():
+    """Get all SchoolPay accounts for the institute"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        response = supabase.table('schoolpay_accounts')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .order('created_at', desc=True)\
+            .execute()
+        
+        accounts = response.data if response.data else []
+        
+        # Mask sensitive data
+        for account in accounts:
+            if account.get('api_password'):
+                account['api_password'] = '••••••••'
+        
+        return jsonify({'success': True, 'accounts': accounts})
+        
+    except Exception as e:
+        print(f"Error getting accounts: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@schoolpay_bp.route('/api/accounts/create', methods=['POST'])
+@login_required
+def create_account():
+    """Create a new SchoolPay account"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -83,53 +114,156 @@ def save_settings():
     try:
         data = request.get_json()
         
-        settings_data = {
+        account_data = {
+            'id': str(uuid.uuid4()),
             'institute_id': institute_id,
+            'account_name': data.get('account_name', '').strip(),
             'school_code': data.get('school_code', '').strip(),
             'api_password': data.get('api_password', '').strip(),
+            'environment': data.get('environment', 'sandbox'),
+            'is_active': data.get('is_active', False),
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        # Validate required fields
+        if not account_data['account_name']:
+            return jsonify({'success': False, 'message': 'Account name is required'}), 400
+        
+        if not account_data['school_code']:
+            return jsonify({'success': False, 'message': 'School code is required'}), 400
+        
+        if not account_data['api_password']:
+            return jsonify({'success': False, 'message': 'API password is required'}), 400
+        
+        # Check if account name already exists for this institute
+        existing = supabase.table('schoolpay_accounts')\
+            .select('id')\
+            .eq('institute_id', institute_id)\
+            .eq('account_name', account_data['account_name'])\
+            .execute()
+        
+        if existing.data:
+            return jsonify({'success': False, 'message': 'Account name already exists'}), 400
+        
+        result = supabase.table('schoolpay_accounts').insert(account_data).execute()
+        
+        if result.data:
+            # Mask password in response
+            result.data[0]['api_password'] = '••••••••'
+            return jsonify({
+                'success': True, 
+                'message': 'SchoolPay account created successfully',
+                'account': result.data[0]
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to create account'}), 500
+            
+    except Exception as e:
+        print(f"Error creating SchoolPay account: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@schoolpay_bp.route('/api/accounts/<account_id>', methods=['PUT'])
+@login_required
+def update_account(account_id):
+    """Update a SchoolPay account"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        data = request.get_json()
+        
+        update_data = {
+            'account_name': data.get('account_name', '').strip(),
+            'school_code': data.get('school_code', '').strip(),
             'environment': data.get('environment', 'sandbox'),
             'is_active': data.get('is_active', False),
             'updated_at': datetime.now().isoformat()
         }
         
+        # Only update password if provided
+        if data.get('api_password') and data['api_password'] != '••••••••':
+            update_data['api_password'] = data['api_password']
+        
         # Validate required fields
-        if not settings_data['school_code']:
+        if not update_data['account_name']:
+            return jsonify({'success': False, 'message': 'Account name is required'}), 400
+        
+        if not update_data['school_code']:
             return jsonify({'success': False, 'message': 'School code is required'}), 400
         
-        if not settings_data['api_password']:
-            return jsonify({'success': False, 'message': 'API password is required'}), 400
-        
-        # Check if settings already exist
-        existing = supabase.table('schoolpay_settings')\
+        # Check if account exists
+        account_check = supabase.table('schoolpay_accounts')\
             .select('id')\
+            .eq('id', account_id)\
             .eq('institute_id', institute_id)\
             .execute()
         
-        if existing.data:
-            # Update existing
-            result = supabase.table('schoolpay_settings')\
-                .update(settings_data)\
-                .eq('institute_id', institute_id)\
-                .execute()
-        else:
-            # Insert new
-            settings_data['id'] = str(uuid.uuid4())
-            settings_data['created_at'] = datetime.now().isoformat()
-            result = supabase.table('schoolpay_settings').insert(settings_data).execute()
+        if not account_check.data:
+            return jsonify({'success': False, 'message': 'Account not found'}), 404
+        
+        result = supabase.table('schoolpay_accounts')\
+            .update(update_data)\
+            .eq('id', account_id)\
+            .execute()
         
         if result.data:
-            return jsonify({'success': True, 'message': 'SchoolPay settings saved successfully'})
+            # Mask password in response
+            result.data[0]['api_password'] = '••••••••'
+            return jsonify({
+                'success': True, 
+                'message': 'SchoolPay account updated successfully',
+                'account': result.data[0]
+            })
         else:
-            return jsonify({'success': False, 'message': 'Failed to save settings'}), 500
+            return jsonify({'success': False, 'message': 'Failed to update account'}), 500
             
     except Exception as e:
-        print(f"Error saving SchoolPay settings: {e}")
+        print(f"Error updating SchoolPay account: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@schoolpay_bp.route('/api/settings/test', methods=['POST'])
+@schoolpay_bp.route('/api/accounts/<account_id>', methods=['DELETE'])
 @login_required
-def test_connection():
-    """Test SchoolPay API connection using MD5 hash authentication"""
+def delete_account(account_id):
+    """Delete a SchoolPay account"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Check if account exists
+        account_check = supabase.table('schoolpay_accounts')\
+            .select('id')\
+            .eq('id', account_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if not account_check.data:
+            return jsonify({'success': False, 'message': 'Account not found'}), 404
+        
+        result = supabase.table('schoolpay_accounts')\
+            .delete()\
+            .eq('id', account_id)\
+            .execute()
+        
+        if result.data:
+            return jsonify({'success': True, 'message': 'Account deleted successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to delete account'}), 500
+            
+    except Exception as e:
+        print(f"Error deleting SchoolPay account: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@schoolpay_bp.route('/api/accounts/<account_id>/toggle', methods=['PUT'])
+@login_required
+def toggle_account(account_id):
+    """Toggle account active status"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -138,180 +272,91 @@ def test_connection():
     
     try:
         data = request.get_json()
-        school_code = data.get('school_code', '').strip()
-        api_password = data.get('api_password', '').strip()
-        environment = data.get('environment', 'sandbox')
+        is_active = data.get('is_active', False)
         
-        if not school_code:
-            return jsonify({'success': False, 'message': 'School code is required'}), 400
+        result = supabase.table('schoolpay_accounts')\
+            .update({
+                'is_active': is_active,
+                'updated_at': datetime.now().isoformat()
+            })\
+            .eq('id', account_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
         
-        if not api_password:
-            return jsonify({'success': False, 'message': 'API password is required'}), 400
+        if result.data:
+            status = 'activated' if is_active else 'deactivated'
+            return jsonify({'success': True, 'message': f'Account {status} successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Account not found'}), 404
+            
+    except Exception as e:
+        print(f"Error toggling account: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@schoolpay_bp.route('/api/accounts/test', methods=['POST'])
+@login_required
+def test_connection():
+    """Test SchoolPay API connection for a specific account"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        data = request.get_json()
+        account_id = data.get('account_id')
+        
+        if not account_id:
+            return jsonify({'success': False, 'message': 'Account ID required'}), 400
+        
+        # Get account details
+        account_response = supabase.table('schoolpay_accounts')\
+            .select('*')\
+            .eq('id', account_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if not account_response.data:
+            return jsonify({'success': False, 'message': 'Account not found'}), 404
+        
+        account = account_response.data[0]
         
         # Use today's date for testing
         test_date = datetime.now().strftime('%Y-%m-%d')
         
         # Generate MD5 hash as per SchoolPay specification
-        # MD5(SchoolCode + Date + Password)
-        hash_input = school_code + test_date + api_password
+        hash_input = account['school_code'] + test_date + account['api_password']
         request_hash = hashlib.md5(hash_input.encode()).hexdigest().upper()
         
         # Determine API base URL
-        if environment == 'production':
+        if account['environment'] == 'production':
             base_url = "https://schoolpay.co.ug/paymentapi"
         else:
-            base_url = "https://schoolpay.co.ug/paymentapi"  # Sandbox URL (same for now)
+            base_url = "https://schoolpay.co.ug/paymentapi"
         
         # Test endpoint: Get transactions for a specific date
-        test_url = f"{base_url}/AndroidRS/SyncSchoolTransactions/{school_code}/{test_date}/{request_hash}"
+        test_url = f"{base_url}/AndroidRS/SyncSchoolTransactions/{account['school_code']}/{test_date}/{request_hash}"
         
-        print(f"Testing SchoolPay connection...")
+        print(f"Testing SchoolPay connection for account: {account['account_name']}")
         print(f"URL: {test_url}")
-        print(f"Hash Input: {hash_input}")
-        print(f"Generated Hash: {request_hash}")
         
-        # Make test request
         response = requests.get(test_url, timeout=30)
         
-        print(f"Response Status: {response.status_code}")
-        print(f"Response Body: {response.text[:500] if response.text else 'Empty'}")
-        
         if response.status_code == 200:
-            try:
-                response_data = response.json()
-                # Check if the response indicates success
-                if isinstance(response_data, dict):
-                    if response_data.get('status') == 'success' or 'data' in response_data:
-                        return jsonify({
-                            'success': True, 
-                            'message': 'Connection successful! API credentials are valid.',
-                            'data': response_data
-                        })
-                    else:
-                        return jsonify({
-                            'success': True, 
-                            'message': 'Connection successful! API responded.',
-                            'data': response_data
-                        })
-                else:
-                    return jsonify({
-                        'success': True, 
-                        'message': 'Connection successful! API credentials are valid.',
-                        'data': response_data
-                    })
-            except json.JSONDecodeError:
-                # If response is not JSON but status is 200, it might still be valid
-                return jsonify({
-                    'success': True, 
-                    'message': 'Connection successful! API responded with status 200.'
-                })
+            return jsonify({
+                'success': True, 
+                'message': f'Connection successful for account "{account["account_name"]}"!'
+            })
         elif response.status_code == 401:
             return jsonify({'success': False, 'message': 'Authentication failed. Invalid school code or password.'}), 400
-        elif response.status_code == 404:
-            return jsonify({'success': False, 'message': 'API endpoint not found. Please check your environment settings.'}), 400
         else:
             return jsonify({'success': False, 'message': f'Connection failed. Status code: {response.status_code}'}), 400
             
     except requests.exceptions.Timeout:
         return jsonify({'success': False, 'message': 'Connection timeout. Please check your network.'}), 400
     except requests.exceptions.ConnectionError:
-        return jsonify({'success': False, 'message': 'Cannot connect to SchoolPay API. Please check your internet connection.'}), 400
+        return jsonify({'success': False, 'message': 'Cannot connect to SchoolPay API.'}), 400
     except Exception as e:
         print(f"Error testing connection: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@schoolpay_bp.route('/api/settings/test-range', methods=['POST'])
-@login_required
-def test_date_range():
-    """Test SchoolPay API with date range"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
-    
-    if not institute_id:
-        return jsonify({'success': False, 'message': 'Institute not found'}), 400
-    
-    try:
-        data = request.get_json()
-        school_code = data.get('school_code', '').strip()
-        api_password = data.get('api_password', '').strip()
-        environment = data.get('environment', 'sandbox')
-        from_date = data.get('from_date', '')
-        to_date = data.get('to_date', '')
-        
-        if not school_code:
-            return jsonify({'success': False, 'message': 'School code is required'}), 400
-        
-        if not api_password:
-            return jsonify({'success': False, 'message': 'API password is required'}), 400
-        
-        if not from_date or not to_date:
-            # Default to last 7 days
-            to_date = datetime.now().strftime('%Y-%m-%d')
-            from_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-        
-        # Generate MD5 hash for date range
-        # MD5(SchoolCode + FromDate + Password)
-        hash_input = school_code + from_date + api_password
-        request_hash = hashlib.md5(hash_input.encode()).hexdigest().upper()
-        
-        # Determine API base URL
-        if environment == 'production':
-            base_url = "https://schoolpay.co.ug/paymentapi"
-        else:
-            base_url = "https://schoolpay.co.ug/paymentapi"
-        
-        # Test endpoint: Get transactions for date range
-        test_url = f"{base_url}/AndroidRS/SchoolRangeTransactions/{school_code}/{from_date}/{to_date}/{request_hash}"
-        
-        print(f"Testing SchoolPay date range...")
-        print(f"URL: {test_url}")
-        
-        response = requests.get(test_url, timeout=30)
-        
-        if response.status_code == 200:
-            try:
-                response_data = response.json()
-                return jsonify({
-                    'success': True,
-                    'message': 'Date range test successful!',
-                    'data': response_data
-                })
-            except json.JSONDecodeError:
-                return jsonify({
-                    'success': True,
-                    'message': 'Date range test successful!'
-                })
-        else:
-            return jsonify({'success': False, 'message': f'Test failed. Status code: {response.status_code}'}), 400
-            
-    except Exception as e:
-        print(f"Error testing date range: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@schoolpay_bp.route('/api/settings/credentials', methods=['GET'])
-@login_required
-def get_credentials():
-    """Get SchoolPay credentials (masked)"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
-    
-    if not institute_id:
-        return jsonify({'success': False, 'message': 'Institute not found'}), 400
-    
-    try:
-        response = supabase.table('schoolpay_settings')\
-            .select('school_code, environment, is_active')\
-            .eq('institute_id', institute_id)\
-            .execute()
-        
-        if response.data:
-            settings = response.data[0]
-            # Mask the password (don't send it back)
-            settings['api_password'] = '••••••••'
-            return jsonify({'success': True, 'settings': settings})
-        else:
-            return jsonify({'success': True, 'settings': None})
-            
-    except Exception as e:
-        print(f"Error getting credentials: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500

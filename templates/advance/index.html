@@ -1,0 +1,1078 @@
+<!-- templates/advance/index.html - UPDATED with direct create advance button -->
+{% extends "base.html" %}
+
+{% block title %}Employee Advances - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    
+    .btn-outline {
+        border: 2px solid #ffa500;
+        color: #ffa500;
+        background: transparent;
+    }
+    
+    .btn-outline:hover {
+        background: #ffa500;
+        color: white;
+    }
+    
+    /* Live search styles */
+    .employee-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.2s;
+    }
+    
+    .employee-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    
+    .employee-card.selected {
+        border: 2px solid #ffa500;
+        background-color: #fffaf0;
+    }
+    
+    .create-advance-btn {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .create-advance-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    
+    .advance-history-item {
+        border-left: 3px solid #ffa500;
+        transition: all 0.2s;
+    }
+    
+    .advance-history-item:hover {
+        background-color: #f9fafb;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .status-active {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+    
+    .status-completed {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    
+    .progress-bar {
+        background-color: #f3f4f6;
+        border-radius: 10px;
+        overflow: hidden;
+        height: 8px;
+    }
+    
+    .progress-fill {
+        background: linear-gradient(90deg, #ffa500, #ff8c00);
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    
+    /* Floating action button */
+    .fab-create {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        cursor: pointer;
+        transition: all 0.2s;
+        z-index: 40;
+    }
+    
+    .fab-create:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
+    }
+    
+    /* Modal animations */
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    .modal-container {
+        animation: slideUp 0.3s ease-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header with Create Button -->
+    <div class="mb-6 flex justify-between items-center flex-wrap gap-3">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Employee Advances</h1>
+            <p class="text-sm text-gray-600">Manage employee salary advances and automatic deductions</p>
+        </div>
+        <button onclick="openCreateAdvanceModal()" class="create-advance-btn px-5 py-2.5">
+            <i class="fas fa-plus-circle mr-2"></i> New Advance
+        </button>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="stats-grid grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Total Outstanding</p>
+                    <p class="text-2xl font-bold text-orange-600" id="totalOutstanding">UGX 0</p>
+                </div>
+                <div class="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-coins text-orange-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Active Advances</p>
+                    <p class="text-2xl font-bold text-gray-800" id="activeCount">0</p>
+                </div>
+                <div class="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-chart-line text-blue-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Total Advanced</p>
+                    <p class="text-2xl font-bold text-gray-800" id="totalAdvanced">UGX 0</p>
+                </div>
+                <div class="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-arrow-up text-green-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Total Repaid</p>
+                    <p class="text-2xl font-bold text-gray-800" id="totalRepaid">UGX 0</p>
+                </div>
+                <div class="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-arrow-down text-purple-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Employee Search & Selection -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+        <div class="bg-gradient-to-r from-orange-500 to-orange-600 px-5 py-3">
+            <h2 class="text-white font-semibold"><i class="fas fa-search mr-2"></i> Find Employee</h2>
+        </div>
+        <div class="p-5">
+            <div class="relative">
+                <input type="text" id="searchInput" 
+                       placeholder="Search by name or employee ID..." 
+                       class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                <div id="searchLoading" class="absolute right-3 top-3 hidden">
+                    <div class="animate-spin h-5 w-5 border-2 border-orange-500 border-t-transparent rounded-full"></div>
+                </div>
+            </div>
+            
+            <div id="searchResults" class="mt-4 max-h-96 overflow-y-auto">
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-users text-4xl mb-2 opacity-50"></i>
+                    <p class="text-sm">Start typing to search for employees</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Employee Details & Advance History -->
+    <div id="employeeDetailsSection" class="hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Employee Info Card -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3 flex justify-between items-center">
+                    <h2 class="text-white font-semibold"><i class="fas fa-user-circle mr-2"></i> Employee Details</h2>
+                    <button onclick="closeEmployeeDetails()" class="text-white hover:text-gray-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-5" id="employeeInfo"></div>
+            </div>
+            
+            <!-- Quick Create Advance Card -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-gradient-to-r from-green-500 to-green-600 px-5 py-3">
+                    <h2 class="text-white font-semibold"><i class="fas fa-hand-holding-usd mr-2"></i> Create Advance</h2>
+                </div>
+                <div class="p-5">
+                    <form id="quickAdvanceForm">
+                        <input type="hidden" id="quickAdvanceEmployeeId">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Advance Amount (UGX)</label>
+                                <input type="number" id="quickAdvanceAmount" required step="1000" min="1000"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Advance Month</label>
+                                <input type="month" id="quickAdvanceMonth" required 
+                                       value="{{ now.strftime('%Y-%m') }}"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Repayment Period (Months)</label>
+                                <select id="quickRepaymentMonths" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                                    <option value="1">1 month</option>
+                                    <option value="2">2 months</option>
+                                    <option value="3">3 months</option>
+                                    <option value="4">4 months</option>
+                                    <option value="5">5 months</option>
+                                    <option value="6">6 months</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Monthly Deduction</label>
+                                <div class="text-lg font-semibold text-orange-600" id="quickMonthlyDeductionPreview">UGX 0</div>
+                                <p class="text-xs text-gray-500 mt-1" id="quickSalaryLimitWarning"></p>
+                            </div>
+                            
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                                <input type="text" id="quickAdvancePurpose" 
+                                       placeholder="e.g., School fees, Medical expenses, Emergency advance"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                            </div>
+                            
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+                                <textarea id="quickAdvanceNotes" rows="2" 
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn-gradient px-5 py-2 rounded-lg text-white font-medium w-full mt-4">
+                            <i class="fas fa-plus-circle mr-2"></i> Create Advance for this Employee
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Advance History -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-5 py-3">
+                <h2 class="text-white font-semibold"><i class="fas fa-history mr-2"></i> Advance History</h2>
+            </div>
+            <div id="advanceHistory" class="p-5"></div>
+        </div>
+    </div>
+    
+    <!-- Active Advances Summary Table -->
+    <div class="mt-6 bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-5 py-3">
+            <h2 class="text-white font-semibold"><i class="fas fa-list mr-2"></i> All Active Advances</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remaining</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monthly Deduction</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="activeAdvancesTable" class="divide-y divide-gray-200"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create Advance Modal (for creating advance without selecting employee first) -->
+<div id="createAdvanceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 modal-container max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+            <h2 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-hand-holding-usd text-green-500 mr-2"></i>Create New Advance
+            </h2>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <form id="modalAdvanceForm">
+                <!-- Employee Selection -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Employee *</label>
+                    <div class="relative">
+                        <input type="text" id="modalEmployeeSearch" 
+                               placeholder="Search employee by name or ID..."
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                        <div id="modalSearchResults" class="absolute z-10 w-full bg-white border rounded-lg mt-1 max-h-48 overflow-y-auto hidden shadow-lg"></div>
+                    </div>
+                    <input type="hidden" id="modalEmployeeId" required>
+                    <div id="selectedEmployeeDisplay" class="mt-2 hidden">
+                        <div class="bg-green-50 p-3 rounded-lg">
+                            <p class="text-sm text-green-800">
+                                <i class="fas fa-check-circle"></i> Selected: <strong id="selectedEmployeeNameDisplay"></strong>
+                            </p>
+                            <p class="text-xs text-green-600 mt-1" id="selectedEmployeeSalary"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Advance Amount (UGX) *</label>
+                        <input type="number" id="modalAdvanceAmount" required step="1000" min="1000"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Advance Month *</label>
+                        <input type="month" id="modalAdvanceMonth" required 
+                               value="{{ now.strftime('%Y-%m') }}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Repayment Period (Months)</label>
+                        <select id="modalRepaymentMonths" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                            <option value="1">1 month</option>
+                            <option value="2">2 months</option>
+                            <option value="3">3 months</option>
+                            <option value="4">4 months</option>
+                            <option value="5">5 months</option>
+                            <option value="6">6 months</option>
+                            <option value="12">12 months</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Monthly Deduction</label>
+                        <div class="text-xl font-bold text-orange-600" id="modalMonthlyDeductionPreview">UGX 0</div>
+                        <p class="text-xs text-gray-500 mt-1" id="modalSalaryLimitWarning"></p>
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                        <input type="text" id="modalAdvancePurpose" 
+                               placeholder="e.g., School fees, Medical expenses, Emergency advance"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+                        <textarea id="modalAdvanceNotes" rows="3" 
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium flex-1">
+                        <i class="fas fa-save mr-2"></i> Create Advance
+                    </button>
+                    <button type="button" onclick="closeModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 modal-container">
+        <div class="p-6 text-center">
+            <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check-circle text-3xl text-green-500"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">Advance Created Successfully!</h3>
+            <div id="successMessage" class="text-gray-600 mb-4"></div>
+            <div id="successDetails" class="bg-gray-50 rounded-lg p-3 text-left text-sm mb-4"></div>
+            <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium w-full">
+                Continue
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Action Button for Mobile -->
+<div class="fab-create" onclick="openCreateAdvanceModal()">
+    <i class="fas fa-plus fa-lg"></i>
+</div>
+
+<script>
+    let selectedEmployeeData = null;
+    let currentEmployees = [];
+    let modalSearchTimeout;
+    let modalEmployees = [];
+    
+    // Live search for main page
+    let searchTimeout;
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const searchLoading = document.getElementById('searchLoading');
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            searchResults.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-users text-4xl mb-2 opacity-50"></i>
+                    <p class="text-sm">Type at least 2 characters to search</p>
+                </div>
+            `;
+            return;
+        }
+        
+        searchTimeout = setTimeout(() => performSearch(query), 500);
+    });
+    
+    async function performSearch(query) {
+        searchLoading.classList.remove('hidden');
+        searchResults.innerHTML = '<div class="text-center py-4"><div class="animate-spin h-8 w-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"></div></div>';
+        
+        try {
+            const response = await fetch(`/advance/api/live-search?q=${encodeURIComponent(query)}`);
+            const result = await response.json();
+            
+            searchLoading.classList.add('hidden');
+            
+            if (result.success && result.employees.length > 0) {
+                currentEmployees = result.employees;
+                displaySearchResults(result.employees);
+            } else {
+                searchResults.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-user-slash text-4xl mb-2 opacity-50"></i>
+                        <p class="text-sm">No employees found matching "${escapeHtml(query)}"</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+            searchLoading.classList.add('hidden');
+            searchResults.innerHTML = `
+                <div class="text-center text-red-500 py-8">
+                    <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                    <p class="text-sm">Error searching employees</p>
+                </div>
+            `;
+        }
+    }
+    
+    function displaySearchResults(employees) {
+        searchResults.innerHTML = employees.map(emp => `
+            <div class="employee-card" onclick="selectEmployee('${emp.id}')">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-semibold text-gray-800">${escapeHtml(emp.name)}</h3>
+                        <p class="text-sm text-gray-500">ID: ${emp.employee_id || 'N/A'} • ${formatRole(emp.role)}</p>
+                        <p class="text-sm font-medium text-gray-700 mt-1">Salary: UGX ${formatCurrency(emp.monthly_salary)}</p>
+                    </div>
+                    <div class="text-right">
+                        ${emp.current_balance > 0 ? `
+                            <span class="status-badge status-active text-xs">Balance: UGX ${formatCurrency(emp.current_balance)}</span>
+                        ` : `
+                            <span class="text-xs text-green-600"><i class="fas fa-check-circle"></i> No advances</span>
+                        `}
+                    </div>
+                </div>
+                ${emp.current_balance > 0 ? `
+                    <div class="mt-2">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${(emp.total_repaid / emp.total_advances * 100)}%"></div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">${formatCurrency(emp.total_repaid)} repaid of ${formatCurrency(emp.total_advances)}</p>
+                    </div>
+                ` : ''}
+                <div class="mt-3">
+                    <button class="text-green-600 text-sm hover:text-green-700" onclick="event.stopPropagation(); openCreateAdvanceForEmployee('${emp.id}', '${escapeHtml(emp.name)}', ${emp.monthly_salary})">
+                        <i class="fas fa-hand-holding-usd"></i> Create Advance
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    async function selectEmployee(employeeId) {
+        const employee = currentEmployees.find(e => e.id === employeeId);
+        if (!employee) return;
+        
+        selectedEmployeeData = employee;
+        
+        // Show employee details section
+        document.getElementById('employeeDetailsSection').classList.remove('hidden');
+        
+        // Display employee info
+        document.getElementById('employeeInfo').innerHTML = `
+            <div class="flex items-start gap-4">
+                <div class="h-16 w-16 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                    ${employee.name.charAt(0).toUpperCase()}
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-bold text-gray-800">${escapeHtml(employee.name)}</h3>
+                    <p class="text-sm text-gray-500">Employee ID: ${employee.employee_id || 'N/A'}</p>
+                    <p class="text-sm text-gray-500">Role: ${formatRole(employee.role)}</p>
+                    <p class="text-sm font-semibold text-gray-700 mt-2">Monthly Salary: UGX ${formatCurrency(employee.monthly_salary)}</p>
+                    <div class="mt-3 pt-3 border-t">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Total Advances:</span>
+                            <span class="font-medium">UGX ${formatCurrency(employee.total_advances || 0)}</span>
+                        </div>
+                        <div class="flex justify-between text-sm mt-1">
+                            <span class="text-gray-600">Total Repaid:</span>
+                            <span class="font-medium text-green-600">UGX ${formatCurrency(employee.total_repaid || 0)}</span>
+                        </div>
+                        <div class="flex justify-between text-sm mt-1">
+                            <span class="text-gray-600">Current Balance:</span>
+                            <span class="font-medium text-orange-600">UGX ${formatCurrency(employee.current_balance || 0)}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Set up quick advance form
+        setupQuickAdvanceForm(employee);
+        
+        // Load advance history
+        await loadEmployeeAdvanceHistory(employee.id);
+        
+        // Scroll to employee details
+        document.getElementById('employeeDetailsSection').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    function setupQuickAdvanceForm(employee) {
+        document.getElementById('quickAdvanceEmployeeId').value = employee.id;
+        
+        // Update monthly deduction preview
+        const amountInput = document.getElementById('quickAdvanceAmount');
+        const monthsSelect = document.getElementById('quickRepaymentMonths');
+        
+        const updateDeduction = () => {
+            const amount = parseFloat(amountInput.value) || 0;
+            const months = parseInt(monthsSelect.value) || 1;
+            const monthlyDeduction = amount / months;
+            const maxAllowed = employee.monthly_salary * 0.5;
+            
+            document.getElementById('quickMonthlyDeductionPreview').textContent = `UGX ${formatCurrency(monthlyDeduction)}`;
+            
+            const warningSpan = document.getElementById('quickSalaryLimitWarning');
+            if (monthlyDeduction > maxAllowed && maxAllowed > 0) {
+                warningSpan.innerHTML = `<span class="text-red-500">⚠️ Exceeds 50% of salary (Max: UGX ${formatCurrency(maxAllowed)})</span>`;
+            } else if (amount > 0) {
+                warningSpan.innerHTML = `<span class="text-green-600">✓ Within salary limit</span>`;
+            } else {
+                warningSpan.innerHTML = '';
+            }
+        };
+        
+        amountInput.addEventListener('input', updateDeduction);
+        monthsSelect.addEventListener('change', updateDeduction);
+        
+        // Reset form
+        amountInput.value = '';
+        document.getElementById('quickAdvanceMonth').value = new Date().toISOString().slice(0, 7);
+        document.getElementById('quickAdvancePurpose').value = '';
+        document.getElementById('quickAdvanceNotes').value = '';
+        updateDeduction();
+    }
+    
+    // Quick advance form submission
+    document.getElementById('quickAdvanceForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await createAdvance({
+            employee_id: document.getElementById('quickAdvanceEmployeeId').value,
+            advance_amount: parseFloat(document.getElementById('quickAdvanceAmount').value),
+            advance_month: document.getElementById('quickAdvanceMonth').value,
+            repayment_months: parseInt(document.getElementById('quickRepaymentMonths').value),
+            purpose: document.getElementById('quickAdvancePurpose').value,
+            notes: document.getElementById('quickAdvanceNotes').value
+        });
+    });
+    
+    // Modal advance form submission
+    document.getElementById('modalAdvanceForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await createAdvance({
+            employee_id: document.getElementById('modalEmployeeId').value,
+            advance_amount: parseFloat(document.getElementById('modalAdvanceAmount').value),
+            advance_month: document.getElementById('modalAdvanceMonth').value,
+            repayment_months: parseInt(document.getElementById('modalRepaymentMonths').value),
+            purpose: document.getElementById('modalAdvancePurpose').value,
+            notes: document.getElementById('modalAdvanceNotes').value
+        });
+    });
+    
+    async function createAdvance(advanceData) {
+        if (!advanceData.employee_id) {
+            showMessage('Please select an employee', 'error');
+            return;
+        }
+        
+        if (advanceData.advance_amount <= 0) {
+            showMessage('Please enter a valid advance amount', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/advance/api/create-advance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(advanceData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                document.getElementById('successMessage').innerHTML = result.message;
+                document.getElementById('successDetails').innerHTML = `
+                    <div><strong>Monthly Deduction:</strong> UGX ${formatCurrency(result.monthly_deduction)}</div>
+                    <div><strong>Advance Month:</strong> ${advanceData.advance_month}</div>
+                    <div><strong>Repayment Period:</strong> ${advanceData.repayment_months} month(s)</div>
+                `;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                
+                // Refresh data
+                loadAdvanceSummary();
+                if (selectedEmployeeData) {
+                    await loadEmployeeAdvanceHistory(selectedEmployeeData.id);
+                }
+                
+                // Close modal if open
+                closeModal();
+                
+                // Reset forms
+                if (document.getElementById('quickAdvanceForm')) {
+                    document.getElementById('quickAdvanceAmount').value = '';
+                    document.getElementById('quickAdvancePurpose').value = '';
+                }
+            } else {
+                showMessage(result.message || 'Failed to create advance', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Failed to create advance: ' + error.message, 'error');
+        }
+    }
+    
+    async function loadEmployeeAdvanceHistory(employeeId) {
+        const historyDiv = document.getElementById('advanceHistory');
+        historyDiv.innerHTML = '<div class="text-center py-4"><div class="animate-spin h-8 w-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"></div></div>';
+        
+        try {
+            const response = await fetch(`/advance/api/employees/${employeeId}/advances`);
+            const result = await response.json();
+            
+            if (result.success) {
+                displayAdvanceHistory(result.advances);
+            } else {
+                historyDiv.innerHTML = `
+                    <div class="text-center text-red-500 py-8">
+                        <i class="fas fa-exclamation-circle text-4xl mb-2"></i>
+                        <p class="text-sm">Failed to load advance history</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading history:', error);
+            historyDiv.innerHTML = `
+                <div class="text-center text-red-500 py-8">
+                    <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                    <p class="text-sm">Error loading advance history</p>
+                </div>
+            `;
+        }
+    }
+    
+    function displayAdvanceHistory(advances) {
+        const historyDiv = document.getElementById('advanceHistory');
+        
+        if (!advances || advances.length === 0) {
+            historyDiv.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-receipt text-4xl mb-2 opacity-50"></i>
+                    <p class="text-sm">No advance history for this employee</p>
+                </div>
+            `;
+            return;
+        }
+        
+        historyDiv.innerHTML = advances.map(advance => `
+            <div class="advance-history-item p-4 mb-3 bg-white rounded-lg border">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <p class="font-semibold text-gray-800 text-lg">UGX ${formatCurrency(advance.advance_amount)}</p>
+                        <p class="text-xs text-gray-500">${advance.advance_month}</p>
+                    </div>
+                    <span class="status-badge ${advance.status === 'active' ? 'status-active' : 'status-completed'}">
+                        ${advance.status === 'active' ? 'Active' : 'Completed'}
+                    </span>
+                </div>
+                
+                ${advance.purpose ? `<p class="text-sm text-gray-600 mb-2"><i class="fas fa-tag text-xs"></i> ${escapeHtml(advance.purpose)}</p>` : ''}
+                
+                <div class="mb-2">
+                    <div class="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>Repaid: UGX ${formatCurrency(advance.repaid_amount)}</span>
+                        <span>Remaining: UGX ${formatCurrency(advance.remaining_amount)}</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${(advance.repaid_amount / advance.advance_amount * 100)}%"></div>
+                    </div>
+                </div>
+                
+                <div class="text-xs text-gray-500 grid grid-cols-2 gap-2 mt-2">
+                    <div><i class="fas fa-calendar-alt"></i> Monthly: UGX ${formatCurrency(advance.monthly_deduction)}</div>
+                    <div><i class="fas fa-clock"></i> ${advance.repayment_start_month} to ${advance.repayment_end_month}</div>
+                </div>
+                
+                ${advance.payments && advance.payments.length > 0 ? `
+                    <details class="mt-2">
+                        <summary class="text-xs text-orange-500 cursor-pointer">Payment History (${advance.payments.length})</summary>
+                        <div class="mt-2 pl-2 border-l-2 border-orange-200 space-y-1">
+                            ${advance.payments.map(payment => `
+                                <div class="text-xs py-1 flex justify-between">
+                                    <span>${payment.payment_month}</span>
+                                    <span class="font-medium">UGX ${formatCurrency(payment.amount)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </details>
+                ` : ''}
+            </div>
+        `).join('');
+    }
+    
+    function closeEmployeeDetails() {
+        document.getElementById('employeeDetailsSection').classList.add('hidden');
+        selectedEmployeeData = null;
+    }
+    
+    function openCreateAdvanceModal() {
+        document.getElementById('createAdvanceModal').classList.remove('hidden');
+        document.getElementById('createAdvanceModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        
+        // Setup modal search
+        setupModalSearch();
+        
+        // Reset modal form
+        document.getElementById('modalAdvanceAmount').value = '';
+        document.getElementById('modalAdvanceMonth').value = new Date().toISOString().slice(0, 7);
+        document.getElementById('modalRepaymentMonths').value = '1';
+        document.getElementById('modalAdvancePurpose').value = '';
+        document.getElementById('modalAdvanceNotes').value = '';
+        document.getElementById('modalEmployeeId').value = '';
+        document.getElementById('selectedEmployeeDisplay').classList.add('hidden');
+        
+        // Update deduction preview
+        updateModalDeduction();
+        
+        // Add event listeners
+        document.getElementById('modalAdvanceAmount').addEventListener('input', updateModalDeduction);
+        document.getElementById('modalRepaymentMonths').addEventListener('change', updateModalDeduction);
+    }
+    
+    function openCreateAdvanceForEmployee(employeeId, employeeName, salary) {
+        openCreateAdvanceModal();
+        document.getElementById('modalEmployeeId').value = employeeId;
+        document.getElementById('selectedEmployeeNameDisplay').innerHTML = employeeName;
+        document.getElementById('selectedEmployeeSalary').innerHTML = `Monthly Salary: UGX ${formatCurrency(salary)}`;
+        document.getElementById('selectedEmployeeDisplay').classList.remove('hidden');
+        document.getElementById('modalEmployeeSearch').value = employeeName;
+        updateModalDeductionWithSalary(salary);
+    }
+    
+    function setupModalSearch() {
+        const searchInput = document.getElementById('modalEmployeeSearch');
+        const resultsDiv = document.getElementById('modalSearchResults');
+        
+        searchInput.addEventListener('input', function() {
+            clearTimeout(modalSearchTimeout);
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                resultsDiv.classList.add('hidden');
+                return;
+            }
+            
+            modalSearchTimeout = setTimeout(() => performModalSearch(query), 500);
+        });
+    }
+    
+    async function performModalSearch(query) {
+        const resultsDiv = document.getElementById('modalSearchResults');
+        
+        try {
+            const response = await fetch(`/advance/api/live-search?q=${encodeURIComponent(query)}&limit=10`);
+            const result = await response.json();
+            
+            if (result.success && result.employees.length > 0) {
+                modalEmployees = result.employees;
+                resultsDiv.innerHTML = result.employees.map(emp => `
+                    <div onclick="selectModalEmployee('${emp.id}', '${escapeHtml(emp.name)}', ${emp.monthly_salary})" 
+                         class="p-2 hover:bg-orange-50 cursor-pointer border-b">
+                        <div class="font-medium">${escapeHtml(emp.name)}</div>
+                        <div class="text-xs text-gray-500">${emp.employee_id || 'N/A'} • Salary: UGX ${formatCurrency(emp.monthly_salary)}</div>
+                    </div>
+                `).join('');
+                resultsDiv.classList.remove('hidden');
+            } else {
+                resultsDiv.innerHTML = '<div class="p-2 text-gray-500 text-sm">No employees found</div>';
+                resultsDiv.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Modal search error:', error);
+            resultsDiv.innerHTML = '<div class="p-2 text-red-500 text-sm">Error searching</div>';
+            resultsDiv.classList.remove('hidden');
+        }
+    }
+    
+    function selectModalEmployee(employeeId, employeeName, salary) {
+        document.getElementById('modalEmployeeId').value = employeeId;
+        document.getElementById('modalEmployeeSearch').value = employeeName;
+        document.getElementById('selectedEmployeeNameDisplay').innerHTML = employeeName;
+        document.getElementById('selectedEmployeeSalary').innerHTML = `Monthly Salary: UGX ${formatCurrency(salary)}`;
+        document.getElementById('selectedEmployeeDisplay').classList.remove('hidden');
+        document.getElementById('modalSearchResults').classList.add('hidden');
+        updateModalDeductionWithSalary(salary);
+    }
+    
+    function updateModalDeduction() {
+        const employeeId = document.getElementById('modalEmployeeId').value;
+        if (!employeeId) return;
+        
+        const employee = modalEmployees.find(e => e.id === employeeId);
+        if (employee) {
+            updateModalDeductionWithSalary(employee.monthly_salary);
+        }
+    }
+    
+    function updateModalDeductionWithSalary(salary) {
+        const amount = parseFloat(document.getElementById('modalAdvanceAmount').value) || 0;
+        const months = parseInt(document.getElementById('modalRepaymentMonths').value) || 1;
+        const monthlyDeduction = amount / months;
+        const maxAllowed = salary * 0.5;
+        
+        document.getElementById('modalMonthlyDeductionPreview').textContent = `UGX ${formatCurrency(monthlyDeduction)}`;
+        
+        const warningSpan = document.getElementById('modalSalaryLimitWarning');
+        if (monthlyDeduction > maxAllowed && maxAllowed > 0) {
+            warningSpan.innerHTML = `<span class="text-red-500">⚠️ Monthly deduction exceeds 50% of salary (Max: UGX ${formatCurrency(maxAllowed)})</span>`;
+        } else if (amount > 0) {
+            warningSpan.innerHTML = `<span class="text-green-600">✓ Within salary limit (Max 50% of salary)</span>`;
+        } else {
+            warningSpan.innerHTML = '';
+        }
+    }
+    
+    function closeModal() {
+        document.getElementById('createAdvanceModal').classList.add('hidden');
+        document.getElementById('createAdvanceModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        
+        // Refresh all data
+        loadAdvanceSummary();
+        if (selectedEmployeeData) {
+            loadEmployeeAdvanceHistory(selectedEmployeeData.id);
+        }
+    }
+    
+    async function loadAdvanceSummary() {
+        try {
+            const response = await fetch('/advance/api/summary');
+            const result = await response.json();
+            
+            if (result.success) {
+                document.getElementById('totalOutstanding').textContent = `UGX ${formatCurrency(result.summary.total_outstanding)}`;
+                document.getElementById('activeCount').textContent = result.summary.active_advances_count;
+                document.getElementById('totalAdvanced').textContent = `UGX ${formatCurrency(result.summary.total_advanced)}`;
+                document.getElementById('totalRepaid').textContent = `UGX ${formatCurrency(result.summary.total_repaid)}`;
+                
+                displayActiveAdvances(result.active_advances);
+            }
+        } catch (error) {
+            console.error('Error loading summary:', error);
+        }
+    }
+    
+    function displayActiveAdvances(advances) {
+        const tbody = document.getElementById('activeAdvancesTable');
+        
+        if (!advances || advances.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                        <i class="fas fa-check-circle text-green-500 text-2xl mb-2 block"></i>
+                        No active advances
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = advances.map(advance => {
+            const progress = (advance.repaid_amount / advance.advance_amount * 100);
+            const employee = advance.employees || {};
+            
+            return `
+                <tr>
+                    <td class="px-6 py-4">
+                        <div class="font-medium text-gray-800">${escapeHtml(employee.name || 'N/A')}</div>
+                        <div class="text-xs text-gray-500">${employee.employee_id || 'N/A'}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm">UGX ${formatCurrency(advance.advance_amount)}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-orange-600">UGX ${formatCurrency(advance.remaining_amount)}</td>
+                    <td class="px-6 py-4 text-sm">UGX ${formatCurrency(advance.monthly_deduction)}</td>
+                    <td class="px-6 py-4">
+                        <div class="w-32">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${progress}%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">${progress.toFixed(0)}% repaid</p>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="status-badge status-active">Active</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <button onclick="selectEmployee('${advance.employee_id}')" class="text-orange-500 hover:text-orange-600 text-sm">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    function showMessage(message, type) {
+        const toast = document.createElement('div');
+        toast.className = `fixed bottom-20 right-4 bg-${type === 'success' ? 'green' : 'red'}-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 animate-fade-in`;
+        toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>${message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    }
+    
+    function formatCurrency(amount) {
+        return (amount || 0).toLocaleString();
+    }
+    
+    function formatRole(role) {
+        if (!role) return 'Staff';
+        return role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Initial load
+    loadAdvanceSummary();
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('createAdvanceModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+        const successModal = document.getElementById('successModal');
+        if (event.target === successModal) {
+            closeSuccessModal();
+        }
+    };
+</script>
+
+<style>
+    @keyframes fade-in {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+        animation: fade-in 0.3s ease-out;
+    }
+</style>
+{% endblock %}

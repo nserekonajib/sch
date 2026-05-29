@@ -1,4 +1,4 @@
-<!-- templates/schoolpay/index.html - SchoolPay Integration Settings -->
+<!-- templates/schoolpay/index.html - SchoolPay Integration Settings (Multi-Account) -->
 {% extends "base.html" %}
 
 {% block title %}SchoolPay Integration - Lunserk ERP{% endblock %}
@@ -12,10 +12,10 @@
         background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
         transform: translateY(-2px);
     }
-    .settings-card {
+    .account-card {
         transition: all 0.3s ease;
     }
-    .settings-card:hover {
+    .account-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
     }
@@ -39,10 +39,6 @@
             transform: translateY(0) scale(1);
         }
     }
-    .info-box {
-        background: linear-gradient(135deg, #fef9e7 0%, #fff 100%);
-        border-left: 4px solid #ffa500;
-    }
     .status-badge {
         display: inline-block;
         padding: 2px 8px;
@@ -58,169 +54,169 @@
         background-color: #fee2e2;
         color: #991b1b;
     }
+    .environment-sandbox {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+    .environment-production {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 py-6">
+<div class="max-w-6xl mx-auto px-4 py-6">
     <!-- Page Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 mb-1">SchoolPay Integration</h1>
-        <p class="text-sm text-gray-600">Configure your SchoolPay payment gateway settings</p>
+    <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">SchoolPay Integration</h1>
+            <p class="text-sm text-gray-600">Manage multiple SchoolPay payment gateway accounts</p>
+        </div>
+        <button onclick="openAccountModal()" class="btn-gradient px-4 py-2 rounded-lg text-white font-medium flex items-center gap-2">
+            <i class="fas fa-plus-circle"></i>
+            Add Account
+        </button>
     </div>
 
-    <!-- Settings Card -->
-    <div class="settings-card bg-white rounded-xl shadow-md overflow-hidden mb-6">
-        <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
-            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <i class="fas fa-credit-card text-orange-500"></i>
-                API Configuration
-            </h2>
-        </div>
-        
-        <div class="p-6">
-            <form id="schoolpayForm">
-                <!-- School Code -->
-                <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        School Code <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" id="schoolCode" name="school_code" 
-                           value="{{ settings.school_code if settings else '' }}"
-                           placeholder="Enter your SchoolPay school code"
-                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                    <p class="text-xs text-gray-500 mt-1">Your unique school identifier provided by SchoolPay</p>
-                </div>
-                
-                <!-- API Username -->
-                <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        API Username
-                    </label>
-                    <input type="text" id="apiUsername" name="api_username" 
-                           value="{{ settings.api_username if settings else '' }}"
-                           placeholder="Enter your API username (optional)"
-                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                    <p class="text-xs text-gray-500 mt-1">Some SchoolPay integrations require an API username</p>
-                </div>
-                
-                <!-- API Password -->
-                <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        API Password <span class="text-red-500">*</span>
-                    </label>
-                    <div class="relative">
-                        <input type="password" id="apiPassword" name="api_password" 
-                               value="{{ settings.api_password if settings else '' }}"
-                               placeholder="Enter your SchoolPay API password"
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm pr-10">
-                        <button type="button" onclick="togglePassword()" 
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                            <i class="fas fa-eye" id="toggleIcon"></i>
-                        </button>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Your API password/key for SchoolPay integration</p>
-                </div>
-                
-                <!-- Environment -->
-                <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Environment</label>
-                    <div class="flex gap-4">
-                        <label class="flex items-center">
-                            <input type="radio" name="environment" value="sandbox" 
-                                   {% if not settings or settings.environment == 'sandbox' %}checked{% endif %}
-                                   class="mr-2 text-orange-500">
-                            <span class="text-sm">Sandbox (Testing)</span>
-                        </label>
-                        <label class="flex items-center">
-                            <input type="radio" name="environment" value="production" 
-                                   {% if settings and settings.environment == 'production' %}checked{% endif %}
-                                   class="mr-2 text-orange-500">
-                            <span class="text-sm">Production (Live)</span>
-                        </label>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Use Sandbox for testing, Production for live payments</p>
-                </div>
-                
-                <!-- Enable/Disable Toggle -->
-                <div class="mb-6 flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                        <label class="font-semibold text-gray-800">Enable SchoolPay Integration</label>
-                        <p class="text-xs text-gray-500 mt-1">Turn on/off SchoolPay payment gateway</p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="isActive" class="sr-only peer" 
-                               {% if settings and settings.is_active %}checked{% endif %}>
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-                    </label>
-                </div>
-                
-                <!-- Info Box -->
-                <div class="info-box rounded-lg p-4 mb-6">
-                    <div class="flex items-start gap-3">
-                        <i class="fas fa-info-circle text-orange-500 mt-0.5"></i>
+    <!-- Accounts Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="accountsGrid">
+        {% if accounts %}
+            {% for account in accounts %}
+            <div class="account-card bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                    <div class="flex justify-between items-start">
                         <div>
-                            <p class="text-sm font-semibold text-gray-800 mb-1">How to get your SchoolPay credentials?</p>
-                            <p class="text-xs text-gray-600">1. Contact SchoolPay support to get your school code and API credentials.</p>
-                            <p class="text-xs text-gray-600">2. Use Sandbox environment for testing before going live.</p>
-                            <p class="text-xs text-gray-600">3. Keep your API password secure and never share it.</p>
+                            <h3 class="font-semibold text-gray-800">{{ account.account_name }}</h3>
+                            <p class="text-xs text-gray-500 mt-1">School Code: {{ account.school_code }}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="status-badge {% if account.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                {{ 'Active' if account.is_active else 'Inactive' }}
+                            </span>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Action Buttons -->
-                <div class="flex gap-3">
-                    <button type="button" onclick="testConnection()" 
-                            class="px-6 py-2.5 border border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50 transition-all flex items-center gap-2">
-                        <i class="fas fa-vial"></i>
-                        Test Connection
-                    </button>
-                    <button type="submit" 
-                            class="flex-1 px-6 py-2.5 btn-gradient text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                        <i class="fas fa-save"></i>
-                        Save Settings
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Status Card (if settings exist) -->
-    {% if settings %}
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <i class="fas fa-info-circle text-orange-500"></i>
-                Integration Status
-            </h2>
-        </div>
-        <div class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span class="text-sm text-gray-600">Status:</span>
-                    <span class="status-badge {% if settings.is_active %}status-active{% else %}status-inactive{% endif %}">
-                        {{ 'Active' if settings.is_active else 'Inactive' }}
-                    </span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span class="text-sm text-gray-600">Environment:</span>
-                    <span class="text-sm font-medium text-gray-800">{{ settings.environment|title }}</span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span class="text-sm text-gray-600">School Code:</span>
-                    <span class="text-sm font-mono text-gray-800">{{ settings.school_code }}</span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span class="text-sm text-gray-600">Last Updated:</span>
-                    <span class="text-sm text-gray-500">{{ settings.updated_at[:10] if settings.updated_at else 'N/A' }}</span>
+                <div class="p-5">
+                    <div class="space-y-2 mb-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-500">Environment</span>
+                            <span class="text-xs px-2 py-1 rounded-full {% if account.environment == 'production' %}environment-production{% else %}environment-sandbox{% endif %}">
+                                {{ account.environment|title }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-500">Created</span>
+                            <span class="text-sm text-gray-700">{{ account.created_at[:10] if account.created_at else 'N/A' }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-500">Last Updated</span>
+                            <span class="text-sm text-gray-700">{{ account.updated_at[:10] if account.updated_at else 'N/A' }}</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 pt-3 border-t border-gray-100">
+                        <button onclick="testAccount('{{ account.id }}', '{{ account.account_name }}')" 
+                                class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm hover:bg-blue-100 transition-all">
+                            <i class="fas fa-vial"></i> Test
+                        </button>
+                        <button onclick="editAccount('{{ account.id }}')" 
+                                class="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-all">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button onclick="toggleAccountStatus('{{ account.id }}', {{ account.is_active|lower }})" 
+                                class="flex-1 py-2 {% if account.is_active %}bg-red-50 text-red-600 hover:bg-red-100{% else %}bg-green-50 text-green-600 hover:bg-green-100{% endif %} rounded-lg text-sm transition-all">
+                            <i class="fas {% if account.is_active %}fa-ban{% else %}fa-check-circle{% endif %}"></i>
+                            {{ 'Disable' if account.is_active else 'Enable' }}
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-span-full">
+                <div class="bg-white rounded-xl shadow-md p-12 text-center">
+                    <div class="h-20 w-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-credit-card text-3xl text-orange-500"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">No SchoolPay Accounts</h3>
+                    <p class="text-sm text-gray-500 mb-6">Add your first SchoolPay account to start accepting payments</p>
+                    <button onclick="openAccountModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium inline-flex items-center gap-2">
+                        <i class="fas fa-plus-circle"></i>
+                        Add Account
+                    </button>
+                </div>
+            </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 
-<!-- Test Connection Modal -->
+<!-- Account Modal -->
+<div id="accountModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800" id="modalTitle">Add SchoolPay Account</h3>
+            <button onclick="closeAccountModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <form id="accountForm" class="p-5">
+            <input type="hidden" id="accountId">
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Account Name *</label>
+                <input type="text" id="accountName" required placeholder="e.g., Main School, Secondary School"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                <p class="text-xs text-gray-500 mt-1">A descriptive name for this payment account</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">School Code *</label>
+                <input type="text" id="schoolCode" required placeholder="Enter your SchoolPay school code"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">API Password *</label>
+                <div class="relative">
+                    <input type="password" id="apiPassword" required placeholder="Enter your API password"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 pr-10">
+                    <button type="button" onclick="togglePassword()" 
+                            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-eye" id="toggleIcon"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Environment</label>
+                <div class="flex gap-4">
+                    <label class="flex items-center">
+                        <input type="radio" name="environment" value="sandbox" checked class="mr-2 text-orange-500">
+                        <span class="text-sm">Sandbox (Testing)</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="environment" value="production" class="mr-2 text-orange-500">
+                        <span class="text-sm">Production (Live)</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" id="isActive" checked class="mr-2 text-orange-500">
+                    <span class="text-sm text-gray-700">Enable this account</span>
+                </label>
+            </div>
+            
+            <div class="flex gap-3 pt-4">
+                <button type="submit" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium">Save Account</button>
+                <button type="button" onclick="closeAccountModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Test Modal -->
 <div id="testModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
         <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -229,11 +225,9 @@
                 <i class="fas fa-times text-lg"></i>
             </button>
         </div>
-        <div class="p-6">
-            <div class="text-center" id="testContent">
-                <div class="loader-spinner mb-4"></div>
-                <p class="text-gray-600">Testing connection...</p>
-            </div>
+        <div class="p-6 text-center" id="testContent">
+            <div class="loader-spinner mx-auto mb-4"></div>
+            <p class="text-gray-600">Testing connection...</p>
         </div>
     </div>
 </div>
@@ -245,10 +239,29 @@
             <i class="fas fa-check-circle text-2xl text-green-500"></i>
         </div>
         <h3 class="text-lg font-semibold text-gray-800 mb-1">Success!</h3>
-        <p class="text-sm text-gray-500 mb-4" id="successMessage">Settings saved successfully</p>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage">Account saved successfully</p>
         <button onclick="closeSuccessModal()" class="btn-gradient px-5 py-1.5 rounded-lg text-white text-sm font-medium">
             Continue
         </button>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="p-6">
+            <div class="flex items-center justify-center mb-4">
+                <div class="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+                </div>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 text-center mb-2">Delete Account</h3>
+            <p class="text-gray-600 text-center mb-6" id="deleteMessage">Are you sure you want to delete this account? This action cannot be undone.</p>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button id="confirmDeleteBtn" class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Delete</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -277,6 +290,66 @@
 </style>
 
 <script>
+    let currentAccountId = null;
+    let accountToDelete = null;
+
+    async function openAccountModal(accountId = null) {
+        currentAccountId = accountId;
+        const modal = document.getElementById('accountModal');
+        const form = document.getElementById('accountForm');
+        
+        form.reset();
+        document.getElementById('accountId').value = '';
+        document.getElementById('modalTitle').textContent = 'Add SchoolPay Account';
+        document.getElementById('isActive').checked = true;
+        document.querySelector('input[name="environment"][value="sandbox"]').checked = true;
+        
+        if (accountId) {
+            document.getElementById('modalTitle').textContent = 'Edit SchoolPay Account';
+            await loadAccountData(accountId);
+        }
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    async function loadAccountData(accountId) {
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/schoolpay/api/accounts`);
+            const result = await response.json();
+            
+            if (result.success) {
+                const account = result.accounts.find(a => a.id === accountId);
+                if (account) {
+                    document.getElementById('accountId').value = account.id;
+                    document.getElementById('accountName').value = account.account_name;
+                    document.getElementById('schoolCode').value = account.school_code;
+                    document.getElementById('apiPassword').value = '••••••••';
+                    document.querySelector(`input[name="environment"][value="${account.environment}"]`).checked = true;
+                    document.getElementById('isActive').checked = account.is_active;
+                }
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Failed to load account data', 'error');
+        } finally {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+        }
+    }
+    
+    function closeAccountModal() {
+        document.getElementById('accountModal').classList.add('hidden');
+        document.getElementById('accountModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        currentAccountId = null;
+    }
+    
     function togglePassword() {
         const passwordInput = document.getElementById('apiPassword');
         const icon = document.getElementById('toggleIcon');
@@ -292,22 +365,78 @@
         }
     }
     
-    async function testConnection() {
-        const schoolCode = document.getElementById('schoolCode').value.trim();
-        const apiPassword = document.getElementById('apiPassword').value.trim();
-        const apiUsername = document.getElementById('apiUsername').value.trim();
-        const environment = document.querySelector('input[name="environment"]:checked').value;
+    document.getElementById('accountForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
         
-        if (!schoolCode) {
+        const accountId = document.getElementById('accountId').value;
+        const data = {
+            account_name: document.getElementById('accountName').value.trim(),
+            school_code: document.getElementById('schoolCode').value.trim(),
+            api_password: document.getElementById('apiPassword').value.trim(),
+            environment: document.querySelector('input[name="environment"]:checked').value,
+            is_active: document.getElementById('isActive').checked
+        };
+        
+        if (!data.account_name) {
+            showMessage('Please enter account name', 'error');
+            return;
+        }
+        
+        if (!data.school_code) {
             showMessage('Please enter school code', 'error');
             return;
         }
         
-        if (!apiPassword) {
-            showMessage('Please enter API password', 'error');
-            return;
+        if (!data.api_password || data.api_password === '••••••••') {
+            if (!accountId) {
+                showMessage('Please enter API password', 'error');
+                return;
+            }
         }
         
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            let url, method;
+            if (accountId) {
+                url = `/schoolpay/api/accounts/${accountId}`;
+                method = 'PUT';
+            } else {
+                url = '/schoolpay/api/accounts/create';
+                method = 'POST';
+            }
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeAccountModal();
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to save account', 'error');
+        }
+    });
+    
+    async function testAccount(accountId, accountName) {
         const modal = document.getElementById('testModal');
         const content = document.getElementById('testContent');
         
@@ -317,21 +446,16 @@
         
         content.innerHTML = `
             <div class="text-center">
-                <div class="loader-spinner mb-4"></div>
-                <p class="text-gray-600">Testing connection...</p>
+                <div class="loader-spinner mx-auto mb-4"></div>
+                <p class="text-gray-600">Testing connection for ${accountName}...</p>
             </div>
         `;
         
         try {
-            const response = await fetch('/schoolpay/api/settings/test', {
+            const response = await fetch('/schoolpay/api/accounts/test', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    school_code: schoolCode,
-                    api_password: apiPassword,
-                    api_username: apiUsername,
-                    environment: environment
-                })
+                body: JSON.stringify({ account_id: accountId })
             });
             
             const result = await response.json();
@@ -360,7 +484,6 @@
                 `;
             }
         } catch (error) {
-            console.error('Error:', error);
             content.innerHTML = `
                 <div class="text-center">
                     <div class="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -375,45 +498,27 @@
     }
     
     function closeTestModal() {
-        const modal = document.getElementById('testModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+        document.getElementById('testModal').classList.add('hidden');
+        document.getElementById('testModal').classList.remove('flex');
         document.body.style.overflow = '';
     }
     
-    document.getElementById('schoolpayForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const schoolCode = document.getElementById('schoolCode').value.trim();
-        const apiPassword = document.getElementById('apiPassword').value.trim();
-        
-        if (!schoolCode) {
-            showMessage('Please enter school code', 'error');
-            return;
-        }
-        
-        if (!apiPassword) {
-            showMessage('Please enter API password', 'error');
-            return;
-        }
+    async function editAccount(accountId) {
+        await openAccountModal(accountId);
+    }
+    
+    async function toggleAccountStatus(accountId, currentStatus) {
+        const newStatus = !currentStatus;
         
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
         
-        const data = {
-            school_code: schoolCode,
-            api_password: apiPassword,
-            api_username: document.getElementById('apiUsername').value.trim(),
-            environment: document.querySelector('input[name="environment"]:checked').value,
-            is_active: document.getElementById('isActive').checked
-        };
-        
         try {
-            const response = await fetch('/schoolpay/api/settings/save', {
-                method: 'POST',
+            const response = await fetch(`/schoolpay/api/accounts/${accountId}/toggle`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify({ is_active: newStatus })
             });
             
             const result = await response.json();
@@ -422,20 +527,17 @@
             loading.classList.remove('flex');
             
             if (result.success) {
-                document.getElementById('successMessage').textContent = result.message;
-                document.getElementById('successModal').classList.remove('hidden');
-                document.getElementById('successModal').classList.add('flex');
-                document.body.style.overflow = 'hidden';
-                setTimeout(() => window.location.reload(), 1500);
+                showMessage(result.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
             } else {
                 showMessage(result.message, 'error');
             }
         } catch (error) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
-            showMessage('Failed to save settings', 'error');
+            showMessage('Failed to update status', 'error');
         }
-    });
+    }
     
     function closeSuccessModal() {
         document.getElementById('successModal').classList.add('hidden');
@@ -454,25 +556,17 @@
         
         const flashMsg = document.createElement('div');
         flashMsg.className = `flash-message ${type}`;
-        flashMsg.innerHTML = `
-            <div class="flex items-center gap-2">
-                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-                <span>${message}</span>
-            </div>
-        `;
-        
+        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
         document.getElementById('flashMessages').appendChild(flashMsg);
-        
-        setTimeout(() => {
-            flashMsg.style.opacity = '0';
-            setTimeout(() => flashMsg.remove(), 300);
-        }, 5000);
+        setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
     }
     
     window.onclick = function(event) {
-        const modal = document.getElementById('successModal');
+        const accountModal = document.getElementById('accountModal');
+        const successModal = document.getElementById('successModal');
         const testModal = document.getElementById('testModal');
-        if (event.target === modal) closeSuccessModal();
+        if (event.target === accountModal) closeAccountModal();
+        if (event.target === successModal) closeSuccessModal();
         if (event.target === testModal) closeTestModal();
     };
 </script>

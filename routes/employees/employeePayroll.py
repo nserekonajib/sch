@@ -1,4 +1,4 @@
-# employeePayroll.py - Updated with PDF receipt-style payslip
+# employeePayroll.py - Updated with PDF receipt-style payslip and Advance Deductions
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
 import os
@@ -41,6 +41,95 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
+# ==================== ADVANCE HELPER FUNCTIONS ====================
+
+def get_advance_deduction_for_employee(institute_id, employee_id, payroll_month):
+    """Get the advance deduction amount for an employee for a specific month"""
+    try:
+        # Check if employee_advances table exists
+        try:
+            advance_response = supabase.table('employee_advances')\
+                .select('monthly_deduction, remaining_amount, advance_amount, repaid_amount')\
+                .eq('institute_id', institute_id)\
+                .eq('employee_id', employee_id)\
+                .eq('status', 'active')\
+                .lte('repayment_start_month', payroll_month)\
+                .gte('repayment_end_month', payroll_month)\
+                .execute()
+            
+            if not advance_response.data:
+                return 0, None
+            
+            advance = advance_response.data[0]
+            # Don't deduct more than remaining balance
+            deduction = min(float(advance['monthly_deduction']), float(advance['remaining_amount']))
+            return deduction, advance
+            
+        except Exception as e:
+            # Table might not exist yet
+            print(f"Advance table not ready: {e}")
+            return 0, None
+        
+    except Exception as e:
+        print(f"Error getting advance deduction: {e}")
+        return 0, None
+
+
+def update_advance_on_salary_payment(institute_id, employee_id, payment_month, advance_deduction, advance_id):
+    """Update advance balance when salary payment includes deduction"""
+    try:
+        if not advance_id or advance_deduction <= 0:
+            return False
+        
+        # Get current advance
+        advance_response = supabase.table('employee_advances')\
+            .select('*')\
+            .eq('id', advance_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if not advance_response.data:
+            return False
+        
+        advance = advance_response.data[0]
+        
+        # Update repaid amount and remaining amount
+        new_repaid = float(advance['repaid_amount']) + advance_deduction
+        new_remaining = float(advance['advance_amount']) - new_repaid
+        new_status = 'completed' if new_remaining <= 0 else 'active'
+        
+        supabase.table('employee_advances')\
+            .update({
+                'repaid_amount': new_repaid,
+                'remaining_amount': new_remaining,
+                'status': new_status,
+                'updated_at': datetime.now().isoformat()
+            })\
+            .eq('id', advance_id)\
+            .execute()
+        
+        # Record the automatic repayment
+        payment_data = {
+            'id': str(uuid.uuid4()),
+            'institute_id': institute_id,
+            'advance_id': advance_id,
+            'employee_id': employee_id,
+            'amount': advance_deduction,
+            'payment_month': payment_month,
+            'payment_date': datetime.now().strftime('%Y-%m-%d'),
+            'is_repayment': True,
+            'notes': f'Auto-deduction from salary for {payment_month}',
+            'created_at': datetime.now().isoformat()
+        }
+        
+        supabase.table('advance_payments').insert(payment_data).execute()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error updating advance on salary payment: {e}")
+        return False
 
 
 def get_salary_expense_account(institute_id):
@@ -87,6 +176,7 @@ def get_salary_expense_account(institute_id):
         print(f"Error getting salary account: {e}")
         return None
 
+
 @payroll_bp.route('/')
 @role_required(['owner', 'teacher', 'accountant'])
 def index():
@@ -106,6 +196,7 @@ def index():
     institute = institute_response.data[0] if institute_response.data else None
     
     return render_template('payroll/index.html', institute=institute, now=datetime.now())
+
 
 @payroll_bp.route('/api/employees', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
@@ -133,10 +224,11 @@ def get_employees():
         print(f"Error getting employees: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @payroll_bp.route('/api/salary-summary', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def get_salary_summary():
-    """Get salary summary for selected month"""
+    """Get salary summary for selected month with advance deductions"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -169,6 +261,10 @@ def get_salary_summary():
         
         for emp in employees:
             salary = float(emp.get('monthly_salary', 0))
+            
+            # Get advance deduction for this employee for this month
+            advance_deduction, advance_info = get_advance_deduction_for_employee(institute_id, emp['id'], month)
+            
             employees_data.append({
                 'id': emp['id'],
                 'employee_id': emp['employee_id'],
@@ -178,22 +274,26 @@ def get_salary_summary():
                 'is_paid': emp['id'] in paid_employee_ids,
                 'deductions': 0,
                 'bonuses': 0,
-                'net_pay': salary
+                'advance_deduction': advance_deduction,
+                'advance_info': advance_info,
+                'net_pay': salary - advance_deduction  # Initial net pay without manual deductions
             })
         
         return jsonify({
             'success': True,
-            'employees': employees_data
+            'employees': employees_data,
+            'month': month
         })
         
     except Exception as e:
         print(f"Error getting salary summary: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @payroll_bp.route('/api/process-payment', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def process_payment():
-    """Process salary payment for employees with deductions and bonuses"""
+    """Process salary payment for employees with deductions, bonuses, and advance deductions"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -228,8 +328,11 @@ def process_payment():
                 salary_amount = float(payment_item.get('monthly_salary', 0))
                 deductions = float(payment_item.get('deductions', 0))
                 bonuses = float(payment_item.get('bonuses', 0))
+                advance_deduction = float(payment_item.get('advance_deduction', 0))
+                advance_id = payment_item.get('advance_id')
                 
-                net_pay = salary_amount - deductions + bonuses
+                # Calculate net pay including advance deduction
+                net_pay = salary_amount - deductions + bonuses - advance_deduction
                 
                 if net_pay <= 0:
                     errors.append(f"Net pay for {payment_item.get('name', 'Unknown')} is zero or negative")
@@ -256,6 +359,7 @@ def process_payment():
                     'gross_salary': salary_amount,
                     'deductions': deductions,
                     'bonuses': bonuses,
+                    'advance_deduction': advance_deduction,
                     'payment_month': payment_month,
                     'payment_date': payment_date,
                     'payment_method': payment_item.get('payment_method', 'cash'),
@@ -267,6 +371,10 @@ def process_payment():
                 
                 supabase.table('salary_payments').insert(payment_data).execute()
                 
+                # Update advance balance if there was a deduction
+                if advance_deduction > 0 and advance_id:
+                    update_advance_on_salary_payment(institute_id, employee_id, payment_month, advance_deduction, advance_id)
+                
                 expense_data = {
                     'id': str(uuid.uuid4()),
                     'institute_id': institute_id,
@@ -275,7 +383,7 @@ def process_payment():
                     'transaction_date': payment_date,
                     'payment_method': payment_item.get('payment_method', 'cash'),
                     'reference_number': receipt_number,
-                    'description': f"Salary payment for {payment_item.get('name')} - {payment_month}",
+                    'description': f"Salary payment for {payment_item.get('name')} - {payment_month}" + (f" (Advance deduction: UGX {advance_deduction:,.0f})" if advance_deduction > 0 else ""),
                     'employee_id': employee_id,
                     'created_at': datetime.now().isoformat(),
                     'updated_at': datetime.now().isoformat()
@@ -291,6 +399,7 @@ def process_payment():
                     'gross_salary': salary_amount,
                     'deductions': deductions,
                     'bonuses': bonuses,
+                    'advance_deduction': advance_deduction,
                     'net_pay': net_pay,
                     'receipt_number': receipt_number
                 })
@@ -318,6 +427,7 @@ def process_payment():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @payroll_bp.route('/api/print-payslip/<receipt_number>', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
@@ -352,7 +462,7 @@ def print_payslip(receipt_number):
         
         # Generate PDF
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=(80*mm, 180*mm),
+        doc = SimpleDocTemplate(buffer, pagesize=(80*mm, 200*mm),
                                 rightMargin=5*mm, leftMargin=5*mm,
                                 topMargin=5*mm, bottomMargin=5*mm)
         
@@ -443,6 +553,9 @@ def print_payslip(receipt_number):
         if payment.get('bonuses', 0) > 0:
             salary_data.append(['Bonuses:', f"+ UGX {float(payment.get('bonuses', 0)):,.0f}"])
         
+        if payment.get('advance_deduction', 0) > 0:
+            salary_data.append(['Advance Deduction:', f"- UGX {float(payment.get('advance_deduction', 0)):,.0f}"])
+        
         salary_data.append(['', ''])
         salary_data.append(['NET PAYABLE:', f"UGX {float(payment['amount']):,.0f}"])
         
@@ -497,11 +610,12 @@ def print_payslip(receipt_number):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-    
+
+
 @payroll_bp.route('/api/download-payroll-pdf', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def download_payroll_pdf():
-    """Download payroll summary as PDF"""
+    """Download payroll summary as PDF with advance deductions column"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -527,7 +641,7 @@ def download_payroll_pdf():
             return jsonify({'success': False, 'message': 'No data to export'}), 400
         
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4,
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
                                 rightMargin=20, leftMargin=20,
                                 topMargin=20, bottomMargin=20)
         
@@ -573,25 +687,28 @@ def download_payroll_pdf():
         story.append(Paragraph(f"PAYROLL SUMMARY - {month}", title_style))
         story.append(Spacer(1, 10))
         
-        # Removed 'Employee ID' column as requested
+        # Added Advance Deduction column
         table_data = [
-            ['S/N', 'Employee Name', 'Gross Salary', 'Deductions', 'Bonuses', 'Net Pay (UGX)']
+            ['S/N', 'Employee Name', 'Gross Salary', 'Deductions', 'Bonuses', 'Advance Deduction', 'Net Pay (UGX)']
         ]
         
         total_gross = 0
         total_deductions = 0
         total_bonuses = 0
+        total_advance = 0
         total_net = 0
         
         for idx, emp in enumerate(employees, 1):
             gross = float(emp.get('monthly_salary', 0))
             deductions = float(emp.get('deductions', 0))
             bonuses = float(emp.get('bonuses', 0))
-            net = gross - deductions + bonuses
+            advance = float(emp.get('advance_deduction', 0))
+            net = gross - deductions + bonuses - advance
             
             total_gross += gross
             total_deductions += deductions
             total_bonuses += bonuses
+            total_advance += advance
             total_net += net
             
             table_data.append([
@@ -600,20 +717,21 @@ def download_payroll_pdf():
                 f"{gross:,.0f}",
                 f"{deductions:,.0f}",
                 f"{bonuses:,.0f}",
+                f"{advance:,.0f}",
                 f"{net:,.0f}"
             ])
         
         # Add total row
-        table_data.append(['', '', '', '', 'TOTAL:', f"{total_net:,.0f}"])
+        table_data.append(['', '', '', '', '', 'TOTAL:', f"{total_net:,.0f}"])
         
-        # Adjusted column widths (removed Employee ID column)
-        table = Table(table_data, colWidths=[0.5*inch, 2.5*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1.5*inch])
+        # Adjusted column widths for 7 columns
+        table = Table(table_data, colWidths=[0.5*inch, 2.5*inch, 1.0*inch, 1.0*inch, 1.0*inch, 1.2*inch, 1.2*inch])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ffa500')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('ALIGN', (2, 1), (5, -2), 'RIGHT'),
-            ('ALIGN', (5, -1), (5, -1), 'RIGHT'),
+            ('ALIGN', (2, 1), (6, -2), 'RIGHT'),
+            ('ALIGN', (6, -1), (6, -1), 'RIGHT'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 9),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
@@ -660,6 +778,7 @@ def download_payroll_pdf():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 def generate_salary_receipt_number(institute_id):
     """Generate unique salary receipt number"""

@@ -1,4 +1,4 @@
-<!-- templates/payroll/index.html - Fully Responsive (Tables for Desktop, Cards for Mobile) -->
+<!-- templates/payroll/index.html - Updated with Advance Deduction Column -->
 {% extends "base.html" %}
 
 {% block title %}Payroll Management - Lunserk ERP{% endblock %}
@@ -63,10 +63,19 @@
         border-color: #ffa500;
         box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.1);
     }
+    .advance-deduction-display {
+        font-weight: 500;
+        color: #d97706;
+        font-size: 13px;
+    }
     .net-pay {
         font-weight: bold;
         color: #059669;
         font-size: 14px;
+    }
+    .advance-tooltip {
+        cursor: help;
+        border-bottom: 1px dashed #d97706;
     }
     
     /* Desktop Table Styles */
@@ -147,15 +156,8 @@
     .detail-value.amount {
         color: #059669;
     }
-    .card-actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid #e5e7eb;
-    }
-    .card-checkbox {
-        margin-right: 12px;
+    .detail-value.advance {
+        color: #d97706;
     }
     
     /* Responsive breakpoints */
@@ -282,7 +284,7 @@
     <!-- Page Header -->
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800 mb-1">Payroll Management</h1>
-        <p class="text-sm text-gray-600">Process employee salaries with deductions and bonuses</p>
+        <p class="text-sm text-gray-600">Process employee salaries with deductions, bonuses, and automatic advance deductions</p>
     </div>
 
     <!-- Month Selection -->
@@ -341,6 +343,7 @@
                         <th class="text-right">Gross Salary</th>
                         <th class="text-right">Deductions</th>
                         <th class="text-right">Bonuses</th>
+                        <th class="text-right">Advance Deduction</th>
                         <th class="text-right">Net Pay</th>
                         <th>Status</th>
                     </tr>
@@ -353,7 +356,7 @@
     <!-- Mobile Card View -->
     <div id="mobileView" class="mobile-view" style="display: none;">
         <div id="mobileEmployeesContainer"></div>
-        <div style="height: 80px;"></div> <!-- Spacer for FAB -->
+        <div style="height: 80px;"></div>
     </div>
 
     <!-- Empty State -->
@@ -422,7 +425,6 @@
     let currentMonth = '';
     let isMobile = window.innerWidth < 1024;
     
-    // Check screen size on resize
     window.addEventListener('resize', () => {
         isMobile = window.innerWidth < 1024;
         if (currentEmployees.length > 0) {
@@ -443,14 +445,12 @@
     async function loadSalaryData() {
         currentMonth = document.getElementById('monthSelect').value;
         
-        // Show loading states
         document.getElementById('loadingState').style.display = 'block';
         document.getElementById('desktopView').style.display = 'none';
         document.getElementById('mobileView').style.display = 'none';
         document.getElementById('emptyState').style.display = 'none';
         document.getElementById('skeletonLoading').style.display = 'none';
         
-        // Show skeletons on mobile
         if (isMobile) {
             document.getElementById('skeletonLoading').style.display = 'block';
             document.getElementById('loadingState').style.display = 'none';
@@ -492,11 +492,14 @@
     }
     
     function displayEmployees(employees) {
-        // Desktop table view
+        // Desktop table view with advance deduction column
         const tbody = document.getElementById('employeesTableBody');
         tbody.innerHTML = employees.map(emp => {
             const roleDisplay = formatRole(emp.role);
-            const netPay = emp.monthly_salary - (emp.deductions || 0) + (emp.bonuses || 0);
+            const advanceDeduction = emp.advance_deduction || 0;
+            const netPay = emp.monthly_salary - (emp.deductions || 0) + (emp.bonuses || 0) - advanceDeduction;
+            const advanceInfo = emp.advance_info;
+            const advanceTooltip = advanceInfo ? `title="Advance: UGX ${formatCurrency(advanceInfo.advance_amount)} | Remaining: UGX ${formatCurrency(advanceInfo.remaining_amount)}"` : '';
             
             return `
                 <tr data-employee-id="${emp.id}" data-is-paid="${emp.is_paid}">
@@ -523,6 +526,13 @@
                                onchange="updateNetPay('${emp.id}')">
                     </td>
                     <td class="text-right">
+                        <span class="advance-deduction-display advance-tooltip" ${advanceTooltip}>
+                            ${advanceDeduction > 0 ? `- UGX ${formatCurrency(advanceDeduction)}` : 'UGX 0'}
+                        </span>
+                        <input type="hidden" class="advance-deduction-input" data-employee-id="${emp.id}" value="${advanceDeduction}">
+                        <input type="hidden" class="advance-id-input" data-employee-id="${emp.id}" value="${emp.advance_info?.id || ''}">
+                    </td>
+                    <td class="text-right">
                         <span class="net-pay" id="net-pay-${emp.id}">
                             UGX ${formatCurrency(netPay)}
                         </span>
@@ -534,12 +544,14 @@
             `;
         }).join('');
         
-        // Mobile card view
+        // Mobile card view with advance deduction
         const mobileContainer = document.getElementById('mobileEmployeesContainer');
         mobileContainer.innerHTML = employees.map(emp => {
             const roleDisplay = formatRole(emp.role);
-            const netPay = emp.monthly_salary - (emp.deductions || 0) + (emp.bonuses || 0);
+            const advanceDeduction = emp.advance_deduction || 0;
+            const netPay = emp.monthly_salary - (emp.deductions || 0) + (emp.bonuses || 0) - advanceDeduction;
             const isChecked = selectedEmployeeIds.has(emp.id);
+            const advanceInfo = emp.advance_info;
             
             return `
                 <div class="employee-card" data-employee-id="${emp.id}">
@@ -580,6 +592,15 @@
                                    style="width: 100px;">
                         </div>
                         <div class="detail-row">
+                            <span class="detail-label">Advance Deduction</span>
+                            <span class="detail-value advance">
+                                ${advanceDeduction > 0 ? `- UGX ${formatCurrency(advanceDeduction)}` : 'UGX 0'}
+                                ${advanceInfo ? `<span class="text-xs text-gray-400 ml-1">(${formatCurrency(advanceInfo.remaining_amount)} left)</span>` : ''}
+                            </span>
+                            <input type="hidden" class="advance-deduction-input" data-employee-id="${emp.id}" value="${advanceDeduction}">
+                            <input type="hidden" class="advance-id-input" data-employee-id="${emp.id}" value="${advanceInfo?.id || ''}">
+                        </div>
+                        <div class="detail-row">
                             <span class="detail-label">Net Pay</span>
                             <span class="detail-value amount" id="mobile-net-pay-${emp.id}">
                                 UGX ${formatCurrency(netPay)}
@@ -613,16 +634,18 @@
         
         const deductionsInput = document.querySelector(`.deductions-input[data-employee-id="${employeeId}"]`);
         const bonusesInput = document.querySelector(`.bonuses-input[data-employee-id="${employeeId}"]`);
+        const advanceDeductionInput = document.querySelector(`.advance-deduction-input[data-employee-id="${employeeId}"]`);
         
         const deductions = parseFloat(deductionsInput?.value) || 0;
         const bonuses = parseFloat(bonusesInput?.value) || 0;
+        const advanceDeduction = parseFloat(advanceDeductionInput?.value) || 0;
         
         employee.deductions = deductions;
         employee.bonuses = bonuses;
+        employee.advance_deduction = advanceDeduction;
         
-        const netPay = employee.monthly_salary - deductions + bonuses;
+        const netPay = employee.monthly_salary - deductions + bonuses - advanceDeduction;
         
-        // Update both desktop and mobile views
         const desktopNetPay = document.getElementById(`net-pay-${employeeId}`);
         if (desktopNetPay) desktopNetPay.textContent = `UGX ${formatCurrency(netPay)}`;
         
@@ -637,7 +660,6 @@
             selectedEmployeeIds.delete(employeeId);
         }
         
-        // Sync mobile checkboxes
         const mobileCheckboxes = document.querySelectorAll('.mobile-checkbox');
         mobileCheckboxes.forEach(cb => {
             if (cb.dataset.employeeId === employeeId) {
@@ -658,7 +680,6 @@
                 cb.checked = true;
                 selectedEmployeeIds.add(cb.dataset.employeeId);
                 
-                // Sync mobile checkboxes
                 const mobileCb = document.querySelector(`.mobile-checkbox[data-employee-id="${cb.dataset.employeeId}"]`);
                 if (mobileCb) mobileCb.checked = true;
             });
@@ -667,7 +688,6 @@
                 cb.checked = false;
                 selectedEmployeeIds.delete(cb.dataset.employeeId);
                 
-                // Sync mobile checkboxes
                 const mobileCb = document.querySelector(`.mobile-checkbox[data-employee-id="${cb.dataset.employeeId}"]`);
                 if (mobileCb) mobileCb.checked = false;
             });
@@ -677,11 +697,6 @@
     }
     
     function updateSelectAllState() {
-        const payBtn = document.getElementById('payBtn');
-        if (payBtn) {
-            payBtn.disabled = selectedEmployeeIds.size === 0;
-        }
-        
         const selectAll = document.getElementById('selectAllCheckbox');
         const checkboxes = document.querySelectorAll('.employee-checkbox:not(:disabled)');
         if (selectAll && checkboxes.length > 0) {
@@ -689,7 +704,6 @@
             selectAll.indeterminate = selectedEmployeeIds.size > 0 && selectedEmployeeIds.size < checkboxes.length;
         }
         
-        // Update download PDF button
         const downloadBtn = document.getElementById('downloadPdfBtn');
         if (downloadBtn && currentEmployees.length > 0) {
             downloadBtn.disabled = false;
@@ -722,7 +736,6 @@
     function clearSelection() {
         selectedEmployeeIds.clear();
         
-        // Clear all checkboxes
         document.querySelectorAll('.employee-checkbox').forEach(cb => {
             cb.checked = false;
         });
@@ -749,6 +762,8 @@
             if (employee && !employee.is_paid) {
                 const deductionsInput = document.querySelector(`.deductions-input[data-employee-id="${employeeId}"]`);
                 const bonusesInput = document.querySelector(`.bonuses-input[data-employee-id="${employeeId}"]`);
+                const advanceDeductionInput = document.querySelector(`.advance-deduction-input[data-employee-id="${employeeId}"]`);
+                const advanceIdInput = document.querySelector(`.advance-id-input[data-employee-id="${employeeId}"]`);
                 
                 payments.push({
                     employee_id: employee.id,
@@ -757,6 +772,8 @@
                     monthly_salary: employee.monthly_salary,
                     deductions: parseFloat(deductionsInput?.value) || 0,
                     bonuses: parseFloat(bonusesInput?.value) || 0,
+                    advance_deduction: parseFloat(advanceDeductionInput?.value) || 0,
+                    advance_id: advanceIdInput?.value || null,
                     payment_method: 'bank_transfer',
                     notes: `Salary payment for ${currentMonth}`
                 });
@@ -787,7 +804,8 @@
                         <div class="text-xs text-gray-500">
                             Gross: UGX ${formatCurrency(p.gross_salary)} | 
                             Deductions: UGX ${formatCurrency(p.deductions)} | 
-                            Bonuses: UGX ${formatCurrency(p.bonuses)} | 
+                            Bonuses: UGX ${formatCurrency(p.bonuses)} |
+                            Advance: UGX ${formatCurrency(p.advance_deduction)} |
                             Net: UGX ${formatCurrency(p.net_pay)}
                         </div>
                         <button onclick="printPayslip('${p.receipt_number}')" class="mt-1 text-orange-500 text-xs hover:underline">
@@ -832,8 +850,11 @@
         for (const emp of currentEmployees) {
             const deductionsInput = document.querySelector(`.deductions-input[data-employee-id="${emp.id}"]`);
             const bonusesInput = document.querySelector(`.bonuses-input[data-employee-id="${emp.id}"]`);
+            const advanceDeductionInput = document.querySelector(`.advance-deduction-input[data-employee-id="${emp.id}"]`);
+            
             if (deductionsInput) emp.deductions = parseFloat(deductionsInput.value) || 0;
             if (bonusesInput) emp.bonuses = parseFloat(bonusesInput.value) || 0;
+            if (advanceDeductionInput) emp.advance_deduction = parseFloat(advanceDeductionInput.value) || 0;
         }
         
         try {
@@ -876,7 +897,6 @@
     }
     
     function showMessage(message, type) {
-        // Create toast notification
         const toast = document.createElement('div');
         toast.className = `fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:bottom-4 bg-${type === 'success' ? 'green' : 'red'}-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 animate-fade-in`;
         toast.innerHTML = `
@@ -893,7 +913,6 @@
         }, 5000);
     }
     
-    // Scroll to top functionality
     window.addEventListener('scroll', () => {
         const scrollTop = document.getElementById('scrollTop');
         if (window.scrollY > 300) {
@@ -910,7 +929,6 @@
         }
     };
     
-    // Add download PDF button to UI
     const filterBar = document.querySelector('.flex-wrap.items-end.gap-4');
     if (filterBar && !document.getElementById('downloadPdfBtn')) {
         const pdfBtn = document.createElement('div');

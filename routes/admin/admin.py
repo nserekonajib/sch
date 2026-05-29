@@ -1,5 +1,4 @@
-from routes.auth.auth import role_required
-# admin.py - Fixed with discount logic for 6 and 12 months
+# admin.py - Fixed with discount logic for 6 and 12 months + editable dates
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
 import os
@@ -10,7 +9,6 @@ import io
 import pandas as pd
 from functools import wraps
 from dotenv import load_dotenv
-  
 
 load_dotenv()
 
@@ -185,12 +183,14 @@ def get_institutions():
 @admin_bp.route('/api/institution/add-payment', methods=['POST'])
 @admin_required
 def add_institution_payment():
-    """Add subscription to an institution with discount logic"""
+    """Add subscription to an institution with custom dates and discount logic"""
     try:
         data = request.get_json()
         institute_id = data.get('institute_id')
         months = int(data.get('months', 1))
         notes = data.get('notes', '')
+        custom_start_date = data.get('start_date')  # Optional custom start date
+        custom_expiry_date = data.get('expiry_date')  # Optional custom expiry date
         
         # Only allow 1, 6, or 12 months
         if months not in [1, 6, 12]:
@@ -213,8 +213,17 @@ def add_institution_payment():
         
         # Calculate dates
         current_date = datetime.now().date()
-        start_date = current_date
-        expiry_date = current_date + timedelta(days=30 * months)
+        
+        # Use custom dates if provided, otherwise use current date
+        if custom_start_date:
+            start_date = datetime.strptime(custom_start_date, '%Y-%m-%d').date()
+        else:
+            start_date = current_date
+        
+        if custom_expiry_date:
+            expiry_date = datetime.strptime(custom_expiry_date, '%Y-%m-%d').date()
+        else:
+            expiry_date = start_date + timedelta(days=30 * months)
         
         # Check if there's an existing active subscription
         existing_sub = supabase.table('organization_billing')\
@@ -265,6 +274,7 @@ def add_institution_payment():
         return jsonify({
             'success': True,
             'message': message,
+            'start_date': start_date.isoformat(),
             'expiry_date': expiry_date.isoformat(),
             'amount': amount,
             'months': months,
@@ -273,6 +283,62 @@ def add_institution_payment():
         
     except Exception as e:
         print(f"Error adding payment: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/institution/update-subscription', methods=['POST'])
+@admin_required
+def update_subscription():
+    """Update existing subscription start and expiry dates"""
+    try:
+        data = request.get_json()
+        subscription_id = data.get('subscription_id')
+        institute_id = data.get('institute_id')
+        start_date = data.get('start_date')
+        expiry_date = data.get('expiry_date')
+        
+        if not subscription_id and not institute_id:
+            return jsonify({'success': False, 'message': 'Subscription ID or Institute ID required'}), 400
+        
+        update_data = {
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        if start_date:
+            update_data['start_date'] = datetime.strptime(start_date, '%Y-%m-%d').date().isoformat()
+        
+        if expiry_date:
+            update_data['expiry_date'] = datetime.strptime(expiry_date, '%Y-%m-%d').date().isoformat()
+        
+        # Update the subscription
+        if subscription_id:
+            supabase.table('organization_billing')\
+                .update(update_data)\
+                .eq('id', subscription_id)\
+                .execute()
+        else:
+            # Get the latest subscription for the institute
+            sub_response = supabase.table('organization_billing')\
+                .select('*')\
+                .eq('institute_id', institute_id)\
+                .order('created_at', desc=True)\
+                .limit(1)\
+                .execute()
+            
+            if sub_response.data:
+                supabase.table('organization_billing')\
+                    .update(update_data)\
+                    .eq('id', sub_response.data[0]['id'])\
+                    .execute()
+            else:
+                return jsonify({'success': False, 'message': 'No subscription found for this institute'}), 404
+        
+        return jsonify({
+            'success': True,
+            'message': 'Subscription dates updated successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error updating subscription: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @admin_bp.route('/api/revenue-report', methods=['POST'])
@@ -442,7 +508,7 @@ def get_dashboard_chart():
     except Exception as e:
         print(f"Error getting chart data: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-    
+
 # Add to admin.py - Manual Payment Management
 
 @admin_bp.route('/manual-payments')

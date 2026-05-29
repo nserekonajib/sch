@@ -1,4 +1,4 @@
-<!-- templates/schoolpay/sync.html - SchoolPay Payment Sync -->
+<!-- templates/schoolpay/sync.html - Updated to show account info -->
 {% extends "base.html" %}
 
 {% block title %}Sync SchoolPay Payments - Lunserk ERP{% endblock %}
@@ -39,28 +39,6 @@
             transform: translateY(0) scale(1);
         }
     }
-    .status-badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 500;
-    }
-    .status-success {
-        background-color: #d1fae5;
-        color: #065f46;
-    }
-    .status-warning {
-        background-color: #fef3c7;
-        color: #d97706;
-    }
-    .status-error {
-        background-color: #fee2e2;
-        color: #991b1b;
-    }
-    .sync-progress {
-        transition: width 0.3s ease;
-    }
     .loader {
         border: 3px solid #f3f3f3;
         border-top: 3px solid #ffa500;
@@ -73,6 +51,15 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+    .account-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 500;
+        background-color: #e0e7ff;
+        color: #3730a3;
+    }
 </style>
 {% endblock %}
 
@@ -81,11 +68,11 @@
     <!-- Page Header -->
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800 mb-1">Sync SchoolPay Payments</h1>
-        <p class="text-sm text-gray-600">Fetch payments from SchoolPay API and sync to your local database</p>
+        <p class="text-sm text-gray-600">Fetch payments from ALL your SchoolPay accounts and sync to your local database</p>
     </div>
 
-    {% if not settings_exists %}
-    <!-- No Settings Warning -->
+    {% if accounts_count == 0 %}
+    <!-- No Accounts Warning -->
     <div class="bg-yellow-50 border-l-4 border-yellow-400 rounded-xl p-4 mb-6">
         <div class="flex items-center">
             <div class="flex-shrink-0">
@@ -93,8 +80,19 @@
             </div>
             <div class="ml-3">
                 <p class="text-sm text-yellow-700">
-                    SchoolPay is not configured. Please go to <a href="{{ url_for('schoolpay.index') }}" class="font-bold underline">SchoolPay Settings</a> to configure your API credentials first.
+                    No SchoolPay accounts configured. Please go to <a href="{{ url_for('schoolpay.index') }}" class="font-bold underline">SchoolPay Settings</a> to add your payment accounts first.
                 </p>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Accounts Info -->
+    <div class="bg-blue-50 border-l-4 border-blue-500 rounded-xl p-4 mb-6">
+        <div class="flex items-start gap-3">
+            <i class="fas fa-credit-card text-blue-500 mt-0.5"></i>
+            <div>
+                <p class="text-sm font-semibold text-gray-800 mb-1">Active SchoolPay Accounts</p>
+                <p class="text-sm text-gray-600">You have <strong>{{ accounts_count }}</strong> active SchoolPay account(s). The sync will process all of them.</p>
             </div>
         </div>
     </div>
@@ -150,25 +148,11 @@
                     </div>
                 </div>
                 
-                <!-- Info Box -->
-                <div class="info-box rounded-lg p-4 mb-6 bg-blue-50 border-l-4 border-blue-500">
-                    <div class="flex items-start gap-3">
-                        <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
-                        <div>
-                            <p class="text-sm font-semibold text-gray-800 mb-1">How SchoolPay Sync Works</p>
-                            <p class="text-xs text-gray-600">1. The system will fetch payments from SchoolPay API using your configured credentials.</p>
-                            <p class="text-xs text-gray-600">2. For each payment, it will look up the student using their payment code.</p>
-                            <p class="text-xs text-gray-600">3. If the student is found, the payment is recorded in your local database.</p>
-                            <p class="text-xs text-gray-600">4. Students not found will be listed and can be downloaded for reference.</p>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Sync Button -->
                 <button type="submit" id="syncBtn" 
                         class="w-full md:w-auto px-6 py-2.5 btn-gradient text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
                     <i class="fas fa-cloud-download-alt"></i>
-                    Start Sync
+                    Start Sync (All Accounts)
                 </button>
             </form>
         </div>
@@ -205,6 +189,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Account</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student ID</th>
                             <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
@@ -225,6 +210,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Account</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
                             <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
@@ -247,6 +233,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Account</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Code</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
@@ -267,9 +254,9 @@
         <div class="text-center">
             <div class="loader mx-auto mb-4"></div>
             <h3 class="text-lg font-semibold text-gray-800 mb-2">Syncing Payments</h3>
-            <p class="text-sm text-gray-600 mb-3" id="progressMessage">Fetching data from SchoolPay...</p>
+            <p class="text-sm text-gray-600 mb-3" id="progressMessage">Fetching data from SchoolPay accounts...</p>
             <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
-                <div id="progressBar" class="sync-progress bg-orange-500 h-2 rounded-full" style="width: 0%"></div>
+                <div id="progressBar" class="bg-orange-500 h-2 rounded-full" style="width: 0%"></div>
             </div>
             <p class="text-xs text-gray-400" id="progressDetail">Please wait</p>
         </div>
@@ -376,6 +363,7 @@
                     const tbody = document.getElementById('syncedTableBody');
                     tbody.innerHTML = result.synced.map(p => `
                         <tr>
+                            <td class="px-4 py-2 text-sm"><span class="account-badge">${escapeHtml(p.account_name)}</span></td>
                             <td class="px-4 py-2 text-sm">${escapeHtml(p.student_name)}</td>
                             <td class="px-4 py-2 text-sm">${escapeHtml(p.student_id)}</td>
                             <td class="px-4 py-2 text-sm text-right">UGX ${formatNumber(p.amount)}</td>
@@ -392,6 +380,7 @@
                     const tbody = document.getElementById('failedTableBody');
                     tbody.innerHTML = result.failed.map(p => `
                         <tr>
+                            <td class="px-4 py-2 text-sm"><span class="account-badge">${escapeHtml(p.account_name)}</span></td>
                             <td class="px-4 py-2 text-sm">${escapeHtml(p.student_name)}</td>
                             <td class="px-4 py-2 text-sm text-right">UGX ${formatNumber(p.amount)}</td>
                             <td class="px-4 py-2 text-sm">${escapeHtml(p.reason)}</td>
@@ -407,6 +396,7 @@
                     const tbody = document.getElementById('notFoundTableBody');
                     tbody.innerHTML = result.not_found.map(s => `
                         <tr>
+                            <td class="px-4 py-2 text-sm"><span class="account-badge">${escapeHtml(s.account_name)}</span></td>
                             <td class="px-4 py-2 text-sm font-mono">${escapeHtml(s.student_payment_code)}</td>
                             <td class="px-4 py-2 text-sm">${escapeHtml(s.student_name)}</td>
                             <td class="px-4 py-2 text-sm">${escapeHtml(s.student_class)}</td>
