@@ -26,6 +26,12 @@ def from_json_filter(value):
     except (json.JSONDecodeError, TypeError):
         return []
     
+@app.context_processor
+def utility_processor():
+    from datetime import datetime
+    return dict(datetime=datetime)
+
+   
 @app.template_filter('format_number')
 def format_number(value):
     """Format number with commas"""
@@ -84,6 +90,7 @@ from routes.resultsCard.report_templates import templates_bp
 from routes.fees.listEnDelete import payments_bp as list_delete_bp
 from routes.employees.advance import advance_bp
 from routes.houses.house import houses_bp
+from routes.reports.reports import reports_bp
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
@@ -127,7 +134,7 @@ app.register_blueprint(templates_bp, url_prefix='/report-templates')
 app.register_blueprint(list_delete_bp)
 app.register_blueprint(advance_bp, url_prefix='/advance')
 app.register_blueprint(houses_bp) 
-
+app.register_blueprint(reports_bp)
 
 @app.route('/')
 def landing():
