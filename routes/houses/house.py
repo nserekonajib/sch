@@ -32,7 +32,7 @@ def login_required(f):
 
 
 @houses_bp.route('/')
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def index():
     """Houses Management Page"""
     user = session.get('user')
@@ -78,7 +78,7 @@ def index():
 
 
 @houses_bp.route('/api/houses', methods=['GET'])
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def get_houses():
     """Get all houses"""
     user = session.get('user')
@@ -104,7 +104,7 @@ def get_houses():
 
 
 @houses_bp.route('/api/houses', methods=['POST'])
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def create_house():
     """Create a new house/group"""
     user = session.get('user')
@@ -159,7 +159,7 @@ def create_house():
 
 
 @houses_bp.route('/api/houses/<house_id>', methods=['PUT'])
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def update_house(house_id):
     """Update a house/group"""
     user = session.get('user')
@@ -199,7 +199,7 @@ def update_house(house_id):
 
 
 @houses_bp.route('/api/houses/<house_id>', methods=['DELETE'])
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def delete_house(house_id):
     """Delete a house/group"""
     user = session.get('user')
@@ -236,7 +236,7 @@ def delete_house(house_id):
 
 
 @houses_bp.route('/api/students', methods=['GET'])
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def get_students():
     """Get students with optional filtering"""
     user = session.get('user')
@@ -272,7 +272,7 @@ def get_students():
 
 
 @houses_bp.route('/api/students/assign', methods=['POST'])
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def assign_students():
     """Assign students to a house"""
     user = session.get('user')
@@ -318,7 +318,7 @@ def assign_students():
 
 
 @houses_bp.route('/api/students/bulk-assign', methods=['POST'])
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def bulk_assign_students():
     """Bulk assign students to houses based on class or all students"""
     user = session.get('user')
@@ -375,7 +375,7 @@ def bulk_assign_students():
 
 
 @houses_bp.route('/api/students/unassign', methods=['POST'])
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def unassign_students():
     """Remove students from their house assignment"""
     user = session.get('user')
@@ -417,7 +417,7 @@ def unassign_students():
 
 
 @houses_bp.route('/api/stats', methods=['GET'])
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def get_stats():
     """Get house statistics"""
     user = session.get('user')
@@ -482,7 +482,7 @@ def get_stats():
 
 
 @houses_bp.route('/api/export/<house_id>', methods=['GET'])
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def export_house_students(house_id):
     """Export students in a house to Excel"""
     user = session.get('user')
@@ -579,7 +579,7 @@ def export_house_students(house_id):
 
 
 @houses_bp.route('/api/export-all', methods=['GET'])
-@role_required(['admin', 'teacher'])
+@role_required(['admin', 'teacher', 'owner'])
 def export_all_houses():
     """Export all houses and their students to Excel"""
     user = session.get('user')
