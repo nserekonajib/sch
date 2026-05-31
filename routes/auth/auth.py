@@ -544,7 +544,7 @@ def logout():
         pass
     session.clear()
     flash('You have been logged out successfully', 'info')
-    return redirect(url_for('landing'))
+    return redirect(url_for('auth.login'))
 
 # ========== HELPER ROUTES ==========
 
