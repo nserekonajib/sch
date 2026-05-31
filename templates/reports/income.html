@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Income Report - Lunserk ERP{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Income Report</h1>
+            <p class="text-sm text-gray-600">School fees and other income collections</p>
+            <p class="text-xs text-gray-500 mt-1">Period: {{ start_date }} to {{ end_date }}</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="window.print()" class="btn-gradient px-4 py-2 rounded-lg text-white">
+                <i class="fas fa-print"></i> Print Report
+            </button>
+            <a href="{{ url_for('dashboard.index') }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">School Fees</p>
+            <p class="text-2xl font-bold text-blue-600">UGX {{ "{:,.0f}".format(total_fees) }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">Other Income</p>
+            <p class="text-2xl font-bold text-teal-600">UGX {{ "{:,.0f}".format(total_other) }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">Total Income</p>
+            <p class="text-2xl font-bold text-green-600">UGX {{ "{:,.0f}".format(total_income) }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">Total Transactions</p>
+            <p class="text-2xl font-bold text-orange-600">{{ payments|length + other_income|length }}</p>
+        </div>
+    </div>
+
+    <!-- School Fees Section -->
+    <div class="bg-white rounded-xl shadow-md mb-6 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-blue-50">
+            <h2 class="text-lg font-semibold text-gray-800">
+                <i class="fas fa-money-bill-wave text-blue-500 mr-2"></i>
+                School Fees Collection
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt #</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for payment in payments %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm font-mono text-gray-600">{{ payment.receipt_number }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ payment.payment_date }}</td>
+                        <td class="px-4 py-3 text-sm font-medium text-gray-800">
+                            {% if payment.student %}
+                                {{ payment.student.name }}
+                            {% else %}
+                                Unknown Student
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm font-semibold text-green-600">UGX {{ "{:,.0f}".format(payment.amount) }}</td>
+                        <td class="px-4 py-3 text-sm capitalize">{{ payment.payment_method.replace('_', ' ') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-4 py-8 text-center text-gray-400">No school fees payments recorded</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-gray-50">
+                    <tr>
+                        <td colspan="3" class="px-4 py-3 text-sm font-semibold text-gray-800">Total</td>
+                        <td class="px-4 py-3 text-sm font-bold text-green-600">UGX {{ "{:,.0f}".format(total_fees) }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Other Income Section -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-teal-50">
+            <h2 class="text-lg font-semibold text-gray-800">
+                <i class="fas fa-chart-line text-teal-500 mr-2"></i>
+                Other Income
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for income in other_income %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ income.transaction_date }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-800">{{ income.description }}</td>
+                        <td class="px-4 py-3 text-sm capitalize">{{ income.category or 'Uncategorized' }}</td>
+                        <td class="px-4 py-3 text-sm font-semibold text-teal-600 text-right">UGX {{ "{:,.0f}".format(income.amount) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-4 py-8 text-center text-gray-400">No other income recorded</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-gray-50">
+                    <tr>
+                        <td colspan="3" class="px-4 py-3 text-sm font-semibold text-gray-800">Total Other Income</td>
+                        <td class="px-4 py-3 text-sm font-bold text-teal-600 text-right">UGX {{ "{:,.0f}".format(total_other) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Profit & Loss Report - Lunserk ERP{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Profit & Loss Statement</h1>
+            <p class="text-sm text-gray-600">Financial performance summary</p>
+            <p class="text-xs text-gray-500 mt-1">Period: {{ start_date }} to {{ end_date }}</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="window.print()" class="btn-gradient px-4 py-2 rounded-lg text-white">
+                <i class="fas fa-print"></i> Print Report
+            </button>
+            <a href="{{ url_for('dashboard.index') }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Profit & Loss Statement -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
+            <h2 class="text-xl font-bold text-gray-800 text-center">Profit & Loss Statement</h2>
+            <p class="text-center text-gray-600 text-sm">{{ start_date }} to {{ end_date }}</p>
+        </div>
+        
+        <div class="p-6">
+            <!-- Income Section -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-green-700 border-b-2 border-green-200 pb-2 mb-4">
+                    <i class="fas fa-arrow-up text-green-500 mr-2"></i>Income
+                </h3>
+                
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center py-2 hover:bg-gray-50 px-3 rounded">
+                        <span class="text-gray-700">School Fees Collection</span>
+                        <span class="font-semibold text-green-600">UGX {{ "{:,.0f}".format(school_fees) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 hover:bg-gray-50 px-3 rounded">
+                        <span class="text-gray-700">Other Income</span>
+                        <span class="font-semibold text-green-600">UGX {{ "{:,.0f}".format(other_income) }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 mt-2 bg-green-50 px-3 rounded-lg">
+                        <span class="font-bold text-gray-800">Total Income</span>
+                        <span class="font-bold text-green-700 text-lg">UGX {{ "{:,.0f}".format(total_income) }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Expenses Section -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-red-700 border-b-2 border-red-200 pb-2 mb-4">
+                    <i class="fas fa-arrow-down text-red-500 mr-2"></i>Expenses
+                </h3>
+                
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center py-2 hover:bg-gray-50 px-3 rounded">
+                        <span class="text-gray-700">Total Operating Expenses</span>
+                        <span class="font-semibold text-red-600">UGX {{ "{:,.0f}".format(total_expenses) }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 mt-2 bg-red-50 px-3 rounded-lg">
+                        <span class="font-bold text-gray-800">Total Expenses</span>
+                        <span class="font-bold text-red-700 text-lg">UGX {{ "{:,.0f}".format(total_expenses) }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Net Profit Section -->
+            <div class="mt-6 pt-4 border-t-2 border-gray-300">
+                <div class="flex justify-between items-center p-4 rounded-lg 
+                    {% if net_profit >= 0 %}bg-green-100{% else %}bg-red-100{% endif %}">
+                    <span class="text-xl font-bold text-gray-800">
+                        {% if net_profit >= 0 %}
+                            <i class="fas fa-chart-line text-green-600 mr-2"></i>Net Profit
+                        {% else %}
+                            <i class="fas fa-chart-line text-red-600 mr-2"></i>Net Loss
+                        {% endif %}
+                    </span>
+                    <span class="text-2xl font-bold {% if net_profit >= 0 %}text-green-700{% else %}text-red-700{% endif %}">
+                        UGX {{ "{:,.0f}".format(net_profit|abs) }}
+                        {% if net_profit < 0 %}(Loss){% endif %}
+                    </span>
+                </div>
+                
+                <!-- Key Ratios -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                    <div class="bg-gray-50 rounded-lg p-3 text-center">
+                        <p class="text-sm text-gray-600">Profit Margin</p>
+                        <p class="text-xl font-bold text-blue-600">
+                            {% if total_income > 0 %}
+                                {{ ((net_profit / total_income) * 100)|round(1) }}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3 text-center">
+                        <p class="text-sm text-gray-600">Expense Ratio</p>
+                        <p class="text-xl font-bold text-orange-600">
+                            {% if total_income > 0 %}
+                                {{ ((total_expenses / total_income) * 100)|round(1) }}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+        <div class="bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-gray-500 text-sm">Total Income</p>
+            <p class="text-2xl font-bold text-green-600">UGX {{ "{:,.0f}".format(total_income) }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-gray-500 text-sm">Total Expenses</p>
+            <p class="text-2xl font-bold text-red-600">UGX {{ "{:,.0f}".format(total_expenses) }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4 text-center">
+            <p class="text-gray-500 text-sm">Net {% if net_profit >= 0 %}Profit{% else %}Loss{% endif %}</p>
+            <p class="text-2xl font-bold {% if net_profit >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                UGX {{ "{:,.0f}".format(net_profit|abs) }}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

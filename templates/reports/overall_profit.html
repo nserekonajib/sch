@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Overall Profit Report - Lunserk ERP{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Overall Profit Report</h1>
+            <p class="text-sm text-gray-600">Complete financial performance (All Time)</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="window.print()" class="btn-gradient px-4 py-2 rounded-lg text-white">
+                <i class="fas fa-print"></i> Print Report
+            </button>
+            <a href="{{ url_for('dashboard.index') }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Lifetime Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">Total School Fees</p>
+            <p class="text-2xl font-bold text-blue-600">UGX {{ "{:,.0f}".format(school_fees) }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">Other Income</p>
+            <p class="text-2xl font-bold text-teal-600">UGX {{ "{:,.0f}".format(other_income) }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">Total Expenses</p>
+            <p class="text-2xl font-bold text-red-600">UGX {{ "{:,.0f}".format(total_expenses) }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">Lifetime Profit</p>
+            <p class="text-2xl font-bold {% if net_profit >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                UGX {{ "{:,.0f}".format(net_profit|abs) }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Overall Financial Summary -->
+    <div class="bg-white rounded-xl shadow-md mb-6 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
+            <h2 class="text-xl font-bold text-gray-800 text-center">Lifetime Financial Summary</h2>
+        </div>
+        
+        <div class="p-6">
+            <div class="space-y-4">
+                <div class="flex justify-between items-center py-3 border-b">
+                    <span class="text-gray-700 font-semibold">Total Income (All Time)</span>
+                    <span class="font-bold text-green-600 text-lg">UGX {{ "{:,.0f}".format(total_income) }}</span>
+                </div>
+                <div class="flex justify-between items-center py-3 border-b">
+                    <span class="text-gray-700 font-semibold">Total Expenses (All Time)</span>
+                    <span class="font-bold text-red-600 text-lg">UGX {{ "{:,.0f}".format(total_expenses) }}</span>
+                </div>
+                <div class="flex justify-between items-center py-4 bg-gray-50 px-4 rounded-lg">
+                    <span class="text-xl font-bold text-gray-800">
+                        {% if net_profit >= 0 %}
+                            <i class="fas fa-trophy text-green-600 mr-2"></i>Net Profit
+                        {% else %}
+                            <i class="fas fa-exclamation-triangle text-red-600 mr-2"></i>Net Loss
+                        {% endif %}
+                    </span>
+                    <span class="text-2xl font-bold {% if net_profit >= 0 %}text-green-700{% else %}text-red-700{% endif %}">
+                        UGX {{ "{:,.0f}".format(net_profit|abs) }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Breakdown -->
+    {% if monthly_breakdown %}
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-800">
+                <i class="fas fa-calendar-alt text-orange-500 mr-2"></i>
+                Monthly Performance Breakdown
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Income</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Expenses</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Profit/Loss</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Margin</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for month in monthly_breakdown %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm font-medium text-gray-800">
+                            {{ datetime.strptime(month.month, '%Y-%m').strftime('%B %Y') if month.month else month.month }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-green-600 text-right">UGX {{ "{:,.0f}".format(month.income) }}</td>
+                        <td class="px-4 py-3 text-sm text-red-600 text-right">UGX {{ "{:,.0f}".format(month.expense) }}</td>
+                        <td class="px-4 py-3 text-sm font-semibold text-right {% if month.profit >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            UGX {{ "{:,.0f}".format(month.profit|abs) }}
+                            {% if month.profit < 0 %}(Loss){% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-right">
+                            {% if month.income > 0 %}
+                                <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                    {% if (month.profit / month.income * 100) >= 20 %}bg-green-100 text-green-700
+                                    {% elif (month.profit / month.income * 100) >= 0 %}bg-yellow-100 text-yellow-700
+                                    {% else %}bg-red-100 text-red-700{% endif %}">
+                                    {{ ((month.profit / month.income) * 100)|round(1) }}%
+                                </span>
+                            {% else %}
+                                0%
+                            {% endif %}
+                         </td>
+                     </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-gray-50">
+                    <tr class="border-t-2 border-gray-300">
+                        <td class="px-4 py-3 text-sm font-bold text-gray-800">TOTAL</td>
+                        <td class="px-4 py-3 text-sm font-bold text-green-700 text-right">UGX {{ "{:,.0f}".format(total_income) }}</td>
+                        <td class="px-4 py-3 text-sm font-bold text-red-700 text-right">UGX {{ "{:,.0f}".format(total_expenses) }}</td>
+                        <td class="px-4 py-3 text-sm font-bold {% if net_profit >= 0 %}text-green-700{% else %}text-red-700{% endif %} text-right">
+                            UGX {{ "{:,.0f}".format(net_profit|abs) }}
+                        </td>
+                        <td class="px-4 py-3 text-right"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Key Insights -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        <div class="bg-green-50 rounded-xl shadow-md p-4">
+            <h3 class="font-semibold text-green-800 mb-2">
+                <i class="fas fa-chart-line mr-2"></i>Top Income Sources
+            </h3>
+            <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span>School Fees:</span>
+                    <span class="font-semibold">{{ ((school_fees / total_income) * 100)|round(1) if total_income > 0 else 0 }}%</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span>Other Income:</span>
+                    <span class="font-semibold">{{ ((other_income / total_income) * 100)|round(1) if total_income > 0 else 0 }}%</span>
+                </div>
+            </div>
+        </div>
+        <div class="bg-red-50 rounded-xl shadow-md p-4">
+            <h3 class="font-semibold text-red-800 mb-2">
+                <i class="fas fa-chart-line mr-2"></i>Expense Impact
+            </h3>
+            <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span>Expense to Income Ratio:</span>
+                    <span class="font-semibold">{{ ((total_expenses / total_income) * 100)|round(1) if total_income > 0 else 0 }}%</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span>Profitability Index:</span>
+                    <span class="font-semibold">{{ ((net_profit / total_income) * 100)|round(1) if total_income > 0 else 0 }}%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

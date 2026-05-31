@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}School Fees Report - Lunserk ERP{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">School Fees Collection Report</h1>
+            <p class="text-sm text-gray-600">Fee payment transactions</p>
+            <p class="text-xs text-gray-500 mt-1">Period: {{ start_date }} to {{ end_date }}</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="window.print()" class="btn-gradient px-4 py-2 rounded-lg text-white">
+                <i class="fas fa-print"></i> Print Report
+            </button>
+            <a href="{{ url_for('dashboard.index') }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">Total Collected</p>
+            <p class="text-2xl font-bold text-green-600">UGX {{ "{:,.0f}".format(total_collected) }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">Number of Payments</p>
+            <p class="text-2xl font-bold text-blue-600">{{ payments|length }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">Payment Methods</p>
+            <p class="text-2xl font-bold text-orange-600">{{ method_totals|length }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-gray-500 text-sm">Average Payment</p>
+            <p class="text-2xl font-bold text-purple-600">UGX {{ "{:,.0f}".format(total_collected / payments|length if payments|length > 0 else 0) }}</p>
+        </div>
+    </div>
+
+    <!-- Payment Method Breakdown -->
+    {% if method_totals %}
+    <div class="bg-white rounded-xl shadow-md mb-6">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-800">Payment Method Breakdown</h2>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {% for method, amount in method_totals.items() %}
+                <div class="bg-blue-50 rounded-lg p-3 text-center">
+                    <p class="text-sm text-gray-600 capitalize">{{ method.replace('_', ' ') }}</p>
+                    <p class="text-xl font-bold text-blue-600">UGX {{ "{:,.0f}".format(amount) }}</p>
+                    <p class="text-xs text-gray-500">{{ ((amount / total_collected) * 100)|round(1) if total_collected > 0 else 0 }}%</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Payments Table -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-green-50">
+            <h2 class="text-lg font-semibold text-gray-800">
+                <i class="fas fa-money-bill-wave text-green-500 mr-2"></i>
+                Payment Transactions
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt #</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for payment in payments %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm font-mono text-gray-600">{{ payment.receipt_number }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ payment.payment_date }}</td>
+                        <td class="px-4 py-3 text-sm font-medium text-gray-800">
+                            {% if payment.student %}
+                                {{ payment.student.name }}
+                            {% else %}
+                                Unknown Student
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600">
+                            {% if payment.student and payment.student.class %}
+                                {{ payment.student.class.name }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm capitalize">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                                {{ payment.payment_method.replace('_', ' ') if payment.payment_method else 'N/A' }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm font-semibold text-green-600 text-right">UGX {{ "{:,.0f}".format(payment.amount) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-4 py-8 text-center text-gray-400">No payment transactions found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-gray-50">
+                    <tr>
+                        <td colspan="5" class="px-4 py-3 text-sm font-semibold text-gray-800">Total Collected</td>
+                        <td class="px-4 py-3 text-sm font-bold text-green-600 text-right">UGX {{ "{:,.0f}".format(total_collected) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
