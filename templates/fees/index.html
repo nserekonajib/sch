@@ -1,410 +1,684 @@
-<!-- templates/fees/index.html - Complete with multiple class selection -->
+<!-- templates/fees/index.html - Elegant Redesign with Seamless Interactions -->
 {% extends "base.html" %}
 
-{% block title %}Fee Particulars - Lunserk ERP{% endblock %}
+{% block title %}Fee Management - Lunserk ERP{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* modern redesign - toggle chips, cards, smooth interactions */
-    .fee-card, .settings-card {
-        transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
-        background: white;
-        border: 1px solid #eef2f6;
-        border-radius: 24px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+    /* ===== DESIGN SYSTEM ===== */
+    :root {
+        --primary: #f59e0b;
+        --primary-dark: #d97706;
+        --primary-light: #fef3c7;
+        --primary-soft: #fffbeb;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
     }
-    .fee-card:hover, .settings-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 20px 30px -12px rgba(0, 0, 0, 0.08);
-        border-color: #ffb347;
-    }
-    .btn-gradient {
-        background: linear-gradient(105deg, #f5a623 0%, #ff8c2e 100%);
-        border: none;
-        transition: all 0.25s;
-    }
-    .btn-gradient:hover {
-        background: linear-gradient(105deg, #ff8c2e 0%, #f5a623 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 8px 18px rgba(245, 166, 35, 0.25);
-    }
-    .modal-overlay {
-        animation: fadeIn 0.25s ease-out;
-    }
-    .modal-container {
-        animation: slideUp 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    @keyframes slideUp {
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeSlideIn {
         from {
             opacity: 0;
-            transform: translateY(30px) scale(0.96);
+            transform: translateY(-8px);
         }
         to {
             opacity: 1;
-            transform: translateY(0) scale(1);
+            transform: translateY(0);
         }
     }
-    .fee-item-modern {
-        background: #ffffff;
+
+    @keyframes scaleIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-12px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes shimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
+    }
+
+    /* ===== CARD STYLES ===== */
+    .card {
+        background: white;
         border-radius: 20px;
-        padding: 16px 18px;
-        margin-bottom: 12px;
-        transition: all 0.2s;
-        border: 1px solid #edf2f7;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-    }
-    .fee-item-modern:hover {
-        background: #fefaf5;
-        border-color: #ffe1b3;
-        transform: translateX(3px);
-    }
-    .settings-panel {
-        background: linear-gradient(115deg, #ffffff 0%, #fffcf7 100%);
-        border-radius: 24px;
-        padding: 1.5rem;
-        border: 1px solid #fff0e0;
+        border: 1px solid var(--gray-100);
+        transition: all 0.25s ease;
     }
 
-    /* TOGGLE CHIPS (replaces radio selections) */
-    .toggle-chip-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.6rem;
-        margin-top: 0.25rem;
-    }
-    .toggle-chip {
-        background: #f1f5f9;
-        padding: 0.5rem 1.2rem;
-        border-radius: 60px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        color: #2c3e50;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        border: 1px solid transparent;
-        font-family: inherit;
-    }
-    .toggle-chip i {
-        font-size: 0.85rem;
-        opacity: 0.7;
-    }
-    .toggle-chip.active {
-        background: #f5a623;
-        color: white;
-        box-shadow: 0 4px 10px rgba(245, 166, 35, 0.3);
-        border-color: #ffffff40;
-    }
-    .toggle-chip.active i {
-        opacity: 1;
-        color: white;
+    .card:hover {
+        border-color: var(--primary-light);
+        box-shadow: var(--shadow-lg);
     }
 
-    /* category pill modern */
-    .category-pills {
+    .card-gradient {
+        background: linear-gradient(135deg, #ffffff 0%, var(--primary-soft) 100%);
+    }
+
+    /* ===== TOGGLE CHIPS ===== */
+    .chip-group {
         display: flex;
         flex-wrap: wrap;
         gap: 0.5rem;
-        margin-top: 0.5rem;
-    }
-    .pill {
-        background: #f1f5f9;
-        border-radius: 40px;
-        padding: 0.4rem 1.1rem;
-        font-size: 0.8rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        border: 1px solid #e9edf2;
-    }
-    .pill.active-pill {
-        background: #f5a623;
-        color: white;
-        border-color: #f5a623;
-        box-shadow: 0 2px 6px rgba(245,166,35,0.2);
     }
 
-    /* search container */
-    .search-container {
-        position: relative;
-        width: 100%;
+    .chip {
+        padding: 0.5rem 1.25rem;
+        border-radius: 100px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        background: var(--gray-100);
+        color: var(--gray-700);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
     }
-    
-    .search-results {
-        position: absolute;
-        top: calc(100% + 5px);
+
+    .chip:hover {
+        background: var(--gray-200);
+        transform: translateY(-1px);
+    }
+
+    .chip.active {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* ===== PILLS ===== */
+    .pill {
+        padding: 0.4rem 1.2rem;
+        border-radius: 100px;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        background: var(--gray-100);
+        color: var(--gray-600);
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+
+    .pill:hover {
+        background: var(--gray-200);
+    }
+
+    .pill.active {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+    }
+
+    /* ===== EXPANDABLE SECTIONS ===== */
+    .expandable-section {
+        border: 1px solid var(--gray-100);
+        border-radius: 16px;
+        background: white;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s;
+    }
+
+    .expandable-section:hover {
+        border-color: var(--primary-light);
+    }
+
+    .expandable-header {
+        padding: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.2s;
+        border-radius: 16px;
+    }
+
+    .expandable-header:hover {
+        background: var(--primary-soft);
+    }
+
+    .expandable-header.active {
+        background: var(--primary-soft);
+        border-radius: 16px 16px 0 0;
+    }
+
+    .expandable-icon {
+        transition: transform 0.25s ease;
+        color: var(--gray-400);
+    }
+
+    .expandable-header.active .expandable-icon {
+        transform: rotate(180deg);
+        color: var(--primary);
+    }
+
+    .expandable-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: #fefefe;
+        border-top: 1px solid transparent;
+    }
+
+    .expandable-content.open {
+        max-height: 400px;
+        overflow-y: auto;
+        border-top-color: var(--gray-100);
+    }
+
+    .expandable-inner {
+        padding: 1rem;
+    }
+
+    /* ===== FEE ITEMS ===== */
+    .fee-item {
+        background: white;
+        border-radius: 16px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s;
+        border: 1px solid var(--gray-100);
+    }
+
+    .fee-item:hover {
+        border-color: var(--primary-light);
+        background: var(--primary-soft);
+        transform: translateX(4px);
+    }
+
+    /* ===== INPUT STYLES ===== */
+    .input-modern {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .input-modern:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    }
+
+    .select-modern {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        font-size: 0.875rem;
+        background: white;
+        cursor: pointer;
+    }
+
+    .select-modern:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    }
+
+    /* ===== SEARCH OVERLAY ===== */
+    .search-overlay {
+        position: fixed;
+        top: 0;
         left: 0;
         right: 0;
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        max-height: 280px;
-        overflow-y: auto;
-        z-index: 100;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-    }
-    
-    .search-result-item {
-        padding: 12px 16px;
-        cursor: pointer;
-        transition: all 0.15s;
-        border-bottom: 1px solid #f1f5f9;
-    }
-    
-    .search-result-item:hover {
-        background-color: #fff7ed;
-    }
-    
-    .search-result-item:last-child {
-        border-bottom: none;
-    }
-    
-    /* modern input styling */
-    .modern-input, .modern-select {
-        border-radius: 16px;
-        border: 1px solid #e2e8f0;
-        padding: 0.6rem 1rem;
-        transition: all 0.2s;
-        background: white;
-        width: 100%;
-    }
-    .modern-input:focus, .modern-select:focus {
-        outline: none;
-        border-color: #f5a623;
-        box-shadow: 0 0 0 3px rgba(245,166,35,0.15);
-    }
-    .label-modern {
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #6c7e97;
-        margin-bottom: 0.5rem;
-        display: block;
-    }
-    .total-orange {
-        font-size: 1.9rem;
-        font-weight: 800;
-        color: #f5a623;
-    }
-    hr.soft {
-        margin: 1rem 0;
-        border-color: #f0e9e2;
-    }
-    
-    /* selected student display */
-    .selected-student-card {
-        background: linear-gradient(135deg, #fff7ed 0%, #fffbeb 100%);
-        border: 1px solid #fed7aa;
-        border-radius: 16px;
-        padding: 12px 16px;
-        margin-top: 12px;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 998;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s ease;
     }
 
-    /* multiple classes scrollbar */
-    .class-checkboxes-container::-webkit-scrollbar {
+    .search-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .search-dropdown {
+        position: fixed;
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--shadow-xl);
+        z-index: 999;
+        max-height: 360px;
+        overflow-y: auto;
+        border: 1px solid var(--gray-200);
+        animation: slideDown 0.2s ease;
+    }
+
+    .search-dropdown::-webkit-scrollbar {
         width: 6px;
     }
-    .class-checkboxes-container::-webkit-scrollbar-track {
-        background: #f1f1f1;
+
+    .search-dropdown::-webkit-scrollbar-track {
+        background: var(--gray-100);
         border-radius: 10px;
     }
-    .class-checkboxes-container::-webkit-scrollbar-thumb {
-        background: #f5a623;
+
+    .search-dropdown::-webkit-scrollbar-thumb {
+        background: var(--primary);
         border-radius: 10px;
+    }
+
+    .search-result {
+        padding: 0.875rem 1rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .search-result:hover {
+        background: var(--primary-soft);
+    }
+
+    .search-result:last-child {
+        border-bottom: none;
+    }
+
+    /* ===== SELECTED STUDENT CARD ===== */
+    .selected-card {
+        background: linear-gradient(135deg, var(--primary-soft) 0%, #fff7ed 100%);
+        border: 1px solid #fed7aa;
+        border-radius: 14px;
+        padding: 0.875rem 1rem;
+        margin-top: 0.75rem;
+        animation: fadeSlideIn 0.2s ease;
+    }
+
+    /* ===== TOTAL DISPLAY ===== */
+    .total-amount {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--primary);
+        letter-spacing: -0.02em;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border: none;
+        color: white;
+        padding: 0.625rem 1.25rem;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-secondary {
+        padding: 0.625rem 1.25rem;
+        border-radius: 12px;
+        font-weight: 500;
+        background: white;
+        border: 1px solid var(--gray-200);
+        color: var(--gray-700);
+        transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+        background: var(--gray-50);
+        border-color: var(--gray-300);
+    }
+
+    /* ===== CLASS CHECKBOX CONTAINER ===== */
+    .class-list {
+        max-height: 280px;
+        overflow-y: auto;
+        border: 1px solid var(--gray-200);
+        border-radius: 14px;
+        padding: 0.75rem;
+        background: #fefefe;
+    }
+
+    .class-list::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .class-list::-webkit-scrollbar-track {
+        background: var(--gray-100);
+        border-radius: 10px;
+    }
+
+    .class-list::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 10px;
+    }
+
+    /* ===== MODAL ===== */
+    .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-backdrop.active {
+        display: flex;
+        animation: fadeSlideIn 0.2s ease;
+    }
+
+    .modal-container {
+        background: white;
+        border-radius: 28px;
+        max-width: 480px;
+        width: 90%;
+        padding: 1.75rem;
+        animation: scaleIn 0.25s ease;
+    }
+
+    /* ===== LOADING ===== */
+    .loading-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 1100;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .loading-overlay.active {
+        display: flex;
+    }
+
+    .spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid var(--gray-200);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+        .total-amount { font-size: 1.5rem; }
+        .search-dropdown { left: 16px !important; right: 16px !important; width: auto !important; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-6">
-    <!-- Header -->
-    <div class="mb-7 flex flex-wrap justify-between items-end">
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Header Section -->
+    <div class="mb-8 flex flex-wrap justify-between items-center gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-1 flex items-center gap-2">
-                <i class="fas fa-coins text-orange-500"></i> Fee Particulars
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <span class="w-2 h-2 bg-orange-500 rounded-full"></span>
+                Fee Management
             </h1>
-            <p class="text-sm text-gray-500">Configure fee structure & generate invoices with intelligent presets</p>
+            <p class="text-sm text-gray-500 mt-1">Configure fee structures and generate invoices</p>
         </div>
-        <div class="bg-orange-50 px-4 py-2 rounded-2xl text-sm font-medium text-orange-700 shadow-sm">
-            <i class="fas fa-sync-alt mr-1"></i> live preview · total updates instantly
+        <div class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 rounded-full text-xs font-medium text-orange-600">
+            <span class="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></span>
+            Live Preview · Auto-update
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-7">
-        <!-- LEFT PANEL -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- LEFT PANEL - Configuration -->
         <div class="lg:col-span-1">
-            <div class="settings-panel shadow-sm">
-                <h3 class="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2 border-b border-orange-100 pb-2">
-                    <i class="fas fa-sliders-h text-orange-500"></i>
+            <div class="card card-gradient p-5">
+                <h3 class="text-base font-bold text-gray-800 mb-5 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
                     Configuration
                 </h3>
-                
+
                 <form id="feeSettingsForm">
-                    <!-- Apply To -->
-                    <div class="mb-5">
-                        <div class="label-modern"><i class="fas fa-users mr-1"></i> Apply To</div>
-                        <div class="toggle-chip-group" id="applyToGroup">
-                            <div data-value="all" class="toggle-chip active"><i class="fas fa-globe-americas"></i> All Students</div>
-                            <div data-value="class" class="toggle-chip"><i class="fas fa-graduation-cap"></i> Specific Class</div>
-                            <div data-value="student" class="toggle-chip"><i class="fas fa-user-graduate"></i> Specific Student</div>
-                            <div data-value="multiple-classes" class="toggle-chip"><i class="fas fa-layer-group"></i> Multiple Classes</div>
-                        </div>
-                        <input type="hidden" name="apply_to" id="applyToHidden" value="all">
-                    </div>
-                    
-                    <!-- Class Select -->
-                    <div id="classSelectGroup" class="mb-5 hidden">
-                        <div class="label-modern"><i class="fas fa-chalkboard"></i> Select Class</div>
-                        <select id="classSelect" class="modern-select">
-                            <option value="">-- Select Class --</option>
-                            {% for class in classes %}
-                            <option value="{{ class.id }}">{{ class.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <!-- Student Live Search -->
-                    <div id="studentSelectGroup" class="mb-5 hidden">
-                        <div class="label-modern"><i class="fas fa-search"></i> Search Student</div>
-                        <div class="search-container">
-                            <input type="text" id="studentSearchInput" 
-                                   placeholder="Type name or admission ID..." 
-                                   class="modern-input pr-8"
-                                   autocomplete="off">
-                            <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-                            <div id="studentSearchResults" class="search-results hidden"></div>
-                        </div>
-                        <input type="hidden" id="selectedStudentId" name="student_id">
-                        <div id="selectedStudentDisplay" class="hidden">
-                            <div class="selected-student-card">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex-1">
-                                        <p class="text-sm font-bold text-gray-800" id="selectedStudentName"></p>
-                                        <p class="text-xs text-gray-500 mt-1" id="selectedStudentInfo"></p>
+                    <!-- Apply To Selection -->
+                    <div class="mb-6">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">
+                            <span class="text-red-500">*</span> Apply To
+                        </label>
+
+                        <!-- All Students -->
+                        <div class="expandable-section" data-option="all">
+                            <div class="expandable-header">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
                                     </div>
-                                    <button type="button" onclick="clearSelectedStudent()" class="text-gray-400 hover:text-red-500 transition ml-3">
-                                        <i class="fas fa-times-circle text-lg"></i>
-                                    </button>
+                                    <span class="font-medium text-gray-800">All Students</span>
+                                </div>
+                                <svg class="w-4 h-4 expandable-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Specific Class -->
+                        <div class="expandable-section" data-option="class">
+                            <div class="expandable-header">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-green-50 rounded-xl flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 14l9-5-9-5-9 5 9 5z"></path>
+                                            <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="font-medium text-gray-800">Specific Class</span>
+                                </div>
+                                <svg class="w-4 h-4 expandable-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                            <div class="expandable-content" data-content="class">
+                                <div class="expandable-inner">
+                                    <label class="text-sm font-semibold text-gray-700 mb-2 block">Select Class <span class="text-red-500">*</span></label>
+                                    <select id="classSelect" class="select-modern">
+                                        <option value="">— Select Class —</option>
+                                        {% for class in classes %}
+                                        <option value="{{ class.id }}">{{ class.name }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Multiple Classes Selection -->
-                    <div id="multipleClassesGroup" class="mb-5 hidden">
-                        <div class="label-modern"><i class="fas fa-chalkboard"></i> Select Classes</div>
-                        <div class="class-checkboxes-container space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50/30">
-                            <div id="classCheckboxesList" class="space-y-2">
-                                <div class="text-center text-gray-500 py-4">Loading classes...</div>
+
+                        <!-- Specific Student -->
+                        <div class="expandable-section" data-option="student">
+                            <div class="expandable-header">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-purple-50 rounded-xl flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="font-medium text-gray-800">Specific Student</span>
+                                </div>
+                                <svg class="w-4 h-4 expandable-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                            <div class="expandable-content" data-content="student">
+                                <div class="expandable-inner">
+                                    <label class="text-sm font-semibold text-gray-700 mb-2 block">Search Student <span class="text-red-500">*</span></label>
+                                    <div class="relative">
+                                        <input type="text" id="studentSearchInput" 
+                                               placeholder="Name or admission ID..." 
+                                               class="input-modern pr-8"
+                                               autocomplete="off">
+                                        <svg class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <input type="hidden" id="selectedStudentId" name="student_id">
+                                    <div id="selectedStudentDisplay" class="hidden">
+                                        <div class="selected-card">
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex-1">
+                                                    <p class="text-sm font-bold text-gray-800" id="selectedStudentName"></p>
+                                                    <p class="text-xs text-gray-500 mt-0.5" id="selectedStudentInfo"></p>
+                                                </div>
+                                                <button type="button" onclick="clearSelectedStudent()" class="text-gray-400 hover:text-red-500 transition">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="mt-2 flex justify-between items-center">
-                            <div class="flex gap-2">
-                                <button type="button" onclick="selectAllClasses()" class="text-xs text-orange-600 hover:text-orange-700 font-medium">
-                                    <i class="fas fa-check-double mr-1"></i> Select All
-                                </button>
-                                <button type="button" onclick="deselectAllClasses()" class="text-xs text-gray-500 hover:text-gray-700">
-                                    <i class="fas fa-times mr-1"></i> Deselect All
-                                </button>
+
+                        <!-- Multiple Classes -->
+                        <div class="expandable-section" data-option="multiple-classes">
+                            <div class="expandable-header">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-orange-50 rounded-xl flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="font-medium text-gray-800">Multiple Classes</span>
+                                </div>
+                                <svg class="w-4 h-4 expandable-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
                             </div>
-                            <span id="selectedClassesCount" class="text-xs text-gray-500">0 classes selected</span>
+                            <div class="expandable-content" data-content="multiple-classes">
+                                <div class="expandable-inner">
+                                    <label class="text-sm font-semibold text-gray-700 mb-2 block">Select Classes <span class="text-red-500">*</span></label>
+                                    <div class="class-list" id="classCheckboxesList">
+                                        <div class="text-center text-gray-500 py-6 text-sm">Loading classes...</div>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-3 pt-2">
+                                        <div class="flex gap-3">
+                                            <button type="button" onclick="selectAllClasses()" class="text-xs text-orange-600 hover:text-orange-700 font-medium">Select All</button>
+                                            <button type="button" onclick="deselectAllClasses()" class="text-xs text-gray-500 hover:text-gray-700">Deselect All</button>
+                                        </div>
+                                        <span id="selectedClassesCount" class="text-xs text-gray-500">0 selected</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
+                        <input type="hidden" name="apply_to" id="applyToHidden">
                     </div>
 
                     <!-- Student Category -->
-                    <div class="mb-5">
-                        <div class="label-modern"><i class="fas fa-tag"></i> Student Category</div>
-                        <div class="category-pills" id="categoryPills">
-                            <div data-cat="all" class="pill active-pill">All Categories</div>
-                            <div data-cat="Boarding" class="pill">Boarding</div>
-                            <div data-cat="Day" class="pill">Day Scholar</div>
+                    <div class="mb-6">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">
+                            <span class="text-red-500">*</span> Student Category
+                        </label>
+                        <div class="chip-group" id="categoryPills">
+                            <div data-cat="all" class="chip">All Categories</div>
+                            <div data-cat="Boarding" class="chip">🏠 Boarding</div>
+                            <div data-cat="Day" class="chip">☀️ Day Scholar</div>
                         </div>
-                        <input type="hidden" name="category" id="categoryHidden" value="all">
+                        <input type="hidden" name="category" id="categoryHidden">
                     </div>
-                    
-                    <hr class="soft">
-                    
+
+                    <hr class="my-5 border-gray-100">
+
                     <!-- Default Fee Type -->
                     <div class="mb-4">
-                        <div class="label-modern"><i class="fas fa-edit"></i> Default Fee Type</div>
-                        <div class="toggle-chip-group" id="defaultFeeTypeGroup">
-                            <div data-type="fixed" class="toggle-chip active"><i class="fas fa-lock"></i> Fixed</div>
-                            <div data-type="editable" class="toggle-chip"><i class="fas fa-pen-fancy"></i> Editable</div>
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">
+                            <span class="text-red-500">*</span> Default Fee Type
+                        </label>
+                        <div class="chip-group" id="defaultFeeTypeGroup">
+                            <div data-type="fixed" class="chip">🔒 Fixed</div>
+                            <div data-type="editable" class="chip">✏️ Editable</div>
                         </div>
-                        <input type="hidden" name="default_type" id="defaultTypeHidden" value="fixed">
+                        <input type="hidden" name="default_type" id="defaultTypeHidden">
                     </div>
                 </form>
             </div>
         </div>
-        
-        <!-- RIGHT PANEL -->
+
+        <!-- RIGHT PANEL - Fee Items -->
         <div class="lg:col-span-2">
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="px-6 py-5 border-b border-orange-50 bg-gradient-to-r from-orange-50/40 to-white flex items-center justify-between">
-                    <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-                        <i class="fas fa-receipt text-orange-500"></i> Fee Items Configuration
+            <div class="card overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-6 3v-3m-6 3h18M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"></path>
+                        </svg>
+                        Fee Items
                     </h2>
-                    <button type="button" onclick="addFeeItem()" class="btn-gradient px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2 shadow-sm">
-                        <i class="fas fa-plus-circle"></i>
-                        Add Fee Item
+                    <button type="button" onclick="addFeeItem()" class="btn-primary text-sm flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Add Item
                     </button>
                 </div>
-                
-                <div class="p-6" id="feeItemsContainer">
+
+                <div class="p-6">
                     <div id="feeItemsList">
-                        <div class="fee-item-modern">
-                            <div class="grid grid-cols-12 gap-3 items-center">
-                                <div class="col-span-5">
-                                    <label class="text-xs font-semibold text-gray-500 mb-1 block">Particular Label</label>
-                                    <input type="text" name="particular_label[]" placeholder="e.g., Tuition Fee" 
-                                           class="modern-input text-sm">
-                                </div>
-                                <div class="col-span-3">
-                                    <label class="text-xs font-semibold text-gray-500 mb-1 block">Amount (UGX)</label>
-                                    <input type="number" name="amount[]" placeholder="0.00" onchange="updateTotal()"
-                                           class="modern-input text-sm text-right">
-                                </div>
-                                <div class="col-span-3">
-                                    <label class="text-xs font-semibold text-gray-500 mb-1 block">Type</label>
-                                    <select name="type[]" class="modern-select text-sm">
-                                        <option value="fixed">Fixed</option>
-                                        <option value="editable">Editable</option>
-                                    </select>
-                                </div>
-                                <div class="col-span-1 text-center">
-                                    <button type="button" onclick="removeFeeItem(this)" class="text-gray-400 hover:text-red-500 transition mt-5">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Dynamic fee items will appear here -->
                     </div>
-                    
-                    <div class="mt-8 pt-4 border-t border-gray-100">
+
+                    <!-- Total Section -->
+                    <div class="mt-6 pt-4 border-t border-gray-100">
                         <div class="flex justify-between items-end">
                             <div>
-                                <p class="text-sm font-medium text-gray-500">Total Fee Amount</p>
+                                <p class="text-sm font-medium text-gray-500">Total Amount</p>
                                 <p class="text-xs text-gray-400">All selected fee items combined</p>
                             </div>
-                            <div class="text-right">
-                                <p class="total-orange" id="totalAmount">UGX 0</p>
-                            </div>
+                            <div class="total-amount" id="totalAmount">UGX 0</div>
                         </div>
                     </div>
-                    
-                    <div class="flex gap-3 mt-6 pt-4">
-                        <button type="button" onclick="resetFeeItems()" class="px-5 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-all text-sm font-medium">
-                            <i class="fas fa-undo-alt mr-1"></i> Reset
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-3 mt-6 pt-2">
+                        <button type="button" onclick="resetFeeItems()" class="btn-secondary text-sm flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            Reset
                         </button>
-                        <button type="button" onclick="generateInvoices()" class="flex-1 btn-gradient px-5 py-2 text-white rounded-xl font-semibold shadow-md flex items-center justify-center gap-2">
-                            <i class="fas fa-file-invoice-dollar"></i>
+                        <button type="button" onclick="generateInvoices()" class="btn-primary flex-1 flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
                             Generate Invoices
                         </button>
                     </div>
@@ -412,395 +686,474 @@
             </div>
         </div>
     </div>
-    
-    <!-- Recent Fee Configurations Table -->
-    <div class="mt-10 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/40">
-            <h2 class="text-lg font-bold text-gray-800"><i class="fas fa-history text-orange-400 mr-2"></i> Recent Fee Configurations</h2>
+
+    <!-- Recent Configurations Table -->
+    <div class="mt-8 card overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/30">
+            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Recent Configurations
+            </h2>
         </div>
         <div class="p-6">
             {% if fee_particulars %}
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
+                <table class="w-full">
                     <thead>
-                        <tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applied To</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fee Items</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                        <tr class="border-b border-gray-100">
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Applied To</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Fee Items</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Total</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody class="divide-y divide-gray-50">
                         {% for particular in fee_particulars[:5] %}
-                        <tr class="hover:bg-orange-50/30 transition">
+                        <tr class="hover:bg-orange-50/20 transition">
                             <td class="px-4 py-3 text-sm text-gray-600">{{ particular.created_at[:10] if particular.created_at else 'N/A' }}</td>
-                            <td class="px-4 py-3 text-sm">
+                            <td class="px-4 py-3">
                                 {% if particular.apply_to == 'all' %}
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">All Students</span>
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">All Students</span>
                                 {% elif particular.apply_to == 'class' %}
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700">Specific Class</span>
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">Specific Class</span>
                                 {% elif particular.apply_to == 'multiple_classes' %}
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700">Multiple Classes</span>
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">Multiple Classes</span>
                                 {% else %}
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">Specific Student</span>
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Specific Student</span>
                                 {% endif %}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-500">{{ particular.fee_items|length if particular.fee_items is iterable else 0 }} item(s)</td>
-                            <td class="px-4 py-3 text-sm text-gray-800 text-right font-bold">UGX {{ "{:,.0f}".format(particular.total_amount) }}</td>
+                            <td class="px-4 py-3 text-sm font-bold text-gray-800 text-right">UGX {{ "{:,.0f}".format(particular.total_amount) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             {% else %}
-            <p class="text-center text-gray-500 py-8">No fee configurations yet. Create your first fee structure above.</p>
+            <div class="text-center py-10">
+                <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <p class="text-gray-500">No fee configurations yet</p>
+                <p class="text-xs text-gray-400 mt-1">Create your first fee structure above</p>
+            </div>
             {% endif %}
         </div>
     </div>
 </div>
 
+<!-- Search Overlays -->
+<div id="searchOverlay" class="search-overlay"></div>
+<div id="searchDropdown" class="search-dropdown" style="display: none;"></div>
+
 <!-- Success Modal -->
-<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
-        <div class="p-6 text-center">
-            <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-check-circle text-3xl text-green-500"></i>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-800 mb-2" id="successTitle">Success!</h3>
-            <div class="text-gray-600 mb-6" id="successMessage">Invoices generated successfully</div>
-            <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-xl text-white font-medium">Continue</button>
+<div id="successModal" class="modal-backdrop">
+    <div class="modal-container text-center">
+        <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
         </div>
+        <h3 class="text-xl font-bold text-gray-800 mb-2" id="successTitle">Success!</h3>
+        <div class="text-gray-600 mb-6" id="successMessage">Invoices generated successfully</div>
+        <button onclick="closeSuccessModal()" class="btn-primary px-6 py-2.5 rounded-xl">Continue</button>
     </div>
 </div>
 
 <!-- Loading Overlay -->
-<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl p-6 flex flex-col items-center shadow-2xl">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
-        <p class="text-gray-700">Generating invoices...</p>
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="bg-white rounded-2xl p-6 flex flex-col items-center shadow-2xl">
+        <div class="spinner mb-4"></div>
+        <p class="text-gray-700 font-medium">Generating invoices...</p>
+        <p class="text-xs text-gray-400 mt-1">Please wait</p>
     </div>
 </div>
 
 <script>
     // DOM Elements
-    const applyToggles = document.querySelectorAll('#applyToGroup .toggle-chip');
+    const expandableSections = document.querySelectorAll('.expandable-section');
     const applyToHidden = document.getElementById('applyToHidden');
-    const classGroup = document.getElementById('classSelectGroup');
-    const studentGroup = document.getElementById('studentSelectGroup');
-    const multipleClassesGroup = document.getElementById('multipleClassesGroup');
-    const categoryPills = document.querySelectorAll('#categoryPills .pill');
+    const categoryPills = document.querySelectorAll('#categoryPills .chip');
     const categoryHidden = document.getElementById('categoryHidden');
-    const defaultTypeToggles = document.querySelectorAll('#defaultFeeTypeGroup .toggle-chip');
+    const defaultTypeChips = document.querySelectorAll('#defaultFeeTypeGroup .chip');
     const defaultTypeHidden = document.getElementById('defaultTypeHidden');
     
     let allClasses = [];
     let searchTimeout;
-    const studentSearchInput = document.getElementById('studentSearchInput');
-    const searchResults = document.getElementById('studentSearchResults');
-    
+    let currentSelection = null;
+    const studentSearch = document.getElementById('studentSearchInput');
+    const searchDropdown = document.getElementById('searchDropdown');
+    const searchOverlay = document.getElementById('searchOverlay');
+
     // Helper Functions
     function escapeHtml(str) { 
-        if(!str) return ''; 
-        return String(str).replace(/[&<>]/g, function(m){
-            if(m==='&') return '&amp;'; 
-            if(m==='<') return '&lt;'; 
-            if(m==='>') return '&gt;'; 
+        if (!str) return ''; 
+        return String(str).replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
             return m;
         });
     }
-    
+
     function showMessage(msg, type) {
         let container = document.getElementById('flashMessages');
-        if(!container) { 
-            container = document.createElement('div'); 
-            container.id='flashMessages'; 
-            container.className='fixed top-4 right-4 z-50 space-y-2'; 
-            document.body.appendChild(container); 
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'fixed top-4 right-4 z-50 space-y-2';
+            document.body.appendChild(container);
         }
         const flash = document.createElement('div');
-        flash.className = `p-3 rounded-xl shadow-lg text-white text-sm ${type==='error'?'bg-red-500':'bg-green-500'} flex items-center gap-2`;
-        flash.innerHTML = `<i class="fas ${type==='error'?'fa-exclamation-circle':'fa-check-circle'}"></i> ${msg}`;
+        flash.className = `p-3 rounded-xl shadow-lg text-white text-sm ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} flex items-center gap-2 animate-fadeSlideIn`;
+        flash.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${type === 'error' ? 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' : 'M5 13l4 4L19 7'}"></path></svg> ${msg}`;
         container.appendChild(flash);
-        setTimeout(()=>{ flash.style.opacity='0'; setTimeout(()=>flash.remove(),300); }, 4000);
+        setTimeout(() => { flash.style.opacity = '0'; setTimeout(() => flash.remove(), 300); }, 4000);
     }
-    
-    // Apply To Toggle Handler
-    applyToggles.forEach(toggle => {
-        toggle.addEventListener('click', () => {
-            applyToggles.forEach(t => t.classList.remove('active'));
-            toggle.classList.add('active');
-            const value = toggle.dataset.value;
-            applyToHidden.value = value;
-            
-            // Hide all conditional groups
-            classGroup?.classList.add('hidden');
-            studentGroup?.classList.add('hidden');
-            if (multipleClassesGroup) multipleClassesGroup.classList.add('hidden');
-            
-            // Show appropriate group
-            if (value === 'class') {
-                classGroup.classList.remove('hidden');
-            } else if (value === 'student') {
-                studentGroup.classList.remove('hidden');
-            } else if (value === 'multiple-classes') {
-                multipleClassesGroup.classList.remove('hidden');
-                if (allClasses.length === 0) {
-                    loadClasses();
-                }
-            }
-        });
-    });
-    
-    // Category Pills Handler
-    categoryPills.forEach(pill => {
-        pill.addEventListener('click', () => {
-            categoryPills.forEach(p => p.classList.remove('active-pill'));
-            pill.classList.add('active-pill');
-            categoryHidden.value = pill.dataset.cat;
-            if (studentSearchInput && studentSearchInput.value.trim().length >= 2) {
-                performStudentSearch();
-            }
-        });
-    });
-    
-    // Default Fee Type Handler
-    defaultTypeToggles.forEach(toggle => {
-        toggle.addEventListener('click', () => {
-            defaultTypeToggles.forEach(t => t.classList.remove('active'));
-            toggle.classList.add('active');
-            defaultTypeHidden.value = toggle.dataset.type;
-            const allTypeSelects = document.querySelectorAll('select[name="type[]"]');
-            const newDefault = toggle.dataset.type;
-            allTypeSelects.forEach(select => {
-                select.value = newDefault === 'fixed' ? 'fixed' : 'editable';
+
+    // Position search dropdown
+    function positionSearchDropdown() {
+        if (!studentSearch) return;
+        const rect = studentSearch.getBoundingClientRect();
+        searchDropdown.style.top = `${rect.bottom + 6}px`;
+        searchDropdown.style.left = `${rect.left}px`;
+        searchDropdown.style.width = `${rect.width}px`;
+    }
+
+    // Show search results
+    function showSearchResults(html) {
+        searchDropdown.innerHTML = html;
+        searchDropdown.style.display = 'block';
+        positionSearchDropdown();
+        searchOverlay.classList.add('active');
+        
+        document.querySelectorAll('.search-result').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const studentId = item.dataset.studentId;
+                const studentName = item.dataset.studentName;
+                const studentIdNum = item.dataset.studentIdNum;
+                const className = item.dataset.className;
+                const category = item.dataset.category;
+                selectStudent(studentId, studentName, studentIdNum, className, category);
             });
         });
-    });
-    
-    // Student Search Functions
+    }
+
+    function hideSearchResults() {
+        searchDropdown.style.display = 'none';
+        searchOverlay.classList.remove('active');
+    }
+
+    // Student search
     async function performStudentSearch() {
-        const query = studentSearchInput.value.trim();
+        const query = studentSearch.value.trim();
         if (query.length < 2) {
-            searchResults.classList.add('hidden');
+            hideSearchResults();
             return;
         }
         
-        const category = categoryHidden.value;
+        const category = categoryHidden.value || 'all';
         
         try {
-            searchResults.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>Searching...</div>';
-            searchResults.classList.remove('hidden');
+            searchDropdown.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm"><svg class="w-4 h-4 animate-spin inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Searching...</div>';
+            searchDropdown.style.display = 'block';
+            positionSearchDropdown();
             
             const response = await fetch(`/fees/search-students?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}`);
             const data = await response.json();
             
             if (data.success && data.students && data.students.length > 0) {
-                searchResults.innerHTML = data.students.map(student => {
+                const resultsHtml = data.students.map(student => {
                     const className = student.classes?.name || student.class_name || 'N/A';
                     const studentCategory = student.category || 'N/A';
                     const studentId = student.student_id || '';
                     
-                    return `<div class="search-result-item" onclick="selectStudent('${student.id}', '${escapeHtml(student.name)}', '${escapeHtml(studentId)}', '${escapeHtml(className)}', '${escapeHtml(studentCategory)}')">
+                    return `<div class="search-result" 
+                                data-student-id="${student.id}"
+                                data-student-name="${escapeHtml(student.name)}"
+                                data-student-id-num="${escapeHtml(studentId)}"
+                                data-class-name="${escapeHtml(className)}"
+                                data-category="${escapeHtml(studentCategory)}">
                         <div class="flex justify-between items-center">
-                            <div class="flex-1">
+                            <div>
                                 <p class="text-sm font-semibold text-gray-800">${escapeHtml(student.name)}</p>
-                                <p class="text-xs text-gray-500 mt-0.5">${escapeHtml(studentId)} | ${escapeHtml(className)}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">${escapeHtml(studentId)} · ${escapeHtml(className)}</p>
                             </div>
-                            ${studentCategory !== 'N/A' ? `<span class="text-xs px-2 py-1 rounded-full ml-2 ${studentCategory === 'Boarding' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}">${escapeHtml(studentCategory)}</span>` : ''}
+                            ${studentCategory !== 'N/A' ? `<span class="text-xs px-2 py-1 rounded-full ${studentCategory === 'Boarding' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}">${escapeHtml(studentCategory)}</span>` : ''}
                         </div>
                     </div>`;
                 }).join('');
+                showSearchResults(resultsHtml);
             } else {
-                searchResults.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No students found</div>';
+                searchDropdown.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No students found</div>';
+                positionSearchDropdown();
             }
         } catch(e) {
             console.error('Search error:', e);
-            searchResults.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Error searching students</div>';
+            searchDropdown.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Error searching students</div>';
+            positionSearchDropdown();
         }
     }
-    
-    if (studentSearchInput) {
-        studentSearchInput.addEventListener('input', () => {
+
+    window.addEventListener('resize', () => {
+        if (searchDropdown.style.display === 'block') positionSearchDropdown();
+    });
+    window.addEventListener('scroll', () => {
+        if (searchDropdown.style.display === 'block') positionSearchDropdown();
+    });
+
+    if (studentSearch) {
+        studentSearch.addEventListener('input', () => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(performStudentSearch, 300);
         });
-        
-        studentSearchInput.addEventListener('focus', () => {
-            if (studentSearchInput.value.trim().length >= 2) {
-                performStudentSearch();
-            }
+        studentSearch.addEventListener('focus', () => {
+            if (studentSearch.value.trim().length >= 2) performStudentSearch();
         });
     }
-    
-    document.addEventListener('click', function(e) {
-        const searchContainer = document.querySelector('.search-container');
-        if (searchContainer && !searchContainer.contains(e.target)) {
-            if (searchResults) searchResults.classList.add('hidden');
-        }
-    });
-    
-    window.selectStudent = function(id, name, studentId, className, category) {
+
+    searchOverlay?.addEventListener('click', hideSearchResults);
+
+    function selectStudent(id, name, studentId, className, category) {
         document.getElementById('selectedStudentId').value = id;
         document.getElementById('selectedStudentName').textContent = name;
-        document.getElementById('selectedStudentInfo').textContent = `${studentId} | ${className} ${category && category !== 'N/A' ? '· '+category : ''}`;
+        document.getElementById('selectedStudentInfo').textContent = `${studentId} · ${className}${category && category !== 'N/A' ? ' · ' + category : ''}`;
         document.getElementById('selectedStudentDisplay').classList.remove('hidden');
-        if (studentSearchInput) studentSearchInput.value = name;
-        if (searchResults) searchResults.classList.add('hidden');
-    };
-    
+        if (studentSearch) studentSearch.value = name;
+        hideSearchResults();
+    }
+
+    window.selectStudent = selectStudent;
     window.clearSelectedStudent = function() {
         document.getElementById('selectedStudentId').value = '';
         document.getElementById('selectedStudentDisplay').classList.add('hidden');
-        if (studentSearchInput) {
-            studentSearchInput.value = '';
-            studentSearchInput.focus();
+        if (studentSearch) {
+            studentSearch.value = '';
+            studentSearch.focus();
         }
     };
-    
+
+    // Expandable sections handler
+    expandableSections.forEach(section => {
+        const header = section.querySelector('.expandable-header');
+        const content = section.querySelector('.expandable-content');
+        const option = section.dataset.option;
+        
+        header.addEventListener('click', () => {
+            const isActive = header.classList.contains('active');
+            
+            // Close all sections
+            expandableSections.forEach(s => {
+                const h = s.querySelector('.expandable-header');
+                const c = s.querySelector('.expandable-content');
+                h.classList.remove('active');
+                if (c) c.classList.remove('open');
+            });
+            
+            if (!isActive) {
+                header.classList.add('active');
+                if (content) content.classList.add('open');
+                currentSelection = option;
+                applyToHidden.value = option;
+                
+                if (option === 'multiple-classes' && allClasses.length === 0) loadClasses();
+                if (option === 'student' && studentSearch) setTimeout(() => studentSearch.focus(), 100);
+            } else {
+                currentSelection = null;
+                applyToHidden.value = '';
+            }
+        });
+    });
+
+    // Category chips
+    categoryPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            categoryPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            categoryHidden.value = pill.dataset.cat;
+            if (studentSearch && studentSearch.value.trim().length >= 2) performStudentSearch();
+        });
+    });
+
+    // Default type chips
+    defaultTypeChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            defaultTypeChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            defaultTypeHidden.value = chip.dataset.type;
+        });
+    });
+
     // Multiple Classes Functions
     async function loadClasses() {
         try {
             const response = await fetch('/fees/classes');
             const data = await response.json();
-            
             if (data.success && data.classes) {
                 allClasses = data.classes;
                 renderClassCheckboxes(allClasses);
             } else {
-                document.getElementById('classCheckboxesList').innerHTML = '<div class="text-center text-red-500 py-4">Failed to load classes</div>';
+                document.getElementById('classCheckboxesList').innerHTML = '<div class="text-center text-red-500 py-6 text-sm">Failed to load classes</div>';
             }
         } catch(e) {
             console.error('Error loading classes:', e);
-            document.getElementById('classCheckboxesList').innerHTML = '<div class="text-center text-red-500 py-4">Error loading classes</div>';
+            document.getElementById('classCheckboxesList').innerHTML = '<div class="text-center text-red-500 py-6 text-sm">Error loading classes</div>';
         }
     }
-    
+
     function renderClassCheckboxes(classes) {
         const container = document.getElementById('classCheckboxesList');
         if (!container) return;
         
         if (classes.length === 0) {
-            container.innerHTML = '<div class="text-center text-gray-500 py-4">No classes found</div>';
+            container.innerHTML = '<div class="text-center text-gray-500 py-6 text-sm">No classes found</div>';
             return;
         }
         
         container.innerHTML = classes.map(cls => `
-            <label class="flex items-start p-2 hover:bg-white rounded-lg cursor-pointer transition border border-transparent hover:border-orange-200">
+            <label class="flex items-start p-2.5 hover:bg-orange-50 rounded-xl cursor-pointer transition group">
                 <input type="checkbox" name="selected_classes" value="${cls.id}" 
-                       class="class-checkbox mt-1 mr-3 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
+                       class="class-checkbox mt-0.5 mr-3 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
                        onchange="updateClassSelectionCount()">
                 <div class="flex-1">
-                    <div class="font-medium text-gray-800">${escapeHtml(cls.name)}</div>
-                    <div class="text-xs text-gray-500 mt-0.5">
-                        <span class="inline-flex items-center mr-3">
-                            <i class="fas fa-users mr-1 text-xs"></i> ${cls.total_students || 0} students
-                        </span>
-                        <span class="inline-flex items-center mr-3">
-                            <i class="fas fa-bed mr-1 text-xs"></i> Boarding: ${cls.boarding_students || 0}
-                        </span>
-                        <span class="inline-flex items-center">
-                            <i class="fas fa-sun mr-1 text-xs"></i> Day: ${cls.day_students || 0}
-                        </span>
+                    <div class="font-medium text-gray-800 group-hover:text-orange-700">${escapeHtml(cls.name)}</div>
+                    <div class="text-xs text-gray-500 mt-0.5 flex gap-3">
+                        <span>📊 ${cls.total_students || 0} students</span>
+                        <span>🏠 ${cls.boarding_students || 0}</span>
+                        <span>☀️ ${cls.day_students || 0}</span>
                     </div>
                 </div>
             </label>
         `).join('');
-        
         updateClassSelectionCount();
     }
-    
+
     window.selectAllClasses = function() {
-        const checkboxes = document.querySelectorAll('.class-checkbox');
-        checkboxes.forEach(cb => cb.checked = true);
+        document.querySelectorAll('.class-checkbox').forEach(cb => cb.checked = true);
         updateClassSelectionCount();
     };
-    
     window.deselectAllClasses = function() {
-        const checkboxes = document.querySelectorAll('.class-checkbox');
-        checkboxes.forEach(cb => cb.checked = false);
+        document.querySelectorAll('.class-checkbox').forEach(cb => cb.checked = false);
         updateClassSelectionCount();
     };
-    
     window.updateClassSelectionCount = function() {
-        const checkboxes = document.querySelectorAll('.class-checkbox:checked');
-        const count = checkboxes.length;
-        const countSpan = document.getElementById('selectedClassesCount');
-        if (countSpan) {
-            countSpan.textContent = `${count} class${count !== 1 ? 'es' : ''} selected`;
-        }
+        const count = document.querySelectorAll('.class-checkbox:checked').length;
+        const span = document.getElementById('selectedClassesCount');
+        if (span) span.textContent = `${count} selected`;
     };
-    
     window.getSelectedClassIds = function() {
-        const checkboxes = document.querySelectorAll('.class-checkbox:checked');
-        return Array.from(checkboxes).map(cb => cb.value);
+        return Array.from(document.querySelectorAll('.class-checkbox:checked')).map(cb => cb.value);
     };
-    
+
     // Fee Items Functions
     function addFeeItem() {
         const container = document.getElementById('feeItemsList');
-        const defaultType = document.querySelector('#defaultFeeTypeGroup .toggle-chip.active').dataset.type;
+        const defaultType = defaultTypeHidden.value || 'fixed';
         const newItem = document.createElement('div');
-        newItem.className = 'fee-item-modern';
+        newItem.className = 'fee-item';
         newItem.innerHTML = `
             <div class="grid grid-cols-12 gap-3 items-center">
-                <div class="col-span-5"><label class="text-xs font-semibold text-gray-500 mb-1 block">Particular Label</label>
-                <input type="text" name="particular_label[]" placeholder="e.g., Tuition Fee" class="modern-input text-sm"></div>
-                <div class="col-span-3"><label class="text-xs font-semibold text-gray-500 mb-1 block">Amount (UGX)</label>
-                <input type="number" name="amount[]" placeholder="0.00" onchange="updateTotal()" class="modern-input text-sm text-right"></div>
-                <div class="col-span-3"><label class="text-xs font-semibold text-gray-500 mb-1 block">Type</label>
-                <select name="type[]" class="modern-select text-sm"><option value="fixed" ${defaultType === 'fixed' ? 'selected' : ''}>Fixed</option><option value="editable" ${defaultType === 'editable' ? 'selected' : ''}>Editable</option></select></div>
-                <div class="col-span-1 text-center"><button type="button" onclick="removeFeeItem(this)" class="text-gray-400 hover:text-red-500 transition mt-5"><i class="fas fa-trash-alt"></i></button></div>
+                <div class="col-span-5">
+                    <input type="text" name="particular_label[]" placeholder="e.g., Tuition Fee" class="input-modern text-sm">
+                </div>
+                <div class="col-span-3">
+                    <input type="number" name="amount[]" placeholder="Amount" onchange="updateTotal()" class="input-modern text-sm text-right">
+                </div>
+                <div class="col-span-3">
+                    <select name="type[]" class="select-modern text-sm">
+                        <option value="fixed" ${defaultType === 'fixed' ? 'selected' : ''}>Fixed</option>
+                        <option value="editable" ${defaultType === 'editable' ? 'selected' : ''}>Editable</option>
+                    </select>
+                </div>
+                <div class="col-span-1 text-center">
+                    <button type="button" onclick="removeFeeItem(this)" class="text-gray-400 hover:text-red-500 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
         `;
         container.appendChild(newItem);
         updateTotal();
     }
-    
+
     window.removeFeeItem = function(btn) {
         const container = document.getElementById('feeItemsList');
-        if (container.children.length > 1) btn.closest('.fee-item-modern').remove();
-        else showMessage('At least one fee item is required', 'error');
+        if (container.children.length > 1) btn.closest('.fee-item').remove();
+        else showMessage('At least one fee item required', 'error');
         updateTotal();
     };
-    
+
     window.resetFeeItems = function() {
-        const container = document.getElementById('feeItemsList');
-        container.innerHTML = `<div class="fee-item-modern"><div class="grid grid-cols-12 gap-3 items-center">
-            <div class="col-span-5"><label class="text-xs font-semibold text-gray-500 mb-1 block">Particular Label</label><input type="text" name="particular_label[]" placeholder="e.g., Tuition Fee" class="modern-input text-sm"></div>
-            <div class="col-span-3"><label class="text-xs font-semibold text-gray-500 mb-1 block">Amount (UGX)</label><input type="number" name="amount[]" placeholder="0.00" onchange="updateTotal()" class="modern-input text-sm text-right"></div>
-            <div class="col-span-3"><label class="text-xs font-semibold text-gray-500 mb-1 block">Type</label><select name="type[]" class="modern-select text-sm"><option value="fixed">Fixed</option><option value="editable">Editable</option></select></div>
-            <div class="col-span-1 text-center"><button type="button" onclick="removeFeeItem(this)" class="text-gray-400 hover:text-red-500"><i class="fas fa-trash-alt"></i></button></div>
-        </div></div>`;
-        if(applyToggles.length) applyToggles[0].click();
-        classGroup?.classList.add('hidden');
-        studentGroup?.classList.add('hidden');
-        if (multipleClassesGroup) multipleClassesGroup.classList.add('hidden');
+        document.getElementById('feeItemsList').innerHTML = '';
+        
+        expandableSections.forEach(section => {
+            const h = section.querySelector('.expandable-header');
+            const c = section.querySelector('.expandable-content');
+            h.classList.remove('active');
+            if (c) c.classList.remove('open');
+        });
+        
+        applyToHidden.value = '';
+        currentSelection = null;
+        categoryPills.forEach(p => p.classList.remove('active'));
+        categoryHidden.value = '';
+        defaultTypeChips.forEach(c => c.classList.remove('active'));
+        defaultTypeHidden.value = '';
         clearSelectedStudent();
+        hideSearchResults();
         updateTotal();
+        showMessage('All selections reset', 'success');
     };
-    
+
     window.updateTotal = function() {
-        const amounts = document.querySelectorAll('input[name="amount[]"]');
         let total = 0;
-        amounts.forEach(inp => { total += parseFloat(inp.value) || 0; });
+        document.querySelectorAll('input[name="amount[]"]').forEach(inp => {
+            total += parseFloat(inp.value) || 0;
+        });
         document.getElementById('totalAmount').textContent = `UGX ${total.toLocaleString()}`;
     };
-    
-    // Generate Invoices
-    window.generateInvoices = async function() {
+
+    function validateForm() {
         const applyTo = applyToHidden.value;
-        let targetId = null;
-        let classIds = null;
+        if (!applyTo) { showMessage('Please select "Apply To" option', 'error'); return false; }
         
         if (applyTo === 'class') {
-            targetId = document.getElementById('classSelect').value;
-            if (!targetId) return showMessage('Please select a class', 'error');
+            if (!document.getElementById('classSelect').value) { showMessage('Please select a class', 'error'); return false; }
         } else if (applyTo === 'student') {
-            targetId = document.getElementById('selectedStudentId').value;
-            if (!targetId) return showMessage('Please select a student', 'error');
+            if (!document.getElementById('selectedStudentId').value) { showMessage('Please select a student', 'error'); return false; }
         } else if (applyTo === 'multiple-classes') {
-            classIds = getSelectedClassIds();
-            if (classIds.length === 0) return showMessage('Please select at least one class', 'error');
+            if (getSelectedClassIds().length === 0) { showMessage('Please select at least one class', 'error'); return false; }
         }
+        
+        if (!categoryHidden.value) { showMessage('Please select a category', 'error'); return false; }
+        if (!defaultTypeHidden.value) { showMessage('Please select default fee type', 'error'); return false; }
+        
+        const feeItems = document.querySelectorAll('.fee-item');
+        if (feeItems.length === 0) { showMessage('Please add at least one fee item', 'error'); return false; }
+        
+        let hasValid = false;
+        document.querySelectorAll('input[name="particular_label[]"]').forEach((label, i) => {
+            const amount = parseFloat(document.querySelectorAll('input[name="amount[]"]')[i]?.value) || 0;
+            if (label.value.trim() && amount > 0) hasValid = true;
+        });
+        if (!hasValid) { showMessage('Add valid fee items with label and amount', 'error'); return false; }
+        
+        return true;
+    }
+
+    window.generateInvoices = async function() {
+        if (!validateForm()) return;
+        
+        const applyTo = applyToHidden.value;
+        let targetId = null, classIds = null;
+        
+        if (applyTo === 'class') targetId = document.getElementById('classSelect').value;
+        else if (applyTo === 'student') targetId = document.getElementById('selectedStudentId').value;
+        else if (applyTo === 'multiple-classes') classIds = getSelectedClassIds();
         
         const category = categoryHidden.value === 'all' ? 'all' : categoryHidden.value;
         const labels = document.querySelectorAll('input[name="particular_label[]"]');
@@ -808,24 +1161,18 @@
         const types = document.querySelectorAll('select[name="type[]"]');
         const feeItems = [];
         
-        for (let i=0; i<labels.length; i++) {
+        for (let i = 0; i < labels.length; i++) {
             const label = labels[i].value.trim();
             const amount = parseFloat(amounts[i].value) || 0;
             if (label && amount > 0) feeItems.push({ label, amount, type: types[i].value });
         }
         
-        if (feeItems.length === 0) return showMessage('Add at least one valid fee item', 'error');
-        
         const loading = document.getElementById('loadingOverlay');
-        loading.classList.remove('hidden'); 
-        loading.classList.add('flex');
+        loading.classList.add('active');
         
         try {
             let endpoint = '/fees/particulars/create';
-            let requestBody = { 
-                fee_items: feeItems, 
-                category: category 
-            };
+            let requestBody = { fee_items: feeItems, category: category };
             
             if (applyTo === 'multiple-classes') {
                 endpoint = '/fees/particulars/create-multiple-classes';
@@ -836,59 +1183,67 @@
             }
             
             const resp = await fetch(endpoint, {
-                method: 'POST', 
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody)
             });
             
             const result = await resp.json();
-            loading.classList.add('hidden'); 
-            loading.classList.remove('flex');
+            loading.classList.remove('active');
             
             if (result.success) {
                 document.getElementById('successTitle').innerText = 'Invoices Generated!';
                 let invoicesHtml = '';
                 if (result.invoices && result.invoices.length) {
                     const displayInvoices = result.invoices.slice(0, 10);
-                    invoicesHtml = `<div class="mt-3 text-left bg-gray-50 p-3 rounded-xl max-h-40 overflow-y-auto">
-                        ${displayInvoices.map(inv => `<div class="text-sm py-1 border-b border-gray-100">
+                    invoicesHtml = `<div class="mt-3 text-left bg-gray-50 p-3 rounded-xl max-h-40 overflow-y-auto text-sm">
+                        ${displayInvoices.map(inv => `<div class="py-2 border-b border-gray-100 last:border-0">
                             <span class="font-medium">${escapeHtml(inv.student)}</span>
                             ${inv.class ? `<br><span class="text-xs text-gray-500">${escapeHtml(inv.class)}</span>` : ''}
-                            <div class="text-xs text-gray-500">${inv.invoice_number} - UGX ${(inv.total_amount || 0).toLocaleString()}</div>
+                            <div class="text-xs text-gray-500">${inv.invoice_number} · UGX ${(inv.total_amount || 0).toLocaleString()}</div>
                         </div>`).join('')}
-                        ${result.invoices.length > 10 ? `<div class="text-xs text-center text-gray-500 mt-2">... and ${result.invoices.length - 10} more</div>` : ''}
+                        ${result.invoices.length > 10 ? `<div class="text-xs text-center text-gray-500 mt-2">+ ${result.invoices.length - 10} more</div>` : ''}
                     </div>`;
                 }
                 if (result.summary) {
-                    document.getElementById('successMessage').innerHTML = `${result.message}<br><small class="text-gray-500">Total students: ${result.summary.total_students} | Invoices: ${result.summary.total_invoices}</small>${invoicesHtml}`;
+                    document.getElementById('successMessage').innerHTML = `${result.message}<br><small class="text-gray-500">📊 ${result.summary.total_students} students · ${result.summary.total_invoices} invoices</small>${invoicesHtml}`;
                 } else {
                     document.getElementById('successMessage').innerHTML = `${result.message}${invoicesHtml}`;
                 }
-                document.getElementById('successModal').classList.remove('hidden');
-                document.getElementById('successModal').classList.add('flex');
-                document.body.style.overflow = 'hidden';
+                document.getElementById('successModal').classList.add('active');
                 setTimeout(() => window.location.reload(), 3000);
             } else {
                 showMessage(result.message || 'Failed to generate invoices', 'error');
             }
-        } catch(e) { 
-            loading.classList.add('hidden'); 
-            loading.classList.remove('flex'); 
+        } catch(e) {
+            loading.classList.remove('active');
             console.error('Generation error:', e);
             showMessage('Network error: Failed to generate invoices', 'error');
         }
     };
-    
+
     window.closeSuccessModal = function() {
-        document.getElementById('successModal').classList.add('hidden');
-        document.getElementById('successModal').classList.remove('flex');
-        document.body.style.overflow = '';
+        document.getElementById('successModal').classList.remove('active');
     };
-    
+
     // Initialize
-    document.addEventListener('input', function(e) { 
-        if(e.target.name === 'amount[]') updateTotal(); 
+    document.addEventListener('DOMContentLoaded', function() {
+        expandableSections.forEach(section => {
+            section.querySelector('.expandable-header').classList.remove('active');
+            const content = section.querySelector('.expandable-content');
+            if (content) content.classList.remove('open');
+        });
+        categoryPills.forEach(p => p.classList.remove('active'));
+        defaultTypeChips.forEach(c => c.classList.remove('active'));
+        applyToHidden.value = '';
+        categoryHidden.value = '';
+        defaultTypeHidden.value = '';
+        document.getElementById('feeItemsList').innerHTML = '';
+        updateTotal();
     });
-    updateTotal();
+
+    document.addEventListener('input', function(e) {
+        if (e.target.name === 'amount[]') updateTotal();
+    });
 </script>
 {% endblock %}
