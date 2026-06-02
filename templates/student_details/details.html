@@ -120,15 +120,35 @@
             print-color-adjust: exact;
         }
     }
+    
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+    }
+    
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
     {% if student %}
-    <!-- Back Button -->
+    <!-- Back Button - FIXED: Removed nested url_for -->
     <div class="mb-4 no-print">
-        <a href="{{ url_for('{{url_for('student.index')}}') }}" class="inline-flex items-center gap-2 text-gray-600 hover:text-orange-500 transition-colors">
+        <a href="{{ url_for('student.index') }}" class="inline-flex items-center gap-2 text-gray-600 hover:text-orange-500 transition-colors">
             <i class="fas fa-arrow-left"></i> Back to Students
         </a>
     </div>
@@ -337,7 +357,7 @@
         </div>
         <h2 class="text-2xl font-bold text-gray-800 mb-2">Student Not Found</h2>
         <p class="text-gray-600 mb-6">{{ error if error else 'The requested student could not be found.' }}</p>
-        <a href="{{ url_for('student_detail.index') }}" class="btn-gradient px-6 py-2 rounded-lg text-white">
+        <a href="{{ url_for('student.index') }}" class="btn-gradient px-6 py-2 rounded-lg text-white">
             <i class="fas fa-arrow-left"></i> Back to Students
         </a>
     </div>
@@ -352,8 +372,11 @@
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     
     document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
-        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        
+        if (startDateInput) startDateInput.value = firstDay.toISOString().split('T')[0];
+        if (endDateInput) endDateInput.value = today.toISOString().split('T')[0];
         
         if (studentId) {
             loadStatement();
@@ -467,25 +490,4 @@
         return div.innerHTML;
     }
 </script>
-
-<style>
-    .btn-gradient {
-        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-    }
-    .btn-gradient:hover {
-        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
-    }
-    .loader {
-        border: 3px solid #f3f3f3;
-        border-top: 3px solid #ffa500;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-</style>
 {% endblock %}
