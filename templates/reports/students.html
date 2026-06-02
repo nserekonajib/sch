@@ -48,6 +48,9 @@
         .rounded-xl {
             border-radius: 0 !important;
         }
+        .pagination-container {
+            display: none !important;
+        }
     }
     
     /* Table responsive */
@@ -116,6 +119,63 @@
     .search-input:focus {
         border-color: #ffa500;
         box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.1);
+    }
+    
+    /* Pagination Styles */
+    .pagination-container {
+        margin-top: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .pagination {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+    .page-btn {
+        padding: 8px 12px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        color: #4b5563;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 13px;
+        min-width: 40px;
+    }
+    .page-btn:hover:not(:disabled) {
+        background-color: #fef3c7;
+        border-color: #ffa500;
+        color: #ffa500;
+    }
+    .page-btn.active {
+        background-color: #ffa500;
+        border-color: #ffa500;
+        color: white;
+    }
+    .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .page-info {
+        font-size: 13px;
+        color: #6b7280;
+    }
+    .rows-per-page {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .rows-per-page select {
+        padding: 6px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        background: white;
     }
 </style>
 {% endblock %}
@@ -235,9 +295,20 @@
     <div class="bg-white rounded-xl shadow-md overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
             <h2 class="text-lg font-semibold text-gray-800">Student List</h2>
-            <span class="click-hint no-print">
-                <i class="fas fa-mouse-pointer"></i> Click any row to view details
-            </span>
+            <div class="flex items-center gap-4">
+                <div class="rows-per-page no-print">
+                    <label class="text-sm text-gray-600">Show:</label>
+                    <select id="rowsPerPage" onchange="changeRowsPerPage()">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <span class="click-hint no-print">
+                    <i class="fas fa-mouse-pointer"></i> Click any row to view details
+                </span>
+            </div>
         </div>
         <div class="table-container">
             <table class="min-w-full divide-y divide-gray-200">
@@ -253,68 +324,20 @@
                     </tr>
                 </thead>
                 <tbody id="studentTableBody" class="divide-y divide-gray-200 bg-white">
-                    {% for student in students %}
-                    <tr class="student-row hover:bg-gray-50" data-student-id="{{ student.id }}" 
-                        data-student-name="{{ student.name }}" 
-                        data-student-id-number="{{ student.student_id or student.id[:8] }}"
-                        data-class="{{ student.classes.name if student.classes else 'Not Assigned' }}"
-                        data-category="{{ student.category or '' }}"
-                        data-status="{{ student.status or 'active' }}"
-                        data-contact="{{ student.parent_phone or student.contact_number or 'N/A' }}">
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ loop.index }}</td>
-                        <td class="px-4 py-3 text-sm font-medium text-gray-800">
-                            <div class="flex items-center gap-2">
-                                {% if student.photo_url %}
-                                <img src="{{ student.photo_url }}" class="w-6 h-6 rounded-full object-cover">
-                                {% else %}
-                                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-xs font-bold">
-                                    {{ student.name[0].upper() if student.name else 'S' }}
-                                </div>
-                                {% endif %}
-                                {{ student.name }}
-                            </div>
-                        </td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ student.student_id or student.id[:8] }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600">
-                            {% if student.classes %}
-                                {{ student.classes.name }}
-                            {% else %}
-                                <span class="text-gray-400">Not Assigned</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3">
-                            {% if student.category %}
-                                <span class="category-badge {{ 'category-boarding' if student.category == 'Boarding' else 'category-day' }}">
-                                    {{ student.category }}
-                                </span>
-                            {% else %}
-                                <span class="text-gray-400">-</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ student.parent_phone or student.contact_number or 'N/A' }}</td>
-                        <td class="px-4 py-3">
-                            <span class="status-badge {{ 'status-active' if student.status == 'active' else 'status-inactive' }}">
-                                <i class="fas {{ 'fa-check-circle' if student.status == 'active' else 'fa-ban' }} text-xs"></i>
-                                {{ 'Active' if student.status == 'active' else 'Inactive' }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-gray-400">
-                            <i class="fas fa-user-graduate text-4xl mb-2 block"></i>
-                            No students found
-                        </td>
-                    </tr>
-                    {% endfor %}
+                    <!-- Rows will be populated by JavaScript -->
                 </tbody>
             </table>
         </div>
-    </div>
-    
-    <!-- Footer Stats -->
-    <div class="mt-4 text-center text-xs text-gray-500 no-print">
-        <p>Showing <span id="visibleCount">{{ students|length }}</span> of <span id="totalCount">{{ students|length }}</span> students</p>
+        
+        <!-- Pagination -->
+        <div class="pagination-container no-print px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div class="page-info">
+                Showing <span id="pageStart">0</span> to <span id="pageEnd">0</span> of <span id="totalFilteredCount">0</span> students
+            </div>
+            <div class="pagination" id="pagination">
+                <!-- Pagination buttons will be populated by JavaScript -->
+            </div>
+        </div>
     </div>
 </div>
 
@@ -322,32 +345,220 @@
     // Store original student data
     let originalStudents = [];
     let filteredStudents = [];
+    let currentPage = 1;
+    let rowsPerPage = 20;
     
     // Navigate to student details page
     function goToStudentDetails(studentId) {
         window.location.href = `/student-details/${studentId}`;
     }
     
-    // Initialize table data
+    // Initialize table data from server-rendered HTML
     function initializeTableData() {
-        const rows = document.querySelectorAll('#studentTableBody tr.student-row');
+        const serverRows = document.querySelectorAll('#studentTableBody tr.student-row');
         originalStudents = [];
         
-        rows.forEach(row => {
-            originalStudents.push({
-                id: row.dataset.studentId,
-                name: row.dataset.studentName,
-                studentId: row.dataset.studentIdNumber,
-                className: row.dataset.class,
-                category: row.dataset.category,
-                status: row.dataset.status,
-                contact: row.dataset.contact,
-                element: row
+        if (serverRows.length > 0) {
+            serverRows.forEach(row => {
+                originalStudents.push({
+                    id: row.dataset.studentId,
+                    name: row.dataset.studentName,
+                    studentId: row.dataset.studentIdNumber,
+                    className: row.dataset.class,
+                    category: row.dataset.category,
+                    status: row.dataset.status,
+                    contact: row.dataset.contact,
+                    photoUrl: row.querySelector('img')?.src || null,
+                    initial: row.dataset.studentName?.charAt(0).toUpperCase() || 'S'
+                });
             });
-        });
+        } else {
+            // Fallback to JSON data if available
+            const studentsData = {{ students|tojson }};
+            studentsData.forEach(student => {
+                originalStudents.push({
+                    id: student.id,
+                    name: student.name,
+                    studentId: student.student_id || student.id.slice(0, 8),
+                    className: student.classes?.name || 'Not Assigned',
+                    category: student.category || '',
+                    status: student.status || 'active',
+                    contact: student.parent_phone || student.contact_number || 'N/A',
+                    photoUrl: student.photo_url || null,
+                    initial: student.name?.charAt(0).toUpperCase() || 'S'
+                });
+            });
+        }
         
         filteredStudents = [...originalStudents];
+        currentPage = 1;
         updateStats();
+        renderCurrentPage();
+        renderPagination();
+    }
+    
+    // Render current page of students
+    function renderCurrentPage() {
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = Math.min(startIndex + rowsPerPage, filteredStudents.length);
+        const pageStudents = filteredStudents.slice(startIndex, endIndex);
+        
+        const tbody = document.getElementById('studentTableBody');
+        tbody.innerHTML = '';
+        
+        if (pageStudents.length === 0) {
+            tbody.innerHTML = `
+                <tr class="no-result-row">
+                    <td colspan="7" class="px-4 py-8 text-center text-gray-400">
+                        <i class="fas fa-user-graduate text-4xl mb-2 block"></i>
+                        No students found
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        pageStudents.forEach((student, idx) => {
+            const globalIndex = startIndex + idx + 1;
+            const row = document.createElement('tr');
+            row.className = 'student-row hover:bg-gray-50';
+            row.setAttribute('data-student-id', student.id);
+            row.setAttribute('data-student-name', student.name);
+            row.setAttribute('data-student-id-number', student.studentId);
+            row.setAttribute('data-class', student.className);
+            row.setAttribute('data-category', student.category);
+            row.setAttribute('data-status', student.status);
+            row.setAttribute('data-contact', student.contact);
+            
+            row.addEventListener('click', function(e) {
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('button')) {
+                    return;
+                }
+                goToStudentDetails(student.id);
+            });
+            
+            const statusClass = student.status === 'active' ? 'status-active' : 'status-inactive';
+            const statusIcon = student.status === 'active' ? 'fa-check-circle' : 'fa-ban';
+            const statusText = student.status === 'active' ? 'Active' : 'Inactive';
+            
+            const categoryClass = student.category === 'Boarding' ? 'category-boarding' : 'category-day';
+            
+            row.innerHTML = `
+                <td class="px-4 py-3 text-sm text-gray-600">${globalIndex}</td>
+                <td class="px-4 py-3 text-sm font-medium text-gray-800">
+                    <div class="flex items-center gap-2">
+                        ${student.photoUrl ? 
+                            `<img src="${student.photoUrl}" class="w-6 h-6 rounded-full object-cover">` : 
+                            `<div class="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-xs font-bold">
+                                ${student.initial}
+                            </div>`
+                        }
+                        ${escapeHtml(student.name)}
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">${escapeHtml(student.studentId)}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">
+                    ${student.className !== 'Not Assigned' ? escapeHtml(student.className) : '<span class="text-gray-400">Not Assigned</span>'}
+                </td>
+                <td class="px-4 py-3">
+                    ${student.category ? 
+                        `<span class="category-badge ${categoryClass}">${escapeHtml(student.category)}</span>` : 
+                        '<span class="text-gray-400">-</span>'
+                    }
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">${escapeHtml(student.contact)}</td>
+                <td class="px-4 py-3">
+                    <span class="status-badge ${statusClass}">
+                        <i class="fas ${statusIcon} text-xs"></i>
+                        ${statusText}
+                    </span>
+                </td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+        
+        // Update page info
+        const startNum = filteredStudents.length === 0 ? 0 : startIndex + 1;
+        const endNum = Math.min(endIndex, filteredStudents.length);
+        document.getElementById('pageStart').textContent = startNum;
+        document.getElementById('pageEnd').textContent = endNum;
+        document.getElementById('totalFilteredCount').textContent = filteredStudents.length;
+    }
+    
+    // Render pagination buttons
+    function renderPagination() {
+        const totalPages = Math.ceil(filteredStudents.length / rowsPerPage);
+        const paginationDiv = document.getElementById('pagination');
+        
+        if (totalPages <= 1) {
+            paginationDiv.innerHTML = '';
+            return;
+        }
+        
+        let paginationHtml = '';
+        
+        // Previous button
+        paginationHtml += `
+            <button class="page-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        `;
+        
+        // Page numbers
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, currentPage + 2);
+        
+        if (startPage > 1) {
+            paginationHtml += `<button class="page-btn" onclick="changePage(1)">1</button>`;
+            if (startPage > 2) {
+                paginationHtml += `<button class="page-btn disabled" disabled>...</button>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHtml += `
+                <button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">
+                    ${i}
+                </button>
+            `;
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                paginationHtml += `<button class="page-btn disabled" disabled>...</button>`;
+            }
+            paginationHtml += `<button class="page-btn" onclick="changePage(${totalPages})">${totalPages}</button>`;
+        }
+        
+        // Next button
+        paginationHtml += `
+            <button class="page-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        `;
+        
+        paginationDiv.innerHTML = paginationHtml;
+    }
+    
+    // Change page
+    function changePage(page) {
+        const totalPages = Math.ceil(filteredStudents.length / rowsPerPage);
+        if (page < 1 || page > totalPages) return;
+        currentPage = page;
+        renderCurrentPage();
+        renderPagination();
+        
+        // Scroll to top of table
+        document.querySelector('.table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    // Change rows per page
+    function changeRowsPerPage() {
+        rowsPerPage = parseInt(document.getElementById('rowsPerPage').value);
+        currentPage = 1;
+        renderCurrentPage();
+        renderPagination();
     }
     
     // Update statistics
@@ -355,8 +566,7 @@
         const total = filteredStudents.length;
         const activeCount = filteredStudents.filter(s => s.status === 'active').length;
         
-        document.getElementById('visibleCount').textContent = total;
-        document.getElementById('totalCount').textContent = originalStudents.length;
+        document.getElementById('totalStudents').textContent = originalStudents.length;
         document.getElementById('activeCount').textContent = activeCount;
         
         const filterStats = document.getElementById('filterStats');
@@ -405,47 +615,10 @@
             return true;
         });
         
-        // Reorder table rows
-        const tbody = document.getElementById('studentTableBody');
-        const allRows = Array.from(tbody.querySelectorAll('tr.student-row'));
-        
-        // Hide all rows first
-        allRows.forEach(row => {
-            row.style.display = 'none';
-        });
-        
-        // Show filtered rows in order
-        filteredStudents.forEach((student, index) => {
-            if (student.element) {
-                student.element.style.display = '';
-                // Update the index number
-                const indexCell = student.element.querySelector('td:first-child');
-                if (indexCell) {
-                    indexCell.textContent = index + 1;
-                }
-            }
-        });
-        
-        // Handle no results
-        const noResultRow = tbody.querySelector('tr.no-result-row');
-        if (filteredStudents.length === 0) {
-            if (!noResultRow) {
-                const tr = document.createElement('tr');
-                tr.className = 'no-result-row';
-                tr.innerHTML = `
-                    <td colspan="7" class="px-4 py-8 text-center text-gray-400">
-                        <i class="fas fa-search text-4xl mb-2 block"></i>
-                        No students match your filters
-                        <button onclick="resetFilters()" class="mt-2 text-orange-500 hover:underline">Reset Filters</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            }
-        } else if (noResultRow) {
-            noResultRow.remove();
-        }
-        
+        currentPage = 1;
         updateStats();
+        renderCurrentPage();
+        renderPagination();
     }
     
     // Reset all filters
@@ -457,7 +630,7 @@
         applyFilters();
     }
     
-    // Export to CSV
+    // Export to CSV (exports all filtered students, not just current page)
     function exportToCSV() {
         const headers = ['#', 'Student Name', 'Student ID', 'Class', 'Category', 'Parent Contact', 'Status'];
         const rows = [];
@@ -487,23 +660,6 @@
         URL.revokeObjectURL(url);
     }
     
-    // Add click handlers to student rows
-    function addClickHandlers() {
-        const rows = document.querySelectorAll('#studentTableBody tr.student-row');
-        rows.forEach(row => {
-            row.addEventListener('click', function(e) {
-                // Don't trigger if clicking on a button or link inside the row
-                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('button')) {
-                    return;
-                }
-                const studentId = this.dataset.studentId;
-                if (studentId) {
-                    goToStudentDetails(studentId);
-                }
-            });
-        });
-    }
-    
     // Debounce function for search input
     function debounce(func, wait) {
         let timeout;
@@ -517,10 +673,16 @@
         };
     }
     
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         initializeTableData();
-        addClickHandlers();
         
         // Set up event listeners with debounce for search
         const searchInput = document.getElementById('searchInput');
@@ -543,116 +705,5 @@
             statusFilter.addEventListener('change', applyFilters);
         }
     });
-    
-    // Re-initialize when table content changes (for HTMX or dynamic content)
-    if (typeof MutationObserver !== 'undefined') {
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'childList') {
-                    initializeTableData();
-                    addClickHandlers();
-                    applyFilters();
-                }
-            });
-        });
-        
-        const tbody = document.getElementById('studentTableBody');
-        if (tbody) {
-            observer.observe(tbody, { childList: true, subtree: true });
-        }
-    }
 </script>
-
-<style>
-    .student-row {
-        transition: all 0.2s ease;
-        cursor: pointer;
-    }
-    .student-row:hover {
-        background-color: #fef3c7 !important;
-        transform: translateX(2px);
-    }
-    
-    .btn-gradient {
-        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-        transition: all 0.3s ease;
-    }
-    .btn-gradient:hover {
-        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
-        transform: translateY(-2px);
-    }
-    
-    .stat-card {
-        transition: all 0.3s ease;
-    }
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
-    }
-    
-    @media print {
-        .no-print {
-            display: none !important;
-        }
-        .student-row {
-            cursor: default;
-        }
-        .student-row:hover {
-            background-color: transparent !important;
-            transform: none;
-        }
-        .bg-white, .rounded-xl, .shadow-md {
-            background: white !important;
-            box-shadow: none !important;
-            border-radius: 0 !important;
-        }
-        .status-badge, .category-badge {
-            border: 1px solid #ddd;
-            background: #f5f5f5 !important;
-            color: #333 !important;
-        }
-    }
-    
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 8px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 500;
-    }
-    .status-active {
-        background-color: #d1fae5;
-        color: #065f46;
-    }
-    .status-inactive {
-        background-color: #fee2e2;
-        color: #991b1b;
-    }
-    
-    .category-badge {
-        display: inline-block;
-        padding: 2px 6px;
-        border-radius: 12px;
-        font-size: 10px;
-        font-weight: 500;
-    }
-    .category-boarding {
-        background-color: #fef3c7;
-        color: #d97706;
-    }
-    .category-day {
-        background-color: #d1fae5;
-        color: #059669;
-    }
-    
-    .click-hint {
-        font-size: 11px;
-        color: #9ca3af;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-</style>
 {% endblock %}
