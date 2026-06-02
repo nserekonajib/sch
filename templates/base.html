@@ -8,7 +8,7 @@
     <meta name="keywords" content="school management, erp, education, lurnserk, lunker">
     <meta name="author" content="Lunserk Inc.">
     <title>Lunserk ERP - {% block title %}School Management System{% endblock %}</title>
-      <link rel="icon" type="image/png" href="{{ url_for('static', filename='n.png') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='n.png') }}">
     <!-- Tailwind CSS CDN + Font Awesome + Google Fonts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -29,56 +29,11 @@
             };
         }
     });
-</script>
-    <!-- Custom Configuration 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#ffa500',
-                        primaryDark: '#ff8c00',
-                    }
-                }
-            }
-        }
-    </script>-->
-<!--Use the below code snippet to provide real time updates to the live chat plugin without the need of copying and paste each time to your website when changes are made via PBX-->
-<call-us-selector phonesystem-url="https://1403.3cx.cloud" party="nserekonajib"></call-us-selector>
- 
-<!--Incase you don't want real time updates to the live chat plugin when options are changed, use the below code snippet. Please note that each time you change the settings you will need to copy and paste the snippet code to your website--> 
-<!--<call-us 
-phonesystem-url="https://1403.3cx.cloud" 
-style="position:fixed;font-size:16px;line-height:17px;z-index: 99999;right: 20px; bottom: 20px;" 
-id="wp-live-chat-by-3CX" 
-minimized="true" 
-animation-style="noanimation" 
-party="nserekonajib" 
-minimized-style="bubbleright" 
-allow-call="true" 
-allow-video="false" 
-allow-soundnotifications="true" 
-enable-mute="true" 
-enable-onmobile="true" 
-offline-enabled="true" 
-enable="true" 
-ignore-queueownership="false" 
-authentication="none" 
-show-operator-actual-name="true" 
-aknowledge-received="true" 
-gdpr-enabled="false" 
-message-userinfo-format="both" 
-message-dateformat="both" 
-lang="browser" 
-button-icon-type="default" 
-greeting-visibility="none" 
-greeting-offline-visibility="none" 
-chat-delay="2000" 
-enable-direct-call="true" 
-enable-ga="false" 
-></call-us>--> 
-<script defer src="https://downloads-global.3cx.com/downloads/livechatandtalk/v1/callus.js" id="tcx-callus-js" charset="utf-8"></script>
-</script>
+    </script>
+    
+    <call-us-selector phonesystem-url="https://1403.3cx.cloud" party="nserekonajib"></call-us-selector>
+    <script defer src="https://downloads-global.3cx.com/downloads/livechatandtalk/v1/callus.js" id="tcx-callus-js" charset="utf-8"></script>
+    
     <style>
         * { 
             font-family: 'Inter', sans-serif; 
@@ -241,7 +196,6 @@ enable-ga="false"
     {% block extra_css %}{% endblock %}
 </head>
 
-<!--End of Tawk.to Script-->
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 antialiased overflow-hidden h-screen">
 
 <!-- Flash Messages Container -->
@@ -300,29 +254,21 @@ enable-ga="false"
                     this.openMenus[menu] = !this.openMenus[menu];
                 }
             }">
-           <!-- Dashboard -->
-            <a href="{{ url_for('dashboard.index') }}" 
-            :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'dashboard'}" 
-            class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                <i class="fas fa-chart-line text-lg w-5 group-hover:text-[#ffa500]"></i>
-                <span class="font-medium">Dashboard</span>
-            </a>
+                <!-- Dashboard -->
+                <a href="{{ url_for('dashboard.index') }}" 
+                    :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'dashboard'}" 
+                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                    <i class="fas fa-chart-line text-lg w-5 group-hover:text-[#ffa500]"></i>
+                    <span class="font-medium">Dashboard</span>
+                </a>
 
-           
-             <a href="{{ url_for('studyresource.index') }}" 
-                :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'resources'}" 
-                class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                <!-- Study Resources -->
+                <a href="{{ url_for('studyresource.index') }}" 
+                    :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'resources'}" 
+                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
                     <i class="fas fa-book-open text-lg w-5 group-hover:text-[#ffa500]"></i>
                     <span class="font-medium">Study Resources</span>
-            </a>
-
-            <!-- Entertainment 
-            <a href="{{ url_for('entertainment.movies') }}" 
-            :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'entertainment'}" 
-            class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                <i class="fas fa-film text-lg w-5 group-hover:text-[#ffa500]"></i>
-                <span class="font-medium">Entertainment</span>
-            </a>-->
+                </a>
 
                 <!-- General Settings -->
                 <div>
@@ -335,17 +281,11 @@ enable-ga="false"
                         <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.settings ? 'rotate-180' : ''"></i>
                     </button>
                     <div x-show="openMenus.settings" x-cloak class="pl-11 mt-2 space-y-1.5">
-                        <a href="{{ url_for('instituteProfile.profile') }}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Institute Profile</a>
-                        <a href="{{ url_for('fees.index') }}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fees Particulars</a>
-                     <a href="{{ url_for('auth.profile') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Profile</a>
-                         <a href="{{ url_for('edit_invoice.index') }}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Edit Invoice</a>
-                         <a href="{{url_for('sms_settings.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">SMS Settings</a>
-                         <a href="{{url_for('schoolpay.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">SchoolPay Settings</a>
-                        <!--<a href="#" @click.prevent="activeMenu = 'accounts-fees'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Accounts For Fees Invoice</a>
-                        <a href="#" @click.prevent="activeMenu = 'rules-regulations'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Rules & Regulations</a>-->
+                        <a href="{{ url_for('instituteProfile.profile') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Institute Profile</a>
+                        <a href="{{ url_for('auth.profile') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Profile</a>
+                        <a href="{{url_for('sms_settings.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">SMS Settings</a>
+                        <a href="{{url_for('schoolpay.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">SchoolPay Settings</a>
                         <a href="{{ url_for('grading.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Marks Grading</a>
-                          <!--<a href="#" @click.prevent="activeMenu = 'theme-language'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Theme & Language</a>
-                        <a href="#" @click.prevent="activeMenu = 'account-settings'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Account Settings</a>-->
                     </div>
                 </div>
 
@@ -360,7 +300,7 @@ enable-ga="false"
                         <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.classes ? 'rotate-180' : ''"></i>
                     </button>
                     <div x-show="openMenus.classes" x-cloak class="pl-11 mt-2 space-y-1.5">
-                        <a href="{{ url_for('class.index') }}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">All Classes</a>
+                        <a href="{{ url_for('class.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">All Classes</a>
                         <a href="{{ url_for('class.create') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">New Class</a>
                     </div>
                 </div>
@@ -392,19 +332,10 @@ enable-ga="false"
                         <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.students ? 'rotate-180' : ''"></i>
                     </button>
                     <div x-show="openMenus.students" x-cloak class="pl-11 mt-2 space-y-1.5">
-                          <!-- <a href="#" @click.prevent="activeMenu = 'all-students'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">All Students</a> -->
-
-                        <a href="{{url_for('student.index')}}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student Management</a>
-
+                        <a href="{{url_for('student.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student Management</a>
                         <a href="{{url_for('houses.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student Houses</a>
-                        <!--<a href="#" @click.prevent="activeMenu = 'active-inactive'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Active / Inactive</a>
-                        <a href="#" @click.prevent="activeMenu = 'admission-letter'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Admission Letter</a> -->
-
-
-                        <a href="{{url_for('id.index')}}"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student ID Cards</a>
-
+                        <a href="{{url_for('id.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student ID Cards</a>
                         <a href="{{url_for('student_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Print Basic List</a>
-
                         <a href="#" @click.prevent="activeMenu = 'manage-login'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Login</a>
                         <a href="{{url_for('promote.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Promote Students</a>
                     </div>
@@ -422,11 +353,6 @@ enable-ga="false"
                     </button>
                     <div x-show="openMenus.employees" x-cloak class="pl-11 mt-2 space-y-1.5">
                         <a href="{{ url_for('employees.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Employees Management</a>
-
-                        <!--<a href="#"  class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Add New</a>
-                        <a href="{{url_for('employee_id.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Staff ID Cards</a>
-                        <a href="#" @click.prevent="activeMenu = 'job-letter'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Job Letter</a>
-                        <a href="#" @click.prevent="activeMenu = 'employee-login'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Login</a>-->
                     </div>
                 </div>
 
@@ -443,8 +369,6 @@ enable-ga="false"
                     <div x-show="openMenus.accounts" x-cloak class="pl-11 mt-2 space-y-1.5">
                         <a href="{{url_for('accounts.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Accounts Management</a>
                         <a href="{{url_for('statements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student Statements</a>
-                         <!--<a href="#" @click.prevent="activeMenu = 'add-expense'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Add Expense</a>
-                        <a href="#" @click.prevent="activeMenu = 'account-statement'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Account Statement</a>-->
                     </div>
                 </div>
 
@@ -459,22 +383,20 @@ enable-ga="false"
                         <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.fees ? 'rotate-180' : ''"></i>
                     </button>
                     <div x-show="openMenus.fees" x-cloak class="pl-11 mt-2 space-y-1.5">
-
-                       
-
+                        <a href="{{ url_for('fees.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fees Management</a>
+                        
                         <a href="{{url_for('collect.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Collect Fees</a>
 
-                         <a href="{{url_for('sync.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">School Pay</a>
+                        <a href="{{url_for('requirements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Requirements</a>
 
-                         <a href="{{url_for('payments_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">transaction list</a>
+                        <a href="{{url_for('sync.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500]
+                         hover:bg-orange-50 rounded-lg transition-all">School Pay</a>
 
-                         <a href="{{url_for('discount.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Discounts</a>
-
-                      <a href="{{url_for('requirements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Requirements</a>
-
-                        <a href="{{url_for('fee_reports.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fees Report</a>
+                        <a href="{{url_for('payments_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Transaction List</a>
                         
+                        <a href="{{ url_for('edit_invoice.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Edit Invoice</a>
                         <a href="#" @click.prevent="activeMenu = 'delete-fees'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Delete Fees</a>
+                        <a href="{{url_for('fee_reports.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fees Report</a>
                     </div>
                 </div>
 
@@ -490,9 +412,7 @@ enable-ga="false"
                     </button>
                     <div x-show="openMenus.salary" x-cloak class="pl-11 mt-2 space-y-1.5">
                         <a href="{{ url_for('payroll.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Pay Salary</a>
-                       <a href="{{ url_for('advance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Advance</a>
-                        <!-- <a href="#" @click.prevent="activeMenu = 'salary-sheet'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Sheet</a>
-                        <a href="#" @click.prevent="activeMenu = 'salary-report'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Report</a>-->
+                        <a href="{{ url_for('advance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Salary Advance</a>
                     </div>
                 </div>
 
@@ -509,243 +429,48 @@ enable-ga="false"
                     <div x-show="openMenus.attendance" x-cloak class="pl-11 mt-2 space-y-1.5">
                         <a href="{{ url_for('attendance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Students Attendance</a>
                         <a href="{{ url_for('staff_attendance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Employees Attendance</a>
-                        <!--<a href="#" @click.prevent="activeMenu = 'class-wise-report'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Class wise Report</a>-->
                         <a href="{{ url_for('attendance_report.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Students Attendance Report</a>
                         <a href="{{ url_for('staff_attendance_report.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Employees Attendance Report</a>
                     </div>
                 </div>
 
-                <!-- Timetable 
-                <div>
-                    <button @click="toggleMenu('timetable')" 
-                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-calendar-alt text-lg w-5 group-hover:text-[#ffa500]"></i>
-                            <span class="font-medium">Timetable</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.timetable ? 'rotate-180' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.timetable" x-cloak class="pl-11 mt-2 space-y-1.5">
-                        <a href="#" @click.prevent="activeMenu = 'weekdays'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Weekdays</a>
-                        <a href="#" @click.prevent="activeMenu = 'time-periods'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Time Periods</a>
-                        <a href="#" @click.prevent="activeMenu = 'class-rooms'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Class Rooms</a>
-                        <a href="#" @click.prevent="activeMenu = 'create-timetable'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Create Timetable</a>
-                        <a href="#" @click.prevent="activeMenu = 'generate-class'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Generate For Class</a>
-                        <a href="#" @click.prevent="activeMenu = 'generate-teacher'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Generate For Teacher</a>
-                    </div>
-                </div>-->
-
-                <!-- Homework 
-                <a href="#" @click.prevent="activeMenu = 'homework'" 
-                   :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'homework'}" 
-                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                    <i class="fas fa-book text-lg w-5 group-hover:text-[#ffa500]"></i>
-                    <span class="font-medium">Homework</span>
-                </a>-->
-
-                <!-- Behaviour & Skills 
-                <div>
-                    <button @click="toggleMenu('behaviour')" 
-                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-eye text-lg w-5 group-hover:text-[#ffa500]"></i>
-                            <span class="font-medium">Behaviour & Skills</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.behaviour ? 'rotate-180' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.behaviour" x-cloak class="pl-11 mt-2 space-y-1.5">
-                        <a href="#" @click.prevent="activeMenu = 'rate-behaviours'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Rate Behaviours</a>
-                        <a href="#" @click.prevent="activeMenu = 'rate-skills'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Rate Skills</a>
-                        <a href="#" @click.prevent="activeMenu = 'observations'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Observations</a>
-                        <a href="#" @click.prevent="activeMenu = 'affective-domain'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Affective Domain Rating Report</a>
-                        <a href="#" @click.prevent="activeMenu = 'psycomotor-domain'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Psycomotor Domain Rating Report</a>
-                    </div>
-                </div>-->
-
-                <!-- Online Store & POS 
-                <div>
-                    <button @click="toggleMenu('store')" 
-                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-shopping-cart text-lg w-5 group-hover:text-[#ffa500]"></i>
-                            <span class="font-medium">Online Store & POS</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.store ? 'rotate-180' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.store" x-cloak class="pl-11 mt-2 space-y-1.5">
-                        <a href="#" @click.prevent="activeMenu = 'store-analytics'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Store Analytics</a>
-                        <a href="#" @click.prevent="activeMenu = 'product-categories'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Product Categories</a>
-                        <a href="#" @click.prevent="activeMenu = 'product-tax'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Product Tax</a>
-                        <a href="#" @click.prevent="activeMenu = 'products'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Products</a>
-                        <a href="#" @click.prevent="activeMenu = 'new-order'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">New Order</a>
-                        <a href="#" @click.prevent="activeMenu = 'all-orders'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">All Orders</a>
-                    </div>
-                </div>-->
-
-                <!-- WhatsApp 
-                <a href="#" @click.prevent="activeMenu = 'whatsapp'" 
-                   :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'whatsapp'}" 
-                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                    <i class="fab fa-whatsapp text-lg w-5 group-hover:text-[#ffa500]"></i>
-                    <span class="font-medium">WhatsApp</span>
-                </a>-->
-
-                
+                <!-- Messaging -->
                 <a href="{{ url_for('message.index') }}" 
-                   :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'messaging'}" 
-                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                    :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'messaging'}" 
+                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
                     <i class="fas fa-comment-dots text-lg w-5 group-hover:text-[#ffa500]"></i>
                     <span class="font-medium">Messaging</span>
-                </a> 
-
-                <!-- SMS Services 
-                <div>
-                    <button @click="toggleMenu('sms')" 
-                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-envelope text-lg w-5 group-hover:text-[#ffa500]"></i>
-                            <span class="font-medium">SMS Services</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.sms ? 'rotate-180' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.sms" x-cloak class="pl-11 mt-2 space-y-1.5">
-                        <a href="#" @click.prevent="activeMenu = 'free-sms'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Free SMS Gateway</a>
-                        <a href="#" @click.prevent="activeMenu = 'branded-sms'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Branded SMS</a>
-                        <a href="#" @click.prevent="activeMenu = 'sms-templates'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">SMS Templates</a>
-                    </div>
-                </div>-->
-
-                <!-- Live Class 
-                <a href="#" @click.prevent="activeMenu = 'live-class'" 
-                   :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'live-class'}" 
-                   class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                    <i class="fas fa-video text-lg w-5 group-hover:text-[#ffa500]"></i>
-                    <span class="font-medium">Live Class</span>-->
                 </a>
 
-                <!-- Question Paper 
-                <div>
-                    <button @click="toggleMenu('question-paper')" 
-                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-file-alt text-lg w-5 group-hover:text-[#ffa500]"></i>
-                            <span class="font-medium">Question Paper</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus['question-paper'] ? 'rotate-180' : ''"></i>
-                    </button>
-                    <div x-show="openMenus['question-paper']" x-cloak class="pl-11 mt-2 space-y-1.5">
-                        <a href="#" @click.prevent="activeMenu = 'subject-chapters'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Subject Chapters</a>
-                        <a href="#" @click.prevent="activeMenu = 'question-bank'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Question Bank</a>
-                        <a href="#" @click.prevent="activeMenu = 'create-paper'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Create Question Paper</a>
-                    </div>
-                </div>-->
+                <!-- Billing -->
+                <a href="{{ url_for('billing.index') }}" 
+                    :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'billing'}" 
+                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                    <i class="fas fa-credit-card text-lg w-5 group-hover:text-[#ffa500]"></i>
+                    <span class="font-medium">Billing</span>
+                </a>
 
-                <!-- Exams -->
-                <div>
-                    <button @click="toggleMenu('exams')" 
-                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-pen-to-square text-lg w-5 group-hover:text-[#ffa500]"></i>
-                            <span class="font-medium">Exams</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.exams ? 'rotate-180' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.exams" x-cloak class="pl-11 mt-2 space-y-1.5">
-                        <a href="{{ url_for('exams.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Create New Exam</a>
-                        <a href="{{ url_for('exams.marks') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Add / Update Exam Marks</a>
-                        <a href="{{ url_for('results.r') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Result Card</a>
-                     <!--<a href="{{ url_for('templates.designer') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Design</a>
-                            <a href="#" @click.prevent="activeMenu = 'exam-schedule'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Exam Schedule</a>
-                        <a href="#" @click.prevent="activeMenu = 'date-sheet'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Date Sheet</a>
-                        <a href="#" @click.prevent="activeMenu = 'blank-award'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Blank Award List</a>-->
-                    </div>
-                </div>
-
-                <!-- Class Tests 
-                <div>
-                    <button @click="toggleMenu('tests')" 
-                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-clipboard-list text-lg w-5 group-hover:text-[#ffa500]"></i>
-                            <span class="font-medium">Class Tests</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.tests ? 'rotate-180' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.tests" x-cloak class="pl-11 mt-2 space-y-1.5">
-                        <a href="#" @click.prevent="activeMenu = 'manage-test-marks'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Test Marks</a>
-                        <a href="#" @click.prevent="activeMenu = 'test-result'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Test Result</a>
-                    </div>
-                </div>-->
-
-                <!-- Reports
-                <div>
-                    <button @click="toggleMenu('reports')" 
-                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-chart-line text-lg w-5 group-hover:text-[#ffa500]"></i>
-                            <span class="font-medium">Reports</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.reports ? 'rotate-180' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.reports" x-cloak class="pl-11 mt-2 space-y-1.5">
-                        <a href="#" @click.prevent="activeMenu = 'students-report-card'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Students Report Card</a>
-                        <a href="#" @click.prevent="activeMenu = 'students-info'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Students Info Report</a>
-                        <a href="#" @click.prevent="activeMenu = 'parents-info'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Parents Info Report</a>
-                        <a href="#" @click.prevent="activeMenu = 'student-attendance-monthly'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Students Monthly Attendance Report</a>
-                        <a href="#" @click.prevent="activeMenu = 'staff-attendance-monthly'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Staff Monthly Attendance Report</a>
-                        <a href="#" @click.prevent="activeMenu = 'fee-collection'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fee Collection Report</a>
-                        <a href="#" @click.prevent="activeMenu = 'student-progress'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student Progress Report</a>
-                        <a href="#" @click.prevent="activeMenu = 'accounts-report'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Accounts Report</a>
-                        <a href="#" @click.prevent="activeMenu = 'customised-reports'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Customised Reports</a>
-                    </div>
-                </div> -->
-
-                <!-- Certificates 
-                <div>
-                    <button @click="toggleMenu('certificates')" 
-                        class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-certificate text-lg w-5 group-hover:text-[#ffa500]"></i>
-                            <span class="font-medium">Certificates</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.certificates ? 'rotate-180' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.certificates" x-cloak class="pl-11 mt-2 space-y-1.5">
-                        <a href="#" @click.prevent="activeMenu = 'generate-certificate'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Generate Certificate</a>
-                        <a href="#" @click.prevent="activeMenu = 'certificate-templates'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Certificate Templates</a>
-                    </div>
-                </div>-->
-
-                 <!-- Billing -->
-            <a href="{{ url_for('billing.index') }}" 
-            :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'billing'}" 
-            class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                <i class="fas fa-credit-card text-lg w-5 group-hover:text-[#ffa500]"></i>
-                <span class="font-medium">Billing</span>
-            </a>
-
-            <!-- International Library -->
-            <a href="{{ url_for('library.index') }}" 
-            :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'library'}" 
-            class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
-                <i class="fas fa-globe-americas text-lg w-5 group-hover:text-[#ffa500]"></i>
-                <span class="font-medium">International Library</span>
-            </a>
-
+                <!-- International Library -->
+                <a href="{{ url_for('library.index') }}" 
+                    :class="{'nav-item-active bg-orange-50 text-[#ffa500]': activeMenu === 'library'}" 
+                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ffa500] transition-all group">
+                    <i class="fas fa-globe-americas text-lg w-5 group-hover:text-[#ffa500]"></i>
+                    <span class="font-medium">International Library</span>
+                </a>
             </nav>
 
-            <!-- Footer / User Info - Dynamic from session -->
+            <!-- Footer / User Info - Fixed to use session.user data correctly -->
             <div class="border-t border-gray-200 p-4 bg-gray-50">
                 <div class="flex items-center gap-3">
                     <div class="h-10 w-10 rounded-full bg-gradient-to-br from-[#ffa500] to-[#ff8c00] flex items-center justify-center text-white font-bold shadow-md">
-                        {{ user.email[0].upper() if user and user.email else 'U' }}
+                        {{ session.user.email[0].upper() if session and session.user and session.user.email else 'U' }}
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-semibold text-gray-800 truncate">
-                            {{ user.email.split('@')[0] if user and user.email else 'User' }}
+                            {{ session.user.email.split('@')[0] if session and session.user and session.user.email else 'User' }}
                         </p>
                         <p class="text-xs text-gray-500 truncate">
-                            {{ user.email if user and user.email else 'user@example.com' }}
+                            {{ session.user.email if session and session.user and session.user.email else 'user@example.com' }}
                         </p>
                     </div>
                     <a href="{{ url_for('auth.logout') }}" class="text-gray-400 hover:text-red-500 transition-colors" title="Logout">
@@ -773,12 +498,6 @@ enable-ga="false"
                 </div>
                 <div class="flex items-center gap-5">
                     <div class="hidden md:flex gap-2">
-                        <a href="#" @click.prevent="activeMenu = 'app-store'" class="flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-gray-800 transition-colors">
-                            <i class="fab fa-apple"></i> App Store
-                        </a>
-                        <a href="#" @click.prevent="activeMenu = 'google-play'" class="flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-gray-800 transition-colors">
-                            <i class="fab fa-google-play"></i> Google Play
-                        </a>
                     </div>
                     <button class="relative text-gray-600 hover:text-[#ffa500] transition-colors">
                         <i class="fas fa-bell text-xl"></i>
@@ -786,13 +505,19 @@ enable-ga="false"
                     </button>
                     <div class="flex items-center gap-2 cursor-pointer group">
                         <div class="h-9 w-9 rounded-full bg-gradient-to-br from-[#ffa500] to-[#ff8c00] flex items-center justify-center text-white font-semibold shadow-md">
-                            {{ user.email[0].upper() if user and user.email else 'U' }}
+                            {{ session.user.email[0].upper() if session and session.user and session.user.email else 'U' }}
                         </div>
                         <div class="hidden md:block">
                             <p class="text-sm font-medium text-gray-800 group-hover:text-[#ffa500] transition-colors">
-                                {{ user.email.split('@')[0] if user and user.email else 'User' }}
+                                {{ session.user.email.split('@')[0] if session and session.user and session.user.email else 'User' }}
                             </p>
-                            <p class="text-xs text-gray-500">Administrator</p>
+                            <p class="text-xs text-gray-500">
+                                {% if session.user.is_employee %}
+                                    {{ session.user.role|capitalize if session.user.role else 'Employee' }}
+                                {% else %}
+                                    Administrator
+                                {% endif %}
+                            </p>
                         </div>
                         <i class="fas fa-chevron-down text-xs text-gray-500 group-hover:text-[#ffa500] transition-colors"></i>
                     </div>
@@ -913,245 +638,243 @@ enable-ga="false"
         }, 5000);
     });
 
-   // Subscription Check and Overlay
-let subscriptionCheckInterval = null;
-let subscriptionOverlay = null;
+    // Subscription Check and Overlay
+    let subscriptionCheckInterval = null;
+    let subscriptionOverlay = null;
 
-// List of paths where overlay should NOT appear
-const excludedPaths = ['/billing', '/billing/', '/billing/index', '/billing/payment-callback'];
+    // List of paths where overlay should NOT appear
+    const excludedPaths = ['/billing', '/billing/', '/billing/index', '/billing/payment-callback'];
 
-function isExcludedPath() {
-    const currentPath = window.location.pathname;
-    return excludedPaths.some(path => currentPath === path || currentPath.startsWith('/billing'));
-}
-
-function checkSubscriptionStatus() {
-    // Don't check on billing pages
-    if (isExcludedPath()) {
-        return;
+    function isExcludedPath() {
+        const currentPath = window.location.pathname;
+        return excludedPaths.some(path => currentPath === path || currentPath.startsWith('/billing'));
     }
-    
-    fetch('/billing/check-subscription')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && !data.is_active) {
-                showSubscriptionOverlay();
-            } else if (data.success && data.is_active && subscriptionOverlay) {
-                hideSubscriptionOverlay();
-            }
-        })
-        .catch(error => console.error('Error checking subscription:', error));
-}
 
-function showSubscriptionOverlay() {
-    // Don't show on billing pages
-    if (isExcludedPath()) {
-        return;
+    function checkSubscriptionStatus() {
+        // Don't check on billing pages
+        if (isExcludedPath()) {
+            return;
+        }
+        
+        fetch('/billing/check-subscription')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && !data.is_active) {
+                    showSubscriptionOverlay();
+                } else if (data.success && data.is_active && subscriptionOverlay) {
+                    hideSubscriptionOverlay();
+                }
+            })
+            .catch(error => console.error('Error checking subscription:', error));
     }
-    
-    if (subscriptionOverlay) return;
-    
-    subscriptionOverlay = document.createElement('div');
-    subscriptionOverlay.id = 'subscriptionOverlay';
-    subscriptionOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.95);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        backdrop-filter: blur(5px);
-    `;
-    
-    subscriptionOverlay.innerHTML = `
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 text-center" style="animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);">
-            <div class="h-20 w-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-800 mb-2">Subscription Expired</h3>
-            <p class="text-gray-600 mb-4">
-                Your subscription has expired. Please renew to continue accessing the system.
-            </p>
-            <div class="bg-orange-50 rounded-lg p-3 mb-4">
-                <p class="text-sm text-orange-600">
-                    <i class="fas fa-info-circle"></i> 
-                    Renew now for only UGX 50,000 per month
+
+    function showSubscriptionOverlay() {
+        // Don't show on billing pages
+        if (isExcludedPath()) {
+            return;
+        }
+        
+        if (subscriptionOverlay) return;
+        
+        subscriptionOverlay = document.createElement('div');
+        subscriptionOverlay.id = 'subscriptionOverlay';
+        subscriptionOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        `;
+        
+        subscriptionOverlay.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 text-center" style="animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);">
+                <div class="h-20 w-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Subscription Expired</h3>
+                <p class="text-gray-600 mb-4">
+                    Your subscription has expired. Please renew to continue accessing the system.
                 </p>
+                <div class="bg-orange-50 rounded-lg p-3 mb-4">
+                    <p class="text-sm text-orange-600">
+                        <i class="fas fa-info-circle"></i> 
+                        Renew now for only UGX 50,000 per month
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="/billing" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium text-center">
+                        <i class="fas fa-credit-card"></i> Renew Now
+                    </a>
+                </div>
             </div>
-            <div class="flex gap-3">
-                <a href="/billing" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium text-center">
-                    <i class="fas fa-credit-card"></i> Renew Now
-                </a>
-            </div>
-        </div>
-    `;
-    
-    // Add animation styles if not already present
-    if (!document.querySelector('#subscriptionStyles')) {
-        const style = document.createElement('style');
-        style.id = 'subscriptionStyles';
-        style.textContent = `
-            @keyframes slideUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(50px) scale(0.95);
+        `;
+        
+        // Add animation styles if not already present
+        if (!document.querySelector('#subscriptionStyles')) {
+            const style = document.createElement('style');
+            style.id = 'subscriptionStyles';
+            style.textContent = `
+                @keyframes slideUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(50px) scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
                 }
-                to {
-                    opacity: 1;
-                    transform: translateY(0) scale(1);
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Add btn-gradient styles if not present
+        if (!document.querySelector('#btnGradientStyles')) {
+            const btnStyle = document.createElement('style');
+            btnStyle.id = 'btnGradientStyles';
+            btnStyle.textContent = `
+                .btn-gradient {
+                    background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+                    transition: all 0.3s ease;
                 }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-    
-    // Add btn-gradient styles if not present
-    if (!document.querySelector('#btnGradientStyles')) {
-        const btnStyle = document.createElement('style');
-        btnStyle.id = 'btnGradientStyles';
-        btnStyle.textContent = `
-            .btn-gradient {
-                background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-                transition: all 0.3s ease;
-            }
-            .btn-gradient:hover {
-                background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
-                transform: translateY(-2px);
-            }
-        `;
-        document.head.appendChild(btnStyle);
-    }
-    
-    document.body.appendChild(subscriptionOverlay);
-    document.body.style.overflow = 'hidden';
-}
-
-function hideSubscriptionOverlay() {
-    if (subscriptionOverlay) {
-        subscriptionOverlay.remove();
-        subscriptionOverlay = null;
-        document.body.style.overflow = '';
-    }
-}
-
-// Check subscription on page load and every 5 minutes (but not on billing pages)
-document.addEventListener('DOMContentLoaded', function() {
-    // Only check if not on billing page
-    if (!isExcludedPath()) {
-        checkSubscriptionStatus();
-        subscriptionCheckInterval = setInterval(checkSubscriptionStatus, 5 * 60 * 1000);
-    }
-});
-
-// Also check when the page becomes visible again (user returns from billing)
-document.addEventListener('visibilitychange', function() {
-    if (!document.hidden && !isExcludedPath()) {
-        checkSubscriptionStatus();
-    }
-});
-
-// Clean up interval on page unload
-window.addEventListener('beforeunload', function() {
-    if (subscriptionCheckInterval) {
-        clearInterval(subscriptionCheckInterval);
-    }
-});
-
-// Optional: Also check when returning from billing page via navigation
-window.addEventListener('pageshow', function() {
-    if (!isExcludedPath()) {
-        checkSubscriptionStatus();
-    }
-});
-
-(() => {
-    const WARNING_TIME = 1 * 60 * 1000;  // Show warning after 3 minutes
-    const LOGOUT_TIME = 3 * 60 * 1000;   // Logout after 5 minutes (2 minutes after warning)
-
-    let warningTimer;
-    let logoutTimer;
-    let countdownInterval;
-    let popup;
-
-    function createPopup() {
-        popup = document.createElement("div");
-        popup.id = "inactive-popup";
-        popup.innerHTML = `
-            <div class="inactive-popup-content">
-                <h3>Session Expiring</h3>
-                <p>You will be logged out in <span id="countdown">120</span> seconds due to inactivity.</p>
-                <button id="stay-active-btn">Stay Here</button>
-            </div>
-        `;
-
-        document.body.appendChild(popup);
-
-        document.getElementById("stay-active-btn").addEventListener("click", () => {
-            resetTimers();
-            removePopup();
-        });
-    }
-
-    function removePopup() {
-        if (popup) {
-            popup.remove();
-            popup = null;
+                .btn-gradient:hover {
+                    background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+                    transform: translateY(-2px);
+                }
+            `;
+            document.head.appendChild(btnStyle);
         }
+        
+        document.body.appendChild(subscriptionOverlay);
+        document.body.style.overflow = 'hidden';
+    }
 
-        if (countdownInterval) {
-            clearInterval(countdownInterval);
+    function hideSubscriptionOverlay() {
+        if (subscriptionOverlay) {
+            subscriptionOverlay.remove();
+            subscriptionOverlay = null;
+            document.body.style.overflow = '';
         }
     }
 
-    function showWarning() {
-        if (!popup) {
-            createPopup();
+    // Check subscription on page load and every 5 minutes (but not on billing pages)
+    document.addEventListener('DOMContentLoaded', function() {
+        // Only check if not on billing page
+        if (!isExcludedPath()) {
+            checkSubscriptionStatus();
+            subscriptionCheckInterval = setInterval(checkSubscriptionStatus, 5 * 60 * 1000);
         }
-
-        let seconds = Math.floor((LOGOUT_TIME - WARNING_TIME) / 1000); // 120 seconds (2 minutes)
-
-        countdownInterval = setInterval(() => {
-            seconds--;
-            
-            const countdown = document.getElementById("countdown");
-            if (countdown) {
-                countdown.textContent = seconds;
-            }
-
-            if (seconds <= 0) {
-                clearInterval(countdownInterval);
-            }
-        }, 1000);
-    }
-
-    function logoutUser() {
-        window.location.href = "/auth/logout";
-    }
-
-    function resetTimers() {
-        clearTimeout(warningTimer);
-        clearTimeout(logoutTimer);
-        clearInterval(countdownInterval);
-        removePopup();
-
-        warningTimer = setTimeout(showWarning, WARNING_TIME);
-        logoutTimer = setTimeout(logoutUser, LOGOUT_TIME);
-    }
-
-    // Add event listeners for user activity
-    ["mousemove", "keydown", "click", "scroll", "touchstart"].forEach(event => {
-        document.addEventListener(event, resetTimers);
     });
 
-    // Initial start
-    resetTimers();
-})();
+    // Also check when the page becomes visible again (user returns from billing)
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && !isExcludedPath()) {
+            checkSubscriptionStatus();
+        }
+    });
 
+    // Clean up interval on page unload
+    window.addEventListener('beforeunload', function() {
+        if (subscriptionCheckInterval) {
+            clearInterval(subscriptionCheckInterval);
+        }
+    });
 
+    // Optional: Also check when returning from billing page via navigation
+    window.addEventListener('pageshow', function() {
+        if (!isExcludedPath()) {
+            checkSubscriptionStatus();
+        }
+    });
+
+    (() => {
+        const WARNING_TIME = 1 * 60 * 1000;  // Show warning after 1 minute
+        const LOGOUT_TIME = 3 * 60 * 1000;   // Logout after 3 minutes
+
+        let warningTimer;
+        let logoutTimer;
+        let countdownInterval;
+        let popup;
+
+        function createPopup() {
+            popup = document.createElement("div");
+            popup.id = "inactive-popup";
+            popup.innerHTML = `
+                <div class="inactive-popup-content">
+                    <h3>Session Expiring</h3>
+                    <p>You will be logged out in <span id="countdown">120</span> seconds due to inactivity.</p>
+                    <button id="stay-active-btn">Stay Here</button>
+                </div>
+            `;
+
+            document.body.appendChild(popup);
+
+            document.getElementById("stay-active-btn").addEventListener("click", () => {
+                resetTimers();
+                removePopup();
+            });
+        }
+
+        function removePopup() {
+            if (popup) {
+                popup.remove();
+                popup = null;
+            }
+
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+        }
+
+        function showWarning() {
+            if (!popup) {
+                createPopup();
+            }
+
+            let seconds = Math.floor((LOGOUT_TIME - WARNING_TIME) / 1000);
+
+            countdownInterval = setInterval(() => {
+                seconds--;
+                
+                const countdown = document.getElementById("countdown");
+                if (countdown) {
+                    countdown.textContent = seconds;
+                }
+
+                if (seconds <= 0) {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+        }
+
+        function logoutUser() {
+            window.location.href = "/auth/logout";
+        }
+
+        function resetTimers() {
+            clearTimeout(warningTimer);
+            clearTimeout(logoutTimer);
+            clearInterval(countdownInterval);
+            removePopup();
+
+            warningTimer = setTimeout(showWarning, WARNING_TIME);
+            logoutTimer = setTimeout(logoutUser, LOGOUT_TIME);
+        }
+
+        // Add event listeners for user activity
+        ["mousemove", "keydown", "click", "scroll", "touchstart"].forEach(event => {
+            document.addEventListener(event, resetTimers);
+        });
+
+        // Initial start
+        resetTimers();
+    })();
 </script>
 
 {% block extra_js %}{% endblock %}

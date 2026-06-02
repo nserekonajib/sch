@@ -2,82 +2,657 @@
 
 {% block title %}Students Report - Lunserk ERP{% endblock %}
 
+{% block extra_css %}
+<style>
+    .student-row {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .student-row:hover {
+        background-color: #fef3c7 !important;
+        transform: translateX(2px);
+    }
+    
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Print styles */
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .student-row {
+            cursor: default;
+        }
+        .student-row:hover {
+            background-color: transparent !important;
+            transform: none;
+        }
+        .bg-white {
+            background: white !important;
+            box-shadow: none !important;
+        }
+        .rounded-xl {
+            border-radius: 0 !important;
+        }
+    }
+    
+    /* Table responsive */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Click hint */
+    .click-hint {
+        font-size: 11px;
+        color: #9ca3af;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    /* Status badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .status-active {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .status-inactive {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    
+    /* Category badges */
+    .category-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 500;
+    }
+    .category-boarding {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+    .category-day {
+        background-color: #d1fae5;
+        color: #059669;
+    }
+    
+    /* Filter bar */
+    .filter-bar {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 24px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    
+    .search-input {
+        transition: all 0.2s;
+    }
+    .search-input:focus {
+        border-color: #ffa500;
+        box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
-    <div class="mb-6 flex justify-between items-center">
+    <!-- Page Header -->
+    <div class="mb-6 flex flex-wrap justify-between items-center gap-3">
         <div>
             <h1 class="text-2xl font-bold text-gray-800 mb-1">Students Report</h1>
-            <p class="text-sm text-gray-600">Complete list of all enrolled students</p>
+            <p class="text-sm text-gray-600">Complete list of all enrolled students - Click on any row to view details</p>
         </div>
-        <button onclick="window.print()" class="btn-gradient px-4 py-2 rounded-lg text-white">
-            <i class="fas fa-print"></i> Print Report
-        </button>
+        <div class="flex gap-2 no-print">
+            <button onclick="exportToCSV()" class="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-all flex items-center gap-2">
+                <i class="fas fa-file-excel"></i> Export CSV
+            </button>
+            <button onclick="window.print()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2">
+                <i class="fas fa-print"></i> Print Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar no-print">
+        <div class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Search</label>
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input type="text" id="searchInput" placeholder="Search by name, ID or contact..." 
+                           class="search-input w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Class</label>
+                <select id="classFilter" class="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="">All Classes</option>
+                    {% for class_name in class_counts.keys() %}
+                    <option value="{{ class_name }}">{{ class_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                <select id="categoryFilter" class="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="">All Categories</option>
+                    <option value="Boarding">Boarding</option>
+                    <option value="Day">Day</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                <select id="statusFilter" class="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            <div>
+                <button onclick="resetFilters()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50 transition-all">
+                    <i class="fas fa-undo-alt"></i> Reset
+                </button>
+            </div>
+            <div class="text-sm text-gray-500 ml-auto" id="filterStats"></div>
+        </div>
     </div>
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white rounded-xl shadow-md p-4">
-            <p class="text-gray-500 text-sm">Total Students</p>
-            <p class="text-2xl font-bold text-orange-600">{{ students|length }}</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="stat-card bg-white rounded-xl shadow-md p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Students</p>
+                    <p class="text-2xl font-bold text-orange-600" id="totalStudents">{{ students|length }}</p>
+                </div>
+                <div class="h-10 w-10 bg-orange-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user-graduate text-orange-500"></i>
+                </div>
+            </div>
         </div>
-        <div class="bg-white rounded-xl shadow-md p-4">
-            <p class="text-gray-500 text-sm">Number of Classes</p>
-            <p class="text-2xl font-bold text-blue-600">{{ class_counts|length }}</p>
+        <div class="stat-card bg-white rounded-xl shadow-md p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Number of Classes</p>
+                    <p class="text-2xl font-bold text-blue-600">{{ class_counts|length }}</p>
+                </div>
+                <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-chalkboard text-blue-500"></i>
+                </div>
+            </div>
         </div>
-        <div class="bg-white rounded-xl shadow-md p-4">
-            <p class="text-gray-500 text-sm">Generated On</p>
-            <p class="text-lg font-semibold text-gray-800">{{ now.strftime('%Y-%m-%d') if now else datetime.now().strftime('%Y-%m-%d') }}</p>
+        <div class="stat-card bg-white rounded-xl shadow-md p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Active Students</p>
+                    <p class="text-2xl font-bold text-green-600" id="activeCount">-</p>
+                </div>
+                <div class="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white rounded-xl shadow-md p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Generated On</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ now.strftime('%Y-%m-%d') if now else datetime.now().strftime('%Y-%m-%d') }}</p>
+                </div>
+                <div class="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-calendar-alt text-purple-500"></i>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Students Table -->
     <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
             <h2 class="text-lg font-semibold text-gray-800">Student List</h2>
+            <span class="click-hint no-print">
+                <i class="fas fa-mouse-pointer"></i> Click any row to view details
+            </span>
         </div>
-        <div class="overflow-x-auto">
+        <div class="table-container">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student ID</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Parent Contact</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parent Contact</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200">
+                <tbody id="studentTableBody" class="divide-y divide-gray-200 bg-white">
                     {% for student in students %}
-                    <tr class="hover:bg-gray-50">
+                    <tr class="student-row hover:bg-gray-50" data-student-id="{{ student.id }}" 
+                        data-student-name="{{ student.name }}" 
+                        data-student-id-number="{{ student.student_id or student.id[:8] }}"
+                        data-class="{{ student.classes.name if student.classes else 'Not Assigned' }}"
+                        data-category="{{ student.category or '' }}"
+                        data-status="{{ student.status or 'active' }}"
+                        data-contact="{{ student.parent_phone or student.contact_number or 'N/A' }}">
                         <td class="px-4 py-3 text-sm text-gray-600">{{ loop.index }}</td>
-                        <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ student.name }}</td>
+                        <td class="px-4 py-3 text-sm font-medium text-gray-800">
+                            <div class="flex items-center gap-2">
+                                {% if student.photo_url %}
+                                <img src="{{ student.photo_url }}" class="w-6 h-6 rounded-full object-cover">
+                                {% else %}
+                                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-xs font-bold">
+                                    {{ student.name[0].upper() if student.name else 'S' }}
+                                </div>
+                                {% endif %}
+                                {{ student.name }}
+                            </div>
+                        </td>
                         <td class="px-4 py-3 text-sm text-gray-600">{{ student.student_id or student.id[:8] }}</td>
                         <td class="px-4 py-3 text-sm text-gray-600">
                             {% if student.classes %}
                                 {{ student.classes.name }}
                             {% else %}
-                                Not Assigned
+                                <span class="text-gray-400">Not Assigned</span>
                             {% endif %}
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ student.parent_phone or 'N/A' }}</td>
+                        <td class="px-4 py-3">
+                            {% if student.category %}
+                                <span class="category-badge {{ 'category-boarding' if student.category == 'Boarding' else 'category-day' }}">
+                                    {{ student.category }}
+                                </span>
+                            {% else %}
+                                <span class="text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ student.parent_phone or student.contact_number or 'N/A' }}</td>
+                        <td class="px-4 py-3">
+                            <span class="status-badge {{ 'status-active' if student.status == 'active' else 'status-inactive' }}">
+                                <i class="fas {{ 'fa-check-circle' if student.status == 'active' else 'fa-ban' }} text-xs"></i>
+                                {{ 'Active' if student.status == 'active' else 'Inactive' }}
+                            </span>
+                        </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-gray-400">No students found</td>
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-400">
+                            <i class="fas fa-user-graduate text-4xl mb-2 block"></i>
+                            No students found
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+    
+    <!-- Footer Stats -->
+    <div class="mt-4 text-center text-xs text-gray-500 no-print">
+        <p>Showing <span id="visibleCount">{{ students|length }}</span> of <span id="totalCount">{{ students|length }}</span> students</p>
+    </div>
 </div>
 
 <script>
-    // Set current date for the report
+    // Store original student data
+    let originalStudents = [];
+    let filteredStudents = [];
+    
+    // Navigate to student details page
+    function goToStudentDetails(studentId) {
+        window.location.href = `/student-details/${studentId}`;
+    }
+    
+    // Initialize table data
+    function initializeTableData() {
+        const rows = document.querySelectorAll('#studentTableBody tr.student-row');
+        originalStudents = [];
+        
+        rows.forEach(row => {
+            originalStudents.push({
+                id: row.dataset.studentId,
+                name: row.dataset.studentName,
+                studentId: row.dataset.studentIdNumber,
+                className: row.dataset.class,
+                category: row.dataset.category,
+                status: row.dataset.status,
+                contact: row.dataset.contact,
+                element: row
+            });
+        });
+        
+        filteredStudents = [...originalStudents];
+        updateStats();
+    }
+    
+    // Update statistics
+    function updateStats() {
+        const total = filteredStudents.length;
+        const activeCount = filteredStudents.filter(s => s.status === 'active').length;
+        
+        document.getElementById('visibleCount').textContent = total;
+        document.getElementById('totalCount').textContent = originalStudents.length;
+        document.getElementById('activeCount').textContent = activeCount;
+        
+        const filterStats = document.getElementById('filterStats');
+        if (filterStats) {
+            if (total !== originalStudents.length) {
+                filterStats.innerHTML = `<i class="fas fa-filter"></i> Showing ${total} of ${originalStudents.length} students`;
+            } else {
+                filterStats.innerHTML = '';
+            }
+        }
+    }
+    
+    // Apply filters
+    function applyFilters() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const classFilter = document.getElementById('classFilter').value;
+        const categoryFilter = document.getElementById('categoryFilter').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        
+        filteredStudents = originalStudents.filter(student => {
+            // Search filter
+            if (searchTerm) {
+                const nameMatch = student.name.toLowerCase().includes(searchTerm);
+                const idMatch = student.studentId.toLowerCase().includes(searchTerm);
+                const contactMatch = student.contact.toLowerCase().includes(searchTerm);
+                if (!nameMatch && !idMatch && !contactMatch) {
+                    return false;
+                }
+            }
+            
+            // Class filter
+            if (classFilter && student.className !== classFilter) {
+                return false;
+            }
+            
+            // Category filter
+            if (categoryFilter && student.category !== categoryFilter) {
+                return false;
+            }
+            
+            // Status filter
+            if (statusFilter && student.status !== statusFilter) {
+                return false;
+            }
+            
+            return true;
+        });
+        
+        // Reorder table rows
+        const tbody = document.getElementById('studentTableBody');
+        const allRows = Array.from(tbody.querySelectorAll('tr.student-row'));
+        
+        // Hide all rows first
+        allRows.forEach(row => {
+            row.style.display = 'none';
+        });
+        
+        // Show filtered rows in order
+        filteredStudents.forEach((student, index) => {
+            if (student.element) {
+                student.element.style.display = '';
+                // Update the index number
+                const indexCell = student.element.querySelector('td:first-child');
+                if (indexCell) {
+                    indexCell.textContent = index + 1;
+                }
+            }
+        });
+        
+        // Handle no results
+        const noResultRow = tbody.querySelector('tr.no-result-row');
+        if (filteredStudents.length === 0) {
+            if (!noResultRow) {
+                const tr = document.createElement('tr');
+                tr.className = 'no-result-row';
+                tr.innerHTML = `
+                    <td colspan="7" class="px-4 py-8 text-center text-gray-400">
+                        <i class="fas fa-search text-4xl mb-2 block"></i>
+                        No students match your filters
+                        <button onclick="resetFilters()" class="mt-2 text-orange-500 hover:underline">Reset Filters</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            }
+        } else if (noResultRow) {
+            noResultRow.remove();
+        }
+        
+        updateStats();
+    }
+    
+    // Reset all filters
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('classFilter').value = '';
+        document.getElementById('categoryFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        applyFilters();
+    }
+    
+    // Export to CSV
+    function exportToCSV() {
+        const headers = ['#', 'Student Name', 'Student ID', 'Class', 'Category', 'Parent Contact', 'Status'];
+        const rows = [];
+        
+        filteredStudents.forEach((student, index) => {
+            rows.push([
+                index + 1,
+                student.name,
+                student.studentId,
+                student.className,
+                student.category || 'N/A',
+                student.contact,
+                student.status === 'active' ? 'Active' : 'Inactive'
+            ]);
+        });
+        
+        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `students_report_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+    
+    // Add click handlers to student rows
+    function addClickHandlers() {
+        const rows = document.querySelectorAll('#studentTableBody tr.student-row');
+        rows.forEach(row => {
+            row.addEventListener('click', function(e) {
+                // Don't trigger if clicking on a button or link inside the row
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('button')) {
+                    return;
+                }
+                const studentId = this.dataset.studentId;
+                if (studentId) {
+                    goToStudentDetails(studentId);
+                }
+            });
+        });
+    }
+    
+    // Debounce function for search input
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+    
+    // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        // You can add date display logic here if needed
+        initializeTableData();
+        addClickHandlers();
+        
+        // Set up event listeners with debounce for search
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce(applyFilters, 300));
+        }
+        
+        const classFilter = document.getElementById('classFilter');
+        if (classFilter) {
+            classFilter.addEventListener('change', applyFilters);
+        }
+        
+        const categoryFilter = document.getElementById('categoryFilter');
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', applyFilters);
+        }
+        
+        const statusFilter = document.getElementById('statusFilter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', applyFilters);
+        }
     });
+    
+    // Re-initialize when table content changes (for HTMX or dynamic content)
+    if (typeof MutationObserver !== 'undefined') {
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    initializeTableData();
+                    addClickHandlers();
+                    applyFilters();
+                }
+            });
+        });
+        
+        const tbody = document.getElementById('studentTableBody');
+        if (tbody) {
+            observer.observe(tbody, { childList: true, subtree: true });
+        }
+    }
 </script>
+
+<style>
+    .student-row {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .student-row:hover {
+        background-color: #fef3c7 !important;
+        transform: translateX(2px);
+    }
+    
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+        transition: all 0.3s ease;
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+    }
+    
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .student-row {
+            cursor: default;
+        }
+        .student-row:hover {
+            background-color: transparent !important;
+            transform: none;
+        }
+        .bg-white, .rounded-xl, .shadow-md {
+            background: white !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+        }
+        .status-badge, .category-badge {
+            border: 1px solid #ddd;
+            background: #f5f5f5 !important;
+            color: #333 !important;
+        }
+    }
+    
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .status-active {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .status-inactive {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .category-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 500;
+    }
+    .category-boarding {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+    .category-day {
+        background-color: #d1fae5;
+        color: #059669;
+    }
+    
+    .click-hint {
+        font-size: 11px;
+        color: #9ca3af;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+</style>
 {% endblock %}

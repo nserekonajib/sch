@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+
+{% block title %}Student Details - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .student-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border-radius: 16px;
+        overflow: hidden;
+    }
+    .student-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+    }
+    .student-card:active {
+        transform: translateY(0);
+    }
+    
+    .student-list-item {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .student-list-item:hover {
+        background-color: #fef3c7;
+        transform: translateX(4px);
+    }
+    
+    .view-toggle-btn {
+        transition: all 0.2s ease;
+    }
+    .view-toggle-btn.active {
+        background-color: #ffa500;
+        color: white;
+        border-color: #ffa500;
+    }
+    .view-toggle-btn.active i {
+        color: white;
+    }
+    
+    .filter-bar {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 24px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    
+    .student-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .balance-positive {
+        color: #dc2626;
+    }
+    .balance-zero {
+        color: #10b981;
+    }
+    .balance-negative {
+        color: #f59e0b;
+    }
+    
+    /* Card grid */
+    .students-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+    
+    /* List view */
+    .students-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    /* Loading skeleton */
+    .skeleton-card {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 16px;
+        height: 180px;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    
+    .no-results {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Student Details</h1>
+        <p class="text-sm text-gray-600">View and manage student information. Click on any student to see detailed statement.</p>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <div class="flex flex-wrap items-center gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Search Student</label>
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="searchInput" placeholder="Search by name or student ID..." 
+                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Class Filter</label>
+                <select id="classFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 min-w-[150px]">
+                    <option value="all">All Classes</option>
+                    {% for class_obj in classes %}
+                    <option value="{{ class_obj.id }}">{{ class_obj.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end gap-2">
+                <button onclick="filterStudents()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+                    <i class="fas fa-filter"></i> Apply Filter
+                </button>
+                <button onclick="resetFilters()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50">
+                    Reset
+                </button>
+            </div>
+            <div class="flex items-end gap-2 ml-auto">
+                <div class="flex rounded-lg border border-gray-200 overflow-hidden">
+                    <button id="cardViewBtn" onclick="setViewType('card')" 
+                            class="view-toggle-btn px-4 py-2 bg-white text-gray-600 hover:bg-gray-50 transition-all">
+                        <i class="fas fa-th-large"></i> Cards
+                    </button>
+                    <button id="listViewBtn" onclick="setViewType('list')" 
+                            class="view-toggle-btn px-4 py-2 bg-white text-gray-600 hover:bg-gray-50 transition-all">
+                        <i class="fas fa-list"></i> List
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Students Container -->
+    <div id="studentsContainer">
+        <!-- Loading state -->
+        <div class="students-grid" id="loadingState">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+        </div>
+        
+        <!-- Card View -->
+        <div id="cardView" class="students-grid" style="display: none;"></div>
+        
+        <!-- List View -->
+        <div id="listView" class="students-list" style="display: none;"></div>
+        
+        <!-- No Results -->
+        <div id="noResults" class="no-results" style="display: none;">
+            <i class="fas fa-user-graduate text-5xl text-gray-300 mb-4"></i>
+            <h3 class="text-lg font-medium text-gray-600 mb-2">No students found</h3>
+            <p class="text-gray-400">Try adjusting your search or filter criteria</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentViewType = 'card';
+    let allStudents = [];
+    let filteredStudents = [];
+    
+    // Load initial data
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStudents();
+    });
+    
+    async function loadStudents() {
+        showLoading(true);
+        
+        try {
+            const classId = document.getElementById('classFilter').value;
+            const searchTerm = document.getElementById('searchInput').value;
+            
+            let url = `/student-details/api/students?`;
+            if (classId && classId !== 'all') {
+                url += `class_id=${classId}&`;
+            }
+            if (searchTerm) {
+                url += `search=${encodeURIComponent(searchTerm)}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                allStudents = data.students;
+                filteredStudents = [...allStudents];
+                renderStudents();
+            } else {
+                console.error('Failed to load students:', data.message);
+                showError();
+            }
+        } catch (error) {
+            console.error('Error loading students:', error);
+            showError();
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    function renderStudents() {
+        if (filteredStudents.length === 0) {
+            document.getElementById('cardView').style.display = 'none';
+            document.getElementById('listView').style.display = 'none';
+            document.getElementById('noResults').style.display = 'block';
+            return;
+        }
+        
+        document.getElementById('noResults').style.display = 'none';
+        
+        if (currentViewType === 'card') {
+            document.getElementById('cardView').style.display = 'grid';
+            document.getElementById('listView').style.display = 'none';
+            renderCardView();
+        } else {
+            document.getElementById('cardView').style.display = 'none';
+            document.getElementById('listView').style.display = 'flex';
+            renderListView();
+        }
+    }
+    
+    function renderCardView() {
+        const container = document.getElementById('cardView');
+        
+        container.innerHTML = filteredStudents.map(student => {
+            const balance = student.current_balance || 0;
+            const balanceClass = balance > 0 ? 'balance-positive' : (balance === 0 ? 'balance-zero' : 'balance-negative');
+            const balanceSign = balance > 0 ? 'UGX' : (balance < 0 ? 'UGX' : 'UGX');
+            
+            return `
+                <div class="student-card bg-white rounded-xl shadow-md" onclick="goToStudentDetails('${student.id}')">
+                    <div class="p-5">
+                        <div class="flex items-start gap-4">
+                            <div class="flex-shrink-0">
+                                ${student.photo_url ? 
+                                    `<img src="${student.photo_url}" alt="${student.name}" class="student-avatar object-cover">` : 
+                                    `<div class="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-xl font-bold">
+                                        ${student.name.charAt(0).toUpperCase()}
+                                    </div>`
+                                }
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-800 text-lg truncate">${escapeHtml(student.name)}</h3>
+                                <p class="text-sm text-gray-500">${student.student_id}</p>
+                                <p class="text-sm text-gray-600 mt-1">
+                                    <i class="fas fa-graduation-cap"></i> ${student.classes?.name || 'No Class'}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-gray-100">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-xs text-gray-500">Current Balance</p>
+                                    <p class="text-lg font-bold ${balanceClass}">${balanceSign} ${Math.abs(balance).toLocaleString()}</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    ${student.status === 'active' ? 
+                                        '<span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full"><i class="fas fa-check-circle"></i> Active</span>' : 
+                                        '<span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full"><i class="fas fa-ban"></i> Inactive</span>'
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
+                        <span class="text-xs text-gray-500">
+                            <i class="fas fa-phone"></i> ${student.contact_number || 'N/A'}
+                        </span>
+                        <span class="text-orange-500 text-sm font-medium">
+                            View Details <i class="fas fa-arrow-right"></i>
+                        </span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function renderListView() {
+        const container = document.getElementById('listView');
+        
+        container.innerHTML = `
+            <table class="min-w-full bg-white rounded-xl overflow-hidden shadow-md">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    ${filteredStudents.map(student => {
+                        const balance = student.current_balance || 0;
+                        const balanceClass = balance > 0 ? 'balance-positive' : (balance === 0 ? 'balance-zero' : 'balance-negative');
+                        return `
+                            <tr class="student-list-item hover:bg-orange-50 cursor-pointer" onclick="goToStudentDetails('${student.id}')">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-3">
+                                        ${student.photo_url ? 
+                                            `<img src="${student.photo_url}" class="w-8 h-8 rounded-full object-cover">` : 
+                                            `<div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-sm font-bold">
+                                                ${student.name.charAt(0).toUpperCase()}
+                                            </div>`
+                                        }
+                                        <span class="font-medium text-gray-800">${escapeHtml(student.name)}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${student.student_id}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${student.classes?.name || 'N/A'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${student.contact_number || 'N/A'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium ${balanceClass}">
+                                    UGX ${Math.abs(balance).toLocaleString()}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    ${student.status === 'active' ? 
+                                        '<span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full"><i class="fas fa-check-circle"></i> Active</span>' : 
+                                        '<span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full"><i class="fas fa-ban"></i> Inactive</span>'
+                                    }
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    function filterStudents() {
+        const classId = document.getElementById('classFilter').value;
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        
+        filteredStudents = allStudents.filter(student => {
+            // Class filter
+            if (classId !== 'all' && student.class_id !== classId) {
+                return false;
+            }
+            
+            // Search filter
+            if (searchTerm) {
+                const nameMatch = student.name.toLowerCase().includes(searchTerm);
+                const idMatch = student.student_id.toLowerCase().includes(searchTerm);
+                if (!nameMatch && !idMatch) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+        
+        renderStudents();
+    }
+    
+    function resetFilters() {
+        document.getElementById('classFilter').value = 'all';
+        document.getElementById('searchInput').value = '';
+        filterStudents();
+    }
+    
+    function setViewType(type) {
+        currentViewType = type;
+        
+        // Update button styles
+        const cardBtn = document.getElementById('cardViewBtn');
+        const listBtn = document.getElementById('listViewBtn');
+        
+        if (type === 'card') {
+            cardBtn.classList.add('active');
+            listBtn.classList.remove('active');
+        } else {
+            cardBtn.classList.remove('active');
+            listBtn.classList.add('active');
+        }
+        
+        // Save preference to localStorage
+        localStorage.setItem('studentViewType', type);
+        
+        renderStudents();
+    }
+    
+    function goToStudentDetails(studentId) {
+        window.location.href = `/student-details/${studentId}`;
+    }
+    
+    function showLoading(show) {
+        const loadingState = document.getElementById('loadingState');
+        const cardView = document.getElementById('cardView');
+        const listView = document.getElementById('listView');
+        const noResults = document.getElementById('noResults');
+        
+        if (show) {
+            loadingState.style.display = 'grid';
+            cardView.style.display = 'none';
+            listView.style.display = 'none';
+            noResults.style.display = 'none';
+        } else {
+            loadingState.style.display = 'none';
+        }
+    }
+    
+    function showError() {
+        const container = document.getElementById('studentsContainer');
+        container.innerHTML = `
+            <div class="no-results">
+                <i class="fas fa-exclamation-triangle text-5xl text-red-300 mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-600 mb-2">Error loading students</h3>
+                <p class="text-gray-400">Please try again later</p>
+                <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-orange-500 text-white rounded-lg">Retry</button>
+            </div>
+        `;
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Load saved view preference
+    const savedView = localStorage.getItem('studentViewType');
+    if (savedView) {
+        setViewType(savedView);
+    }
+    
+    // Event listeners for real-time filtering
+    document.getElementById('searchInput').addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') {
+            filterStudents();
+        }
+    });
+</script>
+
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+    }
+    .view-toggle-btn.active {
+        background-color: #ffa500;
+        color: white;
+        border-color: #ffa500;
+    }
+    .view-toggle-btn.active i {
+        color: white;
+    }
+</style>
+{% endblock %}

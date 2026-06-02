@@ -1,0 +1,491 @@
+{% extends "base.html" %}
+
+{% block title %}Student Details - {{ student.name if student else 'Not Found' }} - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-header {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+        border-radius: 20px;
+        padding: 30px;
+        margin-bottom: 24px;
+        color: white;
+    }
+    
+    .info-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    
+    .info-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    
+    .info-value {
+        font-size: 15px;
+        font-weight: 500;
+        color: #1f2937;
+    }
+    
+    .balance-positive {
+        color: #dc2626;
+    }
+    .balance-zero {
+        color: #10b981;
+    }
+    .balance-negative {
+        color: #f59e0b;
+    }
+    
+    .transaction-table {
+        width: 100%;
+    }
+    .transaction-table th {
+        text-align: left;
+        padding: 12px;
+        background-color: #f9fafb;
+        font-weight: 600;
+        font-size: 13px;
+        color: #4b5563;
+    }
+    .transaction-table td {
+        padding: 12px;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 14px;
+    }
+    
+    .debit-row {
+        color: #dc2626;
+    }
+    .credit-row {
+        color: #10b981;
+    }
+    
+    .summary-card {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-radius: 16px;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .student-avatar-large {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid white;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .status-active {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .status-inactive {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    
+    /* Print styles */
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .profile-header {
+            background: #ffa500;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .info-card, .summary-card {
+            box-shadow: none;
+            border: 1px solid #e5e7eb;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    {% if student %}
+    <!-- Back Button -->
+    <div class="mb-4 no-print">
+        <a href="{{ url_for('{{url_for('student.index')}}') }}" class="inline-flex items-center gap-2 text-gray-600 hover:text-orange-500 transition-colors">
+            <i class="fas fa-arrow-left"></i> Back to Students
+        </a>
+    </div>
+    
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <div class="flex flex-col md:flex-row gap-6 items-center md:items-start">
+            <div class="flex-shrink-0">
+                {% if student.photo_url %}
+                    <img src="{{ student.photo_url }}" alt="{{ student.name }}" class="student-avatar-large">
+                {% else %}
+                    <div class="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center text-white text-4xl font-bold">
+                        {{ student.name[0].upper() if student.name else 'S' }}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="flex-1 text-center md:text-left">
+                <h1 class="text-2xl md:text-3xl font-bold">{{ student.name }}</h1>
+                <p class="text-orange-100 mt-1">Student ID: {{ student.student_id }}</p>
+                <div class="flex flex-wrap gap-3 mt-3 justify-center md:justify-start">
+                    <span class="status-badge status-{{ student.status }}">
+                        <i class="fas fa-{{ 'check-circle' if student.status == 'active' else 'ban' }}"></i>
+                        {{ student.status|capitalize if student.status else 'Active' }}
+                    </span>
+                    {% if student.category %}
+                    <span class="status-badge bg-gray-100 text-gray-700">
+                        <i class="fas fa-{{ 'building' if student.category == 'Boarding' else 'sun' }}"></i>
+                        {{ student.category }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="flex gap-2 no-print">
+                <button onclick="window.print()" class="px-4 py-2 bg-white/20 rounded-lg text-white hover:bg-white/30 transition-colors">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Two Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column - Student Info -->
+        <div class="lg:col-span-1">
+            <!-- Basic Information -->
+            <div class="info-card">
+                <h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b">
+                    <i class="fas fa-user text-orange-500 mr-2"></i> Personal Information
+                </h3>
+                <div class="space-y-3">
+                    <div>
+                        <div class="info-label">Full Name</div>
+                        <div class="info-value">{{ student.name }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Gender</div>
+                        <div class="info-value">{{ student.gender|capitalize if student.gender else 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Date of Birth</div>
+                        <div class="info-value">{{ student.date_of_birth if student.date_of_birth else 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Nationality</div>
+                        <div class="info-value">{{ student.nationality if student.nationality else 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Religion</div>
+                        <div class="info-value">{{ student.religion if student.religion else 'N/A' }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Contact Information -->
+            <div class="info-card">
+                <h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b">
+                    <i class="fas fa-phone text-orange-500 mr-2"></i> Contact Information
+                </h3>
+                <div class="space-y-3">
+                    <div>
+                        <div class="info-label">Phone Number</div>
+                        <div class="info-value">{{ student.contact_number if student.contact_number else 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Email</div>
+                        <div class="info-value">{{ student.email if student.email else 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Address</div>
+                        <div class="info-value">{{ student.address if student.address else 'N/A' }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Parents Information -->
+            <div class="info-card">
+                <h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b">
+                    <i class="fas fa-users text-orange-500 mr-2"></i> Parents Information
+                </h3>
+                <div class="space-y-3">
+                    <div>
+                        <div class="info-label">Father's Name</div>
+                        <div class="info-value">{{ student.father_name if student.father_name else 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Mother's Name</div>
+                        <div class="info-value">{{ student.mother_name if student.mother_name else 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Occupation</div>
+                        <div class="info-value">{{ student.occupation if student.occupation else 'N/A' }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Academic Information -->
+            <div class="info-card">
+                <h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b">
+                    <i class="fas fa-graduation-cap text-orange-500 mr-2"></i> Academic Information
+                </h3>
+                <div class="space-y-3">
+                    <div>
+                        <div class="info-label">Class</div>
+                        <div class="info-value">{{ student_class.name if student_class else 'Not Assigned' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Enrollment Date</div>
+                        <div class="info-value">{{ student.enrollment_date if student.enrollment_date else 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Admission Reason</div>
+                        <div class="info-value">{{ student.reason_for_admission if student.reason_for_admission else 'N/A' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column - Statement -->
+        <div class="lg:col-span-2">
+            <!-- Statement Header with Filters -->
+            <div class="info-card">
+                <div class="flex flex-wrap justify-between items-center mb-4">
+                    <h3 class="font-semibold text-gray-800">
+                        <i class="fas fa-file-invoice-dollar text-orange-500 mr-2"></i> Fee Statement
+                    </h3>
+                    <div class="flex gap-2 no-print">
+                        <input type="date" id="startDate" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
+                        <input type="date" id="endDate" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
+                        <button onclick="loadStatement()" class="btn-gradient px-4 py-1.5 rounded-lg text-white text-sm">
+                            <i class="fas fa-search"></i> Filter
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" id="summaryContainer">
+                    <div class="summary-card">
+                        <p class="text-sm text-gray-600 mb-1">Total Debits</p>
+                        <p class="text-2xl font-bold text-red-600" id="totalDebits">UGX 0</p>
+                    </div>
+                    <div class="summary-card">
+                        <p class="text-sm text-gray-600 mb-1">Total Credits</p>
+                        <p class="text-2xl font-bold text-green-600" id="totalCredits">UGX 0</p>
+                    </div>
+                    <div class="summary-card" id="balanceCard">
+                        <p class="text-sm text-gray-600 mb-1">Current Balance</p>
+                        <p class="text-2xl font-bold" id="currentBalance">UGX 0</p>
+                    </div>
+                </div>
+                
+                <!-- Loading indicator -->
+                <div id="statementLoader" class="text-center py-8 hidden">
+                    <div class="loader mx-auto"></div>
+                    <p class="text-gray-500 mt-2">Loading statement...</p>
+                </div>
+                
+                <!-- Statement Table -->
+                <div id="statementContainer" class="overflow-x-auto">
+                    <table class="transaction-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th class="text-right">Debit (UGX)</th>
+                                <th class="text-right">Credit (UGX)</th>
+                                <th class="text-right">Balance (UGX)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statementBody">
+                            <tr>
+                                <td colspan="5" class="text-center py-8 text-gray-400">
+                                    Select date range to view statement
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Student Not Found -->
+    <div class="text-center py-12">
+        <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-user-slash text-4xl text-red-500"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Student Not Found</h2>
+        <p class="text-gray-600 mb-6">{{ error if error else 'The requested student could not be found.' }}</p>
+        <a href="{{ url_for('student_detail.index') }}" class="btn-gradient px-6 py-2 rounded-lg text-white">
+            <i class="fas fa-arrow-left"></i> Back to Students
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    let studentId = '{{ student.id if student else "" }}';
+    
+    // Set default dates
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+        
+        if (studentId) {
+            loadStatement();
+        }
+    });
+    
+    async function loadStatement() {
+        if (!studentId) return;
+        
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        // Show loader
+        document.getElementById('statementLoader').classList.remove('hidden');
+        document.getElementById('statementContainer').classList.add('hidden');
+        
+        try {
+            let url = `/student-details/api/student-statement/${studentId}`;
+            if (startDate) url += `?start_date=${startDate}`;
+            if (endDate) url += `${startDate ? '&' : '?'}end_date=${endDate}`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                updateSummary(data.summary);
+                renderStatement(data.statement);
+            } else {
+                showError(data.message);
+            }
+        } catch (error) {
+            console.error('Error loading statement:', error);
+            showError('Failed to load statement');
+        } finally {
+            document.getElementById('statementLoader').classList.add('hidden');
+            document.getElementById('statementContainer').classList.remove('hidden');
+        }
+    }
+    
+    function updateSummary(summary) {
+        document.getElementById('totalDebits').textContent = `UGX ${summary.total_debits.toLocaleString()}`;
+        document.getElementById('totalCredits').textContent = `UGX ${summary.total_credits.toLocaleString()}`;
+        
+        const balanceElement = document.getElementById('currentBalance');
+        const balance = summary.current_balance;
+        balanceElement.textContent = `UGX ${Math.abs(balance).toLocaleString()}`;
+        
+        if (balance > 0) {
+            balanceElement.classList.add('text-red-600');
+            balanceElement.classList.remove('text-green-600', 'text-orange-600');
+            document.getElementById('balanceCard').classList.add('bg-red-50');
+            document.getElementById('balanceCard').classList.remove('bg-green-50', 'bg-orange-50');
+        } else if (balance < 0) {
+            balanceElement.classList.add('text-orange-600');
+            balanceElement.classList.remove('text-red-600', 'text-green-600');
+            document.getElementById('balanceCard').classList.add('bg-orange-50');
+            document.getElementById('balanceCard').classList.remove('bg-red-50', 'bg-green-50');
+        } else {
+            balanceElement.classList.add('text-green-600');
+            balanceElement.classList.remove('text-red-600', 'text-orange-600');
+            document.getElementById('balanceCard').classList.add('bg-green-50');
+            document.getElementById('balanceCard').classList.remove('bg-red-50', 'bg-orange-50');
+        }
+    }
+    
+    function renderStatement(statement) {
+        const tbody = document.getElementById('statementBody');
+        
+        if (!statement || statement.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-8 text-gray-400">
+                        No transactions found for selected date range
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = statement.map(trans => {
+            const debitClass = trans.debit > 0 ? 'debit-row' : '';
+            const creditClass = trans.credit > 0 ? 'credit-row' : '';
+            
+            return `
+                <tr>
+                    <td class="whitespace-nowrap">${trans.date}</td>
+                    <td>${escapeHtml(trans.description)}</td>
+                    <td class="text-right ${debitClass}">${trans.debit > 0 ? trans.debit.toLocaleString() : '-'}</td>
+                    <td class="text-right ${creditClass}">${trans.credit > 0 ? trans.credit.toLocaleString() : '-'}</td>
+                    <td class="text-right font-medium">${trans.balance.toLocaleString()}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    function showError(message) {
+        const tbody = document.getElementById('statementBody');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-8 text-red-400">
+                    <i class="fas fa-exclamation-circle"></i> ${escapeHtml(message)}
+                </td>
+            </tr>
+        `;
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}

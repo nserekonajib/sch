@@ -1,17 +1,48 @@
-<!-- templates/students/index.html - Lazy Loading with Load More Button -->
+<!-- templates/students/index.html - Student Management with Card/List View and Clickable Cards -->
 {% extends "base.html" %}
 
 {% block title %}Student Management - Lunserk ERP{% endblock %}
 
 {% block extra_css %}
 <style>
+    /* Card Styles */
     .student-card {
         transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
     }
     .student-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
     }
+    .student-card:active {
+        transform: translateY(0);
+    }
+    
+    /* List View Styles */
+    .student-list-item {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .student-list-item:hover {
+        background-color: #fef3c7;
+        transform: translateX(4px);
+    }
+    
+    /* View Toggle Buttons */
+    .view-toggle-btn {
+        transition: all 0.2s ease;
+    }
+    .view-toggle-btn.active {
+        background-color: #ffa500;
+        color: white;
+        border-color: #ffa500;
+    }
+    .view-toggle-btn.active i {
+        color: white;
+    }
+    
     .btn-gradient {
         background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
     }
@@ -24,6 +55,7 @@
         transform: none;
         cursor: not-allowed;
     }
+    
     .modal-overlay {
         animation: fadeIn 0.3s ease-out;
     }
@@ -33,6 +65,7 @@
     .success-checkmark {
         animation: scaleIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
     }
+    
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -48,13 +81,10 @@
         }
     }
     @keyframes scaleIn {
-        from {
-            transform: scale(0);
-        }
-        to {
-            transform: scale(1);
-        }
+        from { transform: scale(0); }
+        to { transform: scale(1); }
     }
+    
     .stat-card {
         transition: all 0.2s;
         cursor: pointer;
@@ -62,6 +92,7 @@
     .stat-card:hover {
         transform: translateY(-2px);
     }
+    
     .status-badge {
         padding: 3px 8px;
         border-radius: 20px;
@@ -76,6 +107,7 @@
         background-color: #ef4444;
         color: white;
     }
+    
     .category-badge {
         display: inline-block;
         padding: 2px 6px;
@@ -91,6 +123,7 @@
         background-color: #d1fae5;
         color: #059669;
     }
+    
     .file-upload-area {
         border: 2px dashed #e2e8f0;
         transition: all 0.3s;
@@ -99,19 +132,64 @@
         border-color: #ffa500;
         background-color: #fff7ed;
     }
+    
     .student-avatar {
         width: 60px;
         height: 60px;
         object-fit: cover;
     }
+    
     .shimmer {
         background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
         background-size: 200% 200%;
         animation: shimmer 1.2s ease-in-out infinite;
     }
+    
     @keyframes shimmer {
         0% { background-position: 200% 0; }
         100% { background-position: -200% 0; }
+    }
+    
+    /* Students Grid */
+    .students-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+    }
+    
+    /* List View Container */
+    .students-list-view {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    /* Balance Colors */
+    .balance-positive {
+        color: #dc2626;
+        font-weight: 600;
+    }
+    .balance-zero {
+        color: #10b981;
+        font-weight: 600;
+    }
+    .balance-negative {
+        color: #f59e0b;
+        font-weight: 600;
+    }
+    
+    /* Clickable card hint */
+    .card-click-hint {
+        position: absolute;
+        bottom: 8px;
+        right: 12px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        font-size: 10px;
+        color: #9ca3af;
+    }
+    .student-card:hover .card-click-hint {
+        opacity: 1;
     }
 </style>
 {% endblock %}
@@ -125,29 +203,42 @@
             <p class="text-sm text-gray-600">Manage all students, enrollments, and student information</p>
         </div>
         <div class="flex gap-2">
-                <!-- Regular Import Button -->
-                <button onclick="openImportModal()" 
-                        class="px-4 py-2 bg-white border border-orange-500 text-orange-500 rounded-lg text-sm font-medium hover:bg-orange-50 transition-all flex items-center gap-2">
-                    <i class="fas fa-upload text-sm"></i>
-                    Import
+            <!-- View Toggle Buttons -->
+            <div class="flex rounded-lg border border-gray-200 overflow-hidden mr-2">
+                <button id="cardViewToggle" onclick="setViewType('card')" 
+                        class="view-toggle-btn px-4 py-2 bg-white text-gray-600 hover:bg-gray-50 transition-all">
+                    <i class="fas fa-th-large"></i> Cards
                 </button>
-                
-                <!-- School Pay Import Button -->
-                <button onclick="openSchoolPayImportModal()" 
-                        class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:from-green-600 hover:to-green-700 transition-all flex items-center gap-2 shadow-sm">
-                    <i class="fas fa-file-invoice-dollar text-sm"></i>
-                    School Pay Import
-                </button>
-                
-                <button onclick="openAddModal()" 
-                        class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
-                    <i class="fas fa-plus-circle text-sm"></i>
-                    Add Student
+                <button id="listViewToggle" onclick="setViewType('list')" 
+                        class="view-toggle-btn px-4 py-2 bg-white text-gray-600 hover:bg-gray-50 transition-all">
+                    <i class="fas fa-list"></i> List
                 </button>
             </div>
+            
+            <!-- Import Button -->
+            <button onclick="openImportModal()" 
+                    class="px-4 py-2 bg-white border border-orange-500 text-orange-500 rounded-lg text-sm font-medium hover:bg-orange-50 transition-all flex items-center gap-2">
+                <i class="fas fa-upload text-sm"></i>
+                Import
+            </button>
+            
+            <!-- School Pay Import Button -->
+            <button onclick="openSchoolPayImportModal()" 
+                    class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:from-green-600 hover:to-green-700 transition-all flex items-center gap-2 shadow-sm">
+                <i class="fas fa-file-invoice-dollar text-sm"></i>
+                School Pay Import
+            </button>
+            
+            <!-- Add Student Button -->
+            <button onclick="openAddModal()" 
+                    class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                <i class="fas fa-plus-circle text-sm"></i>
+                Add Student
+            </button>
+        </div>
     </div>
 
-    <!-- Stats Cards - Loaded via API -->
+    <!-- Stats Cards -->
     <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6" id="statsContainer">
         <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-orange-500">
             <p class="text-gray-500 text-xs">Total</p>
@@ -175,7 +266,7 @@
         </div>
     </div>
 
-    <!-- Search and Filter - Compact -->
+    <!-- Search and Filter -->
     <div class="bg-white rounded-xl shadow-sm p-3 mb-5">
         <div class="flex flex-wrap gap-2">
             <div class="flex-1 min-w-[180px]">
@@ -204,12 +295,33 @@
         </div>
     </div>
 
-    <!-- Students Grid - Loaded dynamically with API -->
-    <div id="studentsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        <!-- Shimmer skeleton cards will be shown initially -->
-        <div id="skeletonContainer" class="contents"></div>
-        <!-- Actual student cards go here -->
-        <div id="studentsContainer" class="contents"></div>
+    <!-- Students Container -->
+    <div id="studentsContainer">
+        <!-- Card View -->
+        <div id="cardView" class="students-grid"></div>
+        
+        <!-- List View -->
+        <div id="listView" class="students-list-view" style="display: none;"></div>
+        
+        <!-- Loading State -->
+        <div id="loadingState" class="students-grid">
+            <div class="shimmer rounded-xl h-64"></div>
+            <div class="shimmer rounded-xl h-64"></div>
+            <div class="shimmer rounded-xl h-64"></div>
+            <div class="shimmer rounded-xl h-64"></div>
+            <div class="shimmer rounded-xl h-64"></div>
+            <div class="shimmer rounded-xl h-64"></div>
+        </div>
+        
+        <!-- No Results -->
+        <div id="noResults" class="text-center py-12 bg-white rounded-xl" style="display: none;">
+            <i class="fas fa-user-graduate text-5xl text-gray-300 mb-4"></i>
+            <h3 class="text-lg font-medium text-gray-600 mb-2">No students found</h3>
+            <p class="text-gray-400">Try adjusting your search or filter criteria</p>
+            <button onclick="openAddModal()" class="mt-4 btn-gradient px-4 py-2 rounded-lg text-white text-sm">
+                <i class="fas fa-plus-circle"></i> Add Student
+            </button>
+        </div>
     </div>
 
     <!-- Load More Button -->
@@ -224,7 +336,7 @@
     </div>
 </div>
 
-<!-- Add/Edit Student Modal (Compact Version) -->
+<!-- Add/Edit Student Modal -->
 <div id="studentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
     <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 my-8 transform transition-all modal-container">
         <div class="sticky top-0 bg-white rounded-t-xl border-b border-gray-200 px-5 py-3 flex items-center justify-between">
@@ -371,7 +483,7 @@
     </div>
 </div>
 
-<!-- Import Modal (Compact) -->
+<!-- Import Modal -->
 <div id="importModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
         <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
@@ -438,6 +550,7 @@
         </button>
     </div>
 </div>
+
 <!-- School Pay Import Modal -->
 <div id="schoolPayImportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
@@ -478,20 +591,6 @@
                     <li>• <strong>Last Name</strong> - Student's last name</li>
                     <li>• <strong>Student Phone</strong> - Will be formatted to 256XXXXXXXXX</li>
                 </ul>
-                <p class="text-xs text-blue-600 mt-2">
-                    <i class="fas fa-info-circle"></i> 
-                    Suite Code and Class code columns are optional and will be ignored
-                </p>
-            </div>
-            
-            <div class="bg-yellow-50 rounded-lg p-3 mb-4">
-                <p class="text-xs text-yellow-800 font-medium mb-1">Important Notes:</p>
-                <ul class="text-xs text-yellow-700 space-y-1">
-                    <li>• <i class="fas fa-check-circle text-green-600"></i> Students are checked for duplicates by Payment Code and Phone</li>
-                    <li>• <i class="fas fa-sync-alt"></i> Phone numbers auto-formatted to 256XXXXXXXXX format</li>
-                    <li>• <i class="fas fa-layer-group"></i> Processes in batches of 100 for better performance</li>
-                    <li>• <i class="fas fa-clipboard-list"></i> Auto-enrolls students to selected class</li>
-                </ul>
             </div>
             
             <div class="flex gap-2 pt-2">
@@ -506,6 +605,7 @@
         </form>
     </div>
 </div>
+
 <!-- Loading Overlay -->
 <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl p-4 flex flex-col items-center">
@@ -513,15 +613,17 @@
         <p class="text-xs text-gray-600">Processing...</p>
     </div>
 </div>
+
 <script>
     // ==================== Configuration ====================
     let currentPhotoBase64 = null;
     let currentPhotoUrl = null;
     let classesData = {{ classes|tojson }};
     let editingStudentId = null;
+    let currentViewType = 'card';
     
     // Pagination state
-    let allStudents = [];           // Store all fetched students
+    let allStudents = [];
     let currentPage = 1;
     const PAGE_SIZE = 30;
     let isLoading = false;
@@ -531,40 +633,63 @@
         search: '',
         class: '',
         category: '',
-        status: 'active'  // DEFAULT: Only fetch active students
+        status: ''
     };
     
     // Retry configuration
     const MAX_RETRIES = 2;
-    const RETRY_DELAY_MS = 1000; // 1 second initial delay
+    const RETRY_DELAY_MS = 1000;
     
     // ==================== Helper Functions ====================
+    
+    // Navigate to student details page
+    function goToStudentDetails(studentId) {
+        window.location.href = `/student-details/${studentId}`;
+    }
+    
+    // Set view type (card or list)
+    function setViewType(type) {
+        currentViewType = type;
+        
+        // Update button styles
+        const cardBtn = document.getElementById('cardViewToggle');
+        const listBtn = document.getElementById('listViewToggle');
+        
+        if (type === 'card') {
+            cardBtn.classList.add('active');
+            listBtn.classList.remove('active');
+            document.getElementById('cardView').style.display = 'grid';
+            document.getElementById('listView').style.display = 'none';
+        } else {
+            cardBtn.classList.remove('active');
+            listBtn.classList.add('active');
+            document.getElementById('cardView').style.display = 'none';
+            document.getElementById('listView').style.display = 'flex';
+        }
+        
+        // Save preference to localStorage
+        localStorage.setItem('studentViewType', type);
+        
+        // Re-render with current students
+        renderStudents();
+    }
     
     // Generic fetch with retry logic
     async function fetchWithRetry(url, options = {}, retryCount = 0) {
         try {
             const response = await fetch(url, options);
+            if (response.ok) return response;
             
-            // If response is OK, return it
-            if (response.ok) {
-                return response;
-            }
-            
-            // If response is not OK and we have retries left
             if (retryCount < MAX_RETRIES) {
-                const delay = RETRY_DELAY_MS * Math.pow(2, retryCount); // Exponential backoff
-                console.log(`Retry ${retryCount + 1}/${MAX_RETRIES} for ${url} after ${delay}ms`);
+                const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
+                console.log(`Retry ${retryCount + 1}/${MAX_RETRIES} for ${url}`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 return fetchWithRetry(url, options, retryCount + 1);
             }
-            
-            // No retries left, return the error response
             return response;
         } catch (error) {
-            // Network error or other exception
             if (retryCount < MAX_RETRIES) {
                 const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
-                console.log(`Network error, retry ${retryCount + 1}/${MAX_RETRIES} for ${url} after ${delay}ms`, error);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 return fetchWithRetry(url, options, retryCount + 1);
             }
@@ -572,25 +697,19 @@
         }
     }
     
-    // JSON fetch with retry (automatically parses JSON)
     async function fetchJSONWithRetry(url, options = {}) {
         const response = await fetchWithRetry(url, options);
-        
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
+            throw new Error(`HTTP ${response.status}`);
         }
-        
         return await response.json();
     }
     
-    // ==================== API Calls with Retry ====================
+    // ==================== API Calls ====================
     
-    // Fetch and update stats from API
     async function loadStats() {
         try {
             const result = await fetchJSONWithRetry('/students/stats');
-            
             if (result.success) {
                 const stats = result.stats;
                 document.getElementById('statTotal').textContent = stats.total;
@@ -601,41 +720,25 @@
                 document.getElementById('statClasses').textContent = stats.total_classes;
             }
         } catch (error) {
-            console.error('Error loading stats after retries:', error);
-            // Show fallback values
-            document.getElementById('statTotal').textContent = '?';
-            document.getElementById('statActive').textContent = '?';
-            document.getElementById('statInactive').textContent = '?';
-            document.getElementById('statBoarding').textContent = '?';
-            document.getElementById('statDay').textContent = '?';
-            document.getElementById('statClasses').textContent = '?';
+            console.error('Error loading stats:', error);
         }
     }
     
-    // Fetch students from API with pagination and retry logic
     async function fetchStudents(page = 1, pageSize = PAGE_SIZE) {
         if (isLoading) return [];
         
         isLoading = true;
         
         try {
-            // Build query parameters
             const params = new URLSearchParams({
                 page: page,
                 per_page: pageSize
             });
             
-            // Add filters if they exist
             if (filtersApplied.search) params.append('search', filtersApplied.search);
             if (filtersApplied.class) params.append('class', filtersApplied.class);
             if (filtersApplied.category) params.append('category', filtersApplied.category);
-            
-            // ALWAYS filter by status - default to 'active'
-            let statusToFetch = filtersApplied.status;
-            if (!statusToFetch) {
-                statusToFetch = 'active';  // Default to active students only
-            }
-            params.append('status', statusToFetch);
+            if (filtersApplied.status) params.append('status', filtersApplied.status);
             
             const url = `/students/api/students?${params.toString()}`;
             const result = await fetchJSONWithRetry(url);
@@ -644,40 +747,21 @@
                 totalStudents = result.total || 0;
                 hasMore = result.has_more !== undefined ? result.has_more : (result.data.length === pageSize);
                 return result.data || [];
-            } else {
-                console.error('Error fetching students:', result.message);
-                return [];
             }
+            return [];
         } catch (error) {
-            console.error('Error fetching students after retries:', error);
+            console.error('Error fetching students:', error);
             return [];
         } finally {
             isLoading = false;
         }
     }
     
-    // Render student cards
-    function renderStudentCards(students) {
-        const container = document.getElementById('studentsContainer');
-        
-        if (!container) return;
-        
-        students.forEach(student => {
-            const card = createStudentCard(student);
-            container.appendChild(card);
-        });
-    }
-    
-    // Create a single student card element
+    // Create student card (clickable)
     function createStudentCard(student) {
         const div = document.createElement('div');
         div.className = 'bg-white rounded-xl shadow-sm overflow-hidden student-card hover:shadow-md transition-all';
-        div.setAttribute('data-id', student.id);
-        div.setAttribute('data-name', (student.name || '').toLowerCase());
-        div.setAttribute('data-student-id', (student.student_id || '').toLowerCase());
-        div.setAttribute('data-class', (student.classes?.name || '').toLowerCase());
-        div.setAttribute('data-status', student.status || '');
-        div.setAttribute('data-category', (student.category || '').toLowerCase());
+        div.onclick = () => goToStudentDetails(student.id);
         
         const photoHtml = student.photo_url 
             ? `<img src="${student.photo_url}" alt="${escapeHtml(student.name)}" class="w-full h-28 object-cover">`
@@ -695,160 +779,172 @@
         
         const className = student.classes?.name || 'N/A';
         
-        const toggleBtnText = student.status === 'active' ? 'Off' : 'On';
-        const toggleBtnClass = student.status === 'active' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100';
-        const toggleIcon = student.status === 'active' ? 'fa-ban' : 'fa-check-circle';
-        
         div.innerHTML = `
             <div class="relative">
                 ${photoHtml}
-                <div class="absolute top-1 right-1">
+                <div class="absolute top-2 right-2">
                     <span class="status-badge ${statusClass} text-xs">
                         ${statusText}
                     </span>
                 </div>
             </div>
-            <div class="p-2">
+            <div class="p-3">
                 <h3 class="text-sm font-semibold text-gray-800 truncate">${escapeHtml(student.name || '')}</h3>
                 <p class="text-xs text-orange-500 mb-1">${escapeHtml(student.student_id || '')}</p>
-                <div class="flex items-center justify-between mt-1">
+                <div class="flex items-center justify-between mt-2">
                     <div class="flex items-center gap-1 text-xs text-gray-500">
                         <i class="fas fa-chalkboard text-orange-400 text-xs"></i>
-                        <span class="truncate max-w-[70px]">${escapeHtml(className)}</span>
+                        <span class="truncate max-w-[100px]">${escapeHtml(className)}</span>
                     </div>
                     ${categoryDisplay}
                 </div>
-                <div class="flex gap-1 mt-2 pt-1 border-t border-gray-100">
-                    <button onclick="editStudent('${student.id}')" class="flex-1 py-1 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-all">
-                        <i class="fas fa-edit text-xs"></i> Edit
+            </div>
+            <div class="card-click-hint">
+                <i class="fas fa-arrow-right"></i> View Details
+            </div>
+        `;
+        
+        // Prevent card click when clicking on action buttons
+        const buttons = div.querySelectorAll('button');
+        buttons.forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+            };
+        });
+        
+        // Add action buttons container
+        const actionDiv = document.createElement('div');
+        actionDiv.className = 'px-3 pb-3 flex gap-2';
+        actionDiv.innerHTML = `
+            <button onclick="editStudent('${student.id}')" class="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-all">
+                <i class="fas fa-edit text-xs"></i> Edit
+            </button>
+            <button onclick="toggleStatus('${student.id}', '${student.status}')" class="flex-1 py-1.5 ${student.status === 'active' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'} rounded text-xs transition-all">
+                <i class="fas ${student.status === 'active' ? 'fa-ban' : 'fa-check-circle'} text-xs"></i> ${student.status === 'active' ? 'Deactivate' : 'Activate'}
+            </button>
+        `;
+        div.appendChild(actionDiv);
+        
+        return div;
+    }
+    
+    // Create student list row (clickable)
+    function createStudentListRow(student) {
+        const row = document.createElement('div');
+        row.className = 'bg-white rounded-lg shadow-sm overflow-hidden student-list-item border border-gray-200';
+        row.onclick = () => goToStudentDetails(student.id);
+        
+        const statusClass = student.status === 'active' ? 'active' : 'inactive';
+        const statusText = student.status === 'active' ? 'Active' : 'Inactive';
+        
+        row.innerHTML = `
+            <div class="flex items-center justify-between p-3">
+                <div class="flex items-center gap-3 flex-1">
+                    <div class="flex-shrink-0">
+                        ${student.photo_url ? 
+                            `<img src="${student.photo_url}" class="w-10 h-10 rounded-full object-cover">` : 
+                            `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-sm font-bold">
+                                ${student.name ? student.name.charAt(0).toUpperCase() : 'S'}
+                            </div>`
+                        }
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-gray-800 truncate">${escapeHtml(student.name || '')}</p>
+                        <p class="text-xs text-gray-500">${escapeHtml(student.student_id || '')}</p>
+                    </div>
+                    <div class="hidden md:block w-32">
+                        <p class="text-xs text-gray-600">${escapeHtml(student.classes?.name || 'N/A')}</p>
+                    </div>
+                    <div class="hidden md:block w-24">
+                        ${student.category ? 
+                            `<span class="category-badge ${student.category === 'Boarding' ? 'category-boarding' : 'category-day'}">
+                                ${student.category}
+                            </span>` : '-'
+                        }
+                    </div>
+                    <div class="w-20">
+                        <span class="status-badge ${statusClass} text-xs">${statusText}</span>
+                    </div>
+                </div>
+                <div class="flex gap-1" onclick="event.stopPropagation()">
+                    <button onclick="editStudent('${student.id}')" class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-all">
+                        <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="toggleStatus('${student.id}', '${student.status}')" class="flex-1 py-1 ${toggleBtnClass} rounded text-xs transition-all">
-                        <i class="fas ${toggleIcon} text-xs"></i> ${toggleBtnText}
+                    <button onclick="toggleStatus('${student.id}', '${student.status}')" class="px-2 py-1 ${student.status === 'active' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'} rounded text-xs transition-all">
+                        <i class="fas ${student.status === 'active' ? 'fa-ban' : 'fa-check-circle'}"></i>
                     </button>
                 </div>
             </div>
         `;
         
-        return div;
+        return row;
     }
     
-    // Show skeleton loading cards
-    function showSkeletons(count = 6) {
-        const skeletonContainer = document.getElementById('skeletonContainer');
-        if (!skeletonContainer) return;
+    function renderStudents() {
+        if (!allStudents || allStudents.length === 0) return;
         
-        skeletonContainer.innerHTML = '';
-        for (let i = 0; i < count; i++) {
-            const skeleton = document.createElement('div');
-            skeleton.className = 'bg-white rounded-xl shadow-sm overflow-hidden shimmer';
-            skeleton.innerHTML = `
-                <div class="w-full h-28 bg-gray-200"></div>
-                <div class="p-3">
-                    <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                    <div class="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
-                    <div class="h-3 bg-gray-200 rounded w-2/3"></div>
-                </div>
-            `;
-            skeletonContainer.appendChild(skeleton);
-        }
-    }
-    
-    function hideSkeletons() {
-        const skeletonContainer = document.getElementById('skeletonContainer');
-        if (skeletonContainer) {
-            skeletonContainer.innerHTML = '';
-        }
-    }
-    
-    // Update load more button state
-    function updateLoadMoreButton() {
-        const loadMoreContainer = document.getElementById('loadMoreContainer');
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
-        const loadMoreCount = document.getElementById('loadMoreCount');
+        const cardContainer = document.getElementById('cardView');
+        const listContainer = document.getElementById('listView');
         
-        if (!loadMoreContainer || !loadMoreBtn) return;
-        
-        const loadedCount = allStudents.length;
-        const remaining = totalStudents - loadedCount;
-        
-        if (hasMore && remaining > 0) {
-            loadMoreContainer.classList.remove('hidden');
-            if (loadMoreCount) {
-                loadMoreCount.textContent = `(${remaining} more active students)`;
-            }
+        if (currentViewType === 'card') {
+            cardContainer.innerHTML = '';
+            allStudents.forEach(student => {
+                cardContainer.appendChild(createStudentCard(student));
+            });
         } else {
-            loadMoreContainer.classList.add('hidden');
+            listContainer.innerHTML = '';
+            allStudents.forEach(student => {
+                listContainer.appendChild(createStudentListRow(student));
+            });
         }
     }
     
-    // Load initial students (first 30 active students) with retry
-    async function loadInitialStudents() {
-        showSkeletons(6);
+    function showLoading(show) {
+        const loadingState = document.getElementById('loadingState');
+        const cardView = document.getElementById('cardView');
+        const listView = document.getElementById('listView');
+        const noResults = document.getElementById('noResults');
         
-        // Clear existing students
-        const container = document.getElementById('studentsContainer');
-        if (container) container.innerHTML = '';
+        if (show) {
+            loadingState.style.display = 'grid';
+            cardView.style.display = 'none';
+            listView.style.display = 'none';
+            noResults.style.display = 'none';
+        } else {
+            loadingState.style.display = 'none';
+            if (allStudents.length === 0) {
+                cardView.style.display = 'none';
+                listView.style.display = 'none';
+                noResults.style.display = 'block';
+            } else {
+                cardView.style.display = currentViewType === 'card' ? 'grid' : 'none';
+                listView.style.display = currentViewType === 'list' ? 'flex' : 'none';
+                noResults.style.display = 'none';
+            }
+        }
+    }
+    
+    async function loadInitialStudents() {
+        showLoading(true);
         
         allStudents = [];
         currentPage = 1;
         hasMore = true;
         
-        let students = [];
-        let retryCount = 0;
-        
-        // Attempt to fetch with retry
-        while (retryCount <= MAX_RETRIES && students.length === 0) {
-            students = await fetchStudents(1, PAGE_SIZE);
-            if (students.length === 0 && retryCount < MAX_RETRIES) {
-                console.log(`No students returned, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * Math.pow(2, retryCount)));
-                retryCount++;
-            } else {
-                break;
-            }
-        }
-        
-        hideSkeletons();
+        const students = await fetchStudents(1, PAGE_SIZE);
         
         if (students.length > 0) {
             allStudents = [...students];
-            renderStudentCards(allStudents);
-            
-            if (totalStudents > PAGE_SIZE) {
-                const infoMsg = document.createElement('div');
-                infoMsg.className = 'col-span-full text-center py-2';
-                infoMsg.innerHTML = `
-                    <p class="text-xs text-gray-500">
-                        <i class="fas fa-info-circle"></i> 
-                        Showing first ${PAGE_SIZE} of ${totalStudents} active students
-                    </p>
-                `;
-                container.appendChild(infoMsg);
-            }
+            renderStudents();
         } else {
-            const emptyState = document.createElement('div');
-            emptyState.className = 'col-span-full';
-            emptyState.innerHTML = `
-                <div class="bg-white rounded-xl shadow-sm p-8 text-center">
-                    <div class="h-16 w-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <i class="fas fa-user-graduate text-2xl text-orange-500"></i>
-                    </div>
-                    <h3 class="text-base font-semibold text-gray-800 mb-1">No Active Students Found</h3>
-                    <p class="text-xs text-gray-500 mb-3">You don't have any active students yet or none match your criteria.</p>
-                    <button onclick="openAddModal()" class="btn-gradient px-4 py-1.5 rounded-lg text-white text-sm font-medium inline-flex items-center gap-1">
-                        <i class="fas fa-plus-circle text-xs"></i>
-                        Add Student
-                    </button>
-                </div>
-            `;
-            if (container) container.appendChild(emptyState);
+            showLoading(false);
         }
         
+        showLoading(false);
         updateLoadMoreButton();
         await loadStats();
     }
     
-    // Load more students (next page of active students)
     async function loadMoreStudents() {
         if (isLoading || !hasMore) return;
         
@@ -860,8 +956,6 @@
             loadMoreBtn.disabled = true;
             if (spinnerIcon) spinnerIcon.classList.remove('hidden');
             if (arrowIcon) arrowIcon.classList.add('hidden');
-            const countSpan = loadMoreBtn.querySelector('#loadMoreCount');
-            if (countSpan) countSpan.classList.add('hidden');
         }
         
         currentPage++;
@@ -871,30 +965,37 @@
             loadMoreBtn.disabled = false;
             if (spinnerIcon) spinnerIcon.classList.add('hidden');
             if (arrowIcon) arrowIcon.classList.remove('hidden');
-            const countSpan = loadMoreBtn.querySelector('#loadMoreCount');
-            if (countSpan) countSpan.classList.remove('hidden');
         }
         
         if (newStudents.length > 0) {
             allStudents = [...allStudents, ...newStudents];
-            renderStudentCards(newStudents);
+            renderStudents();
         }
         
         updateLoadMoreButton();
     }
     
-    // Reset and reload with filters
+    function updateLoadMoreButton() {
+        const loadMoreContainer = document.getElementById('loadMoreContainer');
+        const loadMoreCount = document.getElementById('loadMoreCount');
+        
+        const remaining = totalStudents - allStudents.length;
+        
+        if (hasMore && remaining > 0) {
+            loadMoreContainer.classList.remove('hidden');
+            if (loadMoreCount) {
+                loadMoreCount.textContent = `(${remaining} more)`;
+            }
+        } else {
+            loadMoreContainer.classList.add('hidden');
+        }
+    }
+    
     async function applyFiltersAndReload() {
         filtersApplied.search = document.getElementById('searchInput')?.value.toLowerCase() || '';
         filtersApplied.class = document.getElementById('classFilter')?.value || '';
         filtersApplied.category = document.getElementById('categoryFilter')?.value || '';
-        
-        const statusFilterValue = document.getElementById('statusFilter')?.value || '';
-        if (statusFilterValue && statusFilterValue !== 'all') {
-            filtersApplied.status = statusFilterValue;
-        } else {
-            filtersApplied.status = 'active';
-        }
+        filtersApplied.status = document.getElementById('statusFilter')?.value || '';
         
         currentPage = 1;
         allStudents = [];
@@ -960,14 +1061,11 @@
                 document.getElementById('studentModal').classList.remove('hidden');
                 document.getElementById('studentModal').classList.add('flex');
                 document.body.style.overflow = 'hidden';
-            } else {
-                openSuccessModal('Error', result.message);
             }
         } catch (error) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
-            console.error('Edit student error:', error);
-            openSuccessModal('Error', 'Failed to load student data after retries');
+            openSuccessModal('Error', 'Failed to load student data');
         }
     }
     
@@ -996,6 +1094,20 @@
         document.body.style.overflow = '';
     }
     
+    function openSchoolPayImportModal() {
+        document.getElementById('schoolPayImportModal').classList.remove('hidden');
+        document.getElementById('schoolPayImportModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeSchoolPayImportModal() {
+        document.getElementById('schoolPayImportModal').classList.add('hidden');
+        document.getElementById('schoolPayImportModal').classList.remove('flex');
+        document.getElementById('schoolPayImportForm').reset();
+        document.getElementById('schoolPayFileName').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    
     function openSuccessModal(title, message) {
         document.getElementById('successTitle').textContent = title;
         document.getElementById('successMessage').textContent = message;
@@ -1003,9 +1115,7 @@
         document.getElementById('successModal').classList.add('flex');
         document.body.style.overflow = 'hidden';
         
-        setTimeout(() => {
-            closeSuccessModal();
-        }, 2000);
+        setTimeout(() => closeSuccessModal(), 2000);
     }
     
     function closeSuccessModal() {
@@ -1035,6 +1145,14 @@
         }
     }
     
+    function showSchoolPayFileName(input) {
+        if (input.files && input.files[0]) {
+            const fileName = document.getElementById('schoolPayFileName');
+            fileName.textContent = `Selected: ${input.files[0].name}`;
+            fileName.classList.remove('hidden');
+        }
+    }
+    
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -1042,7 +1160,7 @@
         return div.innerHTML;
     }
     
-    // ==================== Form Submissions with Retry ====================
+    // ==================== Form Submissions ====================
     
     document.getElementById('studentForm').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -1053,20 +1171,12 @@
         
         const formData = new FormData(this);
         const data = {};
-        formData.forEach((value, key) => {
-            if (value) data[key] = value;
-        });
+        formData.forEach((value, key) => { if (value) data[key] = value; });
         
         const selectedClass = classesData.find(c => c.id === data.class_id);
-        if (selectedClass) {
-            data.class_name = selectedClass.name;
-        }
-        
-        if (currentPhotoBase64) {
-            data.photo_data = currentPhotoBase64;
-        } else if (currentPhotoUrl) {
-            data.photo_data = currentPhotoUrl;
-        }
+        if (selectedClass) data.class_name = selectedClass.name;
+        if (currentPhotoBase64) data.photo_data = currentPhotoBase64;
+        else if (currentPhotoUrl) data.photo_data = currentPhotoUrl;
         
         const url = editingStudentId ? `/students/update/${editingStudentId}` : '/students/add';
         const method = editingStudentId ? 'PUT' : 'POST';
@@ -1077,7 +1187,6 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            
             const result = await response.json();
             
             loading.classList.add('hidden');
@@ -1094,8 +1203,7 @@
         } catch (error) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
-            console.error('Save student error:', error);
-            openSuccessModal('Error', 'Failed to save student after retries');
+            openSuccessModal('Error', 'Failed to save student');
         }
     });
     
@@ -1113,7 +1221,6 @@
                 method: 'POST',
                 body: formData
             });
-            
             const result = await response.json();
             
             loading.classList.add('hidden');
@@ -1130,8 +1237,41 @@
         } catch (error) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
-            console.error('Import error:', error);
-            openSuccessModal('Error', 'Failed to import students after retries');
+            openSuccessModal('Error', 'Failed to import students');
+        }
+    });
+    
+    document.getElementById('schoolPayImportForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const formData = new FormData(this);
+        
+        try {
+            const response = await fetchWithRetry('/students/import-from-school-pay', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeSchoolPayImportModal();
+                openSuccessModal('Import Successful!', result.message);
+                await loadStats();
+                await applyFiltersAndReload();
+            } else {
+                openSuccessModal('Import Failed', result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            openSuccessModal('Error', 'Failed to import students');
         }
     });
     
@@ -1148,7 +1288,6 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus })
             });
-            
             const result = await response.json();
             
             loading.classList.add('hidden');
@@ -1164,12 +1303,11 @@
         } catch (error) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
-            console.error('Toggle status error:', error);
-            openSuccessModal('Error', 'Failed to update status after retries');
+            openSuccessModal('Error', 'Failed to update status');
         }
     }
     
-    // ==================== Event Listener Setup ====================
+    // ==================== Event Listeners ====================
     
     function setupEventListeners() {
         const searchInput = document.getElementById('searchInput');
@@ -1182,127 +1320,37 @@
         if (searchInput) {
             searchInput.addEventListener('input', function() {
                 clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => {
-                    applyFiltersAndReload();
-                }, 500);
+                debounceTimer = setTimeout(() => applyFiltersAndReload(), 500);
             });
         }
         
-        if (classFilter) {
-            classFilter.addEventListener('change', () => applyFiltersAndReload());
-        }
-        if (categoryFilter) {
-            categoryFilter.addEventListener('change', () => applyFiltersAndReload());
-        }
-        if (statusFilter) {
-            statusFilter.addEventListener('change', () => applyFiltersAndReload());
-        }
-        if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', () => loadMoreStudents());
-        }
+        if (classFilter) classFilter.addEventListener('change', () => applyFiltersAndReload());
+        if (categoryFilter) categoryFilter.addEventListener('change', () => applyFiltersAndReload());
+        if (statusFilter) statusFilter.addEventListener('change', () => applyFiltersAndReload());
+        if (loadMoreBtn) loadMoreBtn.addEventListener('click', () => loadMoreStudents());
     }
     
-    // ==================== Modal Close on Outside Click ====================
+    // ==================== Initialize ====================
     
+    // Load saved view preference
+    const savedView = localStorage.getItem('studentViewType');
+    if (savedView) setViewType(savedView);
+    
+    loadStats();
+    loadInitialStudents();
+    setupEventListeners();
+    
+    // Modal close on outside click
     window.onclick = function(event) {
         const studentModal = document.getElementById('studentModal');
         const importModal = document.getElementById('importModal');
+        const schoolPayModal = document.getElementById('schoolPayImportModal');
         const successModal = document.getElementById('successModal');
         
         if (event.target === studentModal) closeStudentModal();
         if (event.target === importModal) closeImportModal();
+        if (event.target === schoolPayModal) closeSchoolPayImportModal();
         if (event.target === successModal) closeSuccessModal();
     };
-    // School Pay Import Modal Functions
-function openSchoolPayImportModal() {
-    document.getElementById('schoolPayImportModal').classList.remove('hidden');
-    document.getElementById('schoolPayImportModal').classList.add('flex');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeSchoolPayImportModal() {
-    document.getElementById('schoolPayImportModal').classList.add('hidden');
-    document.getElementById('schoolPayImportModal').classList.remove('flex');
-    document.getElementById('schoolPayImportForm').reset();
-    document.getElementById('schoolPayFileName').classList.add('hidden');
-    document.body.style.overflow = '';
-}
-
-function showSchoolPayFileName(input) {
-    if (input.files && input.files[0]) {
-        const fileName = document.getElementById('schoolPayFileName');
-        fileName.textContent = `Selected: ${input.files[0].name}`;
-        fileName.classList.remove('hidden');
-    }
-}
-
-// School Pay Import Form Submission
-document.getElementById('schoolPayImportForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const loading = document.getElementById('loadingOverlay');
-    loading.classList.remove('hidden');
-    loading.classList.add('flex');
-    
-    const formData = new FormData(this);
-    
-    try {
-        const response = await fetchWithRetry('/students/import-from-school-pay', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const result = await response.json();
-        
-        loading.classList.add('hidden');
-        loading.classList.remove('flex');
-        
-        if (result.success) {
-            closeSchoolPayImportModal();
-            
-            // Show detailed success message
-            let successMessage = result.message;
-            if (result.errors && result.errors.length > 0) {
-                const errorList = result.errors.slice(0, 5).join('\n• ');
-                const moreErrors = result.errors.length > 5 ? `\n... and ${result.errors.length - 5} more errors` : '';
-                successMessage += `\n\nWarnings:\n• ${errorList}${moreErrors}`;
-            }
-            
-            openSuccessModal('Import Successful!', successMessage);
-            await loadStats();
-            await applyFiltersAndReload();
-        } else {
-            openSuccessModal('Import Failed', result.message);
-        }
-    } catch (error) {
-        loading.classList.add('hidden');
-        loading.classList.remove('flex');
-        console.error('School Pay import error:', error);
-        openSuccessModal('Error', 'Failed to import students. Please check file format.');
-    }
-});
-
-// Add close modal on outside click
-window.onclick = function(event) {
-    const studentModal = document.getElementById('studentModal');
-    const importModal = document.getElementById('importModal');
-    const schoolPayModal = document.getElementById('schoolPayImportModal');
-    const successModal = document.getElementById('successModal');
-    
-    if (event.target === studentModal) closeStudentModal();
-    if (event.target === importModal) closeImportModal();
-    if (event.target === schoolPayModal) closeSchoolPayImportModal();
-    if (event.target === successModal) closeSuccessModal();
-};
-    // ==================== Initialize ====================
-    
-    // Load stats immediately
-    loadStats();
-    
-    // Load initial students (only active ones) with retry capability
-    loadInitialStudents();
-    
-    // Setup event listeners
-    setupEventListeners();
 </script>
 {% endblock %}

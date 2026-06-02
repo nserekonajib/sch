@@ -91,6 +91,7 @@ from routes.fees.listEnDelete import payments_bp as list_delete_bp
 from routes.employees.advance import advance_bp
 from routes.houses.house import houses_bp
 from routes.reports.reports import reports_bp
+from routes.students.studentDetails import student_detail_bp
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
@@ -135,7 +136,7 @@ app.register_blueprint(list_delete_bp)
 app.register_blueprint(advance_bp, url_prefix='/advance')
 app.register_blueprint(houses_bp) 
 app.register_blueprint(reports_bp)
-
+app.register_blueprint(student_detail_bp)
 @app.route('/')
 def landing():
     """Landing page route"""
@@ -161,6 +162,6 @@ def serve_static(filename):
     return send_from_directory('static', filename)
 
 if __name__ == '__main__':
-    #  app.run(host="0.0.0.0", port=40000)
-    from waitress import serve
-    serve(app, host='0.0.0.0', port=40000)  
+     app.run(host="0.0.0.0", port=40000)
+    # from waitress import serve
+    # serve(app, host='0.0.0.0', port=40000)  

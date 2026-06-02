@@ -123,6 +123,11 @@
     .stat-card:hover .click-hint {
         opacity: 1;
     }
+
+    /* Profit card hidden class */
+    .profit-card-hidden {
+        display: none;
+    }
 </style>
 {% endblock %}
 
@@ -235,8 +240,8 @@
         </div>
     </div>
 
-    <!-- Stats Cards - Row 2 -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Stats Cards - Row 2 (Profit cards conditionally visible for owner/admin only) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="profitCardsContainer">
         <!-- Card 5: Total Expenses -->
         <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-red-500" id="cardTotalExpenses" onclick="goToReport('expenses')">
             <div class="card-loader hidden" id="loaderTotalExpenses">
@@ -275,7 +280,7 @@
             </div>
         </div>
         
-        <!-- Card 7: Filtered Profit (Date Range) -->
+        <!-- Card 7: Filtered Profit (Date Range) - Hidden for non-owners -->
         <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-purple-500" id="cardFilteredProfit" onclick="goToReport('profit-loss')">
             <div class="card-loader hidden" id="loaderFilteredProfit">
                 <div class="loader"></div>
@@ -294,7 +299,7 @@
             </div>
         </div>
         
-        <!-- Card 8: Overall Profit (All Time - No Filter) -->
+        <!-- Card 8: Overall Profit (All Time - No Filter) - Hidden for non-owners -->
         <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-rose-500" id="cardOverallProfit" onclick="goToReport('overall-profit')">
             <div class="card-loader" id="loaderOverallProfit">
                 <div class="loader"></div>
@@ -409,9 +414,29 @@
     let incomeExpenseChart = null;
     let classDistributionChart = null;
     
-    // Retry configuration
-    const MAX_RETRIES = 2;
+    // Retry configuration - increased to 4 retries
+    const MAX_RETRIES = 4;
     const RETRY_DELAY = 1000;
+
+    // Check if user is owner or admin (not employee)
+    // This should be set from backend - session.user.is_employee and session.user.role
+    // For owner: is_employee = false, role = 'owner'
+    // For admin employee: is_employee = true, role = 'admin'
+    const isOwnerOrAdmin = !{{ session.user.is_employee|tojson }} || 
+                           ({{ session.user.is_employee|tojson }} && 
+                            ({{ session.user.role|tojson }} === 'admin' || 
+                             {{ session.user.role|tojson }} === 'owner'));
+
+    // Hide profit cards if user is not owner or admin
+    if (!isOwnerOrAdmin) {
+        const profitCards = document.getElementById('profitCardsContainer');
+        if (profitCards) {
+            // Hide the entire profit cards row
+            profitCards.style.display = 'none';
+        }
+        // Also hide the profit section in other places if needed
+        console.log('Profit cards hidden - user is not owner or admin');
+    }
 
     // Navigation function for clickable cards
     function goToReport(reportType) {
@@ -439,9 +464,13 @@
                 url = `/reports/school-fees?start_date=${startDate}&end_date=${endDate}`;
                 break;
             case 'profit-loss':
+                // Only allow if owner/admin
+                if (!isOwnerOrAdmin) return;
                 url = `/reports/profit-loss?start_date=${startDate}&end_date=${endDate}`;
                 break;
             case 'overall-profit':
+                // Only allow if owner/admin
+                if (!isOwnerOrAdmin) return;
                 url = '/reports/overall-profit';
                 break;
             default:
@@ -456,7 +485,7 @@
         window.location.href = url;
     }
 
-    // Generic fetch function with retry logic
+    // Generic fetch function with retry logic (increased to 4 retries)
     async function fetchWithRetry(url, retryCount = 0) {
         try {
             const response = await fetch(url);
@@ -469,7 +498,7 @@
             
             if (retryCount < MAX_RETRIES) {
                 console.log(`Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1))); // Exponential backoff
                 return fetchWithRetry(url, retryCount + 1);
             } else {
                 throw error;
@@ -499,13 +528,17 @@
         // Track all promises with their retry logic
         const promises = [
             loadStats(),
-            loadOverallProfit(),
             loadIncomeExpenseGraph(),
             loadClassDistribution(),
             loadClassAttendance(),
             loadStaffAttendance(),
             loadRecentActivities()
         ];
+        
+        // Only load profit-related data if user is owner/admin
+        if (isOwnerOrAdmin) {
+            promises.push(loadOverallProfit());
+        }
         
         // Wait for all to complete, but don't let one failure affect others
         const results = await Promise.allSettled(promises);
@@ -523,7 +556,13 @@
     async function loadStats() {
         // Show loaders for stats cards
         const statLoaders = ['loaderTotalStudents', 'loaderTotalEmployees', 'loaderTotalCollected', 
-                            'loaderOtherIncome', 'loaderTotalExpenses', 'loaderSchoolFees', 'loaderFilteredProfit'];
+                            'loaderOtherIncome', 'loaderTotalExpenses', 'loaderSchoolFees'];
+        
+        // Only add profit loader if owner/admin
+        if (isOwnerOrAdmin) {
+            statLoaders.push('loaderFilteredProfit');
+        }
+        
         statLoaders.forEach(loaderId => {
             const loader = document.getElementById(loaderId);
             if (loader) loader.classList.remove('hidden');
@@ -543,22 +582,26 @@
                 document.getElementById('otherIncome').textContent = `UGX ${data.stats.other_income.toLocaleString()}`;
                 document.getElementById('totalExpenses').textContent = `UGX ${data.stats.total_expenses.toLocaleString()}`;
                 document.getElementById('schoolFeesCollected').textContent = `UGX ${data.stats.revenue_collected.toLocaleString()}`;
-                document.getElementById('filteredProfit').textContent = `UGX ${data.stats.total_profit.toLocaleString()}`;
+                
+                // Only update profit stats if owner/admin
+                if (isOwnerOrAdmin) {
+                    document.getElementById('filteredProfit').textContent = `UGX ${data.stats.total_profit.toLocaleString()}`;
+                    
+                    // Color coding for filtered profit
+                    const filteredProfitElement = document.getElementById('filteredProfit');
+                    if (data.stats.total_profit < 0) {
+                        filteredProfitElement.classList.remove('text-purple-600');
+                        filteredProfitElement.classList.add('text-red-600');
+                    } else {
+                        filteredProfitElement.classList.remove('text-red-600');
+                        filteredProfitElement.classList.add('text-purple-600');
+                    }
+                }
                 
                 // Add tooltip to show current month fees
                 const schoolFeesElement = document.getElementById('schoolFeesCollected');
                 if (data.stats.current_month_fees) {
                     schoolFeesElement.title = `Current month school fees: UGX ${data.stats.current_month_fees.toLocaleString()}`;
-                }
-                
-                // Color coding for filtered profit
-                const filteredProfitElement = document.getElementById('filteredProfit');
-                if (data.stats.total_profit < 0) {
-                    filteredProfitElement.classList.remove('text-purple-600');
-                    filteredProfitElement.classList.add('text-red-600');
-                } else {
-                    filteredProfitElement.classList.remove('text-red-600');
-                    filteredProfitElement.classList.add('text-purple-600');
                 }
                 
                 console.log('Stats loaded successfully');
@@ -583,6 +626,9 @@
     }
 
     async function loadOverallProfit() {
+        // Only load if user is owner/admin
+        if (!isOwnerOrAdmin) return;
+        
         const loader = document.getElementById('loaderOverallProfit');
         if (loader) loader.classList.remove('hidden');
         
@@ -734,8 +780,26 @@
                         datasets: [{
                             data: counts,
                             backgroundColor: [
-                                '#ffa500', '#ff8c00', '#ffb347', '#ffcc66',
-                                '#ffd699', '#ffa366', '#ff8c66', '#ffaa66'
+                                '#FF6B6B',  // Coral Red - bright and distinct
+                                '#4ECDC4',  // Turquoise - vibrant
+                                '#FFE66D',  // Sun Yellow - bright
+                                '#A8E6CF',  // Mint Green - soft but distinct
+                                '#FF8C42',  // Orange - warm
+                                '#6C63FF',  // Periwinkle - cool purple
+                                '#FF6F91',  // Pink - vibrant
+                                '#845EC2',  // Purple - rich
+                                '#00C9A7',  // Teal - fresh
+                                '#C4E538',  // Lime Green - bright
+                                '#FD7272',  // Light Red - soft
+                                '#58B19F',  // Sea Green - calm
+                                '#FEA47F',  // Peach - warm
+                                '#25CCF7',  // Sky Blue - bright
+                                '#EAB543',  // Mustard - golden
+                                '#CAD3C8',  // Grey - neutral
+                                '#D980FA',  // Lavender - soft purple
+                                '#9980FA',  // Light Periwinkle
+                                '#F97F51',  // Coral Orange
+                                '#2C3A47'   // Dark Blue - deep
                             ]
                         }]
                     },
@@ -745,6 +809,12 @@
                         plugins: {
                             legend: {
                                 position: 'right',
+                                labels: {
+                                    boxWidth: 12,
+                                    font: {
+                                        size: 11
+                                    }
+                                }
                             },
                             tooltip: {
                                 callbacks: {
