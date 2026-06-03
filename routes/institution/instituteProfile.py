@@ -1,4 +1,4 @@
-from routes.auth.auth import role_required, owner_required
+from routes.permissions.permissions import role_required
 # instituteProfile.py - Fixed version without public.users table
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from supabase import create_client, Client
@@ -73,7 +73,7 @@ def get_or_create_institute(user_id):
         return None
 
 @instituteProfile_bp.route('/profile', methods=['GET', 'POST'])
-@owner_required
+@role_required(['owner'])
 def profile():
     """Institute Profile Page - View and Update"""
     user = session.get('user')

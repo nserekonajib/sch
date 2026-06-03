@@ -22,7 +22,7 @@ import requests
 from PIL import Image as PILImage
 import tempfile
 from routes.accounts.accounts import get_institute_id
-from routes.auth.auth import role_required, owner_required
+from routes.permissions.permissions import role_required
 load_dotenv()
 
 # Initialize Supabase client

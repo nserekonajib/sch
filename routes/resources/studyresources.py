@@ -7,7 +7,7 @@ from functools import wraps
 
 import requests
 from flask import Blueprint, jsonify, request, render_template, session
-from routes.auth.auth import role_required
+from routes.permissions.permissions import role_required
 from routes.accounts.accounts import get_institute_id
 
 studyresource_bp = Blueprint(

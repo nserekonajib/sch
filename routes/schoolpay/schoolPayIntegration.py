@@ -11,6 +11,8 @@ import hmac
 import requests
 from functools import wraps
 from dotenv import load_dotenv
+from routes.accounts.accounts import get_institute_id
+from routes.permissions.permissions import role_required
 
 load_dotenv()
 
@@ -21,6 +23,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 schoolpay_bp = Blueprint('schoolpay', __name__, url_prefix='/schoolpay')
 
+
 def login_required(f):
     """Decorator to require login for routes"""
     @wraps(f)
@@ -30,23 +33,9 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_institute_id(user_id):
-    """Get institute ID for the current user"""
-    try:
-        response = supabase.table('institutes')\
-            .select('id')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return response.data[0]['id']
-        return None
-    except Exception as e:
-        print(f"Error getting institute ID: {e}")
-        return None
 
 @schoolpay_bp.route('/')
-@login_required
+@role_required(['admin', 'owner'])
 def index():
     """SchoolPay Integration Settings Page"""
     user = session.get('user')
@@ -71,8 +60,9 @@ def index():
         print(f"Error loading SchoolPay accounts: {e}")
         return render_template('schoolpay/index.html', accounts=[], institute_id=institute_id)
 
+
 @schoolpay_bp.route('/api/accounts', methods=['GET'])
-@login_required
+@role_required(['admin', 'owner'])
 def get_accounts():
     """Get all SchoolPay accounts for the institute"""
     user = session.get('user')
@@ -101,8 +91,9 @@ def get_accounts():
         print(f"Error getting accounts: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @schoolpay_bp.route('/api/accounts/create', methods=['POST'])
-@login_required
+@role_required(['admin', 'owner'])
 def create_account():
     """Create a new SchoolPay account"""
     user = session.get('user')
@@ -163,8 +154,9 @@ def create_account():
         print(f"Error creating SchoolPay account: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @schoolpay_bp.route('/api/accounts/<account_id>', methods=['PUT'])
-@login_required
+@role_required(['admin', 'owner'])
 def update_account(account_id):
     """Update a SchoolPay account"""
     user = session.get('user')
@@ -208,6 +200,7 @@ def update_account(account_id):
         result = supabase.table('schoolpay_accounts')\
             .update(update_data)\
             .eq('id', account_id)\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if result.data:
@@ -225,8 +218,9 @@ def update_account(account_id):
         print(f"Error updating SchoolPay account: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @schoolpay_bp.route('/api/accounts/<account_id>', methods=['DELETE'])
-@login_required
+@role_required(['admin', 'owner'])
 def delete_account(account_id):
     """Delete a SchoolPay account"""
     user = session.get('user')
@@ -249,6 +243,7 @@ def delete_account(account_id):
         result = supabase.table('schoolpay_accounts')\
             .delete()\
             .eq('id', account_id)\
+            .eq('institute_id', institute_id)\
             .execute()
         
         if result.data:
@@ -260,8 +255,9 @@ def delete_account(account_id):
         print(f"Error deleting SchoolPay account: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @schoolpay_bp.route('/api/accounts/<account_id>/toggle', methods=['PUT'])
-@login_required
+@role_required(['admin', 'owner'])
 def toggle_account(account_id):
     """Toggle account active status"""
     user = session.get('user')
@@ -273,6 +269,16 @@ def toggle_account(account_id):
     try:
         data = request.get_json()
         is_active = data.get('is_active', False)
+        
+        # Check if account exists
+        account_check = supabase.table('schoolpay_accounts')\
+            .select('id')\
+            .eq('id', account_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if not account_check.data:
+            return jsonify({'success': False, 'message': 'Account not found'}), 404
         
         result = supabase.table('schoolpay_accounts')\
             .update({
@@ -287,14 +293,15 @@ def toggle_account(account_id):
             status = 'activated' if is_active else 'deactivated'
             return jsonify({'success': True, 'message': f'Account {status} successfully'})
         else:
-            return jsonify({'success': False, 'message': 'Account not found'}), 404
+            return jsonify({'success': False, 'message': 'Failed to update account status'}), 500
             
     except Exception as e:
         print(f"Error toggling account: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @schoolpay_bp.route('/api/accounts/test', methods=['POST'])
-@login_required
+@role_required(['admin', 'owner'])
 def test_connection():
     """Test SchoolPay API connection for a specific account"""
     user = session.get('user')

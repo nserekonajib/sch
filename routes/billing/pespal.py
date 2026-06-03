@@ -1,4 +1,4 @@
-from routes.auth.auth import role_required
+from routes.permissions.permissions import role_required
 # pesapal.py - Fixed response handling
 import os
 import json

@@ -1,4 +1,4 @@
-<!-- templates/houses/index.html - Student Houses/Groups Management -->
+<!-- templates/houses/index.html - Fixed edit functionality -->
 {% extends "base.html" %}
 
 {% block title %}Student Houses - Lunserk ERP{% endblock %}
@@ -308,6 +308,7 @@
     let students = [];
     let selectedStudentIds = new Set();
     let houseToDelete = null;
+    let isEditing = false;
 
     function showLoading(message = 'Processing...') {
         document.getElementById('loadingOverlay').classList.remove('hidden');
@@ -435,7 +436,7 @@
             }
         } catch (error) {
             console.error('Error:', error);
-            tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-red-500">Error loading students</td></td>';
+            tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-red-500">Error loading students</td></tr>';
         }
     }
 
@@ -460,7 +461,7 @@
                 <td class="px-4 py-3 text-sm">
                     ${student.student_house_id ? `<span class="house-badge" style="background-color: ${getHouseColor(student.student_house_id)}20; color: ${getHouseColor(student.student_house_id)}">${getHouseName(student.student_house_id)}</span>` : '<span class="text-gray-400">Unassigned</span>'}
                 </td>
-            </tr>
+            </table>
         `).join('');
         
         document.querySelectorAll('.student-checkbox').forEach(cb => {
@@ -602,11 +603,19 @@
     document.getElementById('assignHouseSelect').addEventListener('change', updateBulkAssignButton);
 
     function openHouseModal() {
+        isEditing = false;
         document.getElementById('modalTitle').textContent = 'Add House';
         document.getElementById('houseForm').reset();
         document.getElementById('houseId').value = '';
         document.getElementById('houseColor').value = '#ffa500';
         document.getElementById('colorPreview').style.backgroundColor = '#ffa500';
+        document.getElementById('houseModal').classList.remove('hidden');
+        document.getElementById('houseModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function openEditHouseModal() {
+        // This is called only when editing, doesn't reset the form
         document.getElementById('houseModal').classList.remove('hidden');
         document.getElementById('houseModal').classList.add('flex');
         document.body.style.overflow = 'hidden';
@@ -621,6 +630,7 @@
     async function editHouse(id) {
         const house = houses.find(h => h.id === id);
         if (house) {
+            isEditing = true;
             document.getElementById('modalTitle').textContent = 'Edit House';
             document.getElementById('houseId').value = house.id;
             document.getElementById('houseName').value = house.name;
@@ -628,7 +638,8 @@
             document.getElementById('colorPreview').style.backgroundColor = house.color;
             document.getElementById('houseMotto').value = house.motto || '';
             document.getElementById('houseDescription').value = house.description || '';
-            openHouseModal();
+            // Open the modal without resetting
+            openEditHouseModal();
         }
     }
 

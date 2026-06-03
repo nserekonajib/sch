@@ -1,4 +1,4 @@
-from routes.auth.auth import role_required
+from routes.permissions.permissions import role_required
 # student.py - Updated with unique student ID generation across institutes
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file
 from supabase import create_client, Client

@@ -1,4 +1,4 @@
-from routes.auth.auth import role_required
+from routes.permissions.permissions import role_required
 # employees.py - Employee Management Blueprint (Fixed - No separate users table)
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -452,6 +452,7 @@ def delete_employee(employee_id):
     except Exception as e:
         print(f"Error deleting employee: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+    
 
 @employees_bp.route('/api/employees/toggle-status/<employee_id>', methods=['PUT'])
 @role_required(['owner', 'teacher', 'accountant'])
@@ -563,6 +564,8 @@ def get_stats():
     except Exception as e:
         print(f"Error getting stats: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+    
 
 # Employee Login Route (separate from main app)
 @employees_bp.route('/login', methods=['POST'])
@@ -597,7 +600,7 @@ def employee_login():
         employee_for_session['is_employee'] = True
         
         session['user'] = employee_for_session
-        
+        print(employee_for_session)
         return jsonify({
             'success': True,
             'message': 'Login successful',

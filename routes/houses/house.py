@@ -9,7 +9,7 @@ import io
 import pandas as pd
 from functools import wraps
 from dotenv import load_dotenv
-from routes.auth.auth import role_required
+from routes.permissions.permissions import role_required
 from routes.accounts.accounts import get_institute_id
 
 load_dotenv()

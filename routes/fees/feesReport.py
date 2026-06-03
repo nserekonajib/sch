@@ -1,4 +1,4 @@
-from routes.auth.auth import role_required
+from routes.permissions.permissions import role_required
 # feesReports.py - Fee Reports Blueprint
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client

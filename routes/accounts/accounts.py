@@ -1,4 +1,4 @@
-from routes.auth.auth import role_required
+from routes.permissions.permissions import role_required
 # accounts.py - Fixed get_institute_id to properly handle employee sessions
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -634,6 +634,7 @@ def create_expense():
     except Exception as e:
         print(f"Error creating expense: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @accounts_bp.route('/transactions', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])

@@ -1,4 +1,4 @@
-from routes.auth.auth import role_required
+from routes.permissions.permissions import role_required
 # requirements.py - Non-Cash Requirements Management Blueprint
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client

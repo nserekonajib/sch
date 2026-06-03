@@ -1,0 +1,609 @@
+<!-- templates/permissions/index.html - Updated with three-state permissions -->
+{% extends "base.html" %}
+
+{% block title %}Employee Permissions - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .permission-card {
+        transition: all 0.2s;
+    }
+    .permission-card:hover {
+        background-color: #fff7ed;
+    }
+    .permission-toggle {
+        transition: all 0.2s;
+    }
+    .permission-toggle:hover {
+        transform: scale(1.02);
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .role-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .category-header {
+        cursor: pointer;
+        user-select: none;
+    }
+    .category-header:hover {
+        background-color: #fef3c7;
+    }
+    .route-row {
+        transition: all 0.2s;
+    }
+    .route-row:hover {
+        background-color: #f9fafb;
+    }
+    .status-allowed {
+        color: #10b981;
+    }
+    .status-denied {
+        color: #ef4444;
+    }
+    .status-not-configured {
+        color: #6b7280;
+    }
+    .radio-group {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+    .radio-option {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+    }
+    .radio-option input {
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Employee Permissions</h1>
+        <p class="text-sm text-gray-600">Grant or restrict access to specific system routes for each employee</p>
+        <p class="text-xs text-gray-500 mt-1">
+            <i class="fas fa-info-circle"></i> 
+            Routes with explicit Allow/Deny will override role-based access. Unconfigured routes fall back to default role permissions.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Left Panel - Employee List -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden sticky top-4">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-users text-orange-500"></i>
+                        Employees
+                    </h2>
+                </div>
+                <div class="p-3">
+                    <div class="mb-3">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="text" id="searchEmployee" placeholder="Search employees..." 
+                                   class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        </div>
+                    </div>
+                    <div id="employeesList" class="space-y-2 max-h-96 overflow-y-auto">
+                        <div class="text-center py-8">
+                            <div class="loader mx-auto"></div>
+                            <p class="text-gray-500 mt-2">Loading employees...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel - Permissions Configuration -->
+        <div class="lg:col-span-3">
+            <div id="permissionsPanel" class="hidden">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                <i class="fas fa-lock text-orange-500"></i>
+                                <span id="selectedEmployeeName">Permissions Configuration</span>
+                            </h2>
+                            <p class="text-xs text-gray-500 mt-1" id="selectedEmployeeRole"></p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="expandAll()" class="px-3 py-1.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-all">
+                                <i class="fas fa-expand-alt"></i> Expand All
+                            </button>
+                            <button onclick="collapseAll()" class="px-3 py-1.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-all">
+                                <i class="fas fa-compress-alt"></i> Collapse All
+                            </button>
+                            <button onclick="resetPermissions()" class="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-all">
+                                <i class="fas fa-undo"></i> Reset
+                            </button>
+                            <button onclick="savePermissions()" class="btn-gradient px-4 py-1.5 rounded-lg text-white text-sm font-medium">
+                                <i class="fas fa-save"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="p-5 max-h-[70vh] overflow-y-auto" id="permissionsContent">
+                        <div class="text-center py-8">
+                            <div class="loader mx-auto"></div>
+                            <p class="text-gray-500 mt-2">Loading permissions...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="px-5 py-3 border-t border-gray-200 bg-gray-50">
+                        <p class="text-xs text-gray-500">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>How it works:</strong> 
+                            <span class="text-green-600">Allowed</span> = explicitly granted access | 
+                            <span class="text-red-600">Denied</span> = explicitly blocked | 
+                            <span class="text-gray-400">Not Configured</span> = uses default role-based access
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="noSelectionPanel" class="bg-white rounded-xl shadow-md p-12 text-center">
+                <div class="h-20 w-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-user-lock text-3xl text-orange-500"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">No Employee Selected</h3>
+                <p class="text-sm text-gray-500">Select an employee from the list to configure permissions</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 p-5 text-center transform transition-all modal-container">
+        <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-check-circle text-2xl text-green-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-1">Success!</h3>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage">Permissions saved successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-5 py-1.5 rounded-lg text-white text-sm font-medium">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-5 flex flex-col items-center">
+        <div class="loader"></div>
+        <p class="text-gray-600 text-sm mt-3">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let employees = [];
+    let currentEmployeeId = null;
+    let currentPermissions = {};
+    let groupedRoutes = {{ grouped_routes|tojson }};
+    let expandedCategories = new Set();
+    
+    async function loadEmployees() {
+        const container = document.getElementById('employeesList');
+        container.innerHTML = '<div class="text-center py-8"><div class="loader mx-auto"></div><p class="text-gray-500 mt-2">Loading employees...</p></div>';
+        
+        try {
+            const response = await fetch('/permissions/api/employees');
+            const result = await response.json();
+            
+            if (result.success) {
+                employees = result.employees;
+                renderEmployees(employees);
+            } else {
+                container.innerHTML = '<div class="text-center py-8 text-red-500">Failed to load employees</div>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            container.innerHTML = '<div class="text-center py-8 text-red-500">Error loading employees</div>';
+        }
+    }
+    
+    function renderEmployees(employeesList) {
+        const container = document.getElementById('employeesList');
+        const searchTerm = document.getElementById('searchEmployee').value.toLowerCase();
+        
+        const filtered = employeesList.filter(emp => 
+            emp.name.toLowerCase().includes(searchTerm) || 
+            emp.employee_id.toLowerCase().includes(searchTerm)
+        );
+        
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="text-center py-8 text-gray-400">No employees found</div>';
+            return;
+        }
+        
+        container.innerHTML = filtered.map(emp => `
+            <div class="permission-card p-3 border rounded-lg cursor-pointer hover:border-orange-500 transition-all"
+                 onclick="selectEmployee('${emp.id}', '${escapeHtml(emp.name)}', '${emp.role}')">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-semibold text-gray-800">${escapeHtml(emp.name)}</p>
+                        <p class="text-xs text-gray-500">${emp.employee_id}</p>
+                    </div>
+                    <div>
+                        <span class="role-badge bg-gray-100 text-gray-700">${emp.role ? emp.role.toUpperCase() : 'STAFF'}</span>
+                        ${emp.has_custom_permissions ? 
+                            '<span class="ml-2 text-xs text-green-600"><i class="fas fa-check-circle"></i> Custom</span>' : ''}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    async function selectEmployee(employeeId, employeeName, employeeRole) {
+        currentEmployeeId = employeeId;
+        document.getElementById('selectedEmployeeName').textContent = employeeName;
+        document.getElementById('selectedEmployeeRole').innerHTML = `<span class="role-badge bg-gray-100 text-gray-700">${employeeRole ? employeeRole.toUpperCase() : 'STAFF'}</span>`;
+        document.getElementById('permissionsPanel').classList.remove('hidden');
+        document.getElementById('noSelectionPanel').classList.add('hidden');
+        
+        // Load permissions
+        const content = document.getElementById('permissionsContent');
+        content.innerHTML = '<div class="text-center py-8"><div class="loader mx-auto"></div><p class="text-gray-500 mt-2">Loading permissions...</p></div>';
+        
+        try {
+            const response = await fetch(`/permissions/api/employee/${employeeId}/permissions`);
+            const result = await response.json();
+            
+            if (result.success) {
+                currentPermissions = result.permissions || {};
+                renderPermissions(groupedRoutes, currentPermissions);
+            } else {
+                content.innerHTML = '<div class="text-center py-8 text-red-500">Failed to load permissions</div>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            content.innerHTML = '<div class="text-center py-8 text-red-500">Error loading permissions</div>';
+        }
+    }
+    
+    function renderPermissions(groupedRoutes, permissions) {
+        const content = document.getElementById('permissionsContent');
+        
+        if (Object.keys(groupedRoutes).length === 0) {
+            content.innerHTML = '<div class="text-center py-8 text-gray-400">No routes available</div>';
+            return;
+        }
+        
+        let html = '';
+        
+        for (const [category, routes] of Object.entries(groupedRoutes)) {
+            const isExpanded = expandedCategories.has(category);
+            const categoryCount = routes.length;
+            
+            // Count configured routes in this category
+            let allowedCount = 0;
+            let deniedCount = 0;
+            let notConfiguredCount = 0;
+            
+            for (const route of routes) {
+                if (permissions[route.endpoint] === true) {
+                    allowedCount++;
+                } else if (permissions[route.endpoint] === false) {
+                    deniedCount++;
+                } else {
+                    notConfiguredCount++;
+                }
+            }
+            
+            html += `
+                <div class="border rounded-lg mb-4 overflow-hidden">
+                    <div class="category-header bg-gray-50 px-4 py-3 flex items-center justify-between cursor-pointer"
+                         onclick="toggleCategory('${category.replace(/'/g, "\\'")}')">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-chevron-${isExpanded ? 'down' : 'right'} text-gray-400 text-sm"></i>
+                            <h3 class="font-semibold text-gray-800">${category}</h3>
+                            <span class="text-xs text-gray-500">(${routes.length} routes)</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs">
+                                <span class="text-green-600">${allowedCount} allowed</span> | 
+                                <span class="text-red-600">${deniedCount} denied</span> | 
+                                <span class="text-gray-400">${notConfiguredCount} unconfigured</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div id="category-${category.replace(/[^a-zA-Z0-9]/g, '_')}" class="${isExpanded ? '' : 'hidden'}">
+                        <div class="p-3 space-y-1">
+                            ${routes.map(route => {
+                                const currentValue = permissions[route.endpoint];
+                                let statusClass = '';
+                                let statusText = '';
+                                
+                                if (currentValue === true) {
+                                    statusClass = 'status-allowed';
+                                    statusText = 'Allowed';
+                                } else if (currentValue === false) {
+                                    statusClass = 'status-denied';
+                                    statusText = 'Denied';
+                                } else {
+                                    statusClass = 'status-not-configured';
+                                    statusText = 'Not Configured';
+                                }
+                                
+                                return `
+                                    <div class="route-row flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-sm font-medium text-gray-800">${route.description}</span>
+                                                <span class="text-xs text-gray-400 font-mono">${route.endpoint}</span>
+                                            </div>
+                                            <div class="text-xs text-gray-400 mt-0.5">
+                                                ${route.methods.join(', ')} | ${route.url}
+                                            </div>
+                                        </div>
+                                        <div class="radio-group">
+                                            <label class="radio-option">
+                                                <input type="radio" 
+                                                       name="perm_${route.endpoint.replace(/[^a-zA-Z0-9]/g, '_')}"
+                                                       value="allow"
+                                                       class="w-4 h-4 text-green-600"
+                                                       ${currentValue === true ? 'checked' : ''}
+                                                       onchange="setPermission('${route.endpoint}', true)">
+                                                <span class="text-sm text-green-600">Allow</span>
+                                            </label>
+                                            <label class="radio-option">
+                                                <input type="radio" 
+                                                       name="perm_${route.endpoint.replace(/[^a-zA-Z0-9]/g, '_')}"
+                                                       value="deny"
+                                                       class="w-4 h-4 text-red-600"
+                                                       ${currentValue === false ? 'checked' : ''}
+                                                       onchange="setPermission('${route.endpoint}', false)">
+                                                <span class="text-sm text-red-600">Deny</span>
+                                            </label>
+                                            <label class="radio-option">
+                                                <input type="radio" 
+                                                       name="perm_${route.endpoint.replace(/[^a-zA-Z0-9]/g, '_')}"
+                                                       value="default"
+                                                       class="w-4 h-4 text-gray-400"
+                                                       ${currentValue === undefined ? 'checked' : ''}
+                                                       onchange="setPermission('${route.endpoint}', null)">
+                                                <span class="text-sm text-gray-500">Default</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        content.innerHTML = html;
+    }
+    
+    function setPermission(endpoint, value) {
+        if (value === null) {
+            // Remove from permissions (use default role-based)
+            delete currentPermissions[endpoint];
+        } else {
+            // Set explicit allow or deny
+            currentPermissions[endpoint] = value;
+        }
+        
+        // Re-render to update counts
+        renderPermissions(groupedRoutes, currentPermissions);
+    }
+    
+    function toggleCategory(category) {
+        const categoryId = `category-${category.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        const element = document.getElementById(categoryId);
+        const icon = element.previousElementSibling.querySelector('.fa-chevron-right, .fa-chevron-down');
+        
+        if (element.classList.contains('hidden')) {
+            element.classList.remove('hidden');
+            if (icon) {
+                icon.classList.remove('fa-chevron-right');
+                icon.classList.add('fa-chevron-down');
+            }
+            expandedCategories.add(category);
+        } else {
+            element.classList.add('hidden');
+            if (icon) {
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-right');
+            }
+            expandedCategories.delete(category);
+        }
+    }
+    
+    function expandAll() {
+        for (const category of Object.keys(groupedRoutes)) {
+            const categoryId = `category-${category.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const element = document.getElementById(categoryId);
+            if (element && element.classList.contains('hidden')) {
+                element.classList.remove('hidden');
+                expandedCategories.add(category);
+                
+                const icon = element.previousElementSibling.querySelector('.fa-chevron-right, .fa-chevron-down');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-down');
+                }
+            }
+        }
+    }
+    
+    function collapseAll() {
+        for (const category of Object.keys(groupedRoutes)) {
+            const categoryId = `category-${category.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const element = document.getElementById(categoryId);
+            if (element && !element.classList.contains('hidden')) {
+                element.classList.add('hidden');
+                expandedCategories.delete(category);
+                
+                const icon = element.previousElementSibling.querySelector('.fa-chevron-right, .fa-chevron-down');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-right');
+                }
+            }
+        }
+    }
+    
+    async function savePermissions() {
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/permissions/api/employee/${currentEmployeeId}/permissions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ permissions: currentPermissions })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                
+                // Refresh employee list to show custom badge
+                loadEmployees();
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to save permissions', 'error');
+        }
+    }
+    
+    async function resetPermissions() {
+        if (!confirm('Are you sure you want to reset all permissions to default? This will remove all custom allow/deny settings.')) {
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/permissions/api/employee/${currentEmployeeId}/permissions/reset`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                currentPermissions = {};
+                renderPermissions(groupedRoutes, currentPermissions);
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                
+                // Refresh employee list
+                loadEmployees();
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to reset permissions', 'error');
+        }
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    document.getElementById('searchEmployee').addEventListener('input', () => renderEmployees(employees));
+    
+    window.onclick = function(event) {
+        const modal = document.getElementById('successModal');
+        if (event.target === modal) closeSuccessModal();
+    };
+    
+    // Initialize
+    loadEmployees();
+</script>
+{% endblock %}

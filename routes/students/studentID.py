@@ -24,7 +24,7 @@ import requests
 from functools import wraps
 from dotenv import load_dotenv
 from routes.accounts.accounts import get_institute_id
-from routes.auth.auth import role_required
+from routes.permissions.permissions import role_required
 
 load_dotenv()
 

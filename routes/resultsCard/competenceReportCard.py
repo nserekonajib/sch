@@ -16,7 +16,7 @@ import tempfile
 import subprocess
 import sys
 import zipfile
-from routes.auth.auth import role_required
+from routes.permissions.permissions import role_required
 from routes.accounts.accounts import get_institute_id as get_institute_id_func
 
 load_dotenv()
