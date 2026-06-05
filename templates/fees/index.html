@@ -1,4 +1,4 @@
-<!-- templates/fees/index.html - Elegant Redesign with Seamless Interactions -->
+<!-- templates/fees/index.html - Complete Redesign with SVG Icons -->
 {% extends "base.html" %}
 
 {% block title %}Fee Management - Lunserk ERP{% endblock %}
@@ -57,11 +57,6 @@
         }
     }
 
-    @keyframes shimmer {
-        0% { background-position: -1000px 0; }
-        100% { background-position: 1000px 0; }
-    }
-
     /* ===== CARD STYLES ===== */
     .card {
         background: white;
@@ -96,6 +91,9 @@
         cursor: pointer;
         transition: all 0.2s ease;
         border: 1px solid transparent;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .chip:hover {
@@ -110,27 +108,14 @@
         border-color: rgba(255, 255, 255, 0.2);
     }
 
-    /* ===== PILLS ===== */
-    .pill {
-        padding: 0.4rem 1.2rem;
-        border-radius: 100px;
-        font-size: 0.8125rem;
-        font-weight: 500;
-        background: var(--gray-100);
-        color: var(--gray-600);
-        cursor: pointer;
-        transition: all 0.2s;
-        border: 1px solid transparent;
+    .chip svg {
+        width: 1rem;
+        height: 1rem;
     }
 
-    .pill:hover {
-        background: var(--gray-200);
-    }
-
-    .pill.active {
-        background: var(--primary);
+    .chip.active svg {
+        stroke: white;
         color: white;
-        box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
     }
 
     /* ===== EXPANDABLE SECTIONS ===== */
@@ -329,6 +314,10 @@
         border-radius: 12px;
         font-weight: 600;
         transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
     }
 
     .btn-primary:hover {
@@ -344,6 +333,10 @@
         border: 1px solid var(--gray-200);
         color: var(--gray-700);
         transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
     }
 
     .btn-secondary:hover {
@@ -395,7 +388,7 @@
     .modal-container {
         background: white;
         border-radius: 28px;
-        max-width: 480px;
+        max-width: 700px;
         width: 90%;
         padding: 1.75rem;
         animation: scaleIn 0.25s ease;
@@ -430,10 +423,95 @@
         to { transform: rotate(360deg); }
     }
 
-    /* ===== RESPONSIVE ===== */
+    /* Status Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-paid {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-partial {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-pending {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .category-boarding {
+        background: #fffbeb;
+        color: #b45309;
+    }
+
+    .category-day {
+        background: #eff6ff;
+        color: #1e40af;
+    }
+
+    /* Table Styles */
+    .invoice-table {
+        width: 100%;
+    }
+
+    .invoice-table th {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--gray-600);
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .invoice-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--gray-50);
+    }
+
+    /* Pagination */
+    .pagination-btn {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+        background: white;
+        border: 1px solid var(--gray-200);
+        color: var(--gray-600);
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        background: var(--gray-50);
+        border-color: var(--gray-300);
+    }
+
+    .pagination-btn.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Responsive */
     @media (max-width: 768px) {
         .total-amount { font-size: 1.5rem; }
         .search-dropdown { left: 16px !important; right: 16px !important; width: auto !important; }
+        .modal-container { max-width: 95%; padding: 1rem; }
     }
 </style>
 {% endblock %}
@@ -480,7 +558,7 @@
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
                                         <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
                                         </svg>
                                     </div>
                                     <span class="font-medium text-gray-800">All Students</span>
@@ -497,9 +575,7 @@
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 bg-green-50 rounded-xl flex items-center justify-center">
                                         <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path d="M12 14l9-5-9-5-9 5 9 5z"></path>
-                                            <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                                         </svg>
                                     </div>
                                     <span class="font-medium text-gray-800">Specific Class</span>
@@ -603,31 +679,56 @@
                         <input type="hidden" name="apply_to" id="applyToHidden">
                     </div>
 
-                    <!-- Student Category -->
+                    <!-- Student Category - Pre-selected "All Categories" -->
                     <div class="mb-6">
                         <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">
                             <span class="text-red-500">*</span> Student Category
                         </label>
                         <div class="chip-group" id="categoryPills">
-                            <div data-cat="all" class="chip">All Categories</div>
-                            <div data-cat="Boarding" class="chip">🏠 Boarding</div>
-                            <div data-cat="Day" class="chip">☀️ Day Scholar</div>
+                            <div data-cat="all" class="chip active">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                All Categories
+                            </div>
+                            <div data-cat="Boarding" class="chip">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                                Boarding
+                            </div>
+                            <div data-cat="Day" class="chip">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                                Day Scholar
+                            </div>
                         </div>
-                        <input type="hidden" name="category" id="categoryHidden">
+                        <input type="hidden" name="category" id="categoryHidden" value="all">
                     </div>
 
                     <hr class="my-5 border-gray-100">
 
-                    <!-- Default Fee Type -->
+                    <!-- Default Fee Type - Pre-selected "Fixed" -->
                     <div class="mb-4">
                         <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">
                             <span class="text-red-500">*</span> Default Fee Type
                         </label>
                         <div class="chip-group" id="defaultFeeTypeGroup">
-                            <div data-type="fixed" class="chip">🔒 Fixed</div>
-                            <div data-type="editable" class="chip">✏️ Editable</div>
+                            <div data-type="fixed" class="chip active">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                </svg>
+                                Fixed
+                            </div>
+                            <div data-type="editable" class="chip">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Editable
+                            </div>
                         </div>
-                        <input type="hidden" name="default_type" id="defaultTypeHidden">
+                        <input type="hidden" name="default_type" id="defaultTypeHidden" value="fixed">
                     </div>
                 </form>
             </div>
@@ -643,7 +744,7 @@
                         </svg>
                         Fee Items
                     </h2>
-                    <button type="button" onclick="addFeeItem()" class="btn-primary text-sm flex items-center gap-2">
+                    <button type="button" onclick="addFeeItem()" class="btn-primary text-sm">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
@@ -653,7 +754,30 @@
 
                 <div class="p-6">
                     <div id="feeItemsList">
-                        <!-- Dynamic fee items will appear here -->
+                        <!-- Default fee item row -->
+                        <div class="fee-item">
+                            <div class="grid grid-cols-12 gap-3 items-center">
+                                <div class="col-span-5">
+                                    <input type="text" name="particular_label[]" placeholder="e.g., Tuition Fee" class="input-modern text-sm" value="Tuition Fee">
+                                </div>
+                                <div class="col-span-3">
+                                    <input type="number" name="amount[]" placeholder="Amount" onchange="updateTotal()" class="input-modern text-sm text-right" value="500000">
+                                </div>
+                                <div class="col-span-3">
+                                    <select name="type[]" class="select-modern text-sm">
+                                        <option value="fixed" selected>Fixed</option>
+                                        <option value="editable">Editable</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-1 text-center">
+                                    <button type="button" onclick="removeFeeItem(this)" class="text-gray-400 hover:text-red-500 transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Total Section -->
@@ -663,19 +787,19 @@
                                 <p class="text-sm font-medium text-gray-500">Total Amount</p>
                                 <p class="text-xs text-gray-400">All selected fee items combined</p>
                             </div>
-                            <div class="total-amount" id="totalAmount">UGX 0</div>
+                            <div class="total-amount" id="totalAmount">UGX 500,000</div>
                         </div>
                     </div>
 
                     <!-- Action Buttons -->
                     <div class="flex gap-3 mt-6 pt-2">
-                        <button type="button" onclick="resetFeeItems()" class="btn-secondary text-sm flex items-center gap-2">
+                        <button type="button" onclick="resetFeeItems()" class="btn-secondary text-sm">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                             </svg>
                             Reset
                         </button>
-                        <button type="button" onclick="generateInvoices()" class="btn-primary flex-1 flex items-center justify-center gap-2">
+                        <button type="button" onclick="generateInvoices()" class="btn-primary flex-1 justify-center">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
@@ -687,59 +811,74 @@
         </div>
     </div>
 
-    <!-- Recent Configurations Table -->
+    <!-- Invoiced Students Table Section -->
     <div class="mt-8 card overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/30">
-            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
-                <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                Recent Configurations
-            </h2>
-        </div>
-        <div class="p-6">
-            {% if fee_particulars %}
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead>
-                        <tr class="border-b border-gray-100">
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Applied To</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Fee Items</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-50">
-                        {% for particular in fee_particulars[:5] %}
-                        <tr class="hover:bg-orange-50/20 transition">
-                            <td class="px-4 py-3 text-sm text-gray-600">{{ particular.created_at[:10] if particular.created_at else 'N/A' }}</td>
-                            <td class="px-4 py-3">
-                                {% if particular.apply_to == 'all' %}
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">All Students</span>
-                                {% elif particular.apply_to == 'class' %}
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">Specific Class</span>
-                                {% elif particular.apply_to == 'multiple_classes' %}
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">Multiple Classes</span>
-                                {% else %}
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Specific Student</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 py-3 text-sm text-gray-500">{{ particular.fee_items|length if particular.fee_items is iterable else 0 }} item(s)</td>
-                            <td class="px-4 py-3 text-sm font-bold text-gray-800 text-right">UGX {{ "{:,.0f}".format(particular.total_amount) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/30 flex flex-wrap justify-between items-center gap-4">
+            <div>
+                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Invoiced Students
+                </h2>
+                <p class="text-xs text-gray-400 mt-1">View all students with invoices and their fee details</p>
             </div>
-            {% else %}
-            <div class="text-center py-10">
-                <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            
+            <!-- Filters -->
+            <div class="flex items-center gap-3">
+                <select id="studentCategoryFilter" class="px-3 py-1.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:border-orange-400">
+                    <option value="all">All Categories</option>
+                    <option value="Boarding">Boarding</option>
+                    <option value="Day">Day Scholar</option>
+                </select>
+                
+                <select id="invoiceStatusFilter" class="px-3 py-1.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:border-orange-400">
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="partial">Partial</option>
+                    <option value="paid">Paid</option>
+                </select>
+                
+                <button type="button" onclick="refreshInvoicedStudents()" class="p-1.5 text-gray-500 hover:text-orange-500 transition rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div id="invoicedStudentsTableContainer">
+                <div class="text-center py-10">
+                    <div class="spinner mx-auto mb-4"></div>
+                    <p class="text-gray-500">Loading invoiced students...</p>
+                </div>
+            </div>
+            
+            <!-- Pagination -->
+            <div id="paginationControls" class="mt-6 flex justify-between items-center">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invoice Details Modal -->
+<div id="invoiceModal" class="modal-backdrop">
+    <div class="modal-container">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
-                <p class="text-gray-500">No fee configurations yet</p>
-                <p class="text-xs text-gray-400 mt-1">Create your first fee structure above</p>
-            </div>
-            {% endif %}
+                Invoice Details
+            </h3>
+            <button onclick="closeInvoiceModal()" class="text-gray-400 hover:text-gray-600 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div id="invoiceDetailsContent">
         </div>
     </div>
 </div>
@@ -807,8 +946,12 @@
             document.body.appendChild(container);
         }
         const flash = document.createElement('div');
-        flash.className = `p-3 rounded-xl shadow-lg text-white text-sm ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} flex items-center gap-2 animate-fadeSlideIn`;
-        flash.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${type === 'error' ? 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' : 'M5 13l4 4L19 7'}"></path></svg> ${msg}`;
+        const bgColor = type === 'error' ? 'bg-red-500' : 'bg-green-500';
+        const iconPath = type === 'error' 
+            ? 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' 
+            : 'M5 13l4 4L19 7';
+        flash.className = `p-3 rounded-xl shadow-lg text-white text-sm ${bgColor} flex items-center gap-2`;
+        flash.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}"></path></svg> ${msg}`;
         container.appendChild(flash);
         setTimeout(() => { flash.style.opacity = '0'; setTimeout(() => flash.remove(), 300); }, 4000);
     }
@@ -967,7 +1110,7 @@
         });
     });
 
-    // Category chips
+    // Category chips - set default active
     categoryPills.forEach(pill => {
         pill.addEventListener('click', () => {
             categoryPills.forEach(p => p.classList.remove('active'));
@@ -977,7 +1120,7 @@
         });
     });
 
-    // Default type chips
+    // Default type chips - set default active
     defaultTypeChips.forEach(chip => {
         chip.addEventListener('click', () => {
             defaultTypeChips.forEach(c => c.classList.remove('active'));
@@ -1099,12 +1242,48 @@
         
         applyToHidden.value = '';
         currentSelection = null;
+        
+        // Reset category to "All Categories" (first chip)
         categoryPills.forEach(p => p.classList.remove('active'));
-        categoryHidden.value = '';
+        categoryPills[0].classList.add('active');
+        categoryHidden.value = 'all';
+        
+        // Reset default type to "Fixed" (first chip)
         defaultTypeChips.forEach(c => c.classList.remove('active'));
-        defaultTypeHidden.value = '';
+        defaultTypeChips[0].classList.add('active');
+        defaultTypeHidden.value = 'fixed';
+        
         clearSelectedStudent();
         hideSearchResults();
+        
+        // Add default fee item
+        const container = document.getElementById('feeItemsList');
+        const defaultItem = document.createElement('div');
+        defaultItem.className = 'fee-item';
+        defaultItem.innerHTML = `
+            <div class="grid grid-cols-12 gap-3 items-center">
+                <div class="col-span-5">
+                    <input type="text" name="particular_label[]" placeholder="e.g., Tuition Fee" class="input-modern text-sm" value="Tuition Fee">
+                </div>
+                <div class="col-span-3">
+                    <input type="number" name="amount[]" placeholder="Amount" onchange="updateTotal()" class="input-modern text-sm text-right" value="500000">
+                </div>
+                <div class="col-span-3">
+                    <select name="type[]" class="select-modern text-sm">
+                        <option value="fixed" selected>Fixed</option>
+                        <option value="editable">Editable</option>
+                    </select>
+                </div>
+                <div class="col-span-1 text-center">
+                    <button type="button" onclick="removeFeeItem(this)" class="text-gray-400 hover:text-red-500 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(defaultItem);
         updateTotal();
         showMessage('All selections reset', 'success');
     };
@@ -1226,20 +1405,464 @@
         document.getElementById('successModal').classList.remove('active');
     };
 
+    // Invoiced Students Table Functions
+    let currentPage = 1;
+    let currentCategory = 'all';
+    let currentStatus = 'all';
+    let totalPages = 1;
+
+    async function loadInvoicedStudents() {
+        const container = document.getElementById('invoicedStudentsTableContainer');
+        if (!container) return;
+        
+        try {
+            const response = await fetch(`/fees/invoiced-students?page=${currentPage}&category=${currentCategory}&status=${currentStatus}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                totalPages = data.pagination.total_pages;
+                renderInvoicedStudentsTable(data.students);
+                renderPagination(data.pagination);
+            } else {
+                container.innerHTML = `
+                    <div class="text-center py-10">
+                        <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p class="text-gray-500">No invoiced students found</p>
+                        <p class="text-xs text-gray-400 mt-1">Generate invoices to see them here</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading invoiced students:', error);
+            container.innerHTML = `
+                <div class="text-center py-10">
+                    <svg class="w-12 h-12 text-red-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <p class="text-red-500">Error loading data</p>
+                    <button onclick="loadInvoicedStudents()" class="mt-3 text-sm text-orange-500 hover:text-orange-600">Try Again</button>
+                </div>
+            `;
+        }
+    }
+
+    function renderInvoicedStudentsTable(students) {
+        const container = document.getElementById('invoicedStudentsTableContainer');
+        
+        if (!students || students.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-10">
+                    <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p class="text-gray-500">No invoiced students found</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const html = `
+            <div class="overflow-x-auto">
+                <table class="invoice-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>ID / Class</th>
+                            <th>Category</th>
+                            <th class="text-right">Total Due</th>
+                            <th class="text-right">Paid</th>
+                            <th class="text-right">Balance</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${students.map(item => {
+                            const student = item.student;
+                            const totalDue = item.invoices.reduce((sum, inv) => sum + inv.total_amount, 0);
+                            const totalPaid = item.invoices.reduce((sum, inv) => sum + inv.paid_amount, 0);
+                            const totalBalance = item.invoices.reduce((sum, inv) => sum + inv.balance, 0);
+                            const status = totalBalance === 0 ? 'paid' : (totalPaid > 0 ? 'partial' : 'pending');
+                            
+                            const statusClass = status === 'paid' ? 'status-paid' : (status === 'partial' ? 'status-partial' : 'status-pending');
+                            const statusText = status === 'paid' ? 'Paid' : (status === 'partial' ? 'Partial' : 'Pending');
+                            const statusIcon = status === 'paid' 
+                                ? '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+                                : (status === 'partial' 
+                                    ? '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+                                    : '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>');
+                            
+                            const categoryClass = student.category === 'Boarding' ? 'category-boarding' : 'category-day';
+                            
+                            return `
+                                <tr class="hover:bg-orange-50/20 transition">
+                                    <td>
+                                        <p class="text-sm font-semibold text-gray-800">${escapeHtml(student.name)}</p>
+                                        <p class="text-xs text-gray-400 mt-0.5">${student.student_id}</p>
+                                    </td>
+                                    <td>
+                                        <p class="text-sm text-gray-600">${escapeHtml(student.class_name)}</p>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge ${categoryClass}">
+                                            ${student.category === 'Boarding' 
+                                                ? '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>'
+                                                : '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>'
+                                            }
+                                            ${student.category}
+                                        </span>
+                                    </td>
+                                    <td class="text-right text-sm font-semibold text-gray-800">UGX ${totalDue.toLocaleString()}</td>
+                                    <td class="text-right text-sm text-green-600 font-medium">UGX ${totalPaid.toLocaleString()}</td>
+                                    <td class="text-right text-sm font-bold ${totalBalance > 0 ? 'text-red-500' : 'text-green-600'}">UGX ${totalBalance.toLocaleString()}</td>
+                                    <td class="text-center">
+                                        <span class="status-badge ${statusClass}">
+                                            ${statusIcon}
+                                            ${statusText}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <button onclick="viewStudentInvoices('${student.id}')" 
+                                                class="text-orange-500 hover:text-orange-600 transition p-1 rounded-lg hover:bg-orange-50"
+                                                title="View Invoices">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+
+    function renderPagination(pagination) {
+        const container = document.getElementById('paginationControls');
+        if (!container) return;
+        
+        if (pagination.total_pages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        let pagesHtml = '';
+        const startPage = Math.max(1, pagination.current_page - 2);
+        const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            pagesHtml += `
+                <button onclick="goToPage(${i})" 
+                        class="pagination-btn ${i === pagination.current_page ? 'active' : ''}">
+                    ${i}
+                </button>
+            `;
+        }
+        
+        container.innerHTML = `
+            <div class="text-sm text-gray-500">
+                Showing ${((pagination.current_page - 1) * pagination.per_page) + 1} to ${Math.min(pagination.current_page * pagination.per_page, pagination.total_count)} of ${pagination.total_count} results
+            </div>
+            <div class="flex gap-2">
+                <button onclick="goToPage(${pagination.current_page - 1})" 
+                        class="pagination-btn"
+                        ${!pagination.has_prev ? 'disabled' : ''}>
+                    ← Previous
+                </button>
+                ${pagesHtml}
+                <button onclick="goToPage(${pagination.current_page + 1})" 
+                        class="pagination-btn"
+                        ${!pagination.has_next ? 'disabled' : ''}>
+                    Next →
+                </button>
+            </div>
+        `;
+    }
+
+    function goToPage(page) {
+        if (page < 1 || page > totalPages) return;
+        currentPage = page;
+        loadInvoicedStudents();
+    }
+
+    function refreshInvoicedStudents() {
+        currentPage = 1;
+        currentCategory = document.getElementById('studentCategoryFilter')?.value || 'all';
+        currentStatus = document.getElementById('invoiceStatusFilter')?.value || 'all';
+        loadInvoicedStudents();
+    }
+
+    async function viewStudentInvoices(studentId) {
+        try {
+            const response = await fetch(`/fees/students/${studentId}/invoices`);
+            const data = await response.json();
+            
+            if (data.success && data.invoices && data.invoices.length > 0) {
+                showStudentInvoicesModal(data.invoices);
+            } else {
+                showMessage('No invoices found for this student', 'error');
+            }
+        } catch (error) {
+            console.error('Error fetching student invoices:', error);
+            showMessage('Failed to load invoices', 'error');
+        }
+    }
+
+    async function viewInvoiceDetails(invoiceId) {
+        const modal = document.getElementById('invoiceModal');
+        const content = document.getElementById('invoiceDetailsContent');
+        
+        if (!modal || !content) return;
+        
+        modal.classList.add('active');
+        content.innerHTML = '<div class="text-center py-10"><div class="spinner mx-auto mb-4"></div><p>Loading invoice details...</p></div>';
+        
+        try {
+            const response = await fetch(`/fees/invoice/${invoiceId}/details`);
+            const data = await response.json();
+            
+            if (data.success) {
+                renderInvoiceDetails(data.invoice);
+            } else {
+                content.innerHTML = `
+                    <div class="text-center py-10">
+                        <svg class="w-12 h-12 text-red-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-red-500">Failed to load invoice details</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error fetching invoice details:', error);
+            content.innerHTML = `
+                <div class="text-center py-10">
+                    <p class="text-red-500">Error loading invoice details</p>
+                </div>
+            `;
+        }
+    }
+
+    function renderInvoiceDetails(invoice) {
+        const student = invoice.student;
+        const feeItems = invoice.fee_items || [];
+        const payments = invoice.payments || [];
+        
+        const statusConfig = {
+            paid: { icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>', text: 'Paid', class: 'status-paid' },
+            partial: { icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>', text: 'Partial', class: 'status-partial' },
+            pending: { icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>', text: 'Pending', class: 'status-pending' }
+        };
+        const status = statusConfig[invoice.status] || statusConfig.pending;
+        
+        const content = document.getElementById('invoiceDetailsContent');
+        content.innerHTML = `
+            <div class="space-y-5">
+                <!-- Student Info -->
+                <div class="bg-gray-50 rounded-xl p-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <p class="text-xs text-gray-500">Student Name</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(student.name)}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-500">Invoice #</p>
+                            <p class="font-mono text-sm font-semibold text-gray-800">${escapeHtml(invoice.invoice_number)}</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <p class="text-xs text-gray-500">Student ID</p>
+                            <p class="text-gray-700">${escapeHtml(student.student_id)}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500">Class</p>
+                            <p class="text-gray-700">${escapeHtml(student.class_name)}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500">Category</p>
+                            <p class="text-gray-700">${escapeHtml(student.category)}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500">Due Date</p>
+                            <p class="text-gray-700">${invoice.due_date || 'N/A'}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Fee Items -->
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3">Fee Items</h4>
+                    <div class="space-y-2">
+                        ${feeItems.map(item => `
+                            <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">${escapeHtml(item.label)}</p>
+                                    <p class="text-xs text-gray-400">${item.type === 'fixed' ? 'Fixed' : 'Editable'}</p>
+                                </div>
+                                <p class="text-sm font-semibold text-gray-800">UGX ${(item.amount || 0).toLocaleString()}</p>
+                            </div>
+                        `).join('')}
+                        <div class="flex justify-between items-center pt-3 mt-2 border-t-2 border-gray-200">
+                            <p class="font-bold text-gray-800">Total Amount</p>
+                            <p class="font-bold text-gray-800">UGX ${invoice.total_amount.toLocaleString()}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Payment Summary -->
+                <div class="bg-orange-50 rounded-xl p-4">
+                    <div class="grid grid-cols-3 gap-3 text-center">
+                        <div>
+                            <p class="text-xs text-gray-500">Total</p>
+                            <p class="text-lg font-bold text-gray-800">UGX ${invoice.total_amount.toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500">Paid</p>
+                            <p class="text-lg font-bold text-green-600">UGX ${invoice.paid_amount.toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500">Balance</p>
+                            <p class="text-lg font-bold ${invoice.balance > 0 ? 'text-red-500' : 'text-green-600'}">UGX ${invoice.balance.toLocaleString()}</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-center">
+                        <span class="status-badge ${status.class}">
+                            ${status.icon}
+                            ${status.text}
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Payment History -->
+                ${payments.length > 0 ? `
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Payment History</h4>
+                        <div class="space-y-2 max-h-48 overflow-y-auto">
+                            ${payments.map(payment => `
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-800">${payment.payment_method.toUpperCase()}</p>
+                                        <p class="text-xs text-gray-400">Receipt: ${payment.receipt_number || 'N/A'}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm font-semibold text-green-600">UGX ${(payment.amount || 0).toLocaleString()}</p>
+                                        <p class="text-xs text-gray-400">${payment.payment_date || 'N/A'}</p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : `
+                    <div class="text-center py-4 text-gray-400 text-sm">
+                        No payments recorded yet
+                    </div>
+                `}
+            </div>
+        `;
+    }
+
+    function showStudentInvoicesModal(invoices) {
+        const modal = document.getElementById('invoiceModal');
+        const content = document.getElementById('invoiceDetailsContent');
+        
+        if (!modal || !content) return;
+        
+        modal.classList.add('active');
+        
+        const studentName = invoices[0]?.students?.name || 'Student';
+        
+        content.innerHTML = `
+            <div class="space-y-4">
+                <div class="bg-gray-50 rounded-xl p-4 mb-2">
+                    <p class="font-semibold text-gray-800">${escapeHtml(studentName)}</p>
+                    <p class="text-xs text-gray-500">All Invoices</p>
+                </div>
+                <div class="space-y-3 max-h-96 overflow-y-auto">
+                    ${invoices.map(inv => {
+                        const statusConfig = {
+                            paid: { icon: '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>', text: 'Paid', class: 'status-paid' },
+                            partial: { icon: '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>', text: 'Partial', class: 'status-partial' },
+                            pending: { icon: '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>', text: 'Pending', class: 'status-pending' }
+                        };
+                        const status = statusConfig[inv.status] || statusConfig.pending;
+                        
+                        return `
+                            <div class="border border-gray-100 rounded-xl p-4 hover:shadow-md transition cursor-pointer" onclick="viewInvoiceDetails('${inv.id}')">
+                                <div class="flex justify-between items-start mb-3">
+                                    <div>
+                                        <p class="font-mono text-sm font-semibold text-gray-800">${escapeHtml(inv.invoice_number)}</p>
+                                        <p class="text-xs text-gray-400">Created: ${inv.created_at?.slice(0, 10) || 'N/A'}</p>
+                                    </div>
+                                    <span class="status-badge ${status.class}">
+                                        ${status.icon}
+                                        ${status.text}
+                                    </span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 text-center pt-2 border-t border-gray-100">
+                                    <div>
+                                        <p class="text-xs text-gray-500">Total</p>
+                                        <p class="text-sm font-semibold text-gray-800">UGX ${(inv.total_amount || 0).toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500">Paid</p>
+                                        <p class="text-sm font-semibold text-green-600">UGX ${(inv.paid_amount || 0).toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500">Balance</p>
+                                        <p class="text-sm font-semibold ${inv.balance > 0 ? 'text-red-500' : 'text-green-600'}">UGX ${(inv.balance || 0).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <div class="flex justify-end pt-3">
+                    <button onclick="closeInvoiceModal()" class="btn-secondary px-4 py-2 rounded-lg text-sm">Close</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function closeInvoiceModal() {
+        const modal = document.getElementById('invoiceModal');
+        if (modal) modal.classList.remove('active');
+    }
+
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
+        // Set default category and fee type
+        categoryHidden.value = 'all';
+        defaultTypeHidden.value = 'fixed';
+        
         expandableSections.forEach(section => {
             section.querySelector('.expandable-header').classList.remove('active');
             const content = section.querySelector('.expandable-content');
             if (content) content.classList.remove('open');
         });
-        categoryPills.forEach(p => p.classList.remove('active'));
-        defaultTypeChips.forEach(c => c.classList.remove('active'));
-        applyToHidden.value = '';
-        categoryHidden.value = '';
-        defaultTypeHidden.value = '';
-        document.getElementById('feeItemsList').innerHTML = '';
+        
         updateTotal();
+        
+        // Set up filter event listeners
+        const categoryFilter = document.getElementById('studentCategoryFilter');
+        const statusFilter = document.getElementById('invoiceStatusFilter');
+        
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', refreshInvoicedStudents);
+        }
+        if (statusFilter) {
+            statusFilter.addEventListener('change', refreshInvoicedStudents);
+        }
+        
+        // Load invoiced students on page load
+        loadInvoicedStudents();
     });
 
     document.addEventListener('input', function(e) {

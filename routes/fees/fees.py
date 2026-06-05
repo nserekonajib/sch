@@ -756,3 +756,279 @@ def get_classes():
     except Exception as e:
         print(f"Error getting classes: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+@fees_bp.route('/invoiced-students', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def get_invoiced_students():
+    """Get paginated list of students with invoices and their invoice details"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = 10
+        offset = (page - 1) * per_page
+        
+        # Get filter parameters
+        category = request.args.get('category', 'all')
+        status = request.args.get('status', 'all')
+        
+        # First, get students with category filter if needed
+        student_query = supabase.table('students')\
+            .select('id')\
+            .eq('institute_id', institute_id)\
+            .eq('status', 'active')
+        
+        if category != 'all':
+            student_query = student_query.eq('category', category)
+        
+        student_response = student_query.execute()
+        student_ids = [s['id'] for s in (student_response.data or [])]
+        
+        if not student_ids and category != 'all':
+            return jsonify({
+                'success': True,
+                'students': [],
+                'pagination': {
+                    'current_page': page,
+                    'per_page': per_page,
+                    'total_count': 0,
+                    'total_pages': 0,
+                    'has_prev': False,
+                    'has_next': False
+                }
+            })
+        
+        # Build query for invoices with students
+        query = supabase.table('invoices')\
+            .select('''
+                id,
+                invoice_number,
+                total_amount,
+                paid_amount,
+                balance,
+                status,
+                due_date,
+                created_at,
+                student_id,
+                fee_particulars(fee_items),
+                students!inner(
+                    id,
+                    name,
+                    student_id,
+                    category,
+                    class_id,
+                    classes!inner(name)
+                )
+            ''')\
+            .eq('institute_id', institute_id)
+        
+        # Apply student ID filter if category was specified
+        if student_ids:
+            query = query.in_('student_id', student_ids)
+        
+        # Apply status filter
+        if status != 'all':
+            query = query.eq('status', status)
+        
+        # Get total count for pagination
+        count_query = supabase.table('invoices')\
+            .select('id', count='exact')\
+            .eq('institute_id', institute_id)
+        
+        if student_ids:
+            count_query = count_query.in_('student_id', student_ids)
+        
+        if status != 'all':
+            count_query = count_query.eq('status', status)
+        
+        count_result = count_query.execute()
+        total_count = count_result.count or 0
+        
+        # Get paginated results
+        response = query.order('created_at', desc=True)\
+            .range(offset, offset + per_page - 1)\
+            .execute()
+        
+        invoices = response.data if response.data else []
+        
+        # Format the response
+        invoiced_students = []
+        invoice_map = {}
+        
+        for invoice in invoices:
+            student = invoice.get('students', {})
+            student_id = student.get('id')
+            
+            if not student_id:
+                continue
+            
+            # Parse fee items
+            fee_items = []
+            if invoice.get('fee_particulars') and invoice['fee_particulars'].get('fee_items'):
+                try:
+                    fee_items = json.loads(invoice['fee_particulars']['fee_items'])
+                except:
+                    fee_items = []
+            
+            # Group invoices by student
+            if student_id not in invoice_map:
+                invoice_map[student_id] = {
+                    'student': {
+                        'id': student_id,
+                        'name': student.get('name', 'N/A'),
+                        'student_id': student.get('student_id', 'N/A'),
+                        'category': student.get('category', 'N/A'),
+                        'class_name': student.get('classes', {}).get('name', 'N/A') if student.get('classes') else 'N/A'
+                    },
+                    'invoices': []
+                }
+            
+            invoice_map[student_id]['invoices'].append({
+                'id': invoice.get('id'),
+                'invoice_number': invoice.get('invoice_number'),
+                'total_amount': invoice.get('total_amount', 0),
+                'paid_amount': invoice.get('paid_amount', 0),
+                'balance': invoice.get('balance', 0),
+                'status': invoice.get('status', 'pending'),
+                'due_date': invoice.get('due_date'),
+                'created_at': invoice.get('created_at'),
+                'fee_items': fee_items
+            })
+        
+        # Convert to list
+        invoiced_students = list(invoice_map.values())
+        
+        total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'students': invoiced_students,
+            'pagination': {
+                'current_page': page,
+                'per_page': per_page,
+                'total_count': total_count,
+                'total_pages': total_pages,
+                'has_prev': page > 1,
+                'has_next': page < total_pages
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error getting invoiced students: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@fees_bp.route('/invoice/<invoice_id>/details', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def get_invoice_details(invoice_id):
+    """Get detailed invoice information for modal popup"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        response = supabase.table('invoices')\
+            .select('''
+                *,
+                students(
+                    id,
+                    name,
+                    student_id,
+                    category,
+                    class_id,
+                    classes(name),
+                    father_name,
+                    mother_name,
+                    all_parents,
+                    contact_number,
+                    address
+                ),
+                fee_particulars(fee_items),
+                payments(
+                    id,
+                    amount,
+                    payment_method,
+                    receipt_number,
+                    payment_date
+                )
+            ''')\
+            .eq('id', invoice_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if not response.data:
+            return jsonify({'success': False, 'message': 'Invoice not found'}), 404
+        
+        invoice = response.data[0]
+        
+        # Parse fee items
+        fee_items = []
+        if invoice.get('fee_particulars') and invoice['fee_particulars'].get('fee_items'):
+            try:
+                fee_items = json.loads(invoice['fee_particulars']['fee_items'])
+            except:
+                fee_items = []
+        
+        # Get student details
+        student = invoice.get('students', {})
+        
+        # Get payment history
+        payments = invoice.get('payments', [])
+        
+        # Sort payments by date
+        payments = sorted(payments, key=lambda x: x.get('payment_date', ''), reverse=True)
+        
+        # Build parent name string from available fields
+        parent_name = 'N/A'
+        if student.get('father_name') and student.get('mother_name'):
+            parent_name = f"Father: {student.get('father_name')}, Mother: {student.get('mother_name')}"
+        elif student.get('father_name'):
+            parent_name = f"Father: {student.get('father_name')}"
+        elif student.get('mother_name'):
+            parent_name = f"Mother: {student.get('mother_name')}"
+        elif student.get('all_parents'):
+            parent_name = student.get('all_parents')
+        
+        # Get parent phone
+        parent_phone = student.get('contact_number', 'N/A')
+        
+        return jsonify({
+            'success': True,
+            'invoice': {
+                'id': invoice.get('id'),
+                'invoice_number': invoice.get('invoice_number'),
+                'total_amount': invoice.get('total_amount', 0),
+                'paid_amount': invoice.get('paid_amount', 0),
+                'balance': invoice.get('balance', 0),
+                'status': invoice.get('status', 'pending'),
+                'due_date': invoice.get('due_date'),
+                'created_at': invoice.get('created_at'),
+                'updated_at': invoice.get('updated_at'),
+                'fee_items': fee_items,
+                'student': {
+                    'id': student.get('id'),
+                    'name': student.get('name', 'N/A'),
+                    'student_id': student.get('student_id', 'N/A'),
+                    'category': student.get('category', 'N/A'),
+                    'class_name': student.get('classes', {}).get('name', 'N/A') if student.get('classes') else 'N/A',
+                    'parent_name': parent_name,
+                    'parent_phone': parent_phone,
+                    'address': student.get('address', 'N/A')
+                },
+                'payments': payments
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error getting invoice details: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500

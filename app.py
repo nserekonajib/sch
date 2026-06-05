@@ -94,6 +94,8 @@ from routes.reports.reports import reports_bp
 from routes.students.studentDetails import student_detail_bp
 from routes.permissions.permissions_management import permissions_bp
 
+
+
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
 app.register_blueprint(instituteProfile_bp)
@@ -153,11 +155,6 @@ def login_page():
 def register_page():
     """Register page route"""
     return render_template('auth.html', mode='register')
-
-
-# Add to app.py
-
-
 
 @app.route('/static/<path:filename>')
 def serve_static(filename):

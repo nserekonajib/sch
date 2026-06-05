@@ -914,6 +914,13 @@ def export_account_report(account_id):
         print(f"Error exporting report: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
     
+
+
+@accounts_bp.route('/expenses')
+def expenses():
+    """Render expenses management page"""
+    return render_template('expenses/index.html')
+    
     
 def generate_account_code(institute_id, account_type):
     """Generate unique account code including institute ID"""
