@@ -920,6 +920,12 @@ def export_account_report(account_id):
 def expenses():
     """Render expenses management page"""
     return render_template('expenses/index.html')
+
+
+@accounts_bp.route('/income')
+def income():
+    """Render the income management page"""
+    return render_template('incomes/index.html')
     
     
 def generate_account_code(institute_id, account_type):

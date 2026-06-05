@@ -1,0 +1,1348 @@
+<!-- templates/incomes/index.html - Income Management (Fully Responsive) -->
+{% extends "base.html" %}
+
+{% block title %}Income Management - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Base & Utility Styles */
+    .stat-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .btn-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    .btn-success:hover {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .income-row {
+        transition: all 0.2s ease;
+    }
+    .income-row:hover {
+        background-color: #f0fdf4 !important;
+        transform: translateX(2px);
+    }
+    .income-badge {
+        background-color: #bbf7d0;
+        color: #166534;
+    }
+    .tab-active {
+        background-color: #ffa500;
+        color: white;
+    }
+    .tab-inactive {
+        background-color: #f3f4f6;
+        color: #6b7280;
+    }
+    .tab-inactive:hover {
+        background-color: #e5e7eb;
+    }
+
+    /* Modern Table Styles */
+    .income-table-container {
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .income-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .income-table thead th {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 1rem 1.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #4b5563;
+        border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .income-table tbody td {
+        padding: 1rem 1.25rem;
+        font-size: 0.875rem;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: middle;
+    }
+    
+    .income-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    /* Category Badge Styles */
+    .category-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        line-height: 1;
+    }
+    
+    .category-school-fees {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: #1e40af;
+    }
+    
+    .category-other-income {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        color: #065f46;
+    }
+    
+    /* Amount Styles */
+    .amount-positive {
+        font-weight: 700;
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        font-size: 0.9375rem;
+    }
+    
+    /* Action Buttons */
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .action-btn-view {
+        background-color: #eff6ff;
+        color: #3b82f6;
+    }
+    
+    .action-btn-view:hover {
+        background-color: #3b82f6;
+        color: white;
+        transform: scale(1.05);
+    }
+    
+    /* Responsive Table Styles */
+    @media (max-width: 768px) {
+        .income-table thead {
+            display: none;
+        }
+        
+        .income-table tbody tr {
+            display: block;
+            margin-bottom: 1rem;
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .income-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid #f3f4f6;
+            text-align: right;
+        }
+        
+        .income-table tbody td:last-child {
+            border-bottom: none;
+        }
+        
+        .income-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-align: left;
+            flex: 1;
+        }
+        
+        .income-table tbody td > * {
+            flex: 2;
+            text-align: right;
+        }
+        
+        .income-table tbody td .category-badge {
+            justify-content: flex-end;
+        }
+    }
+
+    /* Filter Bar Styles */
+    .filter-bar {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        border: 1px solid #f3f4f6;
+    }
+    
+    /* Loading Skeleton */
+    .skeleton {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-4 sm:py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900 mb-1">Income Management</h1>
+        <p class="text-sm text-gray-600">Track and manage all income transactions including school fees</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-4 stat-card border-l-4 border-blue-500 hover:shadow-md transition-all">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">School Fees</p>
+            <p class="text-xl font-bold text-blue-600 mt-1" id="statSchoolFees">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 stat-card border-l-4 border-green-500 hover:shadow-md transition-all">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">Other Income</p>
+            <p class="text-xl font-bold text-green-600 mt-1" id="statOtherIncome">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 stat-card border-l-4 border-teal-500 hover:shadow-md transition-all">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">Total Income</p>
+            <p class="text-xl font-bold text-teal-600 mt-1" id="statTotalIncome">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 stat-card border-l-4 border-purple-500 hover:shadow-md transition-all">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">This Month</p>
+            <p class="text-xl font-bold text-purple-600 mt-1" id="statMonthlyIncome">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 stat-card border-l-4 border-indigo-500 hover:shadow-md transition-all">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">This Week</p>
+            <p class="text-xl font-bold text-indigo-600 mt-1" id="statWeeklyIncome">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 stat-card border-l-4 border-orange-500 hover:shadow-md transition-all">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">Today</p>
+            <p class="text-xl font-bold text-orange-600 mt-1" id="statDailyIncome">UGX 0</p>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                <input type="date" id="filterStartDate" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                <input type="date" id="filterEndDate" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Income Category</label>
+                <select id="filterCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                    <option value="">All Categories</option>
+                    <option value="school_fees">🏫 School Fees</option>
+                    <option value="other_income">💰 Other Income</option>
+                </select>
+            </div>
+            <div class="flex items-end gap-2">
+                <button onclick="applyFilters()" class="flex-1 btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium transition-all hover:shadow-lg">
+                    <i class="fas fa-filter mr-2"></i> Apply
+                </button>
+                <button onclick="resetFilters()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all text-sm">
+                    <i class="fas fa-undo mr-2"></i> Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-6 flex gap-2 border-b border-gray-200">
+        <button onclick="showTab('list')" id="tabList" class="tab-button px-6 py-2 rounded-t-lg font-medium transition-all tab-active text-sm">
+            <i class="fas fa-list mr-2"></i> All Income
+        </button>
+        <button onclick="showTab('categories')" id="tabCategories" class="tab-button px-6 py-2 rounded-t-lg font-medium transition-all tab-inactive text-sm">
+            <i class="fas fa-chart-pie mr-2"></i> By Category
+        </button>
+        <button onclick="showTab('recent')" id="tabRecent" class="tab-button px-6 py-2 rounded-t-lg font-medium transition-all tab-inactive text-sm">
+            <i class="fas fa-clock mr-2"></i> Recent
+        </button>
+       
+    </div>
+
+    <!-- All Income Tab -->
+    <div id="listTab" class="tab-content">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden income-table-container">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">
+                        <i class="fas fa-plus-circle text-green-600 mr-2"></i>
+                        All Income Transactions
+                    </h2>
+                    <p class="text-xs text-gray-500 mt-1">View and manage all your income records</p>
+                </div>
+                <button onclick="openIncomeModal()" class="btn-success px-5 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2 transition-all hover:shadow-lg">
+                    <i class="fas fa-plus"></i>
+                    Add Other Income
+                </button>
+            </div>
+            <div class="p-6" id="incomeListContainer">
+                <!-- Table will be loaded here -->
+                <div class="text-center py-12">
+                    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div>
+                    <p class="text-sm text-gray-500 mt-3">Loading income records...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categories Tab -->
+    <div id="categoriesTab" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-white">
+                <h2 class="text-lg font-semibold text-gray-800">
+                    <i class="fas fa-chart-pie text-green-600 mr-2"></i>
+                    Income by Category
+                </h2>
+            </div>
+            <div class="p-6" id="categoriesContainer">
+                <div class="text-center py-12">
+                    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div>
+                    <p class="text-sm text-gray-500 mt-3">Loading categories...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Income Tab -->
+    <div id="recentTab" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-white">
+                <h2 class="text-lg font-semibold text-gray-800">
+                    <i class="fas fa-clock text-green-600 mr-2"></i>
+                    Recent Income (Last 30 Days)
+                </h2>
+            </div>
+            <div class="p-6" id="recentContainer">
+                <div class="text-center py-12">
+                    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div>
+                    <p class="text-sm text-gray-500 mt-3">Loading recent income...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- School Fees Tab -->
+    <div id="schoolFeesTab" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">
+                        <i class="fas fa-graduation-cap text-blue-600 mr-2"></i>
+                        School Fees Collections
+                    </h2>
+                    <p class="text-xs text-gray-500 mt-1">Track all school fee payments</p>
+                </div>
+                <button onclick="openSchoolFeesModal()" class="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2 transition-all hover:shadow-lg">
+                    <i class="fas fa-plus"></i>
+                    Record School Fees
+                </button>
+            </div>
+            <div class="p-6" id="schoolFeesContainer">
+                <div class="text-center py-12">
+                    <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div>
+                    <p class="text-sm text-gray-500 mt-3">Loading school fees records...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rest of the modals remain the same as before... -->
+<!-- Other Income Modal -->
+<div id="incomeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Add Other Income</h3>
+            <button onclick="closeIncomeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-6">
+            <form id="incomeForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Income Account *</label>
+                    <select id="incomeAccountId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                        <option value="">Select Income Account</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount (UGX) *</label>
+                    <input type="number" id="incomeAmount" step="0.01" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Income Date *</label>
+                    <input type="date" id="incomeDate" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method *</label>
+                    <select id="incomePaymentMethod" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                        <option value="cash">💵 Cash</option>
+                        <option value="bank">🏦 Bank Transfer</option>
+                        <option value="mobile_money">📱 Mobile Money</option>
+                        <option value="cheque">📝 Cheque</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Reference Number</label>
+                    <input type="text" id="incomeReference" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Source/Payer</label>
+                    <input type="text" id="incomeSource" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea id="incomeDescription" rows="2" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeIncomeModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 btn-success text-white rounded-lg font-medium transition-all hover:shadow-lg">
+                        Save Income
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- School Fees Modal -->
+<div id="schoolFeesModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Record School Fees</h3>
+            <button onclick="closeSchoolFeesModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-6">
+            <form id="schoolFeesForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student Name *</label>
+                    <input type="text" id="studentName" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student ID/Registration Number</label>
+                    <input type="text" id="studentId" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Class/Grade</label>
+                    <input type="text" id="studentClass" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount (UGX) *</label>
+                    <input type="number" id="feesAmount" step="0.01" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Payment Date *</label>
+                    <input type="date" id="feesDate" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method *</label>
+                    <select id="feesPaymentMethod" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                        <option value="cash">💵 Cash</option>
+                        <option value="bank">🏦 Bank Transfer</option>
+                        <option value="mobile_money">📱 Mobile Money</option>
+                        <option value="cheque">📝 Cheque</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Receipt Number</label>
+                    <input type="text" id="receiptNumber" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Term/Semester</label>
+                    <select id="term" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year</label>
+                    <input type="text" id="academicYear" placeholder="2024/2025"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                    <textarea id="feesNotes" rows="2" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeSchoolFeesModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all hover:shadow-lg">
+                        Record Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Income Detail Modal -->
+<div id="incomeDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 transform transition-all modal-container">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Income Details</h3>
+            <button onclick="closeIncomeDetailModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-6" id="incomeDetailContent">
+            <!-- Dynamic content -->
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 p-6 text-center transform transition-all modal-container">
+        <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-check-circle text-3xl text-green-500"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">Success!</h3>
+        <p class="text-gray-600 mb-6" id="successMessage">Operation completed successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium transition-all hover:shadow-lg">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let currentTab = 'list';
+    let currentFilters = {
+        start_date: '',
+        end_date: '',
+        category: ''
+    };
+
+    // Helper function to clean account name
+    function cleanAccountName(accountName) {
+        if (!accountName) return '';
+        let cleaned = accountName.replace(/\s*\([^)]*\)/g, '');
+        cleaned = cleaned.trim();
+        return cleaned;
+    }
+
+    // Load income statistics
+    async function loadIncomeStats() {
+        try {
+            const response = await fetch('/accounts/dashboard/stats');
+            const result = await response.json();
+            
+            if (result.success) {
+                const stats = result.stats;
+                document.getElementById('statSchoolFees').textContent = `UGX ${stats.school_fees_collected.toLocaleString()}`;
+                document.getElementById('statOtherIncome').textContent = `UGX ${stats.other_income.toLocaleString()}`;
+                document.getElementById('statTotalIncome').textContent = `UGX ${stats.total_income.toLocaleString()}`;
+                
+                const transactionsResponse = await fetch('/accounts/transactions');
+                const transactionsResult = await transactionsResponse.json();
+                
+                if (transactionsResult.success) {
+                    const incomes = transactionsResult.transactions.filter(t => t.type === 'income');
+                    const now = new Date();
+                    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                    const startOfWeek = new Date(now);
+                    startOfWeek.setDate(now.getDate() - now.getDay());
+                    const today = now.toISOString().split('T')[0];
+                    
+                    const monthlyIncome = incomes.filter(t => new Date(t.date) >= startOfMonth)
+                        .reduce((sum, t) => sum + t.amount, 0);
+                    const weeklyIncome = incomes.filter(t => new Date(t.date) >= startOfWeek)
+                        .reduce((sum, t) => sum + t.amount, 0);
+                    const dailyIncome = incomes.filter(t => t.date === today)
+                        .reduce((sum, t) => sum + t.amount, 0);
+                    
+                    document.getElementById('statMonthlyIncome').textContent = `UGX ${monthlyIncome.toLocaleString()}`;
+                    document.getElementById('statWeeklyIncome').textContent = `UGX ${weeklyIncome.toLocaleString()}`;
+                    document.getElementById('statDailyIncome').textContent = `UGX ${dailyIncome.toLocaleString()}`;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+
+    // Load income accounts
+    async function loadIncomeAccounts() {
+        try {
+            const response = await fetch('/accounts/chart-of-accounts');
+            const result = await response.json();
+            
+            if (result.success) {
+                const incomeAccounts = result.accounts.income || [];
+                const select = document.getElementById('incomeAccountId');
+                select.innerHTML = '<option value="">Select Income Account</option>';
+                
+                incomeAccounts.forEach(account => {
+                    const cleanName = cleanAccountName(account.account_name);
+                    select.innerHTML += `<option value="${account.id}">${cleanName}</option>`;
+                });
+            }
+        } catch (error) {
+            console.error('Error loading income accounts:', error);
+        }
+    }
+
+    // Load all income with beautiful table styling
+    async function loadIncomeList() {
+        try {
+            const response = await fetch('/accounts/transactions');
+            const result = await response.json();
+            
+            if (result.success) {
+                let incomes = result.transactions.filter(t => t.type === 'income');
+                
+                if (currentFilters.start_date) {
+                    incomes = incomes.filter(t => t.date >= currentFilters.start_date);
+                }
+                if (currentFilters.end_date) {
+                    incomes = incomes.filter(t => t.date <= currentFilters.end_date);
+                }
+                if (currentFilters.category === 'school_fees') {
+                    incomes = incomes.filter(t => t.is_school_fees === true);
+                } else if (currentFilters.category === 'other_income') {
+                    incomes = incomes.filter(t => t.is_school_fees !== true);
+                }
+                
+                const container = document.getElementById('incomeListContainer');
+                
+                if (incomes.length > 0) {
+                    container.innerHTML = `
+                        <div class="overflow-x-auto">
+                            <table class="income-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Date</th>
+                                        <th class="text-left">Category</th>
+                                        <th class="text-left">Source/Payer</th>
+                                        <th class="text-right">Amount</th>
+                                        <th class="text-left">Payment Method</th>
+                                        <th class="text-left">Reference</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${incomes.map(inc => `
+                                        <tr class="income-row hover:bg-green-50 transition-all">
+                                            <td data-label="Date">
+                                                <span class="font-medium text-gray-900">${inc.date}</span>
+                                            </td>
+                                            <td data-label="Category">
+                                                <span class="category-badge ${inc.is_school_fees ? 'category-school-fees' : 'category-other-income'}">
+                                                    ${inc.is_school_fees ? '🎓 School Fees' : '💰 ' + cleanAccountName(inc.account_name)}
+                                                </span>
+                                            </td>
+                                            <td data-label="Source/Payer">
+                                                <span class="text-gray-700">${inc.source || inc.student_name || '-'}</span>
+                                            </td>
+                                            <td data-label="Amount" class="text-right">
+                                                <span class="amount-positive font-bold">UGX ${inc.amount.toLocaleString()}</span>
+                                            </td>
+                                            <td data-label="Payment Method">
+                                                <span class="text-gray-600 capitalize">
+                                                    ${inc.payment_method === 'cash' ? '💵' : inc.payment_method === 'bank' ? '🏦' : inc.payment_method === 'mobile_money' ? '📱' : '📝'} 
+                                                    ${inc.payment_method.replace('_', ' ')}
+                                                </span>
+                                            </td>
+                                            <td data-label="Reference">
+                                                <span class="text-gray-500 text-sm">${inc.reference || inc.receipt_number || '-'}</span>
+                                            </td>
+                                            <td data-label="Actions" class="text-center">
+                                                <button onclick='viewIncomeDetails(${JSON.stringify(inc).replace(/'/g, "\\'")})' 
+                                                        class="action-btn action-btn-view">
+                                                    <i class="fas fa-eye text-sm"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg flex justify-between items-center">
+                            <span class="text-sm font-semibold text-gray-700">Total Income</span>
+                            <span class="text-xl font-bold text-green-600">UGX ${incomes.reduce((sum, t) => sum + t.amount, 0).toLocaleString()}</span>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-12">
+                            <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500">No income records found for the selected filters</p>
+                            <button onclick="openIncomeModal()" class="mt-4 btn-success px-4 py-2 rounded-lg text-white text-sm">
+                                <i class="fas fa-plus mr-2"></i>Add Your First Income
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading income:', error);
+            document.getElementById('incomeListContainer').innerHTML = `
+                <div class="text-center py-12">
+                    <i class="fas fa-exclamation-triangle text-6xl text-red-300 mb-4"></i>
+                    <p class="text-red-500">Failed to load income records. Please try again.</p>
+                </div>
+            `;
+        }
+    }
+
+    // Other functions (loadIncomeByCategory, loadRecentIncome, loadSchoolFees, etc.) remain the same as before...
+    // [Previous functions continue here...]
+
+    async function loadIncomeByCategory() {
+        try {
+            const response = await fetch('/accounts/transactions');
+            const result = await response.json();
+            
+            if (result.success) {
+                const incomes = result.transactions.filter(t => t.type === 'income');
+                const schoolFees = incomes.filter(t => t.is_school_fees === true);
+                const otherIncome = incomes.filter(t => t.is_school_fees !== true);
+                
+                const totalSchoolFees = schoolFees.reduce((sum, t) => sum + t.amount, 0);
+                const totalOtherIncome = otherIncome.reduce((sum, t) => sum + t.amount, 0);
+                const totalIncome = totalSchoolFees + totalOtherIncome;
+                
+                const schoolFeesPercent = totalIncome > 0 ? (totalSchoolFees / totalIncome) * 100 : 0;
+                const otherIncomePercent = totalIncome > 0 ? (totalOtherIncome / totalIncome) * 100 : 0;
+                
+                const container = document.getElementById('categoriesContainer');
+                
+                if (incomes.length > 0) {
+                    container.innerHTML = `
+                        <div class="space-y-4">
+                            <div class="border rounded-lg p-5 bg-gradient-to-r from-blue-50 to-indigo-50">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="font-semibold text-gray-800 text-lg">🎓 School Fees</h3>
+                                    <span class="text-sm text-gray-600">${schoolFees.length} transaction(s)</span>
+                                </div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-blue-600 font-bold text-xl">UGX ${totalSchoolFees.toLocaleString()}</span>
+                                    <span class="text-sm text-gray-500">${schoolFeesPercent.toFixed(1)}% of total</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-blue-500 rounded-full h-2 transition-all" style="width: ${schoolFeesPercent}%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="border rounded-lg p-5 bg-gradient-to-r from-green-50 to-emerald-50">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="font-semibold text-gray-800 text-lg">💰 Other Income</h3>
+                                    <span class="text-sm text-gray-600">${otherIncome.length} transaction(s)</span>
+                                </div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-green-600 font-bold text-xl">UGX ${totalOtherIncome.toLocaleString()}</span>
+                                    <span class="text-sm text-gray-500">${otherIncomePercent.toFixed(1)}% of total</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-green-500 rounded-full h-2 transition-all" style="width: ${otherIncomePercent}%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 p-4 bg-gray-50 rounded-lg flex justify-between items-center">
+                                <strong class="text-gray-700">Total All Income</strong>
+                                <strong class="text-teal-600 text-lg">UGX ${totalIncome.toLocaleString()}</strong>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8">
+                            <h4 class="font-semibold text-gray-800 mb-4 text-lg">Other Income Breakdown</h4>
+                            ${(() => {
+                                const grouped = {};
+                                otherIncome.forEach(inc => {
+                                    const cleanName = cleanAccountName(inc.account_name);
+                                    if (!grouped[cleanName]) {
+                                        grouped[cleanName] = { total: 0, count: 0 };
+                                    }
+                                    grouped[cleanName].total += inc.amount;
+                                    grouped[cleanName].count++;
+                                });
+                                
+                                let html = '<div class="space-y-3">';
+                                for (const [account, data] of Object.entries(grouped)) {
+                                    const percent = (data.total / totalOtherIncome) * 100;
+                                    html += `
+                                        <div class="bg-white border rounded-lg p-3">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <span class="font-medium text-gray-700">${account}</span>
+                                                <span class="font-bold text-green-600">UGX ${data.total.toLocaleString()}</span>
+                                            </div>
+                                            <div class="flex justify-between items-center text-xs text-gray-500 mb-1">
+                                                <span>${data.count} transaction(s)</span>
+                                                <span>${percent.toFixed(1)}% of other income</span>
+                                            </div>
+                                            <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                                <div class="bg-green-400 rounded-full h-1.5 transition-all" style="width: ${percent}%"></div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                                html += '</div>';
+                                return html;
+                            })()}
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-12">
+                            <i class="fas fa-chart-pie text-6xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500">No income transactions found</p>
+                        </div>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading categories:', error);
+        }
+    }
+
+    async function loadRecentIncome() {
+        try {
+            const response = await fetch('/accounts/transactions');
+            const result = await response.json();
+            
+            if (result.success) {
+                const now = new Date();
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(now.getDate() - 30);
+                
+                const recentIncome = result.transactions.filter(t => 
+                    t.type === 'income' && new Date(t.date) >= thirtyDaysAgo
+                ).sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                const container = document.getElementById('recentContainer');
+                
+                if (recentIncome.length > 0) {
+                    container.innerHTML = `
+                        <div class="overflow-x-auto">
+                            <table class="income-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Date</th>
+                                        <th class="text-left">Category</th>
+                                        <th class="text-left">Source/Payer</th>
+                                        <th class="text-right">Amount</th>
+                                        <th class="text-left">Payment Method</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${recentIncome.map(inc => `
+                                        <tr class="income-row hover:bg-green-50 transition-all">
+                                            <td data-label="Date">
+                                                <span class="font-medium text-gray-900">${inc.date}</span>
+                                            </td>
+                                            <td data-label="Category">
+                                                <span class="category-badge ${inc.is_school_fees ? 'category-school-fees' : 'category-other-income'}">
+                                                    ${inc.is_school_fees ? '🎓 School Fees' : '💰 ' + cleanAccountName(inc.account_name)}
+                                                </span>
+                                            </td>
+                                            <td data-label="Source/Payer">
+                                                <span class="text-gray-700">${inc.source || inc.student_name || '-'}</span>
+                                            </td>
+                                            <td data-label="Amount" class="text-right">
+                                                <span class="amount-positive font-bold">UGX ${inc.amount.toLocaleString()}</span>
+                                            </td>
+                                            <td data-label="Payment Method">
+                                                <span class="text-gray-600 capitalize">
+                                                    ${inc.payment_method === 'cash' ? '💵' : inc.payment_method === 'bank' ? '🏦' : inc.payment_method === 'mobile_money' ? '📱' : '📝'} 
+                                                    ${inc.payment_method.replace('_', ' ')}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg flex justify-between items-center">
+                            <span class="text-sm font-semibold text-gray-700">Total (Last 30 Days)</span>
+                            <span class="text-xl font-bold text-green-600">UGX ${recentIncome.reduce((sum, t) => sum + t.amount, 0).toLocaleString()}</span>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-12">
+                            <i class="fas fa-clock text-6xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500">No recent income found</p>
+                        </div>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading recent income:', error);
+        }
+    }
+
+    async function loadSchoolFees() {
+        try {
+            const response = await fetch('/accounts/transactions');
+            const result = await response.json();
+            
+            if (result.success) {
+                const schoolFees = result.transactions.filter(t => t.type === 'income' && t.is_school_fees === true);
+                
+                const container = document.getElementById('schoolFeesContainer');
+                
+                if (schoolFees.length > 0) {
+                    container.innerHTML = `
+                        <div class="overflow-x-auto">
+                            <table class="income-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Date</th>
+                                        <th class="text-left">Student Name</th>
+                                        <th class="text-left">Class</th>
+                                        <th class="text-right">Amount</th>
+                                        <th class="text-left">Term</th>
+                                        <th class="text-left">Receipt #</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${schoolFees.map(fee => `
+                                        <tr class="income-row hover:bg-blue-50 transition-all">
+                                            <td data-label="Date">
+                                                <span class="font-medium text-gray-900">${fee.date}</span>
+                                            </td>
+                                            <td data-label="Student Name">
+                                                <span class="font-semibold text-gray-800">${fee.student_name || '-'}</span>
+                                            </td>
+                                            <td data-label="Class">
+                                                <span class="text-gray-600">${fee.student_class || '-'}</span>
+                                            </td>
+                                            <td data-label="Amount" class="text-right">
+                                                <span class="amount-positive font-bold">UGX ${fee.amount.toLocaleString()}</span>
+                                            </td>
+                                            <td data-label="Term">
+                                                <span class="text-gray-600">${fee.term || '-'}</span>
+                                            </td>
+                                            <td data-label="Receipt #">
+                                                <span class="text-gray-500 text-sm">${fee.receipt_number || fee.reference || '-'}</span>
+                                            </td>
+                                            <td data-label="Actions" class="text-center">
+                                                <button onclick='viewIncomeDetails(${JSON.stringify(fee).replace(/'/g, "\\'")})' 
+                                                        class="action-btn action-btn-view">
+                                                    <i class="fas fa-eye text-sm"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg flex justify-between items-center">
+                            <span class="text-sm font-semibold text-gray-700">Total School Fees Collected</span>
+                            <span class="text-xl font-bold text-blue-600">UGX ${schoolFees.reduce((sum, t) => sum + t.amount, 0).toLocaleString()}</span>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-12">
+                            <i class="fas fa-graduation-cap text-6xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500">No school fees records found</p>
+                            <button onclick="openSchoolFeesModal()" class="mt-4 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white text-sm transition-all">
+                                <i class="fas fa-plus mr-2"></i>Record First School Fees
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading school fees:', error);
+        }
+    }
+
+    // Apply filters
+    function applyFilters() {
+        currentFilters.start_date = document.getElementById('filterStartDate').value;
+        currentFilters.end_date = document.getElementById('filterEndDate').value;
+        currentFilters.category = document.getElementById('filterCategory').value;
+        loadIncomeList();
+    }
+
+    // Reset filters
+    function resetFilters() {
+        document.getElementById('filterStartDate').value = '';
+        document.getElementById('filterEndDate').value = '';
+        document.getElementById('filterCategory').value = '';
+        currentFilters = { start_date: '', end_date: '', category: '' };
+        loadIncomeList();
+    }
+
+    // View income details
+    function viewIncomeDetails(income) {
+        const container = document.getElementById('incomeDetailContent');
+        container.innerHTML = `
+            <div class="space-y-4">
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="font-medium text-gray-600">Date:</span>
+                    <span class="text-gray-800 font-semibold">${income.date}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="font-medium text-gray-600">Category:</span>
+                    <span class="category-badge ${income.is_school_fees ? 'category-school-fees' : 'category-other-income'}">
+                        ${income.is_school_fees ? '🎓 School Fees' : '💰 ' + cleanAccountName(income.account_name)}
+                    </span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="font-medium text-gray-600">Amount:</span>
+                    <span class="amount-positive text-xl font-bold">UGX ${income.amount.toLocaleString()}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="font-medium text-gray-600">Payment Method:</span>
+                    <span class="text-gray-800 capitalize">
+                        ${income.payment_method === 'cash' ? '💵' : income.payment_method === 'bank' ? '🏦' : income.payment_method === 'mobile_money' ? '📱' : '📝'} 
+                        ${income.payment_method.replace('_', ' ')}
+                    </span>
+                </div>
+                ${income.student_name ? `
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="font-medium text-gray-600">Student Name:</span>
+                    <span class="text-gray-800 font-semibold">${income.student_name}</span>
+                </div>
+                ` : ''}
+                ${income.student_class ? `
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="font-medium text-gray-600">Class:</span>
+                    <span class="text-gray-800">${income.student_class}</span>
+                </div>
+                ` : ''}
+                ${income.term ? `
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="font-medium text-gray-600">Term:</span>
+                    <span class="text-gray-800">${income.term}</span>
+                </div>
+                ` : ''}
+                ${income.source ? `
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="font-medium text-gray-600">Source/Payer:</span>
+                    <span class="text-gray-800">${income.source}</span>
+                </div>
+                ` : ''}
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="font-medium text-gray-600">Reference:</span>
+                    <span class="text-gray-800">${income.reference || income.receipt_number || '-'}</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span class="font-medium text-gray-600">Description:</span>
+                    <span class="text-gray-800">${income.description || income.notes || '-'}</span>
+                </div>
+            </div>
+        `;
+        document.getElementById('incomeDetailModal').classList.remove('hidden');
+        document.getElementById('incomeDetailModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Tab switching
+    function showTab(tab) {
+        currentTab = tab;
+        
+        const tabs = ['list', 'categories', 'recent', 'schoolFees'];
+        tabs.forEach(t => {
+            const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+            const content = document.getElementById(`${t}Tab`);
+            if (t === tab) {
+                btn.classList.remove('tab-inactive');
+                btn.classList.add('tab-active');
+                content.classList.remove('hidden');
+            } else {
+                btn.classList.remove('tab-active');
+                btn.classList.add('tab-inactive');
+                content.classList.add('hidden');
+            }
+        });
+        
+        if (tab === 'list') loadIncomeList();
+        else if (tab === 'categories') loadIncomeByCategory();
+        else if (tab === 'recent') loadRecentIncome();
+        else if (tab === 'schoolFees') loadSchoolFees();
+    }
+
+    // Modal functions
+    function openIncomeModal() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('incomeDate').value = today;
+        loadIncomeAccounts();
+        document.getElementById('incomeModal').classList.remove('hidden');
+        document.getElementById('incomeModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeIncomeModal() {
+        document.getElementById('incomeModal').classList.add('hidden');
+        document.getElementById('incomeModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        document.getElementById('incomeForm').reset();
+    }
+
+    function openSchoolFeesModal() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('feesDate').value = today;
+        document.getElementById('academicYear').value = new Date().getFullYear() + '/' + (new Date().getFullYear() + 1);
+        document.getElementById('schoolFeesModal').classList.remove('hidden');
+        document.getElementById('schoolFeesModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeSchoolFeesModal() {
+        document.getElementById('schoolFeesModal').classList.add('hidden');
+        document.getElementById('schoolFeesModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        document.getElementById('schoolFeesForm').reset();
+    }
+
+    function closeIncomeDetailModal() {
+        document.getElementById('incomeDetailModal').classList.add('hidden');
+        document.getElementById('incomeDetailModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    async function getSchoolFeesAccountId() {
+        try {
+            const response = await fetch('/accounts/chart-of-accounts');
+            const result = await response.json();
+            
+            if (result.success) {
+                const incomeAccounts = result.accounts.income || [];
+                const schoolFeesAccount = incomeAccounts.find(acc => 
+                    acc.account_name.toLowerCase().includes('school') || 
+                    acc.account_name.toLowerCase().includes('fees')
+                );
+                
+                if (schoolFeesAccount) {
+                    return schoolFeesAccount.id;
+                }
+            }
+            
+            alert('Please create a "School Fees" income account in Chart of Accounts first.');
+            throw new Error('School fees account not found');
+        } catch (error) {
+            console.error('Error finding school fees account:', error);
+            throw error;
+        }
+    }
+
+    // Form submissions
+    document.getElementById('incomeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const data = {
+            account_id: document.getElementById('incomeAccountId').value,
+            amount: parseFloat(document.getElementById('incomeAmount').value),
+            transaction_date: document.getElementById('incomeDate').value,
+            payment_method: document.getElementById('incomePaymentMethod').value,
+            reference_number: document.getElementById('incomeReference').value,
+            description: document.getElementById('incomeDescription').value,
+            source: document.getElementById('incomeSource').value,
+            is_school_fees: false
+        };
+        
+        try {
+            const response = await fetch('/accounts/income/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeIncomeModal();
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                
+                loadIncomeStats();
+                loadIncomeList();
+                loadIncomeByCategory();
+                loadRecentIncome();
+                loadSchoolFees();
+                
+                setTimeout(() => closeSuccessModal(), 2000);
+            } else {
+                alert('Error: ' + result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            alert('Failed to save income. Please try again.');
+        }
+    });
+
+    document.getElementById('schoolFeesForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const schoolFeesAccountId = await getSchoolFeesAccountId();
+        
+        const data = {
+            account_id: schoolFeesAccountId,
+            amount: parseFloat(document.getElementById('feesAmount').value),
+            transaction_date: document.getElementById('feesDate').value,
+            payment_method: document.getElementById('feesPaymentMethod').value,
+            reference_number: document.getElementById('receiptNumber').value,
+            description: document.getElementById('feesNotes').value,
+            student_name: document.getElementById('studentName').value,
+            student_id: document.getElementById('studentId').value,
+            student_class: document.getElementById('studentClass').value,
+            term: document.getElementById('term').value,
+            academic_year: document.getElementById('academicYear').value,
+            receipt_number: document.getElementById('receiptNumber').value,
+            is_school_fees: true
+        };
+        
+        try {
+            const response = await fetch('/accounts/income/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeSchoolFeesModal();
+                document.getElementById('successMessage').textContent = 'School fees recorded successfully!';
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                
+                loadIncomeStats();
+                loadIncomeList();
+                loadIncomeByCategory();
+                loadRecentIncome();
+                loadSchoolFees();
+                
+                setTimeout(() => closeSuccessModal(), 2000);
+            } else {
+                alert('Error: ' + result.message);
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            alert('Failed to record school fees. Please try again.');
+        }
+    });
+
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    // Close modals on outside click
+    window.onclick = function(event) {
+        const incomeModal = document.getElementById('incomeModal');
+        const schoolFeesModal = document.getElementById('schoolFeesModal');
+        const incomeDetailModal = document.getElementById('incomeDetailModal');
+        const successModal = document.getElementById('successModal');
+        
+        if (event.target === incomeModal) closeIncomeModal();
+        if (event.target === schoolFeesModal) closeSchoolFeesModal();
+        if (event.target === incomeDetailModal) closeIncomeDetailModal();
+        if (event.target === successModal) closeSuccessModal();
+    };
+
+    // Initialize
+    loadIncomeStats();
+    loadIncomeList();
+    loadIncomeByCategory();
+    loadRecentIncome();
+    loadSchoolFees();
+</script>
+{% endblock %}
