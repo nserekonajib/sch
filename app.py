@@ -93,6 +93,8 @@ from routes.houses.house import houses_bp
 from routes.reports.reports import reports_bp
 from routes.students.studentDetails import student_detail_bp
 from routes.permissions.permissions_management import permissions_bp
+from routes.reports.reportCentre import center_bp
+from routes.fees.createFeeNames import fee_names_bp
 
 
 
@@ -141,6 +143,10 @@ app.register_blueprint(houses_bp)
 app.register_blueprint(reports_bp)
 app.register_blueprint(student_detail_bp)
 app.register_blueprint(permissions_bp)
+app.register_blueprint(center_bp)
+app.register_blueprint(fee_names_bp)
+
+
 @app.route('/')
 def landing():
     """Landing page route"""

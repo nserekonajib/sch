@@ -1,0 +1,582 @@
+<!-- templates/fee_names/index.html - Fee Names Management -->
+{% extends "base.html" %}
+
+{% block title %}Fee Names - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .fee-name-card {
+        transition: all 0.2s;
+    }
+    .fee-name-card:hover {
+        background-color: #fff7ed;
+        transform: translateX(4px);
+    }
+    .status-active {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    .status-inactive {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Fee Names</h1>
+            <p class="text-sm text-gray-600">Manage preset fee names and standard amounts</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="openBulkCreateModal()" class="px-4 py-2 border border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50 text-sm font-medium">
+                <i class="fas fa-layer-group"></i> Bulk Create
+            </button>
+            <button onclick="openCreateModal()" class="btn-gradient px-4 py-2 rounded-lg text-white font-medium flex items-center gap-2">
+                <i class="fas fa-plus"></i> Add Fee Name
+            </button>
+        </div>
+    </div>
+
+    <!-- Fee Names Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="feeNamesGrid">
+        <div class="col-span-full text-center py-12">
+            <div class="loader mx-auto"></div>
+            <p class="text-gray-500 mt-3">Loading fee names...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Fee Name Modal -->
+<div id="feeNameModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800" id="modalTitle">Add Fee Name</h3>
+            <button onclick="closeFeeNameModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <form id="feeNameForm" class="p-5">
+            <input type="hidden" id="feeNameId">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Fee Name *</label>
+                <input type="text" id="feeName" required placeholder="e.g., Tuition Fee, Library Fee, Sport Fee" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Standard Amount (UGX) *</label>
+                <input type="number" id="standardAmount" step="0.01" required placeholder="0.00" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            <div class="mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" id="isOptional" class="mr-2 text-orange-500 focus:ring-orange-500">
+                    <span class="text-sm text-gray-700">Optional Fee (can be excluded)</span>
+                </label>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea id="description" rows="2" placeholder="Optional description..." 
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium">Save</button>
+                <button type="button" onclick="closeFeeNameModal()" class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Create Modal -->
+<div id="bulkCreateModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 my-8 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Bulk Create Fee Names</h3>
+            <button onclick="closeBulkCreateModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-5">
+            <div class="mb-4">
+                <p class="text-sm text-gray-600 mb-3">Enter multiple fee names with their standard amounts:</p>
+                <div id="bulkFeeItems">
+                    <div class="bulk-item grid grid-cols-12 gap-3 mb-3">
+                        <div class="col-span-6">
+                            <input type="text" class="bulk-name w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Fee Name">
+                        </div>
+                        <div class="col-span-4">
+                            <input type="number" class="bulk-amount w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Amount">
+                        </div>
+                        <div class="col-span-2">
+                            <button type="button" onclick="removeBulkItem(this)" class="text-red-500 hover:text-red-700 w-full py-2">
+                                <i class="fas fa-trash-alt"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="addBulkItem()" class="mt-2 text-orange-500 hover:text-orange-600 text-sm flex items-center gap-1">
+                    <i class="fas fa-plus-circle"></i> Add More
+                </button>
+            </div>
+            <div class="flex gap-3 pt-4 border-t border-gray-200">
+                <button type="button" onclick="closeBulkCreateModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="button" onclick="saveBulkFeeNames()" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                    <i class="fas fa-save"></i> Create All
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 p-5 text-center transform transition-all modal-container">
+        <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-check-circle text-2xl text-green-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-1">Success!</h3>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage">Fee name saved successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-5 py-1.5 rounded-lg text-white text-sm font-medium">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-5 flex flex-col items-center">
+        <div class="loader"></div>
+        <p class="text-gray-600 text-sm mt-3">Processing...</p>
+    </div>
+</div>
+
+<script>
+    let feeNames = [];
+    let editingId = null;
+
+    async function loadFeeNames() {
+        const container = document.getElementById('feeNamesGrid');
+        container.innerHTML = '<div class="col-span-full text-center py-12"><div class="loader mx-auto"></div><p class="text-gray-500 mt-3">Loading fee names...</p></div>';
+        
+        try {
+            const response = await fetch('/fee-names/api/fee-names');
+            const result = await response.json();
+            
+            if (result.success) {
+                feeNames = result.fee_names;
+                renderFeeNames(feeNames);
+            } else {
+                container.innerHTML = '<div class="col-span-full text-center py-12 text-red-500">Failed to load fee names</div>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            container.innerHTML = '<div class="col-span-full text-center py-12 text-red-500">Error loading fee names</div>';
+        }
+    }
+
+    function renderFeeNames(feeNamesList) {
+        const container = document.getElementById('feeNamesGrid');
+        
+        if (feeNamesList.length === 0) {
+            container.innerHTML = `
+                <div class="col-span-full text-center py-12">
+                    <i class="fas fa-tags text-4xl text-gray-300 mb-3"></i>
+                    <p class="text-gray-400">No fee names created yet</p>
+                    <button onclick="openCreateModal()" class="mt-3 btn-gradient px-4 py-2 rounded-lg text-white text-sm">
+                        <i class="fas fa-plus"></i> Create Your First Fee Name
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = feeNamesList.map(fee => `
+            <div class="fee-name-card bg-white rounded-xl shadow-md p-5 border">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-gray-800 text-lg">${escapeHtml(fee.fee_name)}</h3>
+                        <p class="text-2xl font-bold text-orange-500 mt-1">UGX ${formatNumber(fee.standard_amount)}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editFeeName('${fee.id}')" class="text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteFeeName('${fee.id}', '${escapeHtml(fee.fee_name)}')" class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <span class="status-badge ${fee.is_active ? 'status-active' : 'status-inactive'} px-2 py-1 rounded-full text-xs">
+                        ${fee.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                    ${fee.is_optional ? '<span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs">Optional</span>' : '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">Required</span>'}
+                </div>
+                ${fee.description ? `<p class="text-sm text-gray-600 mt-2">${escapeHtml(fee.description)}</p>` : ''}
+                <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-xs text-gray-400">Created: ${new Date(fee.created_at).toLocaleDateString()}</span>
+                    <button onclick="toggleStatus('${fee.id}', ${fee.is_active})" 
+                            class="text-xs ${fee.is_active ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'}">
+                        <i class="fas ${fee.is_active ? 'fa-pause' : 'fa-play'}"></i>
+                        ${fee.is_active ? 'Deactivate' : 'Activate'}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function formatNumber(num) {
+        return new Intl.NumberFormat('en-US').format(num);
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function openCreateModal() {
+        editingId = null;
+        document.getElementById('modalTitle').textContent = 'Add Fee Name';
+        document.getElementById('feeNameForm').reset();
+        document.getElementById('feeNameId').value = '';
+        document.getElementById('isOptional').checked = false;
+        document.getElementById('feeNameModal').classList.remove('hidden');
+        document.getElementById('feeNameModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function editFeeName(id) {
+        const fee = feeNames.find(f => f.id === id);
+        if (fee) {
+            editingId = id;
+            document.getElementById('modalTitle').textContent = 'Edit Fee Name';
+            document.getElementById('feeNameId').value = fee.id;
+            document.getElementById('feeName').value = fee.fee_name;
+            document.getElementById('standardAmount').value = fee.standard_amount;
+            document.getElementById('isOptional').checked = fee.is_optional;
+            document.getElementById('description').value = fee.description || '';
+            document.getElementById('feeNameModal').classList.remove('hidden');
+            document.getElementById('feeNameModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeFeeNameModal() {
+        document.getElementById('feeNameModal').classList.add('hidden');
+        document.getElementById('feeNameModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    document.getElementById('feeNameForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const id = document.getElementById('feeNameId').value;
+        const feeName = document.getElementById('feeName').value.trim();
+        const standardAmount = parseFloat(document.getElementById('standardAmount').value);
+        const isOptional = document.getElementById('isOptional').checked;
+        const description = document.getElementById('description').value.trim();
+        
+        if (!feeName) {
+            showMessage('Please enter a fee name', 'error');
+            return;
+        }
+        
+        if (!standardAmount || standardAmount <= 0) {
+            showMessage('Please enter a valid amount', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const url = id ? `/fee-names/api/fee-names/${id}` : '/fee-names/api/fee-names';
+        const method = id ? 'PUT' : 'POST';
+        
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fee_name: feeName,
+                    standard_amount: standardAmount,
+                    is_optional: isOptional,
+                    description: description
+                })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeFeeNameModal();
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                loadFeeNames();
+                setTimeout(() => closeSuccessModal(), 2000);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to save fee name', 'error');
+        }
+    });
+
+    async function deleteFeeName(id, name) {
+        if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+            const loading = document.getElementById('loadingOverlay');
+            loading.classList.remove('hidden');
+            loading.classList.add('flex');
+            
+            try {
+                const response = await fetch(`/fee-names/api/fee-names/${id}`, { method: 'DELETE' });
+                const result = await response.json();
+                
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    loadFeeNames();
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                showMessage('Failed to delete fee name', 'error');
+            }
+        }
+    }
+
+    async function toggleStatus(id, currentStatus) {
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/fee-names/api/fee-names/toggle-status/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_active: !currentStatus })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                showMessage(result.message, 'success');
+                loadFeeNames();
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to update status', 'error');
+        }
+    }
+
+    // Bulk Create Functions
+    function addBulkItem() {
+        const container = document.getElementById('bulkFeeItems');
+        const newItem = document.createElement('div');
+        newItem.className = 'bulk-item grid grid-cols-12 gap-3 mb-3';
+        newItem.innerHTML = `
+            <div class="col-span-6">
+                <input type="text" class="bulk-name w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Fee Name">
+            </div>
+            <div class="col-span-4">
+                <input type="number" class="bulk-amount w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Amount">
+            </div>
+            <div class="col-span-2">
+                <button type="button" onclick="removeBulkItem(this)" class="text-red-500 hover:text-red-700 w-full py-2">
+                    <i class="fas fa-trash-alt"></i> Remove
+                </button>
+            </div>
+        `;
+        container.appendChild(newItem);
+    }
+
+    function removeBulkItem(button) {
+        const container = document.getElementById('bulkFeeItems');
+        if (container.children.length > 1) {
+            button.closest('.bulk-item').remove();
+        } else {
+            showMessage('At least one fee item is required', 'error');
+        }
+    }
+
+    function openBulkCreateModal() {
+        document.getElementById('bulkFeeItems').innerHTML = `
+            <div class="bulk-item grid grid-cols-12 gap-3 mb-3">
+                <div class="col-span-6">
+                    <input type="text" class="bulk-name w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Fee Name">
+                </div>
+                <div class="col-span-4">
+                    <input type="number" class="bulk-amount w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Amount">
+                </div>
+                <div class="col-span-2">
+                    <button type="button" onclick="removeBulkItem(this)" class="text-red-500 hover:text-red-700 w-full py-2">
+                        <i class="fas fa-trash-alt"></i> Remove
+                    </button>
+                </div>
+            </div>
+        `;
+        document.getElementById('bulkCreateModal').classList.remove('hidden');
+        document.getElementById('bulkCreateModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeBulkCreateModal() {
+        document.getElementById('bulkCreateModal').classList.add('hidden');
+        document.getElementById('bulkCreateModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    async function saveBulkFeeNames() {
+        const items = [];
+        const names = document.querySelectorAll('.bulk-name');
+        const amounts = document.querySelectorAll('.bulk-amount');
+        
+        for (let i = 0; i < names.length; i++) {
+            const feeName = names[i].value.trim();
+            const amount = parseFloat(amounts[i].value);
+            
+            if (feeName && amount > 0) {
+                items.push({
+                    fee_name: feeName,
+                    standard_amount: amount,
+                    is_optional: false,
+                    description: ''
+                });
+            }
+        }
+        
+        if (items.length === 0) {
+            showMessage('Please add at least one valid fee item', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch('/fee-names/api/bulk-create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fee_items: items })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeBulkCreateModal();
+                document.getElementById('successMessage').innerHTML = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                loadFeeNames();
+                setTimeout(() => closeSuccessModal(), 2000);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to create fee names', 'error');
+        }
+    }
+
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function showMessage(message, type) {
+        const flashContainer = document.getElementById('flashMessages');
+        if (!flashContainer) {
+            const container = document.createElement('div');
+            container.id = 'flashMessages';
+            container.className = 'flash-messages';
+            document.body.appendChild(container);
+        }
+        const flashMsg = document.createElement('div');
+        flashMsg.className = `flash-message ${type}`;
+        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
+        document.getElementById('flashMessages').appendChild(flashMsg);
+        setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('feeNameModal');
+        const bulkModal = document.getElementById('bulkCreateModal');
+        const successModal = document.getElementById('successModal');
+        if (event.target === modal) closeFeeNameModal();
+        if (event.target === bulkModal) closeBulkCreateModal();
+        if (event.target === successModal) closeSuccessModal();
+    };
+
+    // Initialize
+    loadFeeNames();
+</script>
+{% endblock %}

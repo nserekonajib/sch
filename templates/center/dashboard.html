@@ -1,0 +1,770 @@
+{% extends "base.html" %}
+{% block content %}
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Center - {{ institute.institute_name if institute else 'Dashboard' }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .report-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .report-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+        }
+        .btn-gradient:hover {
+            background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+            transform: translateY(-2px);
+        }
+        .modal-overlay {
+            animation: fadeIn 0.3s ease-out;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-container {
+            animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+            background: white;
+            border-radius: 12px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: auto;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .report-table th, .report-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .report-table th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            font-size: 13px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .report-table td {
+            font-size: 13px;
+        }
+        .report-table tbody tr:hover {
+            background-color: #fef3c7;
+            cursor: pointer;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #fef9e7 0%, #fff 100%);
+            border-left: 4px solid #ffa500;
+        }
+        .action-btn {
+            transition: all 0.2s;
+        }
+        .action-btn:hover {
+            transform: scale(1.05);
+        }
+        .tab-active {
+            background-color: #ffa500;
+            color: white;
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #ffa500;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .student-link {
+            color: #ff8c00;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .student-link:hover {
+            color: #e67e00;
+            text-decoration: underline;
+        }
+        .pagination-btn {
+            padding: 8px 12px;
+            margin: 0 4px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            color: #4b5563;
+            transition: all 0.2s;
+        }
+        .pagination-btn:hover:not(:disabled) {
+            background: #ffa500;
+            color: white;
+            border-color: #ffa500;
+        }
+        .pagination-btn.active {
+            background: #ffa500;
+            color: white;
+            border-color: #ffa500;
+        }
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .search-input {
+            transition: all 0.2s;
+        }
+        .search-input:focus {
+            border-color: #ffa500;
+            ring: 2px solid #ffa500;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-chart-line text-orange-500 text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold text-gray-800">Report Center</h1>
+                    {% if institute %}
+                    <span class="ml-4 text-sm text-gray-500">{{ institute.institute_name }}</span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600">
+                        <i class="far fa-calendar-alt mr-1"></i>
+                        {{ now.strftime('%B %d, %Y') }}
+                    </span>
+                    <button onclick="window.location.href='/dashboard'" class="text-gray-600 hover:text-orange-500">
+                        <i class="fas fa-home"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6 summary-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Monthly Collection</p>
+                        <p class="text-2xl font-bold text-gray-800">UGX {{ "%.0f"|format(summary.current_month_collection|default(0)) }}</p>
+                    </div>
+                    <i class="fas fa-money-bill-wave text-orange-500 text-3xl"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 summary-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Total Students</p>
+                        <p class="text-2xl font-bold text-gray-800">{{ summary.total_students|default(0) }}</p>
+                    </div>
+                    <i class="fas fa-users text-orange-500 text-3xl"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 summary-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Outstanding Balance</p>
+                        <p class="text-2xl font-bold text-red-600">UGX {{ "%.0f"|format(summary.outstanding_balance|default(0)) }}</p>
+                    </div>
+                    <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 summary-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Monthly Expenses</p>
+                        <p class="text-2xl font-bold text-gray-800">UGX {{ "%.0f"|format(summary.current_month_expenses|default(0)) }}</p>
+                    </div>
+                    <i class="fas fa-receipt text-orange-500 text-3xl"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 summary-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Net Income</p>
+                        <p class="text-2xl font-bold text-green-600">UGX {{ "%.0f"|format(summary.net_income|default(0)) }}</p>
+                    </div>
+                    <i class="fas fa-chart-line text-green-500 text-3xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Tabs -->
+        <div class="bg-white rounded-lg shadow-md">
+            <div class="border-b border-gray-200">
+                <nav class="flex flex-wrap gap-2 p-4">
+                    <button onclick="showReport('daily')" id="tab-daily" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all bg-orange-500 text-white">
+                        <i class="fas fa-calendar-day mr-2"></i>Daily Collection
+                    </button>
+                    <button onclick="showReport('balance')" id="tab-balance" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100">
+                        <i class="fas fa-scale-balanced mr-2"></i>Balance Report
+                    </button>
+                    <button onclick="showReport('income')" id="tab-income" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100">
+                        <i class="fas fa-chart-pie mr-2"></i>Income & Expenses
+                    </button>
+                    <button onclick="showReport('student')" id="tab-student" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100">
+                        <i class="fas fa-user-graduate mr-2"></i>Student Report
+                    </button>
+                    <button onclick="showReport('class')" id="tab-class" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100">
+                        <i class="fas fa-school mr-2"></i>Class Report
+                    </button>
+                    <button onclick="showReport('payment')" id="tab-payment" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100">
+                        <i class="fas fa-credit-card mr-2"></i>Payment Methods
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="p-4 bg-gray-50 border-b border-gray-200">
+                <div class="flex flex-wrap gap-4 items-end">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                        <input type="date" id="start_date" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                        <input type="date" id="end_date" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                    </div>
+                    <div id="class_filter_container" style="display: none;">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                        <select id="class_filter" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                            <option value="">All Classes</option>
+                            {% for class in classes %}
+                            <option value="{{ class.id }}">{{ class.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="search_container" style="display: none;">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                        <input type="text" id="search_input" placeholder="Search by name or ID..." class="search-input rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 w-64">
+                    </div>
+                    <div>
+                        <button onclick="loadReport()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium">
+                            <i class="fas fa-search mr-2"></i>Generate Report
+                        </button>
+                    </div>
+                    <div>
+                        <button onclick="exportReport()" id="export_btn" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg text-white font-medium transition-all" style="display: none;">
+                            <i class="fas fa-file-excel mr-2"></i>Export to Excel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Content -->
+            <div id="report_content" class="p-6">
+                <div class="text-center py-12">
+                    <i class="fas fa-chart-line text-gray-300 text-6xl mb-4"></i>
+                    <p class="text-gray-500">Select a report and click Generate Report</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div id="report_modal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+                <h3 id="modal_title" class="text-xl font-bold text-gray-800">Report Details</h3>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div id="modal_content" class="p-6">
+                <!-- Modal content loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentReportType = 'daily';
+        let currentReportData = null;
+        let currentPage = 1;
+
+        // Set default dates
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        document.getElementById('start_date').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('end_date').value = today.toISOString().split('T')[0];
+
+        function showReport(type) {
+            currentReportType = type;
+            currentPage = 1;
+            
+            // Update tab styles
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-orange-500', 'text-white');
+                btn.classList.add('text-gray-600');
+            });
+            document.getElementById(`tab-${type}`).classList.add('bg-orange-500', 'text-white');
+            document.getElementById(`tab-${type}`).classList.remove('text-gray-600');
+            
+            // Show/hide filters
+            const classFilter = document.getElementById('class_filter_container');
+            const searchContainer = document.getElementById('search_container');
+            
+            if (type === 'balance' || type === 'student') {
+                classFilter.style.display = 'block';
+            } else {
+                classFilter.style.display = 'none';
+            }
+            
+            if (type === 'student') {
+                searchContainer.style.display = 'block';
+            } else {
+                searchContainer.style.display = 'none';
+            }
+            
+            // Auto-load report
+            loadReport();
+        }
+
+        function loadReport() {
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            const classId = document.getElementById('class_filter').value;
+            const search = document.getElementById('search_input') ? document.getElementById('search_input').value : '';
+            
+            let apiUrl = '';
+            let requestData = { 
+                start_date: startDate, 
+                end_date: endDate,
+                page: currentPage
+            };
+            
+            switch(currentReportType) {
+                case 'daily':
+                    apiUrl = '/center/api/daily-collection';
+                    break;
+                case 'balance':
+                    apiUrl = '/center/api/balance-report';
+                    requestData.class_id = classId;
+                    break;
+                case 'income':
+                    apiUrl = '/center/api/income-expense';
+                    break;
+                case 'student':
+                    apiUrl = '/center/api/student-report';
+                    requestData.class_id = classId;
+                    requestData.search = search;
+                    break;
+                case 'class':
+                    apiUrl = '/center/api/class-report';
+                    break;
+                case 'payment':
+                    apiUrl = '/center/api/payment-method-report';
+                    break;
+            }
+            
+            // Show loading
+            document.getElementById('report_content').innerHTML = `
+                <div class="text-center py-12">
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-gray-500">Loading report...</p>
+                </div>
+            `;
+            document.getElementById('export_btn').style.display = 'none';
+            
+            $.ajax({
+                url: apiUrl,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                success: function(response) {
+                    if (response.success) {
+                        currentReportData = response;
+                        displayReport(response);
+                        document.getElementById('export_btn').style.display = 'inline-flex';
+                    } else {
+                        showError(response.message || 'Failed to load report');
+                    }
+                },
+                error: function(xhr) {
+                    showError('An error occurred while loading the report');
+                }
+            });
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            loadReport();
+        }
+
+        function displayReport(data) {
+            let html = '';
+            
+            // Display summary if available
+            if (data.summary) {
+                html += '<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">';
+                for (let [key, value] of Object.entries(data.summary)) {
+                    let displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    let formattedValue = typeof value === 'number' ? `UGX ${value.toLocaleString()}` : value;
+                    html += `
+                        <div class="bg-orange-50 rounded-lg p-4">
+                            <p class="text-sm text-gray-600 mb-1">${displayKey}</p>
+                            <p class="text-xl font-bold text-gray-800">${formattedValue}</p>
+                        </div>
+                    `;
+                }
+                html += '</div>';
+            }
+            
+            // Display table based on report type
+            if (currentReportType === 'daily' && data.data) {
+                html += '<div class="overflow-x-auto">';
+                html += '<table class="report-table">';
+                html += '<thead><tr><th>Date</th><th>Total Collected</th><th>Transactions</th><th>Actions</th></tr></thead>';
+                html += '<tbody>';
+                for (let day of data.data) {
+                    html += `
+                        <tr>
+                            <td>${day.date}</td>
+                            <td>UGX ${day.total.toLocaleString()}</td>
+                            <td>${day.count}</td>
+                            <td>
+                                <button onclick="showDailyDetails('${day.date}', ${JSON.stringify(day.transactions).replace(/"/g, '&quot;')})" 
+                                        class="text-orange-600 hover:text-orange-800">
+                                    <i class="fas fa-eye"></i> View Details
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }
+                html += '</tbody></table></div>';
+                
+            } else if (currentReportType === 'balance' && data.data) {
+                html += '<div class="overflow-x-auto">';
+                html += '<table class="report-table">';
+                html += '<thead><tr><th>Student Name</th><th>Student ID</th><th>Class</th><th>Total Invoiced</th><th>Total Paid</th><th>Balance</th></tr></thead>';
+                html += '<tbody>';
+                for (let student of data.data) {
+                    let statusClass = student.balance === 0 ? 'text-green-600' : (student.balance > 0 ? 'text-red-600' : 'text-gray-600');
+                    html += `
+                        <tr>
+                            <td>
+                                <a href="/student-details/${student.student_uuid}" class="student-link" target="_blank">
+                                    <i class="fas fa-external-link-alt mr-1 text-xs"></i>${student.student_name}
+                                </a>
+                            </td>
+                            <td>${student.student_id}</td>
+                            <td>${student.class}</td>
+                            <td>UGX ${student.total_invoiced.toLocaleString()}</td>
+                            <td>UGX ${student.total_paid.toLocaleString()}</td>
+                            <td class="${statusClass} font-semibold">UGX ${student.balance.toLocaleString()}</td>
+                        </tr>
+                    `;
+                }
+                html += '</tbody></table></div>';
+                
+            } else if (currentReportType === 'income' && data.transactions) {
+                html += '<div class="overflow-x-auto">';
+                html += '<table class="report-table">';
+                html += '<thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Type</th></tr></thead>';
+                html += '<tbody>';
+                for (let trans of data.transactions) {
+                    let typeClass = trans.type === 'income' ? 'text-green-600' : 'text-red-600';
+                    let typeIcon = trans.type === 'income' ? '↑' : '↓';
+                    html += `
+                        <tr>
+                            <td>${trans.date}</td>
+                            <td>${trans.description}</td>
+                            <td>${trans.category}</td>
+                            <td>UGX ${trans.amount.toLocaleString()}</td>
+                            <td class="${typeClass} font-semibold">${typeIcon} ${trans.type.toUpperCase()}</td>
+                        </tr>
+                    `;
+                }
+                html += '</tbody></table></div>';
+                
+            } else if (currentReportType === 'student' && data.data) {
+                html += '<div class="overflow-x-auto">';
+                html += '<table class="report-table">';
+                html += '<thead><tr><th>Student ID</th><th>Student Name</th><th>Class</th><th>Parent Contact</th><th>Total Paid</th><th>Balance</th><th>Status</th></tr></thead>';
+                html += '<tbody>';
+                for (let student of data.data) {
+                    let statusClass = student.status === 'Paid' ? 'text-green-600' : (student.status === 'Partial' ? 'text-yellow-600' : 'text-red-600');
+                    html += `
+                        <tr>
+                            <td>${student.student_id}</td>
+                            <td>
+                                <a href="/student-details/${student.student_uuid}" class="student-link" target="_blank">
+                                    <i class="fas fa-external-link-alt mr-1 text-xs"></i>${student.student_name}
+                                </a>
+                            </td>
+                            <td>${student.class}</td>
+                            <td>${student.parent_contact}</td>
+                            <td>UGX ${student.total_paid.toLocaleString()}</td>
+                            <td class="font-semibold ${statusClass}">UGX ${student.balance.toLocaleString()}</td>
+                            <td class="${statusClass}">${student.status}</td>
+                        </tr>
+                    `;
+                }
+                html += '</tbody></table></div>';
+                
+            } else if (currentReportType === 'class' && data.data) {
+                html += '<div class="overflow-x-auto">';
+                html += '<table class="report-table">';
+                html += '<thead><tr><th>Class Name</th><th>Student Count</th><th>Total Collected</th><th>Expected Fees</th><th>Outstanding</th><th>Collection Rate</th></tr></thead>';
+                html += '<tbody>';
+                for (let cls of data.data) {
+                    let collectionRate = cls.expected_fees > 0 ? ((cls.total_collected / cls.expected_fees) * 100).toFixed(1) : 0;
+                    html += `
+                        <tr>
+                            <td>${cls.class_name}</td>
+                            <td>${cls.student_count}</td>
+                            <td>UGX ${cls.total_collected.toLocaleString()}</td>
+                            <td>UGX ${cls.expected_fees.toLocaleString()}</td>
+                            <td class="text-red-600">UGX ${cls.outstanding.toLocaleString()}</td>
+                            <td>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-orange-500 rounded-full h-2" style="width: ${collectionRate}%"></div>
+                                </div>
+                                <span class="text-xs">${collectionRate}%</span>
+                            </td>
+                        </tr>
+                    `;
+                }
+                html += '</tbody></table></div>';
+                
+            } else if (currentReportType === 'payment' && data.data) {
+                html += '<div class="overflow-x-auto">';
+                html += '<table class="report-table">';
+                html += '<thead><tr><th>Payment Method</th><th>Income</th><th>Expenses</th><th>Net Flow</th></tr></thead>';
+                html += '<tbody>';
+                for (let method of data.data) {
+                    let netClass = method.net >= 0 ? 'text-green-600' : 'text-red-600';
+                    html += `
+                        <tr>
+                            <td><i class="fas fa-credit-card mr-2"></i>${method.payment_method}</td>
+                            <td>UGX ${method.income.toLocaleString()}</td>
+                            <td>UGX ${method.expenses.toLocaleString()}</td>
+                            <td class="${netClass} font-semibold">UGX ${method.net.toLocaleString()}</td>
+                        </tr>
+                    `;
+                }
+                html += '</tbody></table></div>';
+            }
+            
+            // Add pagination if available
+            if (data.pagination && data.pagination.total_pages > 1) {
+                html += '<div class="flex justify-center items-center mt-6 gap-2">';
+                html += `<button onclick="goToPage(${data.pagination.current_page - 1})" class="pagination-btn" ${data.pagination.current_page === 1 ? 'disabled' : ''}>`;
+                html += '<i class="fas fa-chevron-left"></i> Previous</button>';
+                
+                for (let i = 1; i <= Math.min(data.pagination.total_pages, 5); i++) {
+                    let pageNum = i;
+                    if (data.pagination.total_pages > 5 && data.pagination.current_page > 3) {
+                        pageNum = data.pagination.current_page - 3 + i;
+                        if (pageNum > data.pagination.total_pages) break;
+                    }
+                    html += `<button onclick="goToPage(${pageNum})" class="pagination-btn ${pageNum === data.pagination.current_page ? 'active' : ''}">${pageNum}</button>`;
+                }
+                
+                html += `<button onclick="goToPage(${data.pagination.current_page + 1})" class="pagination-btn" ${data.pagination.current_page === data.pagination.total_pages ? 'disabled' : ''}>`;
+                html += 'Next <i class="fas fa-chevron-right"></i></button>';
+                html += `<span class="text-sm text-gray-500 ml-4">Page ${data.pagination.current_page} of ${data.pagination.total_pages} (${data.pagination.total_items} items)</span>`;
+                html += '</div>';
+            }
+            
+            if (html === '') {
+                html = '<div class="text-center py-12"><p class="text-gray-500">No data available for the selected criteria</p></div>';
+            }
+            
+            document.getElementById('report_content').innerHTML = html;
+        }
+
+        function showDailyDetails(date, transactions) {
+            let modalHtml = `
+                <h4 class="font-bold text-lg mb-4">Transactions for ${date}</h4>
+                <div class="overflow-x-auto">
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Receipt Number</th>
+                                <th>Student Name</th>
+                                <th>Student ID</th>
+                                <th>Amount</th>
+                                <th>Payment Method</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            for (let trans of transactions) {
+                let studentLink = trans.student_uuid ? `/student-details/${trans.student_uuid}` : '#';
+                modalHtml += `
+                    <tr>
+                        <td>${trans.receipt_number || 'N/A'}</td>
+                        <td>
+                            <a href="${studentLink}" class="student-link" target="_blank">
+                                ${trans.student_name}
+                            </a>
+                        </td>
+                        <td>${trans.student_id}</td>
+                        <td>UGX ${trans.amount.toLocaleString()}</td>
+                        <td>${trans.payment_method}</td>
+                    </tr>
+                `;
+            }
+            
+            modalHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('modal_title').innerText = `Daily Collection - ${date}`;
+            document.getElementById('modal_content').innerHTML = modalHtml;
+            document.getElementById('report_modal').style.display = 'flex';
+        }
+
+        function exportReport() {
+            if (!currentReportData) {
+                alert('No data to export');
+                return;
+            }
+            
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            
+            let exportData = [];
+            let reportType = '';
+            
+            switch(currentReportType) {
+                case 'daily':
+                    exportData = currentReportData.data;
+                    reportType = 'daily_collection';
+                    break;
+                case 'balance':
+                    exportData = currentReportData.data;
+                    reportType = 'balance_report';
+                    break;
+                case 'income':
+                    exportData = currentReportData.transactions;
+                    reportType = 'income_expense';
+                    break;
+                case 'student':
+                    exportData = currentReportData.data;
+                    reportType = 'student_report';
+                    break;
+                case 'class':
+                    exportData = currentReportData.data;
+                    reportType = 'class_report';
+                    break;
+                case 'payment':
+                    exportData = currentReportData.data;
+                    reportType = 'payment_method';
+                    break;
+            }
+            
+            $.ajax({
+                url: '/center/export',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    report_type: reportType,
+                    data: exportData,
+                    start_date: startDate,
+                    end_date: endDate
+                }),
+                xhrFields: {
+                    responseType: 'blob'
+                },
+                success: function(blob) {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `report_${reportType}_${new Date().toISOString().slice(0,19)}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                },
+                error: function() {
+                    alert('Failed to export report');
+                }
+            });
+        }
+
+        function showError(message) {
+            document.getElementById('report_content').innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-2"></i>
+                    <p class="text-red-600">${message}</p>
+                </div>
+            `;
+        }
+
+        function closeModal() {
+            document.getElementById('report_modal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('report_modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Debounced search for student report
+        let searchTimeout;
+        if (document.getElementById('search_input')) {
+            document.getElementById('search_input').addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    if (currentReportType === 'student') {
+                        currentPage = 1;
+                        loadReport();
+                    }
+                }, 500);
+            });
+        }
+
+        // Load default report on page load
+        $(document).ready(function() {
+            showReport('daily');
+        });
+    </script>
+</body>
+</html>
+
+{% endblock %}
