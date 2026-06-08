@@ -191,6 +191,100 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
+
+         /* Search dropdown styles */
+    .search-container {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .search-results-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        max-height: 400px;
+        overflow-y: auto;
+        z-index: 1000;
+        margin-top: 8px;
+        display: none;
+    }
+    
+    .search-results-dropdown.active {
+        display: block;
+        animation: fadeInDown 0.2s ease-out;
+    }
+    
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .search-result-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .search-result-item:hover {
+        background-color: #fff7ed;
+    }
+    
+    .search-result-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 4px;
+    }
+    
+    .search-result-details {
+        font-size: 12px;
+        color: #6b7280;
+        display: flex;
+        gap: 16px;
+    }
+    
+    .search-result-details i {
+        margin-right: 4px;
+        font-size: 10px;
+    }
+    
+    .search-loading {
+        padding: 20px;
+        text-align: center;
+        color: #6b7280;
+    }
+    
+    .search-loading i {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .search-no-results {
+        padding: 20px;
+        text-align: center;
+        color: #6b7280;
+    }
+    
+    /* Highlight matching text */
+    .search-highlight {
+        background-color: #fef3c7;
+        color: #d97706;
+        font-weight: 500;
+    }
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -897,6 +991,340 @@
         // Initial start
         resetTimers();
     })();
+
+
+    // Student Search Functionality
+class StudentSearch {
+    constructor() {
+        this.searchInput = document.getElementById('studentSearchInput');
+        this.dropdown = document.getElementById('searchResultsDropdown');
+        this.searchTimeout = null;
+        this.currentPage = 1;
+        this.hasMore = false;
+        this.isLoading = false;
+        this.currentSearchTerm = '';
+        
+        if (this.searchInput) {
+            this.init();
+        }
+    }
+    
+    init() {
+        // Add search container wrapper if not already present
+        const searchWrapper = document.createElement('div');
+        searchWrapper.className = 'search-container';
+        this.searchInput.parentNode.insertBefore(searchWrapper, this.searchInput);
+        searchWrapper.appendChild(this.searchInput);
+        
+        // Create dropdown element
+        this.dropdown = document.createElement('div');
+        this.dropdown.id = 'searchResultsDropdown';
+        this.dropdown.className = 'search-results-dropdown';
+        searchWrapper.appendChild(this.dropdown);
+        
+        // Add input event listener with debounce
+        this.searchInput.addEventListener('input', (e) => {
+            this.handleSearch(e.target.value);
+        });
+        
+        // Handle click outside to close dropdown
+        document.addEventListener('click', (e) => {
+            if (!searchWrapper.contains(e.target)) {
+                this.closeDropdown();
+            }
+        });
+        
+        // Handle keyboard navigation
+        this.searchInput.addEventListener('keydown', (e) => {
+            this.handleKeyboardNavigation(e);
+        });
+        
+        // Handle focus
+        this.searchInput.addEventListener('focus', () => {
+            if (this.currentSearchTerm && this.dropdown.children.length > 0) {
+                this.dropdown.classList.add('active');
+            }
+        });
+    }
+    
+    async handleSearch(searchTerm) {
+        // Clear previous timeout
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+        
+        // Store current search term
+        this.currentSearchTerm = searchTerm.trim();
+        
+        // If search is empty, close dropdown and return
+        if (!this.currentSearchTerm) {
+            this.closeDropdown();
+            return;
+        }
+        
+        // Debounce search
+        this.searchTimeout = setTimeout(() => {
+            this.performSearch(1);
+        }, 300);
+    }
+    
+    async performSearch(page = 1) {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        this.currentPage = page;
+        
+        // Show loading state
+        this.showLoading();
+        
+        try {
+            // Build URL with pagination
+            const url = new URL('/students/api/students', window.location.origin);
+            url.searchParams.append('search', this.currentSearchTerm);
+            url.searchParams.append('page', page);
+            url.searchParams.append('per_page', 10);
+            
+            // Make API request
+            const response = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Search failed');
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.hasMore = result.has_more;
+                this.displayResults(result.data);
+            } else {
+                this.showError(result.message);
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+            this.showError('Failed to search students');
+        } finally {
+            this.isLoading = false;
+        }
+    }
+    
+    showLoading() {
+        if (!this.dropdown) return;
+        
+        this.dropdown.innerHTML = `
+            <div class="search-loading">
+                <i class="fas fa-spinner"></i> Searching...
+            </div>
+        `;
+        this.dropdown.classList.add('active');
+    }
+    
+    displayResults(students) {
+        if (!this.dropdown) return;
+        
+        if (!students || students.length === 0) {
+            this.dropdown.innerHTML = `
+                <div class="search-no-results">
+                    <i class="fas fa-user-graduate"></i> No students found
+                </div>
+            `;
+            this.dropdown.classList.add('active');
+            return;
+        }
+        
+        // Build results HTML
+        let html = '<div class="search-results-list">';
+        
+        students.forEach(student => {
+            // Highlight matching text in student name
+            const highlightedName = this.highlightText(student.name, this.currentSearchTerm);
+            const highlightedId = this.highlightText(student.student_id || 'No ID', this.currentSearchTerm);
+            
+            html += `
+                <div class="search-result-item" data-student-id="${student.id}">
+                    <div class="search-result-name">${highlightedName}</div>
+                    <div class="search-result-details">
+                        <span><i class="fas fa-id-card"></i> ${highlightedId}</span>
+                        <span><i class="fas fa-chalkboard"></i> ${student.classes?.name || 'No Class'}</span>
+                        <span><i class="fas ${student.gender === 'Male' ? 'fa-mars' : 'fa-venus'}"></i> ${student.gender || 'N/A'}</span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        // Add "Load More" button if there are more results
+        if (this.hasMore) {
+            html += `
+                <div class="search-result-item load-more" style="text-align: center; color: #ffa500;">
+                    <i class="fas fa-chevron-down"></i> Load more students...
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        this.dropdown.innerHTML = html;
+        this.dropdown.classList.add('active');
+        
+        // Add click handlers to result items
+        const resultItems = this.dropdown.querySelectorAll('.search-result-item');
+        resultItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                // Check if it's the load more button
+                if (item.classList.contains('load-more')) {
+                    this.loadMore();
+                } else {
+                    const studentId = item.dataset.studentId;
+                    if (studentId) {
+                        this.goToStudentDetails(studentId);
+                    }
+                }
+            });
+        });
+    }
+    
+    loadMore() {
+        if (this.isLoading) return;
+        this.performSearch(this.currentPage + 1);
+    }
+    
+    highlightText(text, searchTerm) {
+        if (!text || !searchTerm) return text;
+        
+        const regex = new RegExp(`(${this.escapeRegex(searchTerm)})`, 'gi');
+        return text.replace(regex, '<span class="search-highlight">$1</span>');
+    }
+    
+    escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    
+    handleKeyboardNavigation(e) {
+        const items = this.dropdown?.querySelectorAll('.search-result-item:not(.load-more)');
+        if (!items || items.length === 0) return;
+        
+        let currentIndex = -1;
+        
+        // Find currently focused item
+        items.forEach((item, index) => {
+            if (item.classList.contains('active-keyboard')) {
+                currentIndex = index;
+                item.classList.remove('active-keyboard');
+            }
+        });
+        
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                currentIndex = (currentIndex + 1) % items.length;
+                this.focusItem(items[currentIndex]);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                currentIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+                this.focusItem(items[currentIndex]);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (currentIndex >= 0) {
+                    const studentId = items[currentIndex].dataset.studentId;
+                    if (studentId) {
+                        this.goToStudentDetails(studentId);
+                    }
+                }
+                break;
+            case 'Escape':
+                this.closeDropdown();
+                this.searchInput.blur();
+                break;
+        }
+    }
+    
+    focusItem(item) {
+        if (!item) return;
+        
+        // Remove active class from all items
+        const allItems = this.dropdown.querySelectorAll('.search-result-item');
+        allItems.forEach(i => i.classList.remove('active-keyboard'));
+        
+        // Add active class to current item
+        item.classList.add('active-keyboard');
+        
+        // Scroll into view
+        item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        
+        // Add hover style
+        item.style.backgroundColor = '#fff7ed';
+    }
+    
+    showError(message) {
+        if (!this.dropdown) return;
+        
+        this.dropdown.innerHTML = `
+            <div class="search-no-results" style="color: #ef4444;">
+                <i class="fas fa-exclamation-circle"></i> ${message}
+            </div>
+        `;
+        this.dropdown.classList.add('active');
+        
+        // Auto close after 2 seconds
+        setTimeout(() => {
+            if (this.dropdown.classList.contains('active')) {
+                this.closeDropdown();
+            }
+        }, 2000);
+    }
+    
+    closeDropdown() {
+        if (this.dropdown) {
+            this.dropdown.classList.remove('active');
+        }
+    }
+    
+    goToStudentDetails(studentId) {
+        if (studentId) {
+            // Clear search input and close dropdown
+            this.searchInput.value = '';
+            this.closeDropdown();
+            
+            // Navigate to student details page
+            window.location.href = `/student-details/${studentId}`;
+        }
+    }
+}
+
+// Initialize search when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Add ID to the search input in the navbar
+    const searchInputs = document.querySelectorAll('header input[placeholder*="Search"]');
+    if (searchInputs.length > 0) {
+        searchInputs[0].id = 'studentSearchInput';
+        searchInputs[0].placeholder = 'Search student by name or ID...';
+        
+        // Initialize search functionality
+        window.studentSearch = new StudentSearch();
+    }
+});
+
+// Add styles for keyboard navigation
+const keyboardStyle = document.createElement('style');
+keyboardStyle.textContent = `
+    .search-result-item.active-keyboard {
+        background-color: #fff7ed !important;
+        outline: none;
+    }
+    
+    .search-result-item {
+        transition: background-color 0.2s ease;
+    }
+`;
+document.head.appendChild(keyboardStyle);
 </script>
 
 {% block extra_js %}{% endblock %}

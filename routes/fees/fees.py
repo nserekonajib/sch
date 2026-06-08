@@ -15,6 +15,10 @@ from dotenv import load_dotenv
 import cloudinary
 import cloudinary.uploader
 from routes.accounts.accounts import get_institute_id
+from flask import send_file, make_response
+import pandas as pd
+from io import BytesIO
+from datetime import datetime
 
 load_dotenv()
 
@@ -1029,6 +1033,202 @@ def get_invoice_details(invoice_id):
         
     except Exception as e:
         print(f"Error getting invoice details: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+    
+
+
+@fees_bp.route('/export-invoiced-students', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def export_invoiced_students():
+    """Export invoiced students to Excel with date filtering"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Get filter parameters
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        category = request.args.get('category', 'all')
+        status = request.args.get('status', 'all')
+        
+        # Build query for students with invoices
+        student_query = supabase.table('students')\
+            .select('id, name, student_id, category, class_id, classes!inner(name)')\
+            .eq('institute_id', institute_id)\
+            .eq('status', 'active')
+        
+        if category != 'all':
+            student_query = student_query.eq('category', category)
+        
+        student_response = student_query.execute()
+        students = student_response.data or []
+        
+        if not students:
+            return jsonify({'success': False, 'message': 'No students found'}), 404
+        
+        student_ids = [s['id'] for s in students]
+        
+        # Build invoice query with date filtering
+        invoice_query = supabase.table('invoices')\
+            .select('''
+                id,
+                invoice_number,
+                total_amount,
+                paid_amount,
+                balance,
+                status,
+                due_date,
+                created_at,
+                student_id,
+                fee_particulars(fee_items)
+            ''')\
+            .eq('institute_id', institute_id)\
+            .in_('student_id', student_ids)
+        
+        # Apply date filters
+        if start_date:
+            invoice_query = invoice_query.gte('created_at', start_date)
+        if end_date:
+            # Add one day to include the end date fully
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+            next_day = end_date_obj + timedelta(days=1)
+            invoice_query = invoice_query.lt('created_at', next_day.strftime('%Y-%m-%d'))
+        
+        if status != 'all':
+            invoice_query = invoice_query.eq('status', status)
+        
+        invoice_response = invoice_query.order('created_at', desc=False).execute()
+        invoices = invoice_response.data or []
+        
+        # Create student mapping
+        student_map = {s['id']: s for s in students}
+        
+        # Prepare data for Excel
+        export_data = []
+        
+        for invoice in invoices:
+            student = student_map.get(invoice['student_id'], {})
+            
+            # Parse fee items
+            fee_items_str = ""
+            if invoice.get('fee_particulars') and invoice['fee_particulars'].get('fee_items'):
+                try:
+                    fee_items = json.loads(invoice['fee_particulars']['fee_items'])
+                    fee_items_str = ", ".join([f"{item.get('label', '')}: UGX {item.get('amount', 0):,}" for item in fee_items])
+                except:
+                    fee_items_str = ""
+            
+            # Calculate days overdue if due_date exists
+            days_overdue = ""
+            if invoice.get('due_date'):
+                try:
+                    due_date = datetime.strptime(invoice['due_date'], '%Y-%m-%d')
+                    if due_date.date() < datetime.now().date() and invoice.get('balance', 0) > 0:
+                        days_overdue = (datetime.now().date() - due_date.date()).days
+                        days_overdue = f"{days_overdue} days"
+                    else:
+                        days_overdue = "Not overdue"
+                except:
+                    days_overdue = ""
+            
+            export_data.append({
+                'Invoice Number': invoice.get('invoice_number', ''),
+                'Student Name': student.get('name', ''),
+                'Student ID': student.get('student_id', ''),
+                'Class': student.get('classes', {}).get('name', '') if student.get('classes') else '',
+                'Category': student.get('category', ''),
+                'Status': invoice.get('status', '').title(),
+                'Total Amount (UGX)': invoice.get('total_amount', 0),
+                'Paid Amount (UGX)': invoice.get('paid_amount', 0),
+                'Balance (UGX)': invoice.get('balance', 0),
+                'Payment %': f"{(invoice.get('paid_amount', 0) / invoice.get('total_amount', 1) * 100):.1f}%" if invoice.get('total_amount', 0) > 0 else "0%",
+                'Due Date': invoice.get('due_date', ''),
+                'Days Overdue': days_overdue,
+                'Invoice Date': invoice.get('created_at', ''),
+                'Fee Items': fee_items_str
+            })
+        
+        if not export_data:
+            return jsonify({'success': False, 'message': 'No invoices found for the selected filters'}), 404
+        
+        # Create DataFrame
+        df = pd.DataFrame(export_data)
+        
+        # Add summary sheet data
+        summary_data = {
+            'Metric': [
+                'Report Generated On',
+                'Total Invoices',
+                'Total Amount (UGX)',
+                'Total Paid Amount (UGX)',
+                'Total Balance (UGX)',
+                'Collection Rate',
+                'Start Date',
+                'End Date',
+                'Categories Filter',
+                'Status Filter'
+            ],
+            'Value': [
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                len(export_data),
+                f"UGX {df['Total Amount (UGX)'].sum():,.2f}",
+                f"UGX {df['Paid Amount (UGX)'].sum():,.2f}",
+                f"UGX {df['Balance (UGX)'].sum():,.2f}",
+                f"{(df['Paid Amount (UGX)'].sum() / df['Total Amount (UGX)'].sum() * 100):.1f}%" if df['Total Amount (UGX)'].sum() > 0 else "0%",
+                start_date or 'All',
+                end_date or 'All',
+                category.title(),
+                status.title()
+            ]
+        }
+        df_summary = pd.DataFrame(summary_data)
+        
+        # Create Excel file with multiple sheets
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Write main data
+            df.to_excel(writer, sheet_name='Invoiced Students', index=False)
+            
+            # Write summary
+            df_summary.to_excel(writer, sheet_name='Summary', index=False)
+            
+            # Add status breakdown
+            status_breakdown = df.groupby('Status').agg({
+                'Total Amount (UGX)': 'sum',
+                'Paid Amount (UGX)': 'sum',
+                'Balance (UGX)': 'sum'
+            }).reset_index()
+            status_breakdown.to_excel(writer, sheet_name='Status Breakdown', index=False)
+            
+            # Add category breakdown
+            category_breakdown = df.groupby('Category').agg({
+                'Total Amount (UGX)': 'sum',
+                'Paid Amount (UGX)': 'sum',
+                'Balance (UGX)': 'sum'
+            }).reset_index()
+            category_breakdown.to_excel(writer, sheet_name='Category Breakdown', index=False)
+        
+        output.seek(0)
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"invoiced_students_{timestamp}.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        print(f"Error exporting invoiced students: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500

@@ -48,7 +48,7 @@ temp/
 
 # Reports/PDFs (if generated)
 *.pdf
-reports/
+
 
 # Secrets/Keys
 *.key

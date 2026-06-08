@@ -1,4 +1,4 @@
-<!-- templates/fees/index.html - Complete Redesign with SVG Icons -->
+<!-- templates/fees/index.html - Complete Redesign with Excel Export Integration -->
 {% extends "base.html" %}
 
 {% block title %}Fee Management - Lunserk ERP{% endblock %}
@@ -25,36 +25,18 @@
 
     /* ===== ANIMATIONS ===== */
     @keyframes fadeSlideIn {
-        from {
-            opacity: 0;
-            transform: translateY(-8px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     @keyframes scaleIn {
-        from {
-            opacity: 0;
-            transform: scale(0.95);
-        }
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
     }
 
     @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-12px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(-12px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     /* ===== CARD STYLES ===== */
@@ -105,18 +87,10 @@
         background: var(--primary);
         color: white;
         box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
-        border-color: rgba(255, 255, 255, 0.2);
     }
 
-    .chip svg {
-        width: 1rem;
-        height: 1rem;
-    }
-
-    .chip.active svg {
-        stroke: white;
-        color: white;
-    }
+    .chip svg { width: 1rem; height: 1rem; }
+    .chip.active svg { stroke: white; color: white; }
 
     /* ===== EXPANDABLE SECTIONS ===== */
     .expandable-section {
@@ -127,9 +101,7 @@
         transition: all 0.2s;
     }
 
-    .expandable-section:hover {
-        border-color: var(--primary-light);
-    }
+    .expandable-section:hover { border-color: var(--primary-light); }
 
     .expandable-header {
         padding: 1rem;
@@ -141,10 +113,7 @@
         border-radius: 16px;
     }
 
-    .expandable-header:hover {
-        background: var(--primary-soft);
-    }
-
+    .expandable-header:hover { background: var(--primary-soft); }
     .expandable-header.active {
         background: var(--primary-soft);
         border-radius: 16px 16px 0 0;
@@ -164,7 +133,6 @@
         max-height: 0;
         overflow: hidden;
         transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        background: #fefefe;
         border-top: 1px solid transparent;
     }
 
@@ -174,9 +142,7 @@
         border-top-color: var(--gray-100);
     }
 
-    .expandable-inner {
-        padding: 1rem;
-    }
+    .expandable-inner { padding: 1rem; }
 
     /* ===== FEE ITEMS ===== */
     .fee-item {
@@ -258,19 +224,9 @@
         animation: slideDown 0.2s ease;
     }
 
-    .search-dropdown::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .search-dropdown::-webkit-scrollbar-track {
-        background: var(--gray-100);
-        border-radius: 10px;
-    }
-
-    .search-dropdown::-webkit-scrollbar-thumb {
-        background: var(--primary);
-        border-radius: 10px;
-    }
+    .search-dropdown::-webkit-scrollbar { width: 6px; }
+    .search-dropdown::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 10px; }
+    .search-dropdown::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
 
     .search-result {
         padding: 0.875rem 1rem;
@@ -279,13 +235,8 @@
         border-bottom: 1px solid var(--gray-100);
     }
 
-    .search-result:hover {
-        background: var(--primary-soft);
-    }
-
-    .search-result:last-child {
-        border-bottom: none;
-    }
+    .search-result:hover { background: var(--primary-soft); }
+    .search-result:last-child { border-bottom: none; }
 
     /* ===== SELECTED STUDENT CARD ===== */
     .selected-card {
@@ -344,6 +295,26 @@
         border-color: var(--gray-300);
     }
 
+    .btn-export {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        font-weight: 500;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+    }
+
+    .btn-export:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
     /* ===== CLASS CHECKBOX CONTAINER ===== */
     .class-list {
         max-height: 280px;
@@ -354,19 +325,9 @@
         background: #fefefe;
     }
 
-    .class-list::-webkit-scrollbar {
-        width: 5px;
-    }
-
-    .class-list::-webkit-scrollbar-track {
-        background: var(--gray-100);
-        border-radius: 10px;
-    }
-
-    .class-list::-webkit-scrollbar-thumb {
-        background: var(--primary);
-        border-radius: 10px;
-    }
+    .class-list::-webkit-scrollbar { width: 5px; }
+    .class-list::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 10px; }
+    .class-list::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
 
     /* ===== MODAL ===== */
     .modal-backdrop {
@@ -380,10 +341,7 @@
         justify-content: center;
     }
 
-    .modal-backdrop.active {
-        display: flex;
-        animation: fadeSlideIn 0.2s ease;
-    }
+    .modal-backdrop.active { display: flex; animation: fadeSlideIn 0.2s ease; }
 
     .modal-container {
         background: white;
@@ -406,9 +364,7 @@
         justify-content: center;
     }
 
-    .loading-overlay.active {
-        display: flex;
-    }
+    .loading-overlay.active { display: flex; }
 
     .spinner {
         width: 48px;
@@ -419,9 +375,7 @@
         animation: spin 0.8s linear infinite;
     }
 
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Status Badges */
     .status-badge {
@@ -434,36 +388,14 @@
         font-weight: 500;
     }
 
-    .status-paid {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .status-partial {
-        background: #fef3c7;
-        color: #92400e;
-    }
-
-    .status-pending {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .category-boarding {
-        background: #fffbeb;
-        color: #b45309;
-    }
-
-    .category-day {
-        background: #eff6ff;
-        color: #1e40af;
-    }
+    .status-paid { background: #dcfce7; color: #166534; }
+    .status-partial { background: #fef3c7; color: #92400e; }
+    .status-pending { background: #fee2e2; color: #991b1b; }
+    .category-boarding { background: #fffbeb; color: #b45309; }
+    .category-day { background: #eff6ff; color: #1e40af; }
 
     /* Table Styles */
-    .invoice-table {
-        width: 100%;
-    }
-
+    .invoice-table { width: 100%; }
     .invoice-table th {
         padding: 0.75rem 1rem;
         text-align: left;
@@ -472,11 +404,7 @@
         color: var(--gray-600);
         border-bottom: 1px solid var(--gray-100);
     }
-
-    .invoice-table td {
-        padding: 1rem;
-        border-bottom: 1px solid var(--gray-50);
-    }
+    .invoice-table td { padding: 1rem; border-bottom: 1px solid var(--gray-50); }
 
     /* Pagination */
     .pagination-btn {
@@ -507,11 +435,52 @@
         cursor: not-allowed;
     }
 
+    /* Export Modal Styles */
+    .export-modal { max-width: 500px; }
+    .date-range-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .filter-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        background: var(--gray-100);
+        border-radius: 100px;
+        font-size: 0.75rem;
+        color: var(--gray-700);
+    }
+
+    .filter-badge.active {
+        background: var(--primary-soft);
+        color: var(--primary-dark);
+        border: 1px solid #fed7aa;
+    }
+
+    .quick-filter-btn {
+        padding: 0.375rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        background: white;
+        border: 1px solid var(--gray-200);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .quick-filter-btn:hover {
+        border-color: var(--primary);
+        background: var(--primary-soft);
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
         .total-amount { font-size: 1.5rem; }
         .search-dropdown { left: 16px !important; right: 16px !important; width: auto !important; }
         .modal-container { max-width: 95%; padding: 1rem; }
+        .date-range-container { grid-template-columns: 1fr; }
     }
 </style>
 {% endblock %}
@@ -552,7 +521,6 @@
                             <span class="text-red-500">*</span> Apply To
                         </label>
 
-                        <!-- All Students -->
                         <div class="expandable-section" data-option="all">
                             <div class="expandable-header">
                                 <div class="flex items-center gap-3">
@@ -569,7 +537,6 @@
                             </div>
                         </div>
 
-                        <!-- Specific Class -->
                         <div class="expandable-section" data-option="class">
                             <div class="expandable-header">
                                 <div class="flex items-center gap-3">
@@ -597,7 +564,6 @@
                             </div>
                         </div>
 
-                        <!-- Specific Student -->
                         <div class="expandable-section" data-option="student">
                             <div class="expandable-header">
                                 <div class="flex items-center gap-3">
@@ -644,7 +610,6 @@
                             </div>
                         </div>
 
-                        <!-- Multiple Classes -->
                         <div class="expandable-section" data-option="multiple-classes">
                             <div class="expandable-header">
                                 <div class="flex items-center gap-3">
@@ -679,7 +644,7 @@
                         <input type="hidden" name="apply_to" id="applyToHidden">
                     </div>
 
-                    <!-- Student Category - Pre-selected "All Categories" -->
+                    <!-- Student Category -->
                     <div class="mb-6">
                         <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">
                             <span class="text-red-500">*</span> Student Category
@@ -709,7 +674,7 @@
 
                     <hr class="my-5 border-gray-100">
 
-                    <!-- Default Fee Type - Pre-selected "Fixed" -->
+                    <!-- Default Fee Type -->
                     <div class="mb-4">
                         <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">
                             <span class="text-red-500">*</span> Default Fee Type
@@ -754,14 +719,13 @@
 
                 <div class="p-6">
                     <div id="feeItemsList">
-                        <!-- Default fee item row -->
                         <div class="fee-item">
                             <div class="grid grid-cols-12 gap-3 items-center">
                                 <div class="col-span-5">
-                                    <input type="text" name="particular_label[]" placeholder="e.g., Tuition Fee" class="input-modern text-sm" value="Tuition Fee">
+                                    <input type="text" name="particular_label[]" placeholder="e.g., Tuition Fee" class="input-modern text-sm" >
                                 </div>
                                 <div class="col-span-3">
-                                    <input type="number" name="amount[]" placeholder="Amount" onchange="updateTotal()" class="input-modern text-sm text-right" value="500000">
+                                    <input type="number" name="amount[]" placeholder="Amount" onchange="updateTotal()" class="input-modern text-sm text-right" >
                                 </div>
                                 <div class="col-span-3">
                                     <select name="type[]" class="select-modern text-sm">
@@ -780,7 +744,6 @@
                         </div>
                     </div>
 
-                    <!-- Total Section -->
                     <div class="mt-6 pt-4 border-t border-gray-100">
                         <div class="flex justify-between items-end">
                             <div>
@@ -791,7 +754,6 @@
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
                     <div class="flex gap-3 mt-6 pt-2">
                         <button type="button" onclick="resetFeeItems()" class="btn-secondary text-sm">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -824,8 +786,7 @@
                 <p class="text-xs text-gray-400 mt-1">View all students with invoices and their fee details</p>
             </div>
             
-            <!-- Filters -->
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
                 <select id="studentCategoryFilter" class="px-3 py-1.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:border-orange-400">
                     <option value="all">All Categories</option>
                     <option value="Boarding">Boarding</option>
@@ -839,10 +800,17 @@
                     <option value="paid">Paid</option>
                 </select>
                 
-                <button type="button" onclick="refreshInvoicedStudents()" class="p-1.5 text-gray-500 hover:text-orange-500 transition rounded-lg">
+                <button type="button" onclick="refreshInvoicedStudents()" class="p-1.5 text-gray-500 hover:text-orange-500 transition rounded-lg" title="Refresh">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                     </svg>
+                </button>
+                
+                <button type="button" onclick="openExportModal()" class="btn-export">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M4 4v16h16V4H4z"></path>
+                    </svg>
+                    Export Excel
                 </button>
             </div>
         </div>
@@ -855,8 +823,83 @@
                 </div>
             </div>
             
-            <!-- Pagination -->
-            <div id="paginationControls" class="mt-6 flex justify-between items-center">
+            <div id="paginationControls" class="mt-6 flex justify-between items-center"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div id="exportModal" class="modal-backdrop">
+    <div class="modal-container export-modal">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M4 4v16h16V4H4z"></path>
+                </svg>
+                Export Invoiced Students
+            </h3>
+            <button onclick="closeExportModal()" class="text-gray-400 hover:text-gray-600 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="space-y-5">
+            <!-- Date Range -->
+            <div>
+                <label class="text-sm font-semibold text-gray-700 mb-2 block">Date Range</label>
+                <div class="date-range-container">
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">Start Date</label>
+                        <input type="date" id="exportStartDate" class="input-modern">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">End Date</label>
+                        <input type="date" id="exportEndDate" class="input-modern">
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button type="button" onclick="setQuickDate('today')" class="quick-filter-btn">Today</button>
+                    <button type="button" onclick="setQuickDate('week')" class="quick-filter-btn">This Week</button>
+                    <button type="button" onclick="setQuickDate('month')" class="quick-filter-btn">This Month</button>
+                    <button type="button" onclick="clearDates()" class="quick-filter-btn">Clear</button>
+                </div>
+            </div>
+            
+            <!-- Current Filters Display -->
+            <div class="bg-gray-50 rounded-xl p-3">
+                <p class="text-xs font-semibold text-gray-500 mb-2">Current Filters</p>
+                <div class="flex flex-wrap gap-2">
+                    <span class="filter-badge" id="exportCategoryDisplay">Category: All</span>
+                    <span class="filter-badge" id="exportStatusDisplay">Status: All</span>
+                </div>
+            </div>
+            
+            <!-- Export Options -->
+            <div>
+                <label class="text-sm font-semibold text-gray-700 mb-2 block">Export Options</label>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="exportType" value="all" checked class="text-orange-500">
+                        <span class="text-sm text-gray-700">All columns (Detailed Report)</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="exportType" value="summary" class="text-orange-500">
+                        <span class="text-sm text-gray-700">Summary only (Financial Overview)</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex gap-3 pt-3">
+                <button type="button" onclick="closeExportModal()" class="btn-secondary flex-1">Cancel</button>
+                <button type="button" onclick="exportToExcel()" class="btn-primary flex-1 justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Export Now
+                </button>
             </div>
         </div>
     </div>
@@ -878,8 +921,7 @@
                 </svg>
             </button>
         </div>
-        <div id="invoiceDetailsContent">
-        </div>
+        <div id="invoiceDetailsContent"></div>
     </div>
 </div>
 
@@ -905,7 +947,7 @@
 <div id="loadingOverlay" class="loading-overlay">
     <div class="bg-white rounded-2xl p-6 flex flex-col items-center shadow-2xl">
         <div class="spinner mb-4"></div>
-        <p class="text-gray-700 font-medium">Generating invoices...</p>
+        <p class="text-gray-700 font-medium" id="loadingMessage">Processing...</p>
         <p class="text-xs text-gray-400 mt-1">Please wait</p>
     </div>
 </div>
@@ -956,7 +998,6 @@
         setTimeout(() => { flash.style.opacity = '0'; setTimeout(() => flash.remove(), 300); }, 4000);
     }
 
-    // Position search dropdown
     function positionSearchDropdown() {
         if (!studentSearch) return;
         const rect = studentSearch.getBoundingClientRect();
@@ -965,7 +1006,6 @@
         searchDropdown.style.width = `${rect.width}px`;
     }
 
-    // Show search results
     function showSearchResults(html) {
         searchDropdown.innerHTML = html;
         searchDropdown.style.display = 'block';
@@ -989,7 +1029,6 @@
         searchOverlay.classList.remove('active');
     }
 
-    // Student search
     async function performStudentSearch() {
         const query = studentSearch.value.trim();
         if (query.length < 2) {
@@ -1087,7 +1126,6 @@
         header.addEventListener('click', () => {
             const isActive = header.classList.contains('active');
             
-            // Close all sections
             expandableSections.forEach(s => {
                 const h = s.querySelector('.expandable-header');
                 const c = s.querySelector('.expandable-content');
@@ -1110,7 +1148,7 @@
         });
     });
 
-    // Category chips - set default active
+    // Category chips
     categoryPills.forEach(pill => {
         pill.addEventListener('click', () => {
             categoryPills.forEach(p => p.classList.remove('active'));
@@ -1120,7 +1158,7 @@
         });
     });
 
-    // Default type chips - set default active
+    // Default type chips
     defaultTypeChips.forEach(chip => {
         chip.addEventListener('click', () => {
             defaultTypeChips.forEach(c => c.classList.remove('active'));
@@ -1243,12 +1281,10 @@
         applyToHidden.value = '';
         currentSelection = null;
         
-        // Reset category to "All Categories" (first chip)
         categoryPills.forEach(p => p.classList.remove('active'));
         categoryPills[0].classList.add('active');
         categoryHidden.value = 'all';
         
-        // Reset default type to "Fixed" (first chip)
         defaultTypeChips.forEach(c => c.classList.remove('active'));
         defaultTypeChips[0].classList.add('active');
         defaultTypeHidden.value = 'fixed';
@@ -1256,7 +1292,6 @@
         clearSelectedStudent();
         hideSearchResults();
         
-        // Add default fee item
         const container = document.getElementById('feeItemsList');
         const defaultItem = document.createElement('div');
         defaultItem.className = 'fee-item';
@@ -1266,7 +1301,7 @@
                     <input type="text" name="particular_label[]" placeholder="e.g., Tuition Fee" class="input-modern text-sm" value="Tuition Fee">
                 </div>
                 <div class="col-span-3">
-                    <input type="number" name="amount[]" placeholder="Amount" onchange="updateTotal()" class="input-modern text-sm text-right" value="500000">
+                    <input type="number" name="amount[]" placeholder="Amount" onchange="updateTotal()" class="input-modern text-sm text-right" >
                 </div>
                 <div class="col-span-3">
                     <select name="type[]" class="select-modern text-sm">
@@ -1348,6 +1383,7 @@
         
         const loading = document.getElementById('loadingOverlay');
         loading.classList.add('active');
+        document.getElementById('loadingMessage').textContent = 'Generating invoices...';
         
         try {
             let endpoint = '/fees/particulars/create';
@@ -1404,6 +1440,81 @@
     window.closeSuccessModal = function() {
         document.getElementById('successModal').classList.remove('active');
     };
+
+    // Export Functions
+    function openExportModal() {
+        // Update filter displays
+        const category = document.getElementById('studentCategoryFilter').value;
+        const status = document.getElementById('invoiceStatusFilter').value;
+        
+        document.getElementById('exportCategoryDisplay').innerHTML = `Category: ${category === 'all' ? 'All' : category}`;
+        document.getElementById('exportStatusDisplay').innerHTML = `Status: ${status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}`;
+        
+        document.getElementById('exportModal').classList.add('active');
+    }
+
+    function closeExportModal() {
+        document.getElementById('exportModal').classList.remove('active');
+    }
+
+    function setQuickDate(range) {
+        const startDateInput = document.getElementById('exportStartDate');
+        const endDateInput = document.getElementById('exportEndDate');
+        const today = new Date();
+        
+        if (range === 'today') {
+            const dateStr = today.toISOString().split('T')[0];
+            startDateInput.value = dateStr;
+            endDateInput.value = dateStr;
+        } else if (range === 'week') {
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay());
+            startDateInput.value = weekStart.toISOString().split('T')[0];
+            endDateInput.value = today.toISOString().split('T')[0];
+        } else if (range === 'month') {
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            startDateInput.value = monthStart.toISOString().split('T')[0];
+            endDateInput.value = today.toISOString().split('T')[0];
+        }
+    }
+
+    function clearDates() {
+        document.getElementById('exportStartDate').value = '';
+        document.getElementById('exportEndDate').value = '';
+    }
+
+    async function exportToExcel() {
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.add('active');
+        document.getElementById('loadingMessage').textContent = 'Preparing export...';
+        
+        try {
+            const startDate = document.getElementById('exportStartDate').value;
+            const endDate = document.getElementById('exportEndDate').value;
+            const category = document.getElementById('studentCategoryFilter').value;
+            const status = document.getElementById('invoiceStatusFilter').value;
+            const exportType = document.querySelector('input[name="exportType"]:checked').value;
+            
+            let url = `/fees/export-invoiced-students?category=${category}&status=${status}`;
+            if (startDate) url += `&start_date=${startDate}`;
+            if (endDate) url += `&end_date=${endDate}`;
+            if (exportType === 'summary') url += `&summary_only=true`;
+            
+            // Trigger download
+            window.location.href = url;
+            
+            setTimeout(() => {
+                loading.classList.remove('active');
+                closeExportModal();
+                showMessage('Export started successfully', 'success');
+            }, 1000);
+            
+        } catch (error) {
+            loading.classList.remove('active');
+            console.error('Export error:', error);
+            showMessage('Failed to export data', 'error');
+        }
+    }
 
     // Invoiced Students Table Functions
     let currentPage = 1;
@@ -1665,7 +1776,6 @@
         const content = document.getElementById('invoiceDetailsContent');
         content.innerHTML = `
             <div class="space-y-5">
-                <!-- Student Info -->
                 <div class="bg-gray-50 rounded-xl p-4">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -1697,7 +1807,6 @@
                     </div>
                 </div>
                 
-                <!-- Fee Items -->
                 <div>
                     <h4 class="text-sm font-semibold text-gray-700 mb-3">Fee Items</h4>
                     <div class="space-y-2">
@@ -1717,7 +1826,6 @@
                     </div>
                 </div>
                 
-                <!-- Payment Summary -->
                 <div class="bg-orange-50 rounded-xl p-4">
                     <div class="grid grid-cols-3 gap-3 text-center">
                         <div>
@@ -1741,7 +1849,6 @@
                     </div>
                 </div>
                 
-                <!-- Payment History -->
                 ${payments.length > 0 ? `
                     <div>
                         <h4 class="text-sm font-semibold text-gray-700 mb-3">Payment History</h4>
@@ -1838,7 +1945,6 @@
 
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
-        // Set default category and fee type
         categoryHidden.value = 'all';
         defaultTypeHidden.value = 'fixed';
         
@@ -1850,7 +1956,6 @@
         
         updateTotal();
         
-        // Set up filter event listeners
         const categoryFilter = document.getElementById('studentCategoryFilter');
         const statusFilter = document.getElementById('invoiceStatusFilter');
         
@@ -1861,7 +1966,6 @@
             statusFilter.addEventListener('change', refreshInvoicedStudents);
         }
         
-        // Load invoiced students on page load
         loadInvoicedStudents();
     });
 
