@@ -42,6 +42,70 @@
     .progress-bar {
         transition: width 0.3s ease;
     }
+    
+    /* Searchable select styles */
+    .searchable-select {
+        position: relative;
+        width: 100%;
+    }
+    .searchable-select-input {
+        width: 100%;
+        padding: 0.5rem;
+        padding-left: 2rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        background-color: white;
+    }
+    .searchable-select-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        margin-top: 0.25rem;
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 50;
+        display: none;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .searchable-select-dropdown.show {
+        display: block;
+    }
+    .searchable-select-search {
+        padding: 0.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        position: sticky;
+        top: 0;
+        background: white;
+    }
+    .searchable-select-search input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+    }
+    .searchable-select-option {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    .searchable-select-option:hover {
+        background-color: #fff7ed;
+    }
+    .searchable-select-option.selected {
+        background-color: #ffa500;
+        color: white;
+    }
+    .searchable-select-loading {
+        padding: 0.5rem;
+        text-align: center;
+        color: #6b7280;
+    }
 </style>
 {% endblock %}
 
@@ -68,15 +132,26 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Select Student *</label>
-                    <div class="relative">
-                        <i class="fas fa-user-graduate absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
-                        <select id="studentSelect" class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                            <option value="">-- Select Student --</option>
-                            {% for student in students %}
-                            <option value="{{ student.id }}">{{ student.name }} ({{ student.student_id }}) - {{ student.classes.name if student.classes else 'N/A' }}</option>
-                            {% endfor %}
-                        </select>
+                    <div class="searchable-select" id="studentSearchable">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm z-10"></i>
+                            <div class="searchable-select-input" id="studentSelectTrigger">
+                                <span id="selectedStudentText">-- Search and Select Student --</span>
+                            </div>
+                        </div>
+                        <div class="searchable-select-dropdown" id="studentDropdown">
+                            <div class="searchable-select-search">
+                                <input type="text" 
+                                       id="studentSearchInput" 
+                                       placeholder="Search by name or ID..." 
+                                       autocomplete="off">
+                            </div>
+                            <div id="studentOptions">
+                                <div class="searchable-select-loading">Type to search...</div>
+                            </div>
+                        </div>
                     </div>
+                    <input type="hidden" id="selectedStudentId" value="">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
@@ -198,6 +273,106 @@
 
 <script>
     let currentMode = 'single';
+    let searchTimeout;
+    let currentSearchTerm = '';
+    
+    // Initialize searchable select
+    const studentSearchable = {
+        trigger: document.getElementById('studentSelectTrigger'),
+        dropdown: document.getElementById('studentDropdown'),
+        searchInput: document.getElementById('studentSearchInput'),
+        optionsContainer: document.getElementById('studentOptions'),
+        selectedIdInput: document.getElementById('selectedStudentId'),
+        selectedTextSpan: document.getElementById('selectedStudentText'),
+        
+        init() {
+            this.trigger.addEventListener('click', () => this.toggle());
+            this.searchInput.addEventListener('input', (e) => this.search(e.target.value));
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!this.trigger.contains(e.target) && !this.dropdown.contains(e.target)) {
+                    this.close();
+                }
+            });
+            
+            // Handle escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && this.dropdown.classList.contains('show')) {
+                    this.close();
+                }
+            });
+        },
+        
+        toggle() {
+            if (this.dropdown.classList.contains('show')) {
+                this.close();
+            } else {
+                this.open();
+            }
+        },
+        
+        open() {
+            this.dropdown.classList.add('show');
+            this.searchInput.value = '';
+            this.search('');
+            this.searchInput.focus();
+        },
+        
+        close() {
+            this.dropdown.classList.remove('show');
+        },
+        
+        async search(query) {
+            currentSearchTerm = query;
+            this.optionsContainer.innerHTML = '<div class="searchable-select-loading">Searching...</div>';
+            
+            try {
+                const response = await fetch(`/students/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                if (data.success && data.students && data.students.length > 0) {
+                    this.renderOptions(data.students);
+                } else {
+                    this.optionsContainer.innerHTML = '<div class="searchable-select-loading">No students found</div>';
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                this.optionsContainer.innerHTML = '<div class="searchable-select-loading">Error searching students</div>';
+            }
+        },
+        
+        renderOptions(students) {
+            if (students.length === 0) {
+                this.optionsContainer.innerHTML = '<div class="searchable-select-loading">No students found</div>';
+                return;
+            }
+            
+            const optionsHtml = students.map(student => `
+                <div class="searchable-select-option" data-id="${student.id}" data-name="${student.name} (${student.student_id}) - ${student.classes?.name || 'N/A'}">
+                    <div class="font-medium">${student.name}</div>
+                    <div class="text-xs text-gray-500">ID: ${student.student_id} | Class: ${student.classes?.name || 'N/A'}</div>
+                </div>
+            `).join('');
+            
+            this.optionsContainer.innerHTML = optionsHtml;
+            
+            // Add click handlers to options
+            this.optionsContainer.querySelectorAll('.searchable-select-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    const id = option.dataset.id;
+                    const name = option.dataset.name;
+                    this.select(id, name);
+                });
+            });
+        },
+        
+        select(id, name) {
+            this.selectedIdInput.value = id;
+            this.selectedTextSpan.textContent = name;
+            this.close();
+        }
+    };
     
     function switchTab(tab) {
         currentMode = tab;
@@ -230,7 +405,7 @@
     }
     
     async function generateReportCard() {
-        const studentId = document.getElementById('studentSelect').value;
+        const studentId = document.getElementById('selectedStudentId').value;
         const term = document.getElementById('termInput').value.trim();
         const year = document.getElementById('yearSelect').value;
         
@@ -240,7 +415,7 @@
         });
         
         if (!studentId) {
-            showError('Please select a student');
+            showError('Please search and select a student');
             return;
         }
         
@@ -274,7 +449,7 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                const studentName = document.getElementById('studentSelect').options[document.getElementById('studentSelect').selectedIndex]?.text.split(' (')[0] || 'student';
+                const studentName = document.getElementById('selectedStudentText').textContent.split(' (')[0];
                 a.download = `report_card_${studentName}_${term}_${year}.pdf`;
                 document.body.appendChild(a);
                 a.click();
@@ -409,5 +584,10 @@
         if (event.target === errorModal) closeErrorModal();
         if (event.target === progressModal) closeProgress();
     };
+    
+    // Initialize searchable select when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        studentSearchable.init();
+    });
 </script>
 {% endblock %}

@@ -1,31 +1,58 @@
 import requests
+import json
+API = "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"
+url = "https://openrouter.ai/api/v1/chat/completions"
 
-url = "https://api.pawapay.io/v2/payouts"
 payload = {
-    "payoutId": "f4401bd2-1568-4140-bf2d-eb77d2b2b639",
-    "recipient": {
-        "type": "MMO",
-        "accountDetails": {
-            "phoneNumber": "256763456789",
-            "provider": "MTN_MOMO_UGA"
-        }
-    },
-    "amount": "1000",
-    "currency": "UGX",
-    "clientReferenceId": "INV-123456",
-    "customerMessage": "Note of 4 to 22 chars",
-    "metadata": [
-        {"orderId": "ORD-123456789"},
-        {"customerId": "customer@email.com", "isPII": True}
-    ]
+    "model": "openrouter/free",
+    "messages": [
+        {"role": "user", "content": "How many r's are in strawberry?"}
+    ],
+    "stream": True
 }
 
-token = 'eyJraWQiOiIxIiwiYWxnIjoiRVMyNTYifQ.eyJ0dCI6IkFBVCIsInN1YiI6IjIxODQxIiwibWF2IjoiMSIsImV4cCI6MjA5NjA5MDM3NSwiaWF0IjoxNzgwNDcxMTc1LCJwbSI6IkRBRixQQUYiLCJqdGkiOiI1M2E5ODUyNi1kNmQxLTQzYzMtYjhlNS0xNTU1ZTkwNjc4MGEifQ.jERnjAzboMBVMANVm6mCu5bPVP0aNDyF0gDco-8ZaQJ-qD9fOdW84mXcc2uVIjcLS1LAQYlV2Fk2spKWQL0hmA'
 headers = {
-    "Authorization": f"Bearer {token}",
-    "Content-Type": "application/json"
+    "Authorization": f"Bearer {API}",
+    "Content-Type": "application/json",
 }
 
-response = requests.post(url, json=payload, headers=headers)
+response = requests.post(url, headers=headers, json=payload, stream=True)
 
-print(response.text)
+# detect if streaming actually works
+if response.headers.get("content-type", "").startswith("text/event-stream"):
+    print("Streaming response:\n")
+
+    full_text = ""
+
+    for line in response.iter_lines():
+        if not line:
+            continue
+
+        line = line.decode("utf-8")
+
+        if line.startswith("data: "):
+            data = line.replace("data: ", "")
+
+            if data.strip() == "[DONE]":
+                break
+
+            try:
+                chunk = json.loads(data)
+                delta = chunk["choices"][0]["delta"].get("content")
+
+                if delta:
+                    print(delta, end="", flush=True)
+                    full_text += delta
+
+            except Exception:
+                pass
+
+    print("\n\nDONE")
+
+else:
+    # 🔥 fallback (MOST IMPORTANT FIX)
+    data = response.json()
+
+    print("NON-STREAM RESPONSE:\n")
+
+    print(data["choices"][0]["message"]["content"])

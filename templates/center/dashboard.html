@@ -1,770 +1,398 @@
 {% extends "base.html" %}
+
+{% block title %}Report Center{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-card { transition: all 0.3s ease; cursor: pointer; }
+    .report-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+    .btn-gradient { background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%); }
+    .btn-gradient:hover { background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%); transform: translateY(-2px); }
+    .modal-overlay { animation: fadeIn 0.3s ease-out; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .modal-container { animation: slideUp 0.4s cubic-bezier(0.34,1.2,0.64,1); background: white; border-radius: 12px; max-width: 90vw; max-height: 90vh; overflow: auto; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(50px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .report-table { width: 100%; border-collapse: collapse; }
+    .report-table th, .report-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    .report-table th { background-color: #f9fafb; font-weight: 600; font-size: 13px; position: sticky; top: 0; z-index: 10; }
+    .report-table td { font-size: 13px; }
+    .report-table tbody tr:hover { background-color: #fef3c7; cursor: pointer; }
+    .summary-card { background: linear-gradient(135deg, #fef9e7 0%, #fff 100%); border-left: 4px solid #ffa500; }
+    .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #ffa500; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .student-link { color: #ff8c00; text-decoration: none; font-weight: 500; }
+    .student-link:hover { color: #e67e00; text-decoration: underline; }
+    .pagination-btn { padding: 8px 12px; margin: 0 4px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; color: #4b5563; transition: all 0.2s; cursor: pointer; }
+    .pagination-btn:hover:not(:disabled) { background: #ffa500; color: white; border-color: #ffa500; }
+    .pagination-btn.active { background: #ffa500; color: white; border-color: #ffa500; }
+    .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .tab-btn { transition: all 0.2s; }
+    .action-btn { transition: all 0.2s; }
+    .action-btn:hover { transform: scale(1.05); }
+    
+    /* AI Analysis Modal Styles */
+    .ai-modal-container { max-width: 800px; width: 90%; max-height: 85vh; overflow-y: auto; }
+    .prose { line-height: 1.6; }
+    .prose h2 { font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 1rem; color: #1f2937; border-bottom: 2px solid #f97316; padding-bottom: 0.5rem; }
+    .prose h3 { font-size: 1.25rem; margin-top: 1.25rem; margin-bottom: 0.75rem; color: #374151; }
+    .prose h4 { font-size: 1.1rem; margin-top: 1rem; margin-bottom: 0.5rem; color: #4b5563; font-weight: 600; }
+    .prose strong { color: #ea580c; }
+    .prose ul, .prose ol { margin: 1rem 0; padding-left: 2rem; }
+    .prose li { margin: 0.25rem 0; }
+    .prose p { margin-bottom: 1rem; }
+    .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }
+    .prose th { background-color: #f3f4f6; padding: 0.75rem; text-align: left; font-weight: 600; border: 1px solid #e5e7eb; }
+    .prose td { padding: 0.75rem; border: 1px solid #e5e7eb; }
+    .prose tr:hover { background-color: #fef3c7; }
+    .prose blockquote { border-left: 4px solid #f97316; padding-left: 1rem; margin: 1rem 0; color: #6b7280; font-style: italic; }
+</style>
+{% endblock %}
+
 {% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Report Center</h2>
+        <p class="text-gray-500 text-sm mt-1">Financial reports and analytics dashboard</p>
+    </div>
 
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Report Center - {{ institute.institute_name if institute else 'Dashboard' }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        .report-card {
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        .report-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-        }
-        .btn-gradient {
-            background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-        }
-        .btn-gradient:hover {
-            background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
-            transform: translateY(-2px);
-        }
-        .modal-overlay {
-            animation: fadeIn 0.3s ease-out;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-container {
-            animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
-            background: white;
-            border-radius: 12px;
-            max-width: 90vw;
-            max-height: 90vh;
-            overflow: auto;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(50px) scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-        .report-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .report-table th, .report-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .report-table th {
-            background-color: #f9fafb;
-            font-weight: 600;
-            font-size: 13px;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .report-table td {
-            font-size: 13px;
-        }
-        .report-table tbody tr:hover {
-            background-color: #fef3c7;
-            cursor: pointer;
-        }
-        .summary-card {
-            background: linear-gradient(135deg, #fef9e7 0%, #fff 100%);
-            border-left: 4px solid #ffa500;
-        }
-        .action-btn {
-            transition: all 0.2s;
-        }
-        .action-btn:hover {
-            transform: scale(1.05);
-        }
-        .tab-active {
-            background-color: #ffa500;
-            color: white;
-        }
-        .loading-spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #ffa500;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .student-link {
-            color: #ff8c00;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-        .student-link:hover {
-            color: #e67e00;
-            text-decoration: underline;
-        }
-        .pagination-btn {
-            padding: 8px 12px;
-            margin: 0 4px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            background: white;
-            color: #4b5563;
-            transition: all 0.2s;
-        }
-        .pagination-btn:hover:not(:disabled) {
-            background: #ffa500;
-            color: white;
-            border-color: #ffa500;
-        }
-        .pagination-btn.active {
-            background: #ffa500;
-            color: white;
-            border-color: #ffa500;
-        }
-        .pagination-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .search-input {
-            transition: all 0.2s;
-        }
-        .search-input:focus {
-            border-color: #ffa500;
-            ring: 2px solid #ffa500;
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Navbar -->
-    <nav class="bg-white shadow-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center">
-                    <i class="fas fa-chart-line text-orange-500 text-2xl mr-3"></i>
-                    <h1 class="text-xl font-bold text-gray-800">Report Center</h1>
-                    {% if institute %}
-                    <span class="ml-4 text-sm text-gray-500">{{ institute.institute_name }}</span>
-                    {% endif %}
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-600">
-                        <i class="far fa-calendar-alt mr-1"></i>
-                        {{ now.strftime('%B %d, %Y') }}
-                    </span>
-                    <button onclick="window.location.href='/dashboard'" class="text-gray-600 hover:text-orange-500">
-                        <i class="fas fa-home"></i>
-                    </button>
-                </div>
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div class="flex items-center justify-between">
+                <div><p class="text-sm text-gray-500 mb-1">Monthly Collection</p><p class="text-2xl font-bold text-gray-800">UGX {{ "%.0f"|format(summary.current_month_collection|default(0)) }}</p></div>
+                <i class="fas fa-money-bill-wave text-orange-500 text-2xl"></i>
             </div>
         </div>
-    </nav>
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Summary Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6 summary-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">Monthly Collection</p>
-                        <p class="text-2xl font-bold text-gray-800">UGX {{ "%.0f"|format(summary.current_month_collection|default(0)) }}</p>
-                    </div>
-                    <i class="fas fa-money-bill-wave text-orange-500 text-3xl"></i>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-md p-6 summary-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">Total Students</p>
-                        <p class="text-2xl font-bold text-gray-800">{{ summary.total_students|default(0) }}</p>
-                    </div>
-                    <i class="fas fa-users text-orange-500 text-3xl"></i>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-md p-6 summary-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">Outstanding Balance</p>
-                        <p class="text-2xl font-bold text-red-600">UGX {{ "%.0f"|format(summary.outstanding_balance|default(0)) }}</p>
-                    </div>
-                    <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-md p-6 summary-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">Monthly Expenses</p>
-                        <p class="text-2xl font-bold text-gray-800">UGX {{ "%.0f"|format(summary.current_month_expenses|default(0)) }}</p>
-                    </div>
-                    <i class="fas fa-receipt text-orange-500 text-3xl"></i>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-md p-6 summary-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">Net Income</p>
-                        <p class="text-2xl font-bold text-green-600">UGX {{ "%.0f"|format(summary.net_income|default(0)) }}</p>
-                    </div>
-                    <i class="fas fa-chart-line text-green-500 text-3xl"></i>
-                </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div class="flex items-center justify-between">
+                <div><p class="text-sm text-gray-500 mb-1">Total Students</p><p class="text-2xl font-bold text-gray-800">{{ summary.total_students|default(0) }}</p></div>
+                <i class="fas fa-users text-orange-500 text-2xl"></i>
             </div>
         </div>
-
-        <!-- Report Tabs -->
-        <div class="bg-white rounded-lg shadow-md">
-            <div class="border-b border-gray-200">
-                <nav class="flex flex-wrap gap-2 p-4">
-                    <button onclick="showReport('daily')" id="tab-daily" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all bg-orange-500 text-white">
-                        <i class="fas fa-calendar-day mr-2"></i>Daily Collection
-                    </button>
-                    <button onclick="showReport('balance')" id="tab-balance" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100">
-                        <i class="fas fa-scale-balanced mr-2"></i>Balance Report
-                    </button>
-                    <button onclick="showReport('income')" id="tab-income" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100">
-                        <i class="fas fa-chart-pie mr-2"></i>Income & Expenses
-                    </button>
-                    <button onclick="showReport('student')" id="tab-student" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100">
-                        <i class="fas fa-user-graduate mr-2"></i>Student Report
-                    </button>
-                    <button onclick="showReport('class')" id="tab-class" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100">
-                        <i class="fas fa-school mr-2"></i>Class Report
-                    </button>
-                    <button onclick="showReport('payment')" id="tab-payment" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100">
-                        <i class="fas fa-credit-card mr-2"></i>Payment Methods
-                    </button>
-                </nav>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div class="flex items-center justify-between">
+                <div><p class="text-sm text-gray-500 mb-1">Outstanding Balance</p><p class="text-2xl font-bold text-red-600">UGX {{ "%.0f"|format(summary.outstanding_balance|default(0)) }}</p></div>
+                <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
             </div>
-
-            <!-- Filter Bar -->
-            <div class="p-4 bg-gray-50 border-b border-gray-200">
-                <div class="flex flex-wrap gap-4 items-end">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                        <input type="date" id="start_date" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                        <input type="date" id="end_date" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
-                    </div>
-                    <div id="class_filter_container" style="display: none;">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Class</label>
-                        <select id="class_filter" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
-                            <option value="">All Classes</option>
-                            {% for class in classes %}
-                            <option value="{{ class.id }}">{{ class.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div id="search_container" style="display: none;">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                        <input type="text" id="search_input" placeholder="Search by name or ID..." class="search-input rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 w-64">
-                    </div>
-                    <div>
-                        <button onclick="loadReport()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium">
-                            <i class="fas fa-search mr-2"></i>Generate Report
-                        </button>
-                    </div>
-                    <div>
-                        <button onclick="exportReport()" id="export_btn" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg text-white font-medium transition-all" style="display: none;">
-                            <i class="fas fa-file-excel mr-2"></i>Export to Excel
-                        </button>
-                    </div>
-                </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div class="flex items-center justify-between">
+                <div><p class="text-sm text-gray-500 mb-1">Monthly Expenses</p><p class="text-2xl font-bold text-gray-800">UGX {{ "%.0f"|format(summary.current_month_expenses|default(0)) }}</p></div>
+                <i class="fas fa-receipt text-orange-500 text-2xl"></i>
             </div>
-
-            <!-- Report Content -->
-            <div id="report_content" class="p-6">
-                <div class="text-center py-12">
-                    <i class="fas fa-chart-line text-gray-300 text-6xl mb-4"></i>
-                    <p class="text-gray-500">Select a report and click Generate Report</p>
-                </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div class="flex items-center justify-between">
+                <div><p class="text-sm text-gray-500 mb-1">Net Income</p><p class="text-2xl font-bold text-green-600">UGX {{ "%.0f"|format(summary.net_income|default(0)) }}</p></div>
+                <i class="fas fa-chart-line text-green-500 text-2xl"></i>
             </div>
         </div>
     </div>
 
-    <!-- Report Modal -->
-    <div id="report_modal" class="modal-overlay" style="display: none;">
-        <div class="modal-container">
-            <div class="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
-                <h3 id="modal_title" class="text-xl font-bold text-gray-800">Report Details</h3>
-                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times text-2xl"></i>
-                </button>
+    <!-- Report Section -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <!-- Tabs -->
+        <div class="border-b border-gray-200 px-4 pt-4">
+            <nav class="flex flex-wrap gap-2">
+                <button onclick="showReport('daily')" id="tab-daily" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all bg-orange-500 text-white"><i class="fas fa-calendar-day mr-2"></i>Daily Collection</button>
+                <button onclick="showReport('balance')" id="tab-balance" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100"><i class="fas fa-scale-balanced mr-2"></i>Balance Report</button>
+                <button onclick="showReport('income')" id="tab-income" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100"><i class="fas fa-chart-pie mr-2"></i>Income & Expenses</button>
+                <button onclick="showReport('student')" id="tab-student" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100"><i class="fas fa-user-graduate mr-2"></i>Student Report</button>
+                <button onclick="showReport('class')" id="tab-class" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100"><i class="fas fa-school mr-2"></i>Class Report</button>
+                <button onclick="showReport('payment')" id="tab-payment" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100"><i class="fas fa-credit-card mr-2"></i>Payment Methods</button>
+                <button onclick="openAIAnalysisModal()" id="tab-ai" class="tab-btn px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100"><i class="fas fa-robot mr-2"></i>AI Analysis</button>
+            </nav>
+        </div>
+
+        <!-- Filter Bar -->
+        <div id="filter_bar" class="p-4 bg-gray-50 border-b border-gray-200">
+            <div class="flex flex-wrap gap-4 items-end">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label><input type="date" id="start_date" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">End Date</label><input type="date" id="end_date" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border"></div>
+                <div id="class_filter_container" style="display: none;"><label class="block text-sm font-medium text-gray-700 mb-1">Class</label><select id="class_filter" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border"><option value="">All Classes</option>{% for class in classes %}<option value="{{ class.id }}">{{ class.name }}</option>{% endfor %}</select></div>
+                <div id="search_container" style="display: none;"><label class="block text-sm font-medium text-gray-700 mb-1">Search</label><input type="text" id="search_input" placeholder="Search by name or ID..." class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border w-64"></div>
+                <div><button onclick="loadReport()" class="btn-gradient px-5 py-2 rounded-lg text-white font-medium"><i class="fas fa-search mr-2"></i>Generate Report</button></div>
+                <div><button onclick="exportReport()" id="export_btn" class="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg text-white font-medium transition-all" style="display: none;"><i class="fas fa-file-excel mr-2"></i>Export</button></div>
             </div>
-            <div id="modal_content" class="p-6">
-                <!-- Modal content loaded dynamically -->
+        </div>
+
+        <!-- Report Content -->
+        <div id="report_content" class="p-6 min-h-[400px]">
+            <div class="text-center py-12"><i class="fas fa-chart-line text-gray-300 text-5xl mb-4"></i><p class="text-gray-500">Select a report and click Generate Report</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Details Modal -->
+<div id="report_modal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center"><h3 id="modal_title" class="text-xl font-bold text-gray-800">Report Details</h3><button onclick="closeModal()" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-2xl"></i></button></div>
+        <div id="modal_content" class="p-6"></div>
+    </div>
+</div>
+
+<!-- AI Analysis Modal -->
+<div id="ai_modal" class="modal-overlay" style="display: none;">
+    <div class="modal-container ai-modal-container">
+        <div class="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 p-4 flex justify-between items-center">
+            <h3 class="text-xl font-bold text-white"><i class="fas fa-robot mr-2"></i>AI-Powered Financial Analysis</h3>
+            <button onclick="closeAIModal()" class="text-white hover:text-gray-200"><i class="fas fa-times text-2xl"></i></button>
+        </div>
+        <div id="ai_modal_content" class="p-6">
+            <div class="space-y-4">
+                <p class="text-gray-600">Select report type and date range for AI analysis (max 31 days).</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Report Type</label><select id="ai_report_type" class="w-full rounded-lg border-gray-300 shadow-sm px-3 py-2 border"><option value="daily_collection">Daily Collection Report</option><option value="balance_report">Balance Report</option><option value="income_expense">Income & Expense Report</option><option value="class_report">Class Report</option></select></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Class (Optional)</label><select id="ai_class_filter" class="w-full rounded-lg border-gray-300 shadow-sm px-3 py-2 border"><option value="">All Classes</option>{% for class in classes %}<option value="{{ class.id }}">{{ class.name }}</option>{% endfor %}</select></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label><input type="date" id="ai_start_date" class="w-full rounded-lg border-gray-300 shadow-sm px-3 py-2 border"></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-2">End Date</label><input type="date" id="ai_end_date" class="w-full rounded-lg border-gray-300 shadow-sm px-3 py-2 border"><p class="text-xs text-red-500 mt-1" id="ai_date_warning"></p></div>
+                </div>
+                <button onclick="runAIAnalysis()" id="ai_analyze_btn" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 rounded-lg transition-all"><i class="fas fa-magic mr-2"></i>Run Analysis</button>
+                <div id="ai_loading" class="text-center py-4" style="display: none;"><div class="loading-spinner mx-auto mb-2"></div><p class="text-gray-600">AI is analyzing your data...</p></div>
+                <div id="ai_results" style="display: none;">
+                    <div class="bg-gray-50 rounded-lg p-4 mt-4 max-h-96 overflow-y-auto">
+                        <div id="ai_analysis_result" class="prose max-w-none"></div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-4"><button onclick="printAIAnalysis()" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm"><i class="fas fa-print mr-1"></i>Print</button><button onclick="downloadAIAnalysis()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"><i class="fas fa-download mr-1"></i>Download</button></div>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        let currentReportType = 'daily';
-        let currentReportData = null;
-        let currentPage = 1;
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+    let currentReportType = 'daily';
+    let currentReportData = null;
+    let currentPage = 1;
+    let currentAIAnalysis = null;
 
-        // Set default dates
-        const today = new Date();
-        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-        document.getElementById('start_date').value = firstDay.toISOString().split('T')[0];
-        document.getElementById('end_date').value = today.toISOString().split('T')[0];
+    // Set default dates
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    if(document.getElementById('start_date')) { document.getElementById('start_date').value = firstDay.toISOString().split('T')[0]; document.getElementById('end_date').value = today.toISOString().split('T')[0]; }
 
-        function showReport(type) {
-            currentReportType = type;
-            currentPage = 1;
-            
-            // Update tab styles
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('bg-orange-500', 'text-white');
-                btn.classList.add('text-gray-600');
-            });
-            document.getElementById(`tab-${type}`).classList.add('bg-orange-500', 'text-white');
-            document.getElementById(`tab-${type}`).classList.remove('text-gray-600');
-            
-            // Show/hide filters
-            const classFilter = document.getElementById('class_filter_container');
-            const searchContainer = document.getElementById('search_container');
-            
-            if (type === 'balance' || type === 'student') {
-                classFilter.style.display = 'block';
-            } else {
-                classFilter.style.display = 'none';
-            }
-            
-            if (type === 'student') {
-                searchContainer.style.display = 'block';
-            } else {
-                searchContainer.style.display = 'none';
-            }
-            
-            // Auto-load report
-            loadReport();
+    function showReport(type) {
+        currentReportType = type; currentPage = 1;
+        document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('bg-orange-500', 'text-white'); btn.classList.add('text-gray-600'); });
+        const activeTab = document.getElementById(`tab-${type}`);
+        if(activeTab) { activeTab.classList.add('bg-orange-500', 'text-white'); activeTab.classList.remove('text-gray-600'); }
+        
+        const filterBar = document.getElementById('filter_bar');
+        const classFilter = document.getElementById('class_filter_container');
+        const searchContainer = document.getElementById('search_container');
+        const exportBtn = document.getElementById('export_btn');
+        
+        if(filterBar) filterBar.style.display = 'flex';
+        if(exportBtn) exportBtn.style.display = 'none';
+        
+        classFilter.style.display = (type === 'balance' || type === 'student') ? 'block' : 'none';
+        searchContainer.style.display = type === 'student' ? 'block' : 'none';
+        loadReport();
+    }
+
+    function loadReport() {
+        const startDate = document.getElementById('start_date')?.value || '';
+        const endDate = document.getElementById('end_date')?.value || '';
+        const classId = document.getElementById('class_filter')?.value || '';
+        const search = document.getElementById('search_input')?.value || '';
+        
+        let apiUrl = '', requestData = { start_date: startDate, end_date: endDate, page: currentPage };
+        switch(currentReportType) {
+            case 'daily': apiUrl = '/center/api/daily-collection'; break;
+            case 'balance': apiUrl = '/center/api/balance-report'; requestData.class_id = classId; break;
+            case 'income': apiUrl = '/center/api/income-expense'; break;
+            case 'student': apiUrl = '/center/api/student-report'; requestData.class_id = classId; requestData.search = search; break;
+            case 'class': apiUrl = '/center/api/class-report'; break;
+            case 'payment': apiUrl = '/center/api/payment-method-report'; break;
+            default: return;
         }
-
-        function loadReport() {
-            const startDate = document.getElementById('start_date').value;
-            const endDate = document.getElementById('end_date').value;
-            const classId = document.getElementById('class_filter').value;
-            const search = document.getElementById('search_input') ? document.getElementById('search_input').value : '';
-            
-            let apiUrl = '';
-            let requestData = { 
-                start_date: startDate, 
-                end_date: endDate,
-                page: currentPage
-            };
-            
-            switch(currentReportType) {
-                case 'daily':
-                    apiUrl = '/center/api/daily-collection';
-                    break;
-                case 'balance':
-                    apiUrl = '/center/api/balance-report';
-                    requestData.class_id = classId;
-                    break;
-                case 'income':
-                    apiUrl = '/center/api/income-expense';
-                    break;
-                case 'student':
-                    apiUrl = '/center/api/student-report';
-                    requestData.class_id = classId;
-                    requestData.search = search;
-                    break;
-                case 'class':
-                    apiUrl = '/center/api/class-report';
-                    break;
-                case 'payment':
-                    apiUrl = '/center/api/payment-method-report';
-                    break;
-            }
-            
-            // Show loading
-            document.getElementById('report_content').innerHTML = `
-                <div class="text-center py-12">
-                    <div class="loading-spinner mx-auto mb-4"></div>
-                    <p class="text-gray-500">Loading report...</p>
-                </div>
-            `;
-            document.getElementById('export_btn').style.display = 'none';
-            
-            $.ajax({
-                url: apiUrl,
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(requestData),
-                success: function(response) {
-                    if (response.success) {
-                        currentReportData = response;
-                        displayReport(response);
-                        document.getElementById('export_btn').style.display = 'inline-flex';
-                    } else {
-                        showError(response.message || 'Failed to load report');
-                    }
-                },
-                error: function(xhr) {
-                    showError('An error occurred while loading the report');
-                }
-            });
-        }
-
-        function goToPage(page) {
-            currentPage = page;
-            loadReport();
-        }
-
-        function displayReport(data) {
-            let html = '';
-            
-            // Display summary if available
-            if (data.summary) {
-                html += '<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">';
-                for (let [key, value] of Object.entries(data.summary)) {
-                    let displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    let formattedValue = typeof value === 'number' ? `UGX ${value.toLocaleString()}` : value;
-                    html += `
-                        <div class="bg-orange-50 rounded-lg p-4">
-                            <p class="text-sm text-gray-600 mb-1">${displayKey}</p>
-                            <p class="text-xl font-bold text-gray-800">${formattedValue}</p>
-                        </div>
-                    `;
-                }
-                html += '</div>';
-            }
-            
-            // Display table based on report type
-            if (currentReportType === 'daily' && data.data) {
-                html += '<div class="overflow-x-auto">';
-                html += '<table class="report-table">';
-                html += '<thead><tr><th>Date</th><th>Total Collected</th><th>Transactions</th><th>Actions</th></tr></thead>';
-                html += '<tbody>';
-                for (let day of data.data) {
-                    html += `
-                        <tr>
-                            <td>${day.date}</td>
-                            <td>UGX ${day.total.toLocaleString()}</td>
-                            <td>${day.count}</td>
-                            <td>
-                                <button onclick="showDailyDetails('${day.date}', ${JSON.stringify(day.transactions).replace(/"/g, '&quot;')})" 
-                                        class="text-orange-600 hover:text-orange-800">
-                                    <i class="fas fa-eye"></i> View Details
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                }
-                html += '</tbody></table></div>';
-                
-            } else if (currentReportType === 'balance' && data.data) {
-                html += '<div class="overflow-x-auto">';
-                html += '<table class="report-table">';
-                html += '<thead><tr><th>Student Name</th><th>Student ID</th><th>Class</th><th>Total Invoiced</th><th>Total Paid</th><th>Balance</th></tr></thead>';
-                html += '<tbody>';
-                for (let student of data.data) {
-                    let statusClass = student.balance === 0 ? 'text-green-600' : (student.balance > 0 ? 'text-red-600' : 'text-gray-600');
-                    html += `
-                        <tr>
-                            <td>
-                                <a href="/student-details/${student.student_uuid}" class="student-link" target="_blank">
-                                    <i class="fas fa-external-link-alt mr-1 text-xs"></i>${student.student_name}
-                                </a>
-                            </td>
-                            <td>${student.student_id}</td>
-                            <td>${student.class}</td>
-                            <td>UGX ${student.total_invoiced.toLocaleString()}</td>
-                            <td>UGX ${student.total_paid.toLocaleString()}</td>
-                            <td class="${statusClass} font-semibold">UGX ${student.balance.toLocaleString()}</td>
-                        </tr>
-                    `;
-                }
-                html += '</tbody></table></div>';
-                
-            } else if (currentReportType === 'income' && data.transactions) {
-                html += '<div class="overflow-x-auto">';
-                html += '<table class="report-table">';
-                html += '<thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Type</th></tr></thead>';
-                html += '<tbody>';
-                for (let trans of data.transactions) {
-                    let typeClass = trans.type === 'income' ? 'text-green-600' : 'text-red-600';
-                    let typeIcon = trans.type === 'income' ? '↑' : '↓';
-                    html += `
-                        <tr>
-                            <td>${trans.date}</td>
-                            <td>${trans.description}</td>
-                            <td>${trans.category}</td>
-                            <td>UGX ${trans.amount.toLocaleString()}</td>
-                            <td class="${typeClass} font-semibold">${typeIcon} ${trans.type.toUpperCase()}</td>
-                        </tr>
-                    `;
-                }
-                html += '</tbody></table></div>';
-                
-            } else if (currentReportType === 'student' && data.data) {
-                html += '<div class="overflow-x-auto">';
-                html += '<table class="report-table">';
-                html += '<thead><tr><th>Student ID</th><th>Student Name</th><th>Class</th><th>Parent Contact</th><th>Total Paid</th><th>Balance</th><th>Status</th></tr></thead>';
-                html += '<tbody>';
-                for (let student of data.data) {
-                    let statusClass = student.status === 'Paid' ? 'text-green-600' : (student.status === 'Partial' ? 'text-yellow-600' : 'text-red-600');
-                    html += `
-                        <tr>
-                            <td>${student.student_id}</td>
-                            <td>
-                                <a href="/student-details/${student.student_uuid}" class="student-link" target="_blank">
-                                    <i class="fas fa-external-link-alt mr-1 text-xs"></i>${student.student_name}
-                                </a>
-                            </td>
-                            <td>${student.class}</td>
-                            <td>${student.parent_contact}</td>
-                            <td>UGX ${student.total_paid.toLocaleString()}</td>
-                            <td class="font-semibold ${statusClass}">UGX ${student.balance.toLocaleString()}</td>
-                            <td class="${statusClass}">${student.status}</td>
-                        </tr>
-                    `;
-                }
-                html += '</tbody></table></div>';
-                
-            } else if (currentReportType === 'class' && data.data) {
-                html += '<div class="overflow-x-auto">';
-                html += '<table class="report-table">';
-                html += '<thead><tr><th>Class Name</th><th>Student Count</th><th>Total Collected</th><th>Expected Fees</th><th>Outstanding</th><th>Collection Rate</th></tr></thead>';
-                html += '<tbody>';
-                for (let cls of data.data) {
-                    let collectionRate = cls.expected_fees > 0 ? ((cls.total_collected / cls.expected_fees) * 100).toFixed(1) : 0;
-                    html += `
-                        <tr>
-                            <td>${cls.class_name}</td>
-                            <td>${cls.student_count}</td>
-                            <td>UGX ${cls.total_collected.toLocaleString()}</td>
-                            <td>UGX ${cls.expected_fees.toLocaleString()}</td>
-                            <td class="text-red-600">UGX ${cls.outstanding.toLocaleString()}</td>
-                            <td>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="bg-orange-500 rounded-full h-2" style="width: ${collectionRate}%"></div>
-                                </div>
-                                <span class="text-xs">${collectionRate}%</span>
-                            </td>
-                        </tr>
-                    `;
-                }
-                html += '</tbody></table></div>';
-                
-            } else if (currentReportType === 'payment' && data.data) {
-                html += '<div class="overflow-x-auto">';
-                html += '<table class="report-table">';
-                html += '<thead><tr><th>Payment Method</th><th>Income</th><th>Expenses</th><th>Net Flow</th></tr></thead>';
-                html += '<tbody>';
-                for (let method of data.data) {
-                    let netClass = method.net >= 0 ? 'text-green-600' : 'text-red-600';
-                    html += `
-                        <tr>
-                            <td><i class="fas fa-credit-card mr-2"></i>${method.payment_method}</td>
-                            <td>UGX ${method.income.toLocaleString()}</td>
-                            <td>UGX ${method.expenses.toLocaleString()}</td>
-                            <td class="${netClass} font-semibold">UGX ${method.net.toLocaleString()}</td>
-                        </tr>
-                    `;
-                }
-                html += '</tbody></table></div>';
-            }
-            
-            // Add pagination if available
-            if (data.pagination && data.pagination.total_pages > 1) {
-                html += '<div class="flex justify-center items-center mt-6 gap-2">';
-                html += `<button onclick="goToPage(${data.pagination.current_page - 1})" class="pagination-btn" ${data.pagination.current_page === 1 ? 'disabled' : ''}>`;
-                html += '<i class="fas fa-chevron-left"></i> Previous</button>';
-                
-                for (let i = 1; i <= Math.min(data.pagination.total_pages, 5); i++) {
-                    let pageNum = i;
-                    if (data.pagination.total_pages > 5 && data.pagination.current_page > 3) {
-                        pageNum = data.pagination.current_page - 3 + i;
-                        if (pageNum > data.pagination.total_pages) break;
-                    }
-                    html += `<button onclick="goToPage(${pageNum})" class="pagination-btn ${pageNum === data.pagination.current_page ? 'active' : ''}">${pageNum}</button>`;
-                }
-                
-                html += `<button onclick="goToPage(${data.pagination.current_page + 1})" class="pagination-btn" ${data.pagination.current_page === data.pagination.total_pages ? 'disabled' : ''}>`;
-                html += 'Next <i class="fas fa-chevron-right"></i></button>';
-                html += `<span class="text-sm text-gray-500 ml-4">Page ${data.pagination.current_page} of ${data.pagination.total_pages} (${data.pagination.total_items} items)</span>`;
-                html += '</div>';
-            }
-            
-            if (html === '') {
-                html = '<div class="text-center py-12"><p class="text-gray-500">No data available for the selected criteria</p></div>';
-            }
-            
-            document.getElementById('report_content').innerHTML = html;
-        }
-
-        function showDailyDetails(date, transactions) {
-            let modalHtml = `
-                <h4 class="font-bold text-lg mb-4">Transactions for ${date}</h4>
-                <div class="overflow-x-auto">
-                    <table class="report-table">
-                        <thead>
-                            <tr>
-                                <th>Receipt Number</th>
-                                <th>Student Name</th>
-                                <th>Student ID</th>
-                                <th>Amount</th>
-                                <th>Payment Method</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-            
-            for (let trans of transactions) {
-                let studentLink = trans.student_uuid ? `/student-details/${trans.student_uuid}` : '#';
-                modalHtml += `
-                    <tr>
-                        <td>${trans.receipt_number || 'N/A'}</td>
-                        <td>
-                            <a href="${studentLink}" class="student-link" target="_blank">
-                                ${trans.student_name}
-                            </a>
-                        </td>
-                        <td>${trans.student_id}</td>
-                        <td>UGX ${trans.amount.toLocaleString()}</td>
-                        <td>${trans.payment_method}</td>
-                    </tr>
-                `;
-            }
-            
-            modalHtml += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            
-            document.getElementById('modal_title').innerText = `Daily Collection - ${date}`;
-            document.getElementById('modal_content').innerHTML = modalHtml;
-            document.getElementById('report_modal').style.display = 'flex';
-        }
-
-        function exportReport() {
-            if (!currentReportData) {
-                alert('No data to export');
-                return;
-            }
-            
-            const startDate = document.getElementById('start_date').value;
-            const endDate = document.getElementById('end_date').value;
-            
-            let exportData = [];
-            let reportType = '';
-            
-            switch(currentReportType) {
-                case 'daily':
-                    exportData = currentReportData.data;
-                    reportType = 'daily_collection';
-                    break;
-                case 'balance':
-                    exportData = currentReportData.data;
-                    reportType = 'balance_report';
-                    break;
-                case 'income':
-                    exportData = currentReportData.transactions;
-                    reportType = 'income_expense';
-                    break;
-                case 'student':
-                    exportData = currentReportData.data;
-                    reportType = 'student_report';
-                    break;
-                case 'class':
-                    exportData = currentReportData.data;
-                    reportType = 'class_report';
-                    break;
-                case 'payment':
-                    exportData = currentReportData.data;
-                    reportType = 'payment_method';
-                    break;
-            }
-            
-            $.ajax({
-                url: '/center/export',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({
-                    report_type: reportType,
-                    data: exportData,
-                    start_date: startDate,
-                    end_date: endDate
-                }),
-                xhrFields: {
-                    responseType: 'blob'
-                },
-                success: function(blob) {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `report_${reportType}_${new Date().toISOString().slice(0,19)}.xlsx`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-                },
-                error: function() {
-                    alert('Failed to export report');
-                }
-            });
-        }
-
-        function showError(message) {
-            document.getElementById('report_content').innerHTML = `
-                <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                    <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-2"></i>
-                    <p class="text-red-600">${message}</p>
-                </div>
-            `;
-        }
-
-        function closeModal() {
-            document.getElementById('report_modal').style.display = 'none';
-        }
-
-        // Close modal when clicking outside
-        document.getElementById('report_modal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal();
-            }
+        
+        document.getElementById('report_content').innerHTML = `<div class="text-center py-12"><div class="loading-spinner mx-auto mb-4"></div><p class="text-gray-500">Loading report...</p></div>`;
+        document.getElementById('export_btn').style.display = 'none';
+        
+        $.ajax({ url: apiUrl, method: 'POST', contentType: 'application/json', data: JSON.stringify(requestData),
+            success: function(response) { if (response.success) { currentReportData = response; displayReport(response); document.getElementById('export_btn').style.display = 'inline-flex'; } else { showError(response.message || 'Failed to load report'); } },
+            error: function() { showError('An error occurred while loading the report'); }
         });
+    }
 
-        // Debounced search for student report
-        let searchTimeout;
-        if (document.getElementById('search_input')) {
-            document.getElementById('search_input').addEventListener('input', function() {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(function() {
-                    if (currentReportType === 'student') {
-                        currentPage = 1;
-                        loadReport();
-                    }
-                }, 500);
+    function goToPage(page) { currentPage = page; loadReport(); }
+
+    function displayReport(data) {
+        let html = '';
+        if (data.summary) {
+            html += '<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">';
+            Object.entries(data.summary).slice(0,4).forEach(([key, value]) => {
+                let displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                let formattedValue = typeof value === 'number' ? `UGX ${value.toLocaleString()}` : value;
+                html += `<div class="bg-orange-50 rounded-lg p-4"><p class="text-sm text-gray-600 mb-1">${displayKey}</p><p class="text-xl font-bold text-gray-800">${formattedValue}</p></div>`;
             });
+            html += '</div>';
         }
+        
+        if (currentReportType === 'daily' && data.data) {
+            html += '<div class="overflow-x-auto"><table class="report-table"><thead><tr><th>Date</th><th>Total Collected</th><th>Transactions</th><th>Actions</th></tr></thead><tbody>';
+            data.data.forEach(day => {
+                html += `<tr><td>${day.date}</td><td>UGX ${day.total.toLocaleString()}</td><td>${day.count}</td><td><button onclick="showDailyDetails('${day.date}', ${JSON.stringify(day.transactions).replace(/"/g, '&quot;')})" class="text-orange-600 hover:text-orange-800"><i class="fas fa-eye"></i> View Details</button></td></tr>`;
+            });
+            html += '</tbody></table></div>';
+        } else if (currentReportType === 'balance' && data.data) {
+            html += '<div class="overflow-x-auto"><table class="report-table"><thead><tr><th>Student Name</th><th>Student ID</th><th>Class</th><th>Total Invoiced</th><th>Total Paid</th><th>Balance</th><th>Actions</th></tr></thead><tbody>';
+            data.data.forEach(student => {
+                let statusClass = student.balance === 0 ? 'text-green-600' : (student.balance > 0 ? 'text-red-600' : 'text-gray-600');
+                html += `<tr><td><a href="/student-details/${student.student_uuid}" class="student-link" target="_blank"><i class="fas fa-external-link-alt mr-1 text-xs"></i>${student.student_name}</a></td><td>${student.student_id}</td><td>${student.class}</td><td>UGX ${student.total_invoiced.toLocaleString()}</td><td>UGX ${student.total_paid.toLocaleString()}</td><td class="${statusClass} font-semibold">UGX ${student.balance.toLocaleString()}</td><td><a href="/student-details/${student.student_uuid}" target="_blank" class="text-blue-600 hover:text-blue-800"><i class="fas fa-user"></i> Profile</a></td></tr>`;
+            });
+            html += '</tbody></table></div>';
+        } else if (currentReportType === 'student' && data.data) {
+            html += '<div class="overflow-x-auto"><table class="report-table"><thead><tr><th>Student ID</th><th>Student Name</th><th>Class</th><th>Parent Contact</th><th>Total Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+            data.data.forEach(student => {
+                let statusClass = student.status === 'Paid' ? 'text-green-600' : (student.status === 'Partial' ? 'text-yellow-600' : 'text-red-600');
+                html += `<tr><td>${student.student_id}</td><td><a href="/student-details/${student.student_uuid}" class="student-link" target="_blank"><i class="fas fa-external-link-alt mr-1 text-xs"></i>${student.student_name}</a></td><td>${student.class}</td><td>${student.parent_contact}</td><td>UGX ${student.total_paid.toLocaleString()}</td><td class="font-semibold ${statusClass}">UGX ${student.balance.toLocaleString()}</td><td class="${statusClass}">${student.status}</td><td><a href="/student-details/${student.student_uuid}" target="_blank" class="text-blue-600 hover:text-blue-800"><i class="fas fa-user"></i> Profile</a></td></tr>`;
+            });
+            html += '</tbody></table></div>';
+        } else if (data.data && data.data.length > 0) {
+            html += '<div class="overflow-x-auto"><table class="report-table"><thead><tr>';
+            Object.keys(data.data[0]).forEach(key => { if(key !== 'transactions' && key !== 'recent_payments') html += `<th>${key.replace(/_/g, ' ').toUpperCase()}</th>`; });
+            html += '</tr></thead><tbody>';
+            data.data.forEach(item => {
+                html += '<tr>';
+                Object.entries(item).forEach(([key, value]) => {
+                    if(key !== 'transactions' && key !== 'recent_payments') {
+                        let displayValue = typeof value === 'number' ? `UGX ${value.toLocaleString()}` : (value || '-');
+                        html += `<td>${displayValue}</td>`;
+                    }
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+        } else if (!data.summary) { html = '<div class="text-center py-12"><p class="text-gray-500">No data available</p></div>'; }
+        
+        if (data.pagination && data.pagination.total_pages > 1) {
+            html += '<div class="flex justify-center items-center mt-6 gap-2 flex-wrap">';
+            html += `<button onclick="goToPage(${data.pagination.current_page - 1})" class="pagination-btn" ${data.pagination.current_page === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i> Previous</button>`;
+            let startPage = Math.max(1, data.pagination.current_page - 2);
+            let endPage = Math.min(data.pagination.total_pages, startPage + 4);
+            if (startPage > 1) { html += `<button onclick="goToPage(1)" class="pagination-btn">1</button>`; if (startPage > 2) html += '<span class="px-2">...</span>'; }
+            for (let i = startPage; i <= endPage; i++) html += `<button onclick="goToPage(${i})" class="pagination-btn ${i === data.pagination.current_page ? 'active' : ''}">${i}</button>`;
+            if (endPage < data.pagination.total_pages) { if (endPage < data.pagination.total_pages - 1) html += '<span class="px-2">...</span>'; html += `<button onclick="goToPage(${data.pagination.total_pages})" class="pagination-btn">${data.pagination.total_pages}</button>`; }
+            html += `<button onclick="goToPage(${data.pagination.current_page + 1})" class="pagination-btn" ${data.pagination.current_page === data.pagination.total_pages ? 'disabled' : ''}>Next <i class="fas fa-chevron-right"></i></button>`;
+            html += `<span class="text-sm text-gray-500 ml-4">Page ${data.pagination.current_page} of ${data.pagination.total_pages} (${data.pagination.total_items} items)</span></div>`;
+        }
+        document.getElementById('report_content').innerHTML = html;
+    }
 
-        // Load default report on page load
-        $(document).ready(function() {
-            showReport('daily');
+    function showDailyDetails(date, transactions) {
+        let modalHtml = `<h4 class="font-bold text-lg mb-4">Transactions for ${date}</h4><div class="overflow-x-auto"><table class="report-table"><thead><tr><th>Receipt Number</th><th>Student Name</th><th>Student ID</th><th>Amount</th><th>Payment Method</th><th>Actions</th></tr></thead><tbody>`;
+        transactions.forEach(trans => {
+            let studentLink = trans.student_uuid ? `/student-details/${trans.student_uuid}` : '#';
+            modalHtml += `<tr><td>${trans.receipt_number || 'N/A'}</td><td><a href="${studentLink}" class="student-link" target="_blank">${trans.student_name}</a></td><td>${trans.student_id}</td><td>UGX ${trans.amount.toLocaleString()}</td><td>${trans.payment_method}</td><td><a href="${studentLink}" target="_blank" class="text-blue-600 hover:text-blue-800"><i class="fas fa-user"></i> Profile</a></td></tr>`;
         });
-    </script>
-</body>
-</html>
+        modalHtml += `</tbody></table></div>`;
+        document.getElementById('modal_title').innerText = `Daily Collection - ${date}`;
+        document.getElementById('modal_content').innerHTML = modalHtml;
+        document.getElementById('report_modal').style.display = 'flex';
+    }
 
+    function openAIAnalysisModal() {
+        const todayDate = new Date();
+        const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(todayDate.getDate() - 30);
+        const aiStartDate = document.getElementById('ai_start_date');
+        const aiEndDate = document.getElementById('ai_end_date');
+        if(aiStartDate) aiStartDate.value = thirtyDaysAgo.toISOString().split('T')[0];
+        if(aiEndDate) aiEndDate.value = todayDate.toISOString().split('T')[0];
+        
+        document.getElementById('ai_results').style.display = 'none';
+        document.getElementById('ai_loading').style.display = 'none';
+        document.getElementById('ai_modal').style.display = 'flex';
+        
+        const endDateInput = document.getElementById('ai_end_date');
+        const startDateInput = document.getElementById('ai_start_date');
+        if(endDateInput) endDateInput.addEventListener('change', validateAIDateRange);
+        if(startDateInput) startDateInput.addEventListener('change', validateAIDateRange);
+        validateAIDateRange();
+    }
+
+    function closeAIModal() { document.getElementById('ai_modal').style.display = 'none'; }
+
+    function validateAIDateRange() {
+        const startDate = new Date(document.getElementById('ai_start_date')?.value);
+        const endDate = new Date(document.getElementById('ai_end_date')?.value);
+        const diffDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24));
+        const warning = document.getElementById('ai_date_warning');
+        const btn = document.getElementById('ai_analyze_btn');
+        if (diffDays > 31) { if(warning) warning.innerHTML = '⚠️ Date range cannot exceed 31 days'; if(btn) { btn.disabled = true; btn.classList.add('opacity-50'); } return false; }
+        if(warning) warning.innerHTML = ''; if(btn) { btn.disabled = false; btn.classList.remove('opacity-50'); } return true;
+    }
+
+    function runAIAnalysis() {
+        if (!validateAIDateRange()) { alert('Please select a date range of 31 days or less'); return; }
+        const reportType = document.getElementById('ai_report_type')?.value;
+        const classId = document.getElementById('ai_class_filter')?.value;
+        const startDate = document.getElementById('ai_start_date')?.value;
+        const endDate = document.getElementById('ai_end_date')?.value;
+        if (!startDate || !endDate) { alert('Please select both start and end dates'); return; }
+        
+        const loadingDiv = document.getElementById('ai_loading');
+        const resultsDiv = document.getElementById('ai_results');
+        const analyzeBtn = document.getElementById('ai_analyze_btn');
+        
+        if(loadingDiv) loadingDiv.style.display = 'block';
+        if(resultsDiv) resultsDiv.style.display = 'none';
+        if(analyzeBtn) { analyzeBtn.disabled = true; analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Analyzing...'; }
+        
+        $.ajax({ url: '/center/api/ai-analyze', method: 'POST', contentType: 'application/json', data: JSON.stringify({ report_type: reportType, class_id: classId, start_date: startDate, end_date: endDate }),
+            success: function(response) {
+                if (response.success) {
+                    const resultDiv = document.getElementById('ai_analysis_result');
+                    if(resultDiv) resultDiv.innerHTML = `<div id="print-area"><div class="mb-4 pb-3 border-b"><h3 class="text-xl font-bold">AI Analysis Report</h3><p class="text-sm text-gray-500">Generated on ${new Date().toLocaleString()}</p><p class="text-xs text-gray-400">Report: ${reportType.replace(/_/g, ' ').toUpperCase()} | Period: ${startDate} to ${endDate}</p></div>${response.analysis}</div>`;
+                    if(resultsDiv) resultsDiv.style.display = 'block';
+                    currentAIAnalysis = response.analysis;
+                } else { alert(response.message || 'Analysis failed'); }
+            },
+            error: function() { alert('Error during analysis. Please check if the AI service is configured correctly.'); },
+            complete: function() { if(loadingDiv) loadingDiv.style.display = 'none'; if(analyzeBtn) { analyzeBtn.disabled = false; analyzeBtn.innerHTML = '<i class="fas fa-magic mr-2"></i>Run Analysis'; } }
+        });
+    }
+
+    function printAIAnalysis() {
+        const content = document.getElementById('print-area')?.innerHTML;
+        if(!content) return;
+        const w = window.open('', '_blank');
+        w.document.write(`<html><head><title>AI Analysis Report</title><script src="https://cdn.tailwindcss.com"><\/script><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"><style>body{padding:40px}.prose{max-width:none}</style></head><body>${content}</body></html>`);
+        w.document.close(); w.print();
+    }
+
+    function downloadAIAnalysis() {
+        const content = document.getElementById('print-area')?.innerHTML;
+        if(!content) return;
+        const blob = new Blob([`<html><head><title>AI Analysis Report</title><script src="https://cdn.tailwindcss.com"><\/script><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"><style>body{padding:40px}</style></head><body>${content}</body></html>`], { type: 'text/html' });
+        const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `ai_analysis_${Date.now()}.html`; a.click(); URL.revokeObjectURL(url);
+    }
+
+    function exportReport() {
+        if (!currentReportData) return alert('No data to export');
+        const startDate = document.getElementById('start_date').value, endDate = document.getElementById('end_date').value;
+        let exportData = [], reportType = '';
+        const exportMap = { daily: ['daily_collection', 'data'], balance: ['balance_report', 'data'], income: ['income_expense', 'transactions'], student: ['student_report', 'data'], class: ['class_report', 'data'], payment: ['payment_method', 'data'] };
+        const [type, dataKey] = exportMap[currentReportType] || [];
+        if(!type) return;
+        exportData = currentReportData[dataKey];
+        reportType = type;
+        $.ajax({ url: '/center/export', method: 'POST', contentType: 'application/json', data: JSON.stringify({ report_type: reportType, data: exportData, start_date: startDate, end_date: endDate }), xhrFields: { responseType: 'blob' }, success: function(blob) { const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `report_${reportType}_${new Date().toISOString().slice(0,19)}.xlsx`; a.click(); URL.revokeObjectURL(url); }, error: function() { alert('Failed to export report'); } });
+    }
+
+    function showError(message) { document.getElementById('report_content').innerHTML = `<div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center text-red-600">${message}</div>`; }
+    function closeModal() { document.getElementById('report_modal').style.display = 'none'; }
+    document.getElementById('report_modal')?.addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+    document.getElementById('ai_modal')?.addEventListener('click', function(e) { if (e.target === this) closeAIModal(); });
+    
+    let searchTimeout;
+    if (document.getElementById('search_input')) { document.getElementById('search_input').addEventListener('input', function() { clearTimeout(searchTimeout); searchTimeout = setTimeout(function() { if (currentReportType === 'student') { currentPage = 1; loadReport(); } }, 500); }); }
+    
+    $(document).ready(function() { showReport('daily'); });
+</script>
 {% endblock %}

@@ -632,6 +632,35 @@ def get_student(student_id):
             
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+    
+@student_bp.route('/search', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def search_students():
+    """Search students by name or ID"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    search_term = request.args.get('q', '').strip()
+    
+    try:
+        query = supabase.table('students')\
+            .select('*, classes(name, id)')\
+            .eq('institute_id', institute_id)
+        
+        if search_term:
+            # Search by name or student_id
+            query = query.or_(f"name.ilike.%{search_term}%,student_id.ilike.%{search_term}%")
+        
+        response = query.limit(20).execute()
+        
+        return jsonify({
+            'success': True, 
+            'students': response.data
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @student_bp.route('/<student_id>/status', methods=['PUT'])
 @role_required(['owner', 'teacher', 'accountant'])
@@ -657,6 +686,7 @@ def update_status(student_id):
             
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @student_bp.route('/get-classes', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])

@@ -1,5 +1,5 @@
 # Center.py - Main Report Center Blueprint with Pagination
-from flask import Blueprint, render_template, request, jsonify, session, send_file
+from flask import Blueprint, render_template, request, jsonify, session, send_file, json
 from supabase import create_client, Client
 import os
 import pandas as pd
@@ -909,3 +909,485 @@ def export_report():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+    
+    
+# ============================================================
+# AI ANALYSIS ENDPOINTS
+# ============================================================
+@center_bp.route('/api/ai-analyze', methods=['POST'])
+@login_required
+def ai_analyze():
+    """AI Analysis of selected report data"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        data = request.get_json()
+        report_type = data.get('report_type')
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        class_id = data.get('class_id')
+        search = data.get('search', '')
+        
+        # Validate date range (not more than a month)
+        if start_date and end_date:
+            start = datetime.strptime(start_date, '%Y-%m-%d')
+            end = datetime.strptime(end_date, '%Y-%m-%d')
+            days_diff = (end - start).days
+            if days_diff > 31:
+                return jsonify({
+                    'success': False, 
+                    'message': 'Date range cannot exceed 31 days (one month) for AI analysis'
+                }), 400
+        
+        # Fetch report data based on type
+        report_data = fetch_report_data(institute_id, report_type, start_date, end_date, class_id, search)
+        
+        if not report_data:
+            return jsonify({
+                'success': False,
+                'message': 'No data available for the selected period'
+            }), 400
+        
+        # Check if there's data to analyze
+        has_data = False
+        if isinstance(report_data.get('data'), list) and len(report_data.get('data', [])) > 0:
+            has_data = True
+        elif isinstance(report_data.get('data'), dict) and report_data.get('data'):
+            has_data = True
+        elif report_data.get('summary') and report_data['summary'].get('total_transactions', 0) > 0:
+            has_data = True
+            
+        if not has_data:
+            return jsonify({
+                'success': False,
+                'message': 'No data available for the selected period. Please try a different date range.'
+            }), 400
+        
+        # Prepare data for AI analysis
+        analysis_prompt = create_analysis_prompt(report_type, report_data, start_date, end_date)
+        
+        # Get AI analysis
+        from routes.ai.ai import OpenRouterClient
+        ai_client = OpenRouterClient()
+        
+        # For non-streaming analysis
+        analysis_result = ai_client.chat(analysis_prompt, stream=False)
+        
+        # Format the analysis
+        formatted_analysis = format_ai_analysis(analysis_result, report_type, report_data)
+        
+        # Prepare data sample safely
+        data_sample = []
+        if isinstance(report_data.get('data'), list):
+            data_sample = report_data['data'][:10]
+        elif isinstance(report_data.get('data'), dict):
+            # For dict data (like income_expense), convert to list of key-value pairs
+            data_sample = [{'metric': k, 'value': v} for k, v in list(report_data['data'].items())[:10]]
+        
+        return jsonify({
+            'success': True,
+            'analysis': formatted_analysis,
+            'summary': report_data.get('summary', {}),
+            'data_sample': data_sample
+        })
+        
+    except Exception as e:
+        print(f"Error in AI analysis: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+def fetch_report_data(institute_id, report_type, start_date, end_date, class_id=None, search=''):
+    """Fetch report data for AI analysis"""
+    
+    if report_type == 'daily_collection':
+        payments_response = supabase.table('payments')\
+            .select('*, students(name, student_id, classes(name))')\
+            .eq('institute_id', institute_id)\
+            .gte('payment_date', start_date)\
+            .lte('payment_date', end_date)\
+            .execute()
+        
+        payments = payments_response.data or []
+        
+        daily_data = {}
+        total_collected = 0
+        payment_methods = {}
+        
+        for payment in payments:
+            date = payment['payment_date']
+            amount = float(payment['amount'])
+            total_collected += amount
+            
+            if date not in daily_data:
+                daily_data[date] = {
+                    'date': date,
+                    'total': 0,
+                    'count': 0
+                }
+            
+            daily_data[date]['total'] += amount
+            daily_data[date]['count'] += 1
+            
+            method = payment.get('payment_method', 'cash')
+            payment_methods[method] = payment_methods.get(method, 0) + amount
+        
+        return {
+            'data': list(daily_data.values()),
+            'summary': {
+                'total_collected': total_collected,
+                'total_transactions': len(payments),
+                'date_range': f"{start_date} to {end_date}",
+                'average_daily': total_collected / len(daily_data) if daily_data else 0,
+                'payment_methods': payment_methods
+            }
+        }
+    
+    elif report_type == 'balance_report':
+        students_query = supabase.table('students')\
+            .select('*, classes(name)')\
+            .eq('institute_id', institute_id)\
+            .eq('status', 'active')
+        
+        if class_id:
+            students_query = students_query.eq('class_id', class_id)
+        
+        students_response = students_query.execute()
+        students = students_response.data or []
+        
+        report_data = []
+        total_invoiced = 0
+        total_paid = 0
+        total_balance = 0
+        students_with_balance = 0
+        
+        for student in students:
+            invoices_response = supabase.table('invoices')\
+                .select('*')\
+                .eq('student_id', student['id'])\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            invoices = invoices_response.data or []
+            
+            student_total_invoiced = sum(float(inv['total_amount']) for inv in invoices)
+            student_total_paid = sum(float(inv['paid_amount']) for inv in invoices)
+            student_balance = sum(float(inv['balance']) for inv in invoices if inv['status'] != 'paid')
+            
+            if student_balance > 0 or student_total_paid > 0:
+                report_data.append({
+                    'student_name': student['name'],
+                    'student_id': student['student_id'],
+                    'class': student['classes']['name'] if student.get('classes') else 'N/A',
+                    'total_invoiced': student_total_invoiced,
+                    'total_paid': student_total_paid,
+                    'balance': student_balance
+                })
+                
+                total_invoiced += student_total_invoiced
+                total_paid += student_total_paid
+                total_balance += student_balance
+                if student_balance > 0:
+                    students_with_balance += 1
+        
+        return {
+            'data': report_data,
+            'summary': {
+                'total_invoiced': total_invoiced,
+                'total_paid': total_paid,
+                'total_balance': total_balance,
+                'student_count': len(report_data),
+                'students_with_balance': students_with_balance,
+                'collection_rate': (total_paid / total_invoiced * 100) if total_invoiced > 0 else 0
+            }
+        }
+    
+    elif report_type == 'income_expense':
+        # Get fee payments
+        payments_response = supabase.table('payments')\
+            .select('amount, payment_date')\
+            .eq('institute_id', institute_id)\
+            .gte('payment_date', start_date)\
+            .lte('payment_date', end_date)\
+            .execute()
+        
+        # Get other income
+        income_response = supabase.table('income_transactions')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .gte('transaction_date', start_date)\
+            .lte('transaction_date', end_date)\
+            .execute()
+        
+        # Get expenses
+        expenses_response = supabase.table('expense_transactions')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .gte('transaction_date', start_date)\
+            .lte('transaction_date', end_date)\
+            .execute()
+        
+        payments = payments_response.data or []
+        other_income = income_response.data or []
+        expenses = expenses_response.data or []
+        
+        total_fee_income = sum(float(p['amount']) for p in payments)
+        total_other_income = sum(float(i['amount']) for i in other_income)
+        total_expenses = sum(float(e['amount']) for e in expenses)
+        
+        # Group expenses by category
+        expenses_by_category = {}
+        for expense in expenses:
+            category = expense.get('category', 'General')
+            expenses_by_category[category] = expenses_by_category.get(category, 0) + float(expense['amount'])
+        
+        # Group income by category
+        income_by_category = {'School Fees': total_fee_income}
+        for inc in other_income:
+            category = inc.get('category', 'Other Income')
+            income_by_category[category] = income_by_category.get(category, 0) + float(inc['amount'])
+        
+        return {
+            'data': {
+                'fee_income': total_fee_income,
+                'other_income': total_other_income,
+                'total_income': total_fee_income + total_other_income,
+                'total_expenses': total_expenses,
+                'net_profit': total_fee_income + total_other_income - total_expenses,
+                'expenses_by_category': expenses_by_category,
+                'income_by_category': income_by_category
+            },
+            'summary': {
+                'total_income': total_fee_income + total_other_income,
+                'total_fee_income': total_fee_income,
+                'total_other_income': total_other_income,
+                'total_expenses': total_expenses,
+                'net_profit': total_fee_income + total_other_income - total_expenses,
+                'profit_margin': ((total_fee_income + total_other_income - total_expenses) / (total_fee_income + total_other_income) * 100) if (total_fee_income + total_other_income) > 0 else 0,
+                'transaction_count': len(payments) + len(other_income) + len(expenses)
+            }
+        }
+    
+    elif report_type == 'class_report':
+        classes_response = supabase.table('classes')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        classes = classes_response.data or []
+        
+        report_data = []
+        total_students_all = 0
+        total_collected_all = 0
+        
+        for class_item in classes:
+            students_response = supabase.table('students')\
+                .select('id')\
+                .eq('class_id', class_item['id'])\
+                .eq('institute_id', institute_id)\
+                .eq('status', 'active')\
+                .execute()
+            
+            student_ids = [s['id'] for s in (students_response.data or [])]
+            student_count = len(student_ids)
+            
+            # Get payments
+            payments_total = 0
+            if student_ids:
+                payments_response = supabase.table('payments')\
+                    .select('amount')\
+                    .eq('institute_id', institute_id)\
+                    .in_('student_id', student_ids)\
+                    .execute()
+                payments_total = sum(float(p['amount']) for p in (payments_response.data or []))
+            
+            report_data.append({
+                'class_name': class_item['name'],
+                'student_count': student_count,
+                'total_collected': payments_total
+            })
+            
+            total_students_all += student_count
+            total_collected_all += payments_total
+        
+        return {
+            'data': report_data,
+            'summary': {
+                'total_classes': len(classes),
+                'total_students': total_students_all,
+                'total_collected': total_collected_all,
+                'average_per_class': total_collected_all / len(classes) if classes else 0
+            }
+        }
+    
+    return {'data': [], 'summary': {}}
+
+
+def create_analysis_prompt(report_type, report_data, start_date, end_date):
+    """Create AI analysis prompt based on report type"""
+    
+    report_name = report_type.replace('_', ' ').title()
+    
+    # Safely convert data to JSON string, handling different data types
+    data_for_prompt = report_data.get('data', {})
+    if isinstance(data_for_prompt, list):
+        data_str = json.dumps(data_for_prompt[:20], indent=2, default=str)  # Limit to 20 items
+    else:
+        data_str = json.dumps(data_for_prompt, indent=2, default=str)
+    
+    prompt = f"""You are a financial analyst for an educational institution. Analyze the following {report_name} data for the period {start_date} to {end_date}.
+
+REPORT SUMMARY:
+{json.dumps(report_data.get('summary', {}), indent=2, default=str)}
+
+SAMPLE DATA:
+{data_str}
+
+Please provide a comprehensive analysis in the following format:
+
+## Executive Summary
+[Brief overview of the financial health for this period]
+
+## Key Metrics Analysis
+- Present key figures in a table format
+- Highlight important numbers and what they indicate
+
+## Trends & Patterns
+- Identify any notable patterns or anomalies in the data
+- Compare against expected performance
+
+## Actionable Insights
+- Provide specific insights based on the data
+- What is working well and what needs attention
+
+## Recommendations
+- Suggest specific actions to improve financial performance
+- Prioritize recommendations by impact
+
+## Risk Alerts
+- Flag any concerning patterns that need immediate attention
+- Identify potential issues before they become problems
+
+Use markdown formatting with tables where appropriate. Keep the analysis professional but easy to understand for school administrators.
+
+Important: If this is a balance report, focus on outstanding fees and collection efficiency.
+If this is an income/expense report, focus on profitability and cost management.
+If this is a daily collection report, focus on collection patterns and consistency.
+If this is a class report, compare performance across different classes.
+all money is in uganda shillings (UGX).
+Be specific and reference actual numbers from the data provided."""
+    
+    return prompt
+
+
+def format_ai_analysis(analysis_text, report_type, report_data):
+    """Format AI analysis for display with proper styling"""
+    
+    # Add summary metrics at the beginning
+    summary = report_data.get('summary', {})
+    
+    metrics_html = '<div class="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg p-4 mb-6">'
+    metrics_html += '<h4 class="font-bold text-gray-800 mb-3"><i class="fas fa-chart-line mr-2 text-orange-500"></i>Key Metrics</h4>'
+    metrics_html += '<div class="grid grid-cols-2 md:grid-cols-4 gap-4">'
+    
+    # Show relevant metrics based on report type
+    important_metrics = ['total_collected', 'total_income', 'total_expenses', 'net_profit', 
+                         'total_balance', 'collection_rate', 'profit_margin', 'total_transactions']
+    
+    for key, value in summary.items():
+        if key in important_metrics or len(summary.items()) <= 6:
+            display_key = key.replace('_', ' ').title()
+            if isinstance(value, (int, float)):
+                if 'rate' in key or 'margin' in key:
+                    formatted_value = f"{value:.1f}%"
+                else:
+                    formatted_value = f"UGX {value:,.0f}"
+            else:
+                formatted_value = str(value)
+            
+            metrics_html += f'''
+            <div class="text-center">
+                <p class="text-xs text-gray-500">{display_key}</p>
+                <p class="text-lg font-bold text-gray-800">{formatted_value}</p>
+            </div>
+            '''
+    
+    metrics_html += '</div></div>'
+    
+    # Process the analysis text to add proper HTML formatting
+    import re
+    
+    # Convert markdown headers
+    analysis_html = analysis_text
+    analysis_html = re.sub(r'### (.*?)\n', r'<h4 class="font-bold text-gray-800 mt-4 mb-2">\1</h4>', analysis_html)
+    analysis_html = re.sub(r'## (.*?)\n', r'<h3 class="font-bold text-lg text-gray-800 mt-6 mb-3 border-b border-orange-200 pb-2">\1</h3>', analysis_html)
+    
+    # Convert bold
+    analysis_html = re.sub(r'\*\*(.*?)\*\*', r'<strong class="text-orange-600">\1</strong>', analysis_html)
+    
+    # Convert lists
+    analysis_html = re.sub(r'^\* (.*?)$', r'<li class="ml-4 mb-1">\1</li>', analysis_html, flags=re.MULTILINE)
+    analysis_html = re.sub(r'^- (.*?)$', r'<li class="ml-4 mb-1">\1</li>', analysis_html, flags=re.MULTILINE)
+    analysis_html = re.sub(r'(<li.*?</li>)', r'<ul class="list-disc mb-3">\1</ul>', analysis_html, flags=re.DOTALL)
+    
+    # Convert markdown tables to HTML
+    table_pattern = r'\|(.+)\|\n\|[-:| ]+\|\n((?:\|.+\|\n?)+)'
+    
+    def convert_table(match):
+        headers = [h.strip() for h in match.group(1).split('|') if h.strip()]
+        rows = match.group(2).strip().split('\n')
+        
+        html = '<div class="overflow-x-auto my-4"><table class="min-w-full bg-white border border-gray-200 rounded-lg">'
+        html += '<thead class="bg-gray-50"><tr>'
+        for header in headers:
+            html += f'<th class="px-4 py-2 text-left text-sm font-semibold text-gray-700 border-b">{header}</th>'
+        html += '</tr></thead><tbody>'
+        
+        for row in rows:
+            if row.strip():
+                cells = [c.strip() for c in row.split('|') if c.strip()]
+                if cells:
+                    html += '<tr class="hover:bg-gray-50">'
+                    for cell in cells:
+                        # Format currency values
+                        if cell.replace(',', '').replace('UGX', '').strip().isdigit() or (cell.startswith('UGX')):
+                            pass  # Keep as is
+                        html += f'<td class="px-4 py-2 text-sm text-gray-600 border-b">{cell}</td>'
+                    html += '</tr>'
+        
+        html += '</tbody></table></div>'
+        return html
+    
+    analysis_html = re.sub(table_pattern, convert_table, analysis_html, flags=re.MULTILINE)
+    
+    # Convert paragraphs
+    paragraphs = analysis_html.split('\n\n')
+    formatted_paragraphs = []
+    for para in paragraphs:
+        if not para.startswith('<h') and not para.startswith('<ul') and not para.startswith('<div') and para.strip() and not para.startswith('<table'):
+            para = f'<p class="mb-3 text-gray-700">{para}</p>'
+        formatted_paragraphs.append(para)
+    
+    analysis_html = '\n\n'.join(formatted_paragraphs)
+    
+    return metrics_html + analysis_html
+
+@center_bp.route('/api/ai-report-options', methods=['GET'])
+@login_required
+def get_ai_report_options():
+    """Get available report types for AI analysis"""
+    return jsonify({
+        'success': True,
+        'report_types': [
+            {'id': 'daily_collection', 'name': 'Daily Collection Report', 'requires_dates': True},
+            {'id': 'balance_report', 'name': 'Balance Report', 'requires_dates': False},
+            {'id': 'income_expense', 'name': 'Income & Expense Report', 'requires_dates': True},
+            {'id': 'class_report', 'name': 'Class-wise Report', 'requires_dates': False}
+        ]
+    })

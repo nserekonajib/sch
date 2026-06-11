@@ -509,12 +509,13 @@ def generate_results():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
 def generate_report_card_html(data):
-    """Generate xhtml2pdf-compliant HTML report card"""
+    """Generate xhtml2pdf-compliant HTML report card - Single Page, Horizontal Summary, Clean B&W"""
     
     suffix = get_ordinal_suffix(data['position'])
     
+    # Build subject rows with exam marks
     subject_rows = ""
     for subject in data['subjects']:
         exam_cells = ""
@@ -523,264 +524,446 @@ def generate_report_card_html(data):
         
         subject_rows += f"""
         <tr>
-            <td class="text-left"><strong>{subject['name']}</strong></td>
+            <td class="text-left subject-cell"><strong>{subject['name']}</strong></td>
             {exam_cells}
-            <td class="text-center"><strong>{subject['average']}%</strong></td>
-            <td class="text-center">{subject['grade']}</td>
-            <td class="text-left">{subject['comment']}</td>
+            <td class="text-center"><strong>{subject['average']}</strong></td>
+            <td class="text-center grade-cell">{subject['grade']}</td>
+            <td class="text-left remarks-cell">{subject['comment']}</td>
+            <td class="text-center initials-cell">{subject.get('initials', '')}</td>
         </tr>
         """
     
+    # Build exam headers dynamically
     exam_headers = ""
     for exam in data['exams']:
-        exam_headers += f'<th class="text-center">{exam["exam_name"]}</th>'
+        exam_headers += f'<th class="text-center exam-header">{exam["exam_name"]}</th>'
     
+    exams_count = len(data['exams'])
+    
+    # Logo handling - larger and more visible
     logo_url = data["institute"].get("logo_url")
-    logo_html = f'<img src="{logo_url}" width="60" height="60" style="object-fit: contain;" />' if logo_url else '<div style="width:60px;"></div>'
+    if logo_url:
+        logo_html = f'<img src="{logo_url}" width="80" height="80" style="object-fit: contain; display: block;" />'
+    else:
+        logo_html = '<div style="width:80px; height:80px; border:1px solid #000; background:#f9f9f9; text-align:center; line-height:80px; font-size:10px;">LOGO</div>'
     
+    # Student photo - NO visible border, transparent frame
     student_photo_url = data['student'].get('photo_url')
     if student_photo_url:
-        student_photo_html = f'<img src="{student_photo_url}" width="80" height="80" style="border-radius: 50%; object-fit: cover; border: 2px solid #1a237e;" />'
+        student_photo_html = f'<img src="{student_photo_url}" width="100" height="100" style="object-fit: cover; border: none; display: block;" />'
     else:
-        student_photo_html = '<div style="width:80px; height:80px; background-color:#f0f2f5; border-radius:50%; text-align:center; line-height:80px;">📷</div>'
+        student_photo_html = '<div style="width:100px; height:100px; background:#f0f0f0; text-align:center; line-height:100px; font-size:40px; color:#aaa; border: none;">📷</div>'
     
     html = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
+        <title>Academic Report Card</title>
         <style>
             @page {{
                 size: A4;
-                margin: 0.8cm;
+                margin: 0.8cm 0.8cm;
             }}
             body {{
-                font-family: Helvetica, Arial, sans-serif;
-                font-size: 9pt;
-                color: #333;
+                font-family: 'Times New Roman', 'Georgia', 'Helvetica', Arial, sans-serif;
+                font-size: 9.5pt;
+                color: #000000;
                 line-height: 1.2;
+                background: white;
+                margin: 0;
+                padding: 0;
             }}
             .text-center {{ text-align: center; }}
             .text-left {{ text-align: left; }}
             .text-right {{ text-align: right; }}
+            .bold {{ font-weight: 700; }}
             
-            .header-table {{
+            /* MAIN CONTAINER - TIGHT BUT READABLE */
+            .report-container {{
                 width: 100%;
-                border-bottom: 2px solid #1a237e;
-                margin-bottom: 15px;
+                border: 1px solid #000000;
+                padding: 15px 18px;
+                background: #ffffff;
+            }}
+            
+            /* HEADER SECTION */
+            .header-section {{
+                border-bottom: 2px solid #000000;
+                margin-bottom: 14px;
                 padding-bottom: 10px;
             }}
             .institute-name {{
                 font-size: 18pt;
-                font-weight: bold;
-                color: #1a237e;
+                font-weight: 800;
+                letter-spacing: 0.5px;
                 text-transform: uppercase;
+                color: #000000;
             }}
-            .motto {{
+            .motto-text {{
                 font-style: italic;
-                color: #ffa500;
                 font-size: 8pt;
+                color: #333;
+                margin-top: 2px;
+            }}
+            .address-text {{
+                font-size: 6.5pt;
+                color: #444;
+                margin-top: 3px;
+            }}
+            .report-badge {{
+                font-size: 10pt;
+                font-weight: 800;
+                text-transform: uppercase;
+                border: 1px solid #000;
+                padding: 4px 10px;
+                display: inline-block;
+                letter-spacing: 1px;
             }}
             
-            .info-table {{
+            /* STUDENT INFO - MINIMAL BORDERS */
+            .info-section {{
+                margin-bottom: 14px;
+            }}
+            .info-grid {{
                 width: 100%;
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                padding: 10px;
-                margin-bottom: 15px;
+                border-collapse: collapse;
+                border: 1px solid #000;
+            }}
+            .info-grid td {{
+                border: 1px solid #aaa;
+                padding: 6px 8px;
+                vertical-align: middle;
             }}
             .info-label {{
-                color: #6c757d;
-                font-size: 7pt;
-                font-weight: bold;
+                font-size: 7.5pt;
+                font-weight: 700;
                 text-transform: uppercase;
+                background-color: #f0f0f0;
+                width: 100px;
             }}
             .info-value {{
                 font-size: 10pt;
-                font-weight: bold;
+                font-weight: 600;
                 color: #000;
             }}
             .position-badge {{
-                background-color: #1a237e;
+                background-color: #000000;
                 color: white;
-                padding: 2px 8px;
-                border-radius: 12px;
+                padding: 2px 10px;
                 display: inline-block;
+                font-weight: 700;
                 font-size: 9pt;
             }}
+            .photo-cell {{
+                text-align: center;
+                vertical-align: middle;
+                width: 120px;
+            }}
             
+            /* RESULTS TABLE - COMPACT */
             .results-table {{
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 10px;
+                margin: 12px 0;
+                font-size: 8pt;
             }}
             .results-table th {{
-                background-color: #1a237e;
-                color: white;
-                padding: 8px 4px;
-                border: 1px solid #1a237e;
-                font-size: 8pt;
+                border: 1px solid #000000;
+                background-color: #e8e8e8;
+                padding: 6px 4px;
+                font-weight: 800;
+                text-transform: uppercase;
+                font-size: 7.5pt;
             }}
             .results-table td {{
-                border: 1px solid #dee2e6;
-                padding: 6px 4px;
-                font-size: 8pt;
+                border: 1px solid #aaa;
+                padding: 5px 4px;
+                vertical-align: middle;
+            }}
+            .subject-cell {{
+                background-color: #fafaf5;
+                font-weight: 700;
+            }}
+            .grade-cell {{
+                font-weight: 700;
+            }}
+            .remarks-cell {{
+                font-size: 7.5pt;
+            }}
+            .initials-cell {{
+                font-family: monospace;
+                font-weight: 600;
             }}
             .total-row {{
-                background-color: #f8f9fa;
-                font-weight: bold;
+                background-color: #ecece5;
+                font-weight: 800;
+                border-top: 2px solid #000;
+            }}
+            .total-row td {{
+                font-weight: 800;
             }}
             
-            .summary-box {{
-                border: 1px solid #ffa500;
-                background-color: #fffbf0;
-                padding: 8px;
-                text-align: center;
-            }}
-            
-            .sig-table {{
+            /* HORIZONTAL SUMMARY TABLE - KEY CHANGE */
+            .summary-horizontal {{
                 width: 100%;
-                margin-top: 40px;
+                border-collapse: collapse;
+                margin: 12px 0;
+                border: 1px solid #000;
+            }}
+            .summary-horizontal th {{
+                background-color: #e0e0e0;
+                border: 1px solid #000;
+                padding: 8px 5px;
+                font-size: 8pt;
+                font-weight: 800;
+                text-transform: uppercase;
+            }}
+            .summary-horizontal td {{
+                border: 1px solid #aaa;
+                padding: 8px 5px;
+                text-align: center;
+                font-size: 11pt;
+                font-weight: 800;
+            }}
+            .summary-label {{
+                background-color: #f0f0f0;
+                font-weight: 700;
+                font-size: 8pt;
+                text-transform: uppercase;
+            }}
+            
+            /* GRADING SCALE - COMPACT */
+            .grading-reference {{
+                margin: 10px 0 8px 0;
+                border-top: 1px solid #ccc;
+                border-bottom: 1px solid #ccc;
+                padding: 5px 0;
+                background: #fefcf8;
+            }}
+            .grading-grid {{
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                gap: 3px;
+                font-size: 6pt;
+                font-family: monospace;
+            }}
+            .grade-item {{
+                padding: 1px 6px;
+                border-right: 1px solid #ddd;
+            }}
+            
+            /* COMMENTS SECTION - SIMPLE LINES */
+            .comments-section {{
+                margin: 12px 0 10px 0;
+            }}
+            .comment-line {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 5px;
+            }}
+            .comment-line td {{
+                border-bottom: 1px solid #000;
+                padding: 5px 2px;
+            }}
+            .comment-label {{
+                font-weight: 800;
+                font-size: 8pt;
+                text-transform: uppercase;
+                width: 140px;
+            }}
+            
+            /* SIGNATURES - 3 COLUMN */
+            .signature-area {{
+                margin-top: 18px;
+                margin-bottom: 8px;
+            }}
+            .signature-flex {{
+                width: 100%;
+                display: table;
+                border-collapse: collapse;
+            }}
+            .signature-col {{
+                display: table-cell;
+                text-align: center;
+                width: 33%;
+                padding-top: 18px;
             }}
             .sig-line {{
-                border-top: 1px solid #333;
-                width: 150px;
-                margin: 0 auto;
-                padding-top: 3px;
+                border-top: 1px solid #000;
+                width: 85%;
+                margin: 0 auto 4px auto;
+            }}
+            .sig-label {{
+                font-size: 8pt;
+                font-weight: 700;
+                text-transform: uppercase;
             }}
             
-            .footer {{
-                margin-top: 30px;
+            /* NEXT TERM - RIGHT ALIGNED */
+            .next-term-row {{
+                margin: 8px 0;
+                text-align: right;
+                font-size: 8pt;
+                font-weight: 600;
+                border-top: 1px dashed #aaa;
+                padding-top: 6px;
+            }}
+            
+            /* FOOTER */
+            .footer-note {{
+                margin-top: 12px;
                 text-align: center;
-                font-size: 7pt;
-                color: #6c757d;
-                border-top: 1px solid #dee2e6;
-                padding-top: 8px;
+                font-size: 6pt;
+                border-top: 1px solid #ccc;
+                padding-top: 6px;
+                color: #444;
+                font-family: monospace;
+            }}
+            
+            /* FORCE PAGE BREAK CONTROL */
+            .keep-together {{
+                page-break-inside: avoid;
             }}
         </style>
     </head>
     <body>
-        <table class="header-table">
-            <tr>
-                <td width="15%" class="text-left">{logo_html}</td>
-                <td width="70%" class="text-center">
-                    <div class="institute-name">{data["institute"].get("institute_name", "ACADEMIC INSTITUTION")}</div>
-                    <div class="motto">{data["institute"].get("target_line", "Excellence in Education")}</div>
-                    <div style="font-size: 7pt; margin-top: 4px;">
-                        {data["institute"].get("address", "")}<br>
-                        Tel: {data["institute"].get("phone_number", "")} | Email: {data["institute"].get("email", "")}
-                    </div>
-                </td>
-                <td width="15%" class="text-right">
-                    <div style="font-size: 10pt; font-weight: bold; color: #1a237e;">ACADEMIC<br>REPORT</div>
-                </td>
-            </tr>
-        </table>
-
-        <table class="info-table">
-            <tr>
-                <td width="75%">
-                    <table width="100%" cellspacing="5">
-                        <tr>
-                            <td width="33%">
-                                <div class="info-label">Student Name</div>
-                                <div class="info-value">{data['student']['name']}</div>
-                            </td>
-                            <td width="33%">
-                                <div class="info-label">Student ID</div>
-                                <div class="info-value">{data['student']['student_id']}</div>
-                            </td>
-                            <td width="34%">
-                                <div class="info-label">Class</div>
-                                <div class="info-value">{data['class_name']}</div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="info-label">Gender</div>
-                                <div class="info-value">{data['student'].get('gender', 'N/A')}</div>
-                            </td>
-                            <td>
-                                <div class="info-label">Term / Year</div>
-                                <div class="info-value">{data['term']} / {data['year']}</div>
-                            </td>
-                            <td>
-                                <div class="info-label">Class Position</div>
-                                <div class="info-value"><span class="position-badge">{data['position']}{suffix} of {data['total_students']}</span></div>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-                <td width="25%" class="text-center">
-                    {student_photo_html}
-                </td>
-            </tr>
-        </table>
-
-        <table class="results-table">
-            <thead>
+        <div class="report-container keep-together">
+            <!-- HEADER: Institute + Logo -->
+            <div class="header-section">
+                <table width="100%" style="border-collapse: collapse;">
+                    <tr>
+                        <td width="15%" class="text-left">{logo_html}</td>
+                        <td width="70%" class="text-center">
+                            <div class="institute-name">{data["institute"].get("institute_name", "ACADEMIC INSTITUTION")}</div>
+                            <div class="motto-text">{data["institute"].get("target_line", "Excellence in Education")}</div>
+                            <div class="address-text">
+                                {data["institute"].get("address", "")}<br>
+                                Tel: {data["institute"].get("phone_number", "")} | Email: {data["institute"].get("email", "")}
+                            </div>
+                        </td>
+                        <td width="15%" class="text-right">
+                            <div class="report-badge">ACADEMIC<br>REPORT</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- STUDENT INFORMATION + PHOTO (transparent border for photo) -->
+            <div class="info-section">
+                <table class="info-grid">
+                    <tr>
+                        <td width="75%">
+                            <table width="100%" cellspacing="3">
+                                <tr>
+                                    <td class="info-label">STUDENT NAME</td>
+                                    <td class="info-value">{data['student']['name']}</td>
+                                    <td class="info-label">STUDENT ID</td>
+                                    <td class="info-value">{data['student']['student_id']}</td>
+                                </tr>
+                                <tr>
+                                    <td class="info-label">CLASS</td>
+                                    <td class="info-value">{data['class_name']}</td>
+                                    <td class="info-label">GENDER</td>
+                                    <td class="info-value">{data['student'].get('gender', 'N/A')}</td>
+                                </tr>
+                                <tr>
+                                    <td class="info-label">TERM / YEAR</td>
+                                    <td class="info-value">{data['term']} / {data['year']}</td>
+                                    <td class="info-label">POSITION</td>
+                                    <td class="info-value"><span class="position-badge">{data['position']}{suffix} OUT OF {data['total_students']}</span></td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td class="photo-cell" width="25%">
+                            {student_photo_html}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- MARKS TABLE -->
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th width="18%" class="text-left">SUBJECT</th>
+                        {exam_headers}
+                        <th width="9%">AVG(%)</th>
+                        <th width="8%">GRADE</th>
+                        <th width="17%" class="text-left">REMARKS</th>
+                        
+                    </tr>
+                </thead>
+                <tbody>
+                    {subject_rows}
+                    <tr class="total-row" >
+                        <td class="text-left"><strong>OVERALL SUMMARY</strong></td>
+                        <td colspan="{exams_count}" class="text-center"><strong>{data['total_obtained']} / {data['total_possible']}</strong></td>
+                        <td class="text-center"><strong>{data['overall_percentage']}</strong></td>
+                        <td class="text-center"><strong>{data['grade']}</strong></td>
+                        <td class="text-left"><strong>{data['comment']}</strong></td>
+                        <td class="text-center">—</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- HORIZONTAL SUMMARY TABLE (replaces 3 separate boxes) -->
+            <table class="summary-horizontal">
                 <tr>
-                    <th width="25%" class="text-left">SUBJECT</th>
-                    {exam_headers}
-                    <th width="10%">AVG (%)</th>
-                    <th width="10%">GRADE</th>
-                    <th width="20%" class="text-left">REMARKS</th>
+                    <th width="33%">OVERALL PERCENTAGE</th>
+                    <th width="33%">TOTAL MARKS</th>
+                    <th width="34%">FINAL GRADE</th>
                 </tr>
-            </thead>
-            <tbody>
-                {subject_rows}
-                <tr class="total-row">
-                    <td class="text-left"><strong>OVERALL SUMMARY</strong></td>
-                    <td colspan="{len(data['exams'])}" class="text-center"><strong>{data['total_obtained']} / {data['total_possible']}</strong></td>
-                    <td class="text-center"><strong>{data['overall_percentage']}%</strong></td>
-                    <td class="text-center"><strong>{data['grade']}</strong></td>
-                    <td class="text-left">{data['comment']}</td>
+                <tr>
+                    <td><strong>{data['overall_percentage']}%</strong></td>
+                    <td><strong>{data['total_obtained']}</strong></td>
+                    <td><strong>{data['grade']}</strong></td>
                 </tr>
-            </tbody>
-        </table>
-
-        <table width="100%" style="margin-top: 15px;" cellspacing="8">
-            <tr>
-                <td width="33%">
-                    <div class="summary-box">
-                        <div class="info-label">Overall Percentage</div>
-                        <div style="font-size: 16pt; font-weight: bold; color: #1a237e;">{data['overall_percentage']}%</div>
-                    </div>
-                </td>
-                <td width="33%">
-                    <div class="summary-box">
-                        <div class="info-label">Total Marks</div>
-                        <div style="font-size: 16pt; font-weight: bold; color: #1a237e;">{data['total_obtained']}</div>
-                    </div>
-                </td>
-                <td width="34%">
-                    <div class="summary-box">
-                        <div class="info-label">Final Grade</div>
-                        <div style="font-size: 16pt; font-weight: bold; color: #1a237e;">{data['grade']}</div>
-                    </div>
-                </td>
-            </tr>
-        </table>
-
-        <table class="sig-table">
-            <tr>
-                <td class="text-center">
-                    <div class="sig-line"></div>
-                    <div style="font-size: 8pt; font-weight: bold;">Class Teacher</div>
-                </td>
-                <td class="text-center">
-                    <div class="sig-line"></div>
-                    <div style="font-size: 8pt; font-weight: bold;">Head Teacher</div>
-                </td>
-                <td class="text-center">
-                    <div class="sig-line"></div>
-                    <div style="font-size: 8pt; font-weight: bold;">Parent/Guardian</div>
-                </td>
-            </tr>
-        </table>
-
-        <div class="footer">
-            Generated on: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} | Report ID: {data['student']['student_id']}_{data['year']}_{data['term']}
+            </table>
+            
+            <!-- GRADING SYSTEM REFERENCE -->
+            <div class="grading-reference">
+                <div class="grading-grid">
+                    <span class="grade-item"><strong>GRADING SCALE:</strong></span>
+                    <span class="grade-item">80+ → D1</span>
+                    <span class="grade-item">75-79 → D2</span>
+                    <span class="grade-item">65-73 → C3</span>
+                    <span class="grade-item">60-64 → C4</span>
+                    <span class="grade-item">55-59 → C5</span>
+                    <span class="grade-item">50-54 → C6</span>
+                    <span class="grade-item">40-49 → P7</span>
+                    <span class="grade-item">30-39 → P8</span>
+                    <span class="grade-item">0-29 → F9</span>
+                </div>
+            </div>
+            
+            <!-- TEACHER & HEAD TEACHER COMMENTS (minimal) -->
+            <div class="comments-section">
+                <table class="comment-line">
+                    <tr>
+                        <td class="comment-label">CLASS TEACHER'S COMMENT:</td>
+                        <td>_________________________________________</td>
+                    </tr>
+                </table>
+                <table class="comment-line">
+                    <tr>
+                        <td class="comment-label">HEAD TEACHER'S COMMENT:</td>
+                        <td>_________________________________________</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- NEXT TERM BEGINS -->
+            <div class="next-term-row">
+                NEXT TERM BEGINS: _________________________________
+            </div>
+            
+            <!-- FOOTER WITH MOTTO -->
+            <div class="footer-note">
+                {data["institute"].get("footer_motto", "Foundation for your digital ambitions")}<br>
+                Generated: {datetime.now().strftime('%d/%m/%Y %H:%M')} | Report ID: {data['student']['student_id']}_{data['year']}_{data['term']}
+            </div>
         </div>
     </body>
     </html>
@@ -788,13 +971,23 @@ def generate_report_card_html(data):
     
     return html
 
+
 def convert_html_to_pdf(html_content):
-    """Convert HTML to PDF using xhtml2pdf"""
+    """Convert HTML to PDF using xhtml2pdf with professional settings"""
+    import io
+    from xhtml2pdf import pisa
+    
     pdf_buffer = io.BytesIO()
-    pisa_status = pisa.CreatePDF(io.StringIO(html_content), dest=pdf_buffer)
+    
+    pisa_status = pisa.CreatePDF(
+        io.StringIO(html_content), 
+        dest=pdf_buffer,
+        encoding='UTF-8',
+        link_callback=None
+    )
     
     if pisa_status.err:
-        raise Exception("PDF generation failed")
+        raise Exception(f"PDF generation failed: {pisa_status.err}")
     
     pdf_buffer.seek(0)
     return pdf_buffer
