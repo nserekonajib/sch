@@ -1,6 +1,6 @@
 import requests
 import json
-API = "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"
+
 url = "https://openrouter.ai/api/v1/chat/completions"
 
 payload = {
@@ -50,7 +50,7 @@ if response.headers.get("content-type", "").startswith("text/event-stream"):
     print("\n\nDONE")
 
 else:
-    # 🔥 fallback (MOST IMPORTANT FIX)
+
     data = response.json()
 
     print("NON-STREAM RESPONSE:\n")
