@@ -1,0 +1,559 @@
+<!-- templates/fees/payable_summary.html -->
+{% extends "base.html" %}
+
+{% block title %}Fee Collection Summary - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .summary-card {
+        transition: all 0.3s ease;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .summary-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+    @media (min-width: 768px) {
+        .stat-value {
+            font-size: 1.875rem;
+        }
+    }
+    .progress-bar-container {
+        background: #e5e7eb;
+        border-radius: 9999px;
+        overflow: hidden;
+        height: 8px;
+    }
+    .progress-bar-fill {
+        height: 100%;
+        border-radius: 9999px;
+        transition: width 0.5s ease;
+    }
+    .category-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .category-card:hover {
+        background: #f9fafb;
+        transform: translateX(4px);
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .loading-shimmer {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    .refresh-btn {
+        transition: all 0.2s ease;
+    }
+    .refresh-btn:hover {
+        transform: rotate(180deg);
+    }
+    .tooltip-custom {
+        position: relative;
+        display: inline-block;
+    }
+    .tooltip-custom .tooltip-text {
+        visibility: hidden;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        padding: 5px 10px;
+        border-radius: 6px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -60px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+    .tooltip-custom:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+    .badge {
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .badge-success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .badge-warning {
+        background: #fed7aa;
+        color: #92400e;
+    }
+    .badge-danger {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .badge-info {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Fee Collection Summary</h1>
+            <p class="text-sm text-gray-600">Overall financial overview including discounts and collection rates</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="refreshData()" class="refresh-btn px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition flex items-center gap-2">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button onclick="window.print()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+                <i class="fas fa-print"></i> Print
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="text-center py-12">
+        <div class="loader mx-auto"></div>
+        <p class="mt-4 text-gray-500">Loading fee collection summary...</p>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" style="display: none;">
+        <!-- Summary Cards Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Invoiced Card -->
+            <div class="summary-card bg-white rounded-xl shadow-md p-6 border-l-4 border-indigo-500">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <p class="text-gray-500 text-xs uppercase tracking-wide font-semibold">Total Invoiced</p>
+                        <p class="stat-value font-bold text-gray-800 mt-1" id="totalInvoiced">UGX 0</p>
+                    </div>
+                    <div class="stat-icon bg-indigo-100">
+                        <i class="fas fa-file-invoice text-indigo-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">
+                    <i class="fas fa-receipt"></i> <span id="totalInvoices">0</span> invoices issued
+                </div>
+            </div>
+
+            <!-- Total Discounts Card -->
+            <div class="summary-card bg-white rounded-xl shadow-md p-6 border-l-4 border-rose-500">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <p class="text-gray-500 text-xs uppercase tracking-wide font-semibold">Total Discounts</p>
+                        <p class="stat-value font-bold text-rose-600 mt-1" id="totalDiscounts">UGX 0</p>
+                    </div>
+                    <div class="stat-icon bg-rose-100">
+                        <i class="fas fa-tags text-rose-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">
+                    <i class="fas fa-percent"></i> <span id="totalDiscountRecords">0</span> discount records
+                </div>
+            </div>
+
+            <!-- Total Payable Card -->
+            <div class="summary-card bg-white rounded-xl shadow-md p-6 border-l-4 border-purple-500">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <p class="text-gray-500 text-xs uppercase tracking-wide font-semibold">Total Payable</p>
+                        <p class="stat-value font-bold text-purple-600 mt-1" id="totalPayable">UGX 0</p>
+                    </div>
+                    <div class="stat-icon bg-purple-100">
+                        <i class="fas fa-calculator text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">
+                    <i class="fas fa-chart-line"></i> After discounts applied
+                </div>
+            </div>
+
+            <!-- Collection Rate Card -->
+            <div class="summary-card bg-white rounded-xl shadow-md p-6 border-l-4 border-emerald-500">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <p class="text-gray-500 text-xs uppercase tracking-wide font-semibold">Collection Rate</p>
+                        <p class="stat-value font-bold text-emerald-600 mt-1" id="collectionRate">0%</p>
+                    </div>
+                    <div class="stat-icon bg-emerald-100">
+                        <i class="fas fa-chart-pie text-emerald-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="progress-bar-container mt-3">
+                    <div class="progress-bar-fill" id="collectionProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="text-xs text-gray-500 mt-2">
+                    <i class="fas fa-coins"></i> <span id="totalCollected">UGX 0</span> collected
+                </div>
+            </div>
+        </div>
+
+        <!-- Second Row Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Total Collected Card -->
+            <div class="summary-card bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold">Total Collected</p>
+                        <p class="text-3xl font-bold text-emerald-700 mt-1" id="totalCollectedLarge">UGX 0</p>
+                    </div>
+                    <div class="w-14 h-14 bg-emerald-200 rounded-full flex items-center justify-center">
+                        <i class="fas fa-money-bill-wave text-emerald-700 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Remaining Balance Card -->
+            <div class="summary-card bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold">Remaining Balance</p>
+                        <p class="text-3xl font-bold text-orange-700 mt-1" id="remainingBalance">UGX 0</p>
+                    </div>
+                    <div class="w-14 h-14 bg-orange-200 rounded-full flex items-center justify-center">
+                        <i class="fas fa-clock text-orange-700 text-2xl"></i>
+                    </div>
+                </div>
+                <div class="mt-2 text-xs text-gray-500" id="creditNote" style="display: none;">
+                    <i class="fas fa-info-circle"></i> Credit balance available
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Breakdown Section -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="text-lg font-semibold text-gray-800">
+                    <i class="fas fa-chart-bar text-orange-500 mr-2"></i>
+                    Category Breakdown
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">Fee collection analysis by student category</p>
+            </div>
+            <div id="categoryBreakdown" class="divide-y divide-gray-200">
+                <!-- Categories will be inserted here dynamically -->
+            </div>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-users text-blue-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Total Students</p>
+                        <p class="text-2xl font-bold text-gray-800" id="totalStudents">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Average Collection</p>
+                        <p class="text-2xl font-bold text-gray-800" id="avgCollection">0%</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-percent text-purple-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">Discount Percentage</p>
+                        <p class="text-2xl font-bold text-gray-800" id="discountPercentage">0%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentData = null;
+
+    // Function to get color based on percentage
+    function getProgressBarColor(percentage) {
+        if (percentage >= 75) return 'bg-green-500';
+        if (percentage >= 50) return 'bg-yellow-500';
+        return 'bg-red-500';
+    }
+
+    // Function to format currency
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'UGX',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(amount);
+    }
+
+    // Function to load data
+            // In the template, update the loadData function to include the institute_id
+        async function loadData() {
+            const loadingState = document.getElementById('loadingState');
+            const mainContent = document.getElementById('mainContent');
+            
+            loadingState.style.display = 'block';
+            mainContent.style.display = 'none';
+            
+            // Get institute_id from URL or from template variable
+            const instituteId = '{{ institute_id }}';
+            const url = instituteId ? `/fees/overall-payable-summary?institute_id=${instituteId}` : '/fees/overall-payable-summary';
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentData = data;
+                    updateUI(data);
+                    loadingState.style.display = 'none';
+                    mainContent.style.display = 'block';
+                } else {
+                    throw new Error(data.message || 'Failed to load data');
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                loadingState.innerHTML = `
+                    <div class="text-center py-12">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-5xl mb-4"></i>
+                        <p class="text-red-600 font-semibold">Error loading data</p>
+                        <p class="text-gray-500 text-sm mt-2">${error.message}</p>
+                        <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+                            Try Again
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+    // Function to update UI
+    function updateUI(data) {
+        const summary = data.summary;
+        
+        // Update summary cards
+        document.getElementById('totalInvoiced').textContent = formatCurrency(summary.total_invoiced);
+        document.getElementById('totalDiscounts').textContent = formatCurrency(summary.total_discount_applied);
+        document.getElementById('totalPayable').textContent = formatCurrency(summary.total_payable);
+        document.getElementById('totalCollected').textContent = formatCurrency(summary.total_collected);
+        document.getElementById('totalCollectedLarge').textContent = formatCurrency(summary.total_collected);
+        document.getElementById('collectionRate').textContent = `${summary.overall_collection_percentage}%`;
+        document.getElementById('remainingBalance').textContent = formatCurrency(summary.total_remaining);
+        document.getElementById('totalStudents').textContent = summary.total_students;
+        document.getElementById('totalInvoices').textContent = summary.total_invoices;
+        document.getElementById('totalDiscountRecords').textContent = summary.total_discount_records;
+        
+        // Calculate average collection
+        const avgCollection = summary.overall_collection_percentage;
+        document.getElementById('avgCollection').textContent = `${avgCollection}%`;
+        
+        // Calculate discount percentage
+        const discountPercent = summary.total_payable > 0 
+            ? (summary.total_discount_applied / summary.total_payable) * 100 
+            : 0;
+        document.getElementById('discountPercentage').textContent = `${discountPercent.toFixed(2)}%`;
+        
+        // Update progress bar
+        const progressBar = document.getElementById('collectionProgressBar');
+        const percentage = summary.overall_collection_percentage;
+        progressBar.style.width = `${percentage}%`;
+        progressBar.className = `progress-bar-fill ${getProgressBarColor(percentage)}`;
+        
+        // Show/hide credit note
+        if (summary.is_overall_credit) {
+            document.getElementById('creditNote').style.display = 'block';
+        } else {
+            document.getElementById('creditNote').style.display = 'none';
+        }
+        
+        // Update category breakdown
+        updateCategoryBreakdown(data.category_breakdown);
+    }
+    
+    // Function to update category breakdown
+    function updateCategoryBreakdown(categories) {
+        const container = document.getElementById('categoryBreakdown');
+        
+        if (!categories || Object.keys(categories).length === 0) {
+            container.innerHTML = `
+                <div class="p-8 text-center text-gray-400">
+                    <i class="fas fa-folder-open text-4xl mb-2"></i>
+                    <p>No category data available</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        for (const [category, data] of Object.entries(categories)) {
+            const collectionColor = data.collection_percentage >= 75 ? 'text-green-600' : 
+                                    (data.collection_percentage >= 50 ? 'text-yellow-600' : 'text-red-600');
+            
+            html += `
+                <div class="category-card p-6 hover:bg-gray-50 transition">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <!-- Category Header -->
+                        <div class="md:w-1/4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                                    <i class="fas fa-users text-orange-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-800 text-lg">${escapeHtml(category)}</h4>
+                                    <p class="text-xs text-gray-500">${data.student_count} student${data.student_count !== 1 ? 's' : ''}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Financial Stats -->
+                        <div class="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                                <p class="text-xs text-gray-500">Total Invoiced</p>
+                                <p class="font-semibold text-gray-800 text-sm">${formatCurrency(data.total_invoiced)}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Discount</p>
+                                <p class="font-semibold text-rose-600 text-sm">${formatCurrency(data.total_discount)}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Payable</p>
+                                <p class="font-semibold text-purple-600 text-sm">${formatCurrency(data.total_payable)}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Collected</p>
+                                <p class="font-semibold text-emerald-600 text-sm">${formatCurrency(data.total_paid)}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Collection Rate -->
+                        <div class="md:w-48">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs text-gray-500">Collection Rate</span>
+                                <span class="text-sm font-bold ${collectionColor}">${data.collection_percentage}%</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill ${getProgressBarColor(data.collection_percentage)}" 
+                                     style="width: ${data.collection_percentage}%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Remaining: ${formatCurrency(data.remaining_balance)}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+    }
+    
+    // Function to refresh data
+    async function refreshData() {
+        const refreshBtn = document.querySelector('.refresh-btn');
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        
+        await loadData();
+        
+        setTimeout(() => {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+        }, 1000);
+    }
+    
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Auto-refresh every 30 seconds (optional)
+    let autoRefreshInterval;
+    
+    function startAutoRefresh() {
+        if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+        autoRefreshInterval = setInterval(() => {
+            loadData();
+        }, 30000); // Refresh every 30 seconds
+    }
+    
+    function stopAutoRefresh() {
+        if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadData();
+        startAutoRefresh();
+    });
+    
+    // Stop auto-refresh when page is hidden
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopAutoRefresh();
+        } else {
+            startAutoRefresh();
+            loadData(); // Immediate refresh when tab becomes visible
+        }
+    });
+</script>
+
+<style>
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    @media print {
+        .refresh-btn, button, .filter-bar {
+            display: none !important;
+        }
+        .summary-card, .category-card {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        body {
+            background: white;
+        }
+    }
+</style>
+{% endblock %}

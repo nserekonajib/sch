@@ -1,5 +1,4 @@
-# dashboard.py - Full Async Version
-# Requires: pip install flask[async] supabase httpx python-dotenv
+
 
 from flask import *
 from supabase import create_client, Client
@@ -679,4 +678,84 @@ async def get_overall_profit():
 
     except Exception as e:
         import traceback; traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+
+@dashboard_bp.route('/api/fee-collection-summary', methods=['GET'])
+@login_required
+@role_required(['owner', 'teacher', 'accountant'])
+def get_fee_collection_summary():
+    """Get fee collection summary for dashboard cards"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Get all invoices for the institute
+        invoices_response = supabase.table('invoices')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        invoices = invoices_response.data if invoices_response.data else []
+        
+        # Get all discounts
+        discounts_response = supabase.table('discounts')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .eq('is_active', True)\
+            .execute()
+        
+        discounts = discounts_response.data if discounts_response.data else []
+        
+        # Calculate totals safely
+        total_invoiced = 0.0
+        total_paid = 0.0
+        for inv in invoices:
+            try:
+                total_amount = inv.get('total_amount')
+                if total_amount is not None and total_amount != '':
+                    total_invoiced += float(total_amount)
+                
+                paid_amount = inv.get('paid_amount')
+                if paid_amount is not None and paid_amount != '':
+                    total_paid += float(paid_amount)
+            except (ValueError, TypeError):
+                continue
+        
+        total_discount = 0.0
+        for d in discounts:
+            try:
+                discount_amount = d.get('discount_amount')
+                if discount_amount is not None and discount_amount != '':
+                    total_discount += float(discount_amount)
+            except (ValueError, TypeError):
+                continue
+        
+        total_payable = total_invoiced - total_discount
+        
+        if total_payable > 0:
+            collection_percentage = (total_paid / total_payable) * 100
+        else:
+            collection_percentage = 100.0 if total_paid > 0 else 0.0
+        
+        return jsonify({
+            'success': True,
+            'summary': {
+                'total_invoiced': round(total_invoiced, 2),
+                'total_discount_applied': round(total_discount, 2),
+                'total_payable': round(total_payable, 2),
+                'total_collected': round(total_paid, 2),
+                'overall_collection_percentage': round(collection_percentage, 2),
+                'total_invoices': len(invoices),
+                'total_discount_records': len(discounts)
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error getting fee collection summary: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500

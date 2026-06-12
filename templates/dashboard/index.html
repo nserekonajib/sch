@@ -1,4 +1,4 @@
-<!-- templates/dashboard/index.html - Complete Dashboard with Clickable Cards -->
+<!-- templates/dashboard/index.html - Complete Dashboard with Fee Collection Cards -->
 {% extends "base.html" %}
 
 {% block title %}Dashboard - Lunserk ERP{% endblock %}
@@ -128,6 +128,27 @@
     .profit-card-hidden {
         display: none;
     }
+
+    /* Progress bar for collection percentage */
+    .progress-bar {
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #059669);
+        border-radius: 2px;
+        transition: width 0.3s ease;
+    }
+    .progress-fill.warning {
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+    }
+    .progress-fill.danger {
+        background: linear-gradient(90deg, #ef4444, #dc2626);
+    }
 </style>
 {% endblock %}
 
@@ -161,7 +182,7 @@
         </div>
     </div>
 
-    <!-- Stats Cards - Row 1 -->
+    <!-- Stats Cards - Row 1: Basic Stats -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="statsContainer">
         <!-- Card 1: Total Students -->
         <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-orange-500" id="cardTotalStudents" onclick="goToReport('students')">
@@ -240,9 +261,95 @@
         </div>
     </div>
 
-    <!-- Stats Cards - Row 2 (Profit cards conditionally visible for owner/admin only) -->
+    <!-- Stats Cards - Row 2: Fee Collection Summary (NEW) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="feeCollectionContainer">
+        <!-- Card 5: Total Invoiced -->
+        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-indigo-500" id="cardTotalInvoiced" >
+            <div class="card-loader hidden" id="loaderTotalInvoiced">
+                <div class="loader"></div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs uppercase tracking-wide">Total Invoiced</p>
+                    <p class="stat-value font-bold text-gray-800 mt-1" id="totalInvoiced">UGX 0</p>
+                    <p class="text-xs text-gray-400 mt-1">Before discounts</p>
+                </div>
+                <div class="h-11 w-11 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-file-invoice text-indigo-500 text-lg"></i>
+                </div>
+            </div>
+            <div class="click-hint">
+                <i class="fas fa-arrow-right"></i> Click to view
+            </div>
+        </div>
+        
+        <!-- Card 6: Total Discounts Applied -->
+        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-rose-500" id="cardTotalDiscounts">
+            <div class="card-loader hidden" id="loaderTotalDiscounts">
+                <div class="loader"></div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs uppercase tracking-wide">Total Discounts</p>
+                    <p class="stat-value font-bold text-rose-600 mt-1" id="totalDiscounts">UGX 0</p>
+                    <p class="text-xs text-gray-400 mt-1">Amount waived</p>
+                </div>
+                <div class="h-11 w-11 bg-rose-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-tags text-rose-500 text-lg"></i>
+                </div>
+            </div>
+            <div class="click-hint">
+                <i class="fas fa-arrow-right"></i> Click to view
+            </div>
+        </div>
+        
+        <!-- Card 7: Total Payable (After Discount) -->
+        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-purple-500" id="cardTotalPayable" >
+            <div class="card-loader hidden" id="loaderTotalPayable">
+                <div class="loader"></div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs uppercase tracking-wide">Total Payable</p>
+                    <p class="stat-value font-bold text-purple-600 mt-1" id="totalPayable">UGX 0</p>
+                    <p class="text-xs text-gray-400 mt-1">After discounts</p>
+                </div>
+                <div class="h-11 w-11 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-calculator text-purple-500 text-lg"></i>
+                </div>
+            </div>
+            <div class="click-hint">
+                <i class="fas fa-arrow-right"></i> Click to view
+            </div>
+        </div>
+        
+        <!-- Card 8: Collection Percentage -->
+        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-cyan-500" id="cardCollectionPercentage">
+            <div class="card-loader hidden" id="loaderCollectionPercentage">
+                <div class="loader"></div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs uppercase tracking-wide">Collection Rate</p>
+                    <p class="stat-value font-bold text-cyan-600 mt-1" id="collectionPercentage">0%</p>
+                    <p class="text-xs text-gray-400 mt-1">Of total payable</p>
+                </div>
+                <div class="h-11 w-11 bg-cyan-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-chart-pie text-cyan-500 text-lg"></i>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="collectionProgressBar" style="width: 0%"></div>
+            </div>
+            <div class="click-hint">
+                <i class="fas fa-arrow-right"></i> Click to view
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards - Row 3 (Profit cards conditionally visible for owner/admin only) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="profitCardsContainer">
-        <!-- Card 5: Total Expenses -->
+        <!-- Card 9: Total Expenses -->
         <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-red-500" id="cardTotalExpenses" onclick="goToReport('expenses')">
             <div class="card-loader hidden" id="loaderTotalExpenses">
                 <div class="loader"></div>
@@ -261,7 +368,7 @@
             </div>
         </div>
         
-        <!-- Card 6: School Fees Collected -->
+        <!-- Card 10: School Fees Collected -->
         <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-indigo-500" id="cardSchoolFees" onclick="goToReport('school-fees')">
             <div class="card-loader hidden" id="loaderSchoolFees">
                 <div class="loader"></div>
@@ -280,7 +387,7 @@
             </div>
         </div>
         
-        <!-- Card 7: Filtered Profit (Date Range) - Hidden for non-owners -->
+        <!-- Card 11: Filtered Profit (Date Range) - Hidden for non-owners -->
         <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-purple-500" id="cardFilteredProfit" onclick="goToReport('profit-loss')">
             <div class="card-loader hidden" id="loaderFilteredProfit">
                 <div class="loader"></div>
@@ -299,7 +406,7 @@
             </div>
         </div>
         
-        <!-- Card 8: Overall Profit (All Time - No Filter) - Hidden for non-owners -->
+        <!-- Card 12: Overall Profit (All Time - No Filter) - Hidden for non-owners -->
         <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-rose-500" id="cardOverallProfit" onclick="goToReport('overall-profit')">
             <div class="card-loader" id="loaderOverallProfit">
                 <div class="loader"></div>
@@ -419,9 +526,6 @@
     const RETRY_DELAY = 1000;
 
     // Check if user is owner or admin (not employee)
-    // This should be set from backend - session.user.is_employee and session.user.role
-    // For owner: is_employee = false, role = 'owner'
-    // For admin employee: is_employee = true, role = 'admin'
     const isOwnerOrAdmin = !{{ session.user.is_employee|tojson }} || 
                            ({{ session.user.is_employee|tojson }} && 
                             ({{ session.user.role|tojson }} === 'admin' || 
@@ -431,10 +535,8 @@
     if (!isOwnerOrAdmin) {
         const profitCards = document.getElementById('profitCardsContainer');
         if (profitCards) {
-            // Hide the entire profit cards row
             profitCards.style.display = 'none';
         }
-        // Also hide the profit section in other places if needed
         console.log('Profit cards hidden - user is not owner or admin');
     }
 
@@ -464,14 +566,25 @@
                 url = `/reports/school-fees?start_date=${startDate}&end_date=${endDate}`;
                 break;
             case 'profit-loss':
-                // Only allow if owner/admin
                 if (!isOwnerOrAdmin) return;
                 url = `/reports/profit-loss?start_date=${startDate}&end_date=${endDate}`;
                 break;
             case 'overall-profit':
-                // Only allow if owner/admin
                 if (!isOwnerOrAdmin) return;
                 url = '/reports/overall-profit';
+                break;
+            // New report types for fee collection
+            case 'total-invoiced':
+                url = '/fees/overall-payable-summary';
+                break;
+            case 'discounts':
+                url = '/reports/discounts';
+                break;
+            case 'payable':
+                url = '/fees/overall-payable-summary';
+                break;
+            case 'collection':
+                url = '/reports/collection-analysis';
                 break;
             default:
                 return;
@@ -485,7 +598,7 @@
         window.location.href = url;
     }
 
-    // Generic fetch function with retry logic (increased to 4 retries)
+    // Generic fetch function with retry logic
     async function fetchWithRetry(url, retryCount = 0) {
         try {
             const response = await fetch(url);
@@ -498,7 +611,7 @@
             
             if (retryCount < MAX_RETRIES) {
                 console.log(`Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1))); // Exponential backoff
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
                 return fetchWithRetry(url, retryCount + 1);
             } else {
                 throw error;
@@ -510,7 +623,6 @@
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     
-    // Wait for DOM to be fully loaded before setting dates and loading data
     document.addEventListener('DOMContentLoaded', function() {
         const startDateInput = document.getElementById('startDate');
         const endDateInput = document.getElementById('endDate');
@@ -518,16 +630,15 @@
         if (startDateInput) startDateInput.value = firstDay.toISOString().split('T')[0];
         if (endDateInput) endDateInput.value = today.toISOString().split('T')[0];
         
-        // Initial load with retry
         refreshDashboard();
     });
 
     async function refreshDashboard() {
-        console.log('Refreshing dashboard with retry capability...');
+        console.log('Refreshing dashboard...');
         
-        // Track all promises with their retry logic
         const promises = [
             loadStats(),
+            loadFeeCollectionSummary(),  // New function for fee collection
             loadIncomeExpenseGraph(),
             loadClassDistribution(),
             loadClassAttendance(),
@@ -535,30 +646,96 @@
             loadRecentActivities()
         ];
         
-        // Only load profit-related data if user is owner/admin
         if (isOwnerOrAdmin) {
             promises.push(loadOverallProfit());
         }
         
-        // Wait for all to complete, but don't let one failure affect others
         const results = await Promise.allSettled(promises);
         
-        // Log any failures
         results.forEach((result, index) => {
             if (result.status === 'rejected') {
-                console.error(`Dashboard component ${index} failed after retries:`, result.reason);
+                console.error(`Dashboard component ${index} failed:`, result.reason);
             }
         });
         
         console.log('Dashboard refresh completed');
     }
 
+    // NEW: Load fee collection summary using the overall-payable-summary API
+    async function loadFeeCollectionSummary() {
+        const feeLoaders = ['loaderTotalInvoiced', 'loaderTotalDiscounts', 'loaderTotalPayable', 'loaderCollectionPercentage'];
+        
+        feeLoaders.forEach(loaderId => {
+            const loader = document.getElementById(loaderId);
+            if (loader) loader.classList.remove('hidden');
+        });
+        
+        try {
+            const data = await fetchWithRetry('/fees/overall-payable-summary');
+            
+            if (data.success) {
+                // Update card values
+                document.getElementById('totalInvoiced').textContent = `UGX ${data.summary.total_invoiced.toLocaleString()}`;
+                document.getElementById('totalDiscounts').textContent = `UGX ${data.summary.total_discount_applied.toLocaleString()}`;
+                document.getElementById('totalPayable').textContent = `UGX ${data.summary.total_payable.toLocaleString()}`;
+                document.getElementById('collectionPercentage').textContent = `${data.summary.overall_collection_percentage}%`;
+                
+                // Update progress bar with color based on percentage
+                const progressBar = document.getElementById('collectionProgressBar');
+                const percentage = data.summary.overall_collection_percentage;
+                progressBar.style.width = `${percentage}%`;
+                
+                // Change progress bar color based on percentage
+                if (percentage < 50) {
+                    progressBar.classList.add('danger');
+                    progressBar.classList.remove('warning');
+                } else if (percentage < 75) {
+                    progressBar.classList.add('warning');
+                    progressBar.classList.remove('danger');
+                } else {
+                    progressBar.classList.remove('warning', 'danger');
+                }
+                
+                // Color code the percentage text
+                const percentageElement = document.getElementById('collectionPercentage');
+                if (percentage < 50) {
+                    percentageElement.classList.add('text-red-600');
+                    percentageElement.classList.remove('text-cyan-600');
+                } else if (percentage < 75) {
+                    percentageElement.classList.add('text-yellow-600');
+                    percentageElement.classList.remove('text-cyan-600');
+                } else {
+                    percentageElement.classList.add('text-green-600');
+                    percentageElement.classList.remove('text-cyan-600');
+                }
+                
+                console.log('Fee collection summary loaded:', data.summary);
+                
+                // Optionally, you can also load category breakdown data
+                if (data.category_breakdown) {
+                    console.log('Category breakdown:', data.category_breakdown);
+                    // You could add a tooltip or modal with this data
+                }
+            }
+        } catch (error) {
+            console.error('Error loading fee collection summary:', error);
+            // Show error states
+            document.getElementById('totalInvoiced').textContent = 'Error';
+            document.getElementById('totalDiscounts').textContent = 'Error';
+            document.getElementById('totalPayable').textContent = 'Error';
+            document.getElementById('collectionPercentage').textContent = '0%';
+        } finally {
+            feeLoaders.forEach(loaderId => {
+                const loader = document.getElementById(loaderId);
+                if (loader) loader.classList.add('hidden');
+            });
+        }
+    }
+
     async function loadStats() {
-        // Show loaders for stats cards
         const statLoaders = ['loaderTotalStudents', 'loaderTotalEmployees', 'loaderTotalCollected', 
                             'loaderOtherIncome', 'loaderTotalExpenses', 'loaderSchoolFees'];
         
-        // Only add profit loader if owner/admin
         if (isOwnerOrAdmin) {
             statLoaders.push('loaderFilteredProfit');
         }
@@ -575,7 +752,6 @@
             const data = await fetchWithRetry(`/dashboard/api/stats?start_date=${startDate}&end_date=${endDate}`);
             
             if (data.success) {
-                // Update all stats
                 document.getElementById('totalStudents').textContent = data.stats.total_students;
                 document.getElementById('totalEmployees').textContent = data.stats.total_employees;
                 document.getElementById('totalCollected').textContent = `UGX ${data.stats.total_collected.toLocaleString()}`;
@@ -583,11 +759,9 @@
                 document.getElementById('totalExpenses').textContent = `UGX ${data.stats.total_expenses.toLocaleString()}`;
                 document.getElementById('schoolFeesCollected').textContent = `UGX ${data.stats.revenue_collected.toLocaleString()}`;
                 
-                // Only update profit stats if owner/admin
                 if (isOwnerOrAdmin) {
                     document.getElementById('filteredProfit').textContent = `UGX ${data.stats.total_profit.toLocaleString()}`;
                     
-                    // Color coding for filtered profit
                     const filteredProfitElement = document.getElementById('filteredProfit');
                     if (data.stats.total_profit < 0) {
                         filteredProfitElement.classList.remove('text-purple-600');
@@ -598,26 +772,11 @@
                     }
                 }
                 
-                // Add tooltip to show current month fees
-                const schoolFeesElement = document.getElementById('schoolFeesCollected');
-                if (data.stats.current_month_fees) {
-                    schoolFeesElement.title = `Current month school fees: UGX ${data.stats.current_month_fees.toLocaleString()}`;
-                }
-                
                 console.log('Stats loaded successfully');
             }
         } catch (error) {
-            console.error('Error loading stats after retries:', error);
-            // Show error indicators in stats cards
-            statLoaders.forEach(loaderId => {
-                const statElement = document.getElementById(loaderId.replace('loader', ''));
-                if (statElement && statElement.parentElement) {
-                    statElement.textContent = 'Error loading data';
-                    statElement.classList.add('text-red-600');
-                }
-            });
+            console.error('Error loading stats:', error);
         } finally {
-            // Hide loaders
             statLoaders.forEach(loaderId => {
                 const loader = document.getElementById(loaderId);
                 if (loader) loader.classList.add('hidden');
@@ -626,7 +785,6 @@
     }
 
     async function loadOverallProfit() {
-        // Only load if user is owner/admin
         if (!isOwnerOrAdmin) return;
         
         const loader = document.getElementById('loaderOverallProfit');
@@ -639,7 +797,6 @@
                 const overallProfitElement = document.getElementById('overallProfit');
                 overallProfitElement.textContent = `UGX ${data.overall_profit.toLocaleString()}`;
                 
-                // Color coding for overall profit
                 if (data.overall_profit < 0) {
                     overallProfitElement.classList.remove('text-rose-600');
                     overallProfitElement.classList.add('text-red-600');
@@ -651,11 +808,10 @@
                 console.log('Overall profit loaded successfully');
             }
         } catch (error) {
-            console.error('Error loading overall profit after retries:', error);
+            console.error('Error loading overall profit:', error);
             const overallProfitElement = document.getElementById('overallProfit');
             if (overallProfitElement) {
-                overallProfitElement.textContent = 'Error loading data';
-                overallProfitElement.classList.add('text-red-600');
+                overallProfitElement.textContent = 'Error';
             }
         } finally {
             if (loader) loader.classList.add('hidden');
@@ -734,24 +890,10 @@
                         }
                     }
                 });
-                console.log('Income/Expense graph loaded successfully');
-            } else if (data.success && (!data.data || data.data.length === 0)) {
-                console.log('No income/expense data available');
-                const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
-                if (incomeExpenseChart) incomeExpenseChart.destroy();
-                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                ctx.fillStyle = '#999';
-                ctx.font = '14px Arial';
-                ctx.fillText('No data available', ctx.canvas.width/2 - 60, ctx.canvas.height/2);
+                console.log('Income/Expense graph loaded');
             }
         } catch (error) {
-            console.error('Error loading graph after retries:', error);
-            const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
-            if (incomeExpenseChart) incomeExpenseChart.destroy();
-            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            ctx.fillStyle = '#ef4444';
-            ctx.font = '14px Arial';
-            ctx.fillText('Error loading chart data', ctx.canvas.width/2 - 80, ctx.canvas.height/2);
+            console.error('Error loading graph:', error);
         } finally {
             if (chartLoader) chartLoader.classList.add('hidden');
         }
@@ -780,26 +922,9 @@
                         datasets: [{
                             data: counts,
                             backgroundColor: [
-                                '#FF6B6B',  // Coral Red - bright and distinct
-                                '#4ECDC4',  // Turquoise - vibrant
-                                '#FFE66D',  // Sun Yellow - bright
-                                '#A8E6CF',  // Mint Green - soft but distinct
-                                '#FF8C42',  // Orange - warm
-                                '#6C63FF',  // Periwinkle - cool purple
-                                '#FF6F91',  // Pink - vibrant
-                                '#845EC2',  // Purple - rich
-                                '#00C9A7',  // Teal - fresh
-                                '#C4E538',  // Lime Green - bright
-                                '#FD7272',  // Light Red - soft
-                                '#58B19F',  // Sea Green - calm
-                                '#FEA47F',  // Peach - warm
-                                '#25CCF7',  // Sky Blue - bright
-                                '#EAB543',  // Mustard - golden
-                                '#CAD3C8',  // Grey - neutral
-                                '#D980FA',  // Lavender - soft purple
-                                '#9980FA',  // Light Periwinkle
-                                '#F97F51',  // Coral Orange
-                                '#2C3A47'   // Dark Blue - deep
+                                '#FF6B6B', '#4ECDC4', '#FFE66D', '#A8E6CF', '#FF8C42',
+                                '#6C63FF', '#FF6F91', '#845EC2', '#00C9A7', '#C4E538',
+                                '#FD7272', '#58B19F', '#FEA47F', '#25CCF7', '#EAB543'
                             ]
                         }]
                     },
@@ -811,9 +936,7 @@
                                 position: 'right',
                                 labels: {
                                     boxWidth: 12,
-                                    font: {
-                                        size: 11
-                                    }
+                                    font: { size: 11 }
                                 }
                             },
                             tooltip: {
@@ -830,24 +953,10 @@
                         }
                     }
                 });
-                console.log('Class distribution loaded successfully');
-            } else if (data.success && (!data.data || data.data.length === 0)) {
-                console.log('No class distribution data available');
-                const ctx = document.getElementById('classDistributionChart').getContext('2d');
-                if (classDistributionChart) classDistributionChart.destroy();
-                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                ctx.fillStyle = '#999';
-                ctx.font = '14px Arial';
-                ctx.fillText('No class data available', ctx.canvas.width/2 - 70, ctx.canvas.height/2);
+                console.log('Class distribution loaded');
             }
         } catch (error) {
-            console.error('Error loading class distribution after retries:', error);
-            const ctx = document.getElementById('classDistributionChart').getContext('2d');
-            if (classDistributionChart) classDistributionChart.destroy();
-            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            ctx.fillStyle = '#ef4444';
-            ctx.font = '14px Arial';
-            ctx.fillText('Error loading distribution', ctx.canvas.width/2 - 80, ctx.canvas.height/2);
+            console.error('Error loading class distribution:', error);
         } finally {
             if (pieLoader) pieLoader.classList.add('hidden');
         }
@@ -874,16 +983,11 @@
                         </td>
                     </tr>
                 `).join('');
-                console.log('Class attendance loaded successfully');
             } else {
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No attendance data available</td></tr>';
             }
         } catch (error) {
-            console.error('Error loading class attendance after retries:', error);
-            const tbody = document.getElementById('classAttendanceTable');
-            if (tbody) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-red-400">Error loading attendance data</td></tr>';
-            }
+            console.error('Error loading class attendance:', error);
         } finally {
             if (attendanceLoader) attendanceLoader.classList.add('hidden');
         }
@@ -910,16 +1014,11 @@
                         </td>
                     </tr>
                 `).join('');
-                console.log('Staff attendance loaded successfully');
             } else {
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No attendance data available</td></tr>';
             }
         } catch (error) {
-            console.error('Error loading staff attendance after retries:', error);
-            const tbody = document.getElementById('staffAttendanceTable');
-            if (tbody) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-red-400">Error loading attendance data</td></tr>';
-            }
+            console.error('Error loading staff attendance:', error);
         } finally {
             if (staffLoader) staffLoader.classList.add('hidden');
         }
@@ -955,16 +1054,11 @@
                         </div>
                     </div>
                 `).join('');
-                console.log('Recent activities loaded successfully');
             } else {
                 container.innerHTML = '<div class="p-8 text-center text-gray-400">No recent activities</div>';
             }
         } catch (error) {
-            console.error('Error loading activities after retries:', error);
-            const container = document.getElementById('activitiesList');
-            if (container) {
-                container.innerHTML = '<div class="p-8 text-center text-red-400">Error loading activities</div>';
-            }
+            console.error('Error loading activities:', error);
         } finally {
             if (activitiesLoader) activitiesLoader.classList.add('hidden');
         }

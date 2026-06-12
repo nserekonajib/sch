@@ -1,0 +1,408 @@
+<!-- templates/fees/students_without_invoices.html -->
+{% extends "base.html" %}
+
+{% block title %}Students Without Invoices - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    .stat-card {
+        transition: all 0.3s ease;
+        border-radius: 12px;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .table-container {
+        overflow-x: auto;
+        border-radius: 12px;
+    }
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .status-badge.warning {
+        background: #fed7aa;
+        color: #92400e;
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        border-radius: 12px;
+    }
+    .relative {
+        position: relative;
+    }
+    .export-btn {
+        transition: all 0.2s ease;
+    }
+    .export-btn:hover {
+        transform: translateY(-1px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Students Without Invoices</h1>
+        <p class="text-sm text-gray-600">View students who have not been invoiced within the selected date range</p>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="filter-card">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-filter text-orange-500 mr-2"></i>Filter Options
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input type="date" id="startDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input type="date" id="endDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select id="category" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="all">All Categories</option>
+                    <option value="Boarding">Boarding</option>
+                    <option value="Day">Day</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                <select id="classFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <option value="all">All Classes</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex gap-3 mt-4">
+            <button onclick="loadStudents()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium flex items-center gap-2">
+                <i class="fas fa-search"></i> Search
+            </button>
+            <button onclick="resetFilters()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                <i class="fas fa-undo-alt"></i> Reset
+            </button>
+            <button onclick="exportToExcel()" id="exportBtn" class="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 export-btn flex items-center gap-2" style="display: none;">
+                <i class="fas fa-file-excel"></i> Export to Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="statsContainer" style="display: none;">
+        <div class="stat-card bg-white shadow-md p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Students Without Invoices</p>
+                    <p class="text-3xl font-bold text-orange-600 mt-1" id="totalWithoutInvoices">0</p>
+                </div>
+                <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user-graduate text-orange-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white shadow-md p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Date Range</p>
+                    <p class="text-lg font-semibold text-gray-800 mt-1" id="dateRangeDisplay">-</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-calendar-alt text-blue-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card bg-white shadow-md p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Applied Filters</p>
+                    <p class="text-sm font-medium text-gray-800 mt-1" id="filtersDisplay">-</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-filter text-purple-500 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden relative" id="resultsContainer" style="display: none;">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h3 class="text-lg font-semibold text-gray-800">
+                <i class="fas fa-list text-orange-500 mr-2"></i>Students List
+            </h3>
+        </div>
+        
+        <div class="relative" id="tableWrapper">
+            <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+                <div class="loader"></div>
+            </div>
+            
+            <div class="table-container">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="7" class="px-6 py-8 text-center text-gray-400">
+                                <i class="fas fa-info-circle text-4xl mb-2 block"></i>
+                                Select date range and click Search
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Set default dates to last 3 months
+    const today = new Date();
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(today.getMonth() - 3);
+    
+    const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('startDate').value = formatDate(threeMonthsAgo);
+        document.getElementById('endDate').value = formatDate(today);
+        loadClasses();
+        loadStudents(); // Auto-load with default dates
+    });
+    
+    // Load classes for filter dropdown
+    async function loadClasses() {
+        try {
+            const response = await fetch('/fees/classes');
+            const data = await response.json();
+            
+            if (data.success && data.classes) {
+                const classSelect = document.getElementById('classFilter');
+                classSelect.innerHTML = '<option value="all">All Classes</option>';
+                
+                data.classes.forEach(cls => {
+                    classSelect.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
+                });
+            }
+        } catch (error) {
+            console.error('Error loading classes:', error);
+        }
+    }
+    
+    // Load students without invoices
+    async function loadStudents() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const category = document.getElementById('category').value;
+        const classId = document.getElementById('classFilter').value;
+        
+        if (!startDate || !endDate) {
+            showError('Please select both start and end dates');
+            return;
+        }
+        
+        // Show loading
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        loadingOverlay.style.display = 'flex';
+        
+        try {
+            const url = `/fees/students-without-invoices?start_date=${startDate}&end_date=${endDate}&category=${category}&class_id=${classId}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                displayResults(data);
+                document.getElementById('resultsContainer').style.display = 'block';
+                document.getElementById('statsContainer').style.display = 'grid';
+                document.getElementById('exportBtn').style.display = 'flex';
+            } else {
+                showError(data.message || 'Error loading data');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to load students');
+        } finally {
+            loadingOverlay.style.display = 'none';
+        }
+    }
+    
+    // Display results
+    function displayResults(data) {
+        const tbody = document.getElementById('studentsTableBody');
+        const students = data.students;
+        
+        // Update stats
+        document.getElementById('totalWithoutInvoices').textContent = students.length;
+        document.getElementById('dateRangeDisplay').innerHTML = `
+            ${formatDateDisplay(data.filters.start_date)} - ${formatDateDisplay(data.filters.end_date)}
+        `;
+        
+        let filtersText = '';
+        if (data.filters.category !== 'all') filtersText += `Category: ${data.filters.category} | `;
+        if (data.filters.class_id !== 'all') filtersText += `Class: Selected`;
+        if (filtersText === '') filtersText = 'All students';
+        document.getElementById('filtersDisplay').textContent = filtersText;
+        
+        if (students.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-400">
+                        <i class="fas fa-check-circle text-4xl mb-2 block text-green-500"></i>
+                        No students found without invoices in the selected date range
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = students.map((student, index) => `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 text-sm text-gray-500">${index + 1}</td>
+                <td class="px-6 py-4">
+                    <div class="text-sm font-medium text-gray-900">${escapeHtml(student.name)}</div>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500">${escapeHtml(student.student_id)}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${escapeHtml(student.class_name)}</td>
+                <td class="px-6 py-4">
+                    <span class="status-badge warning">${escapeHtml(student.category)}</span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500">${escapeHtml(student.contact_number)}</td>
+                <td class="px-6 py-4 text-sm">
+                    <button onclick="viewStudent('${student.id}')" class="text-orange-600 hover:text-orange-800 mr-3">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button onclick="createInvoice('${student.id}')" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-file-invoice"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    // Export to Excel
+    async function exportToExcel() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const category = document.getElementById('category').value;
+        const classId = document.getElementById('classFilter').value;
+        
+        if (!startDate || !endDate) {
+            showError('Please select date range');
+            return;
+        }
+        
+        const url = `/fees/export-students-without-invoices?start_date=${startDate}&end_date=${endDate}&category=${category}&class_id=${classId}`;
+        
+        // Create a temporary link to download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = '';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    // View student details
+    function viewStudent(studentId) {
+        window.location.href = `/students/${studentId}/view`;
+    }
+    
+    // Create invoice for student
+    function createInvoice(studentId) {
+        window.location.href = `/fees?student_id=${studentId}`;
+    }
+    
+    // Reset filters
+    function resetFilters() {
+        const today = new Date();
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(today.getMonth() - 3);
+        
+        document.getElementById('startDate').value = formatDate(threeMonthsAgo);
+        document.getElementById('endDate').value = formatDate(today);
+        document.getElementById('category').value = 'all';
+        document.getElementById('classFilter').value = 'all';
+        
+        loadStudents();
+    }
+    
+    // Helper functions
+    function formatDateDisplay(dateString) {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return 'N/A';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function showError(message) {
+        const tbody = document.getElementById('studentsTableBody');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="px-6 py-8 text-center text-red-500">
+                    <i class="fas fa-exclamation-triangle text-4xl mb-2 block"></i>
+                    ${escapeHtml(message)}
+                </td>
+            </tr>
+        `;
+        document.getElementById('resultsContainer').style.display = 'block';
+    }
+</script>
+{% endblock %}
