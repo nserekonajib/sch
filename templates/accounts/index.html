@@ -1,4 +1,4 @@
-<!-- templates/accounts/index.html - Complete with Report Generation (Fully Responsive) -->
+<!-- templates/accounts/index.html - Complete with Asset & Liability Management -->
 {% extends "base.html" %}
 
 {% block title %}Accounts Management - Lunserk ERP{% endblock %}
@@ -141,10 +141,10 @@
     <!-- Page Header -->
     <div class="mb-4 sm:mb-6">
         <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Accounts Management</h1>
-        <p class="text-xs sm:text-sm text-gray-600">Manage chart of accounts, income, expenses, and generate reports</p>
+        <p class="text-xs sm:text-sm text-gray-600">Manage chart of accounts, income, expenses, assets, liabilities, and generate reports</p>
     </div>
 
-    <!-- Stats Cards - Already Responsive Grid -->
+    <!-- Stats Cards -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-3 mb-4 sm:mb-6">
         <div class="bg-white rounded-xl shadow-sm p-2 sm:p-3 stat-card border-l-4 border-blue-500">
             <p class="text-xs text-gray-500">School Fees</p>
@@ -176,7 +176,7 @@
         </div>
     </div>
 
-    <!-- Tabs - Responsive Wrap -->
+    <!-- Tabs -->
     <div class="mb-4 sm:mb-6 flex gap-1 sm:gap-2 border-b border-gray-200 flex-wrap">
         <button onclick="showTab('chart')" id="tabChart" class="tab-button px-3 sm:px-4 py-1.5 sm:py-2 rounded-t-lg font-medium transition-all tab-active text-xs sm:text-sm">
             <i class="fas fa-book"></i> <span class="hidden xs:inline">Chart of </span>Accounts
@@ -189,6 +189,12 @@
         </button>
         <button onclick="showTab('transactions')" id="tabTransactions" class="tab-button px-3 sm:px-4 py-1.5 sm:py-2 rounded-t-lg font-medium transition-all tab-inactive text-xs sm:text-sm">
             <i class="fas fa-list"></i> All Transactions
+        </button>
+        <button onclick="showTab('assets')" id="tabAssets" class="tab-button px-3 sm:px-4 py-1.5 sm:py-2 rounded-t-lg font-medium transition-all tab-inactive text-xs sm:text-sm">
+            <i class="fas fa-building text-blue-600"></i> Assets
+        </button>
+        <button onclick="showTab('liabilities')" id="tabLiabilities" class="tab-button px-3 sm:px-4 py-1.5 sm:py-2 rounded-t-lg font-medium transition-all tab-inactive text-xs sm:text-sm">
+            <i class="fas fa-hand-holding-usd text-red-600"></i> Liabilities
         </button>
     </div>
 
@@ -258,6 +264,50 @@
         </div>
     </div>
 
+    <!-- Assets Tab -->
+    <div id="assetsTab" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+                <h2 class="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-building text-blue-600"></i>
+                    Asset Management
+                </h2>
+                <button onclick="openAssetModal()" class="btn-gradient px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-white text-xs sm:text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <i class="fas fa-plus"></i>
+                    Add Asset
+                </button>
+            </div>
+            <div class="p-4 sm:p-5" id="assetsContainer">
+                <div class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-orange-500"></div>
+                    <p class="text-xs sm:text-sm text-gray-500 mt-2">Loading assets...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liabilities Tab -->
+    <div id="liabilitiesTab" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+                <h2 class="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-hand-holding-usd text-red-600"></i>
+                    Liability Management
+                </h2>
+                <button onclick="openLiabilityModal()" class="btn-gradient px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-white text-xs sm:text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <i class="fas fa-plus"></i>
+                    Add Liability
+                </button>
+            </div>
+            <div class="p-4 sm:p-5" id="liabilitiesContainer">
+                <div class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-orange-500"></div>
+                    <p class="text-xs sm:text-sm text-gray-500 mt-2">Loading liabilities...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- All Transactions Tab -->
     <div id="transactionsTab" class="tab-content hidden">
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
@@ -277,7 +327,6 @@
     </div>
 </div>
 
-<!-- Modals (unchanged, already responsive) -->
 <!-- Account Modal -->
 <div id="accountModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
@@ -315,6 +364,94 @@
                     </button>
                     <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
                         Create Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Asset Modal -->
+<div id="assetModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Add New Asset</h3>
+            <button onclick="closeAssetModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-5">
+            <form id="assetForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Asset Name *</label>
+                    <input type="text" id="assetName" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Value (UGX) *</label>
+                    <input type="number" id="assetValue" step="0.01" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Purchase Date *</label>
+                    <input type="date" id="assetPurchaseDate" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea id="assetDescription" rows="3" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeAssetModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                        Add Asset
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Liability Modal -->
+<div id="liabilityModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Add New Liability</h3>
+            <button onclick="closeLiabilityModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-5">
+            <form id="liabilityForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Liability Name *</label>
+                    <input type="text" id="liabilityName" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount (UGX) *</label>
+                    <input type="number" id="liabilityAmount" step="0.01" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+                    <input type="date" id="liabilityDueDate" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea id="liabilityDescription" rows="3" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeLiabilityModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                        Add Liability
                     </button>
                 </div>
             </form>
@@ -484,148 +621,217 @@
     }
     
     // Load Chart of Accounts
-   // Load Chart of Accounts with delete buttons
-async function loadChartOfAccounts() {
-    try {
-        const response = await fetch('/accounts/chart-of-accounts');
-        const result = await response.json();
-        
-        if (result.success) {
-            const container = document.getElementById('chartOfAccountsContainer');
-            const accounts = result.accounts;
+    async function loadChartOfAccounts() {
+        try {
+            const response = await fetch('/accounts/chart-of-accounts');
+            const result = await response.json();
             
-            let html = '';
-            const typeNames = {
-                'asset': 'Assets',
-                'liability': 'Liabilities',
-                'equity': 'Equity',
-                'income': 'Income',
-                'expense': 'Expenses'
-            };
-            
-            for (const [type, typeAccounts] of Object.entries(accounts)) {
-                if (typeAccounts.length > 0) {
-                    html += `
-                        <div class="mb-6">
-                            <h3 class="text-md font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-200">
-                                ${typeNames[type] || type.toUpperCase()}
-                            </h3>
-                            <div class="space-y-2">
-                                ${typeAccounts.map(account => `
-                                    <div class="account-card flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-gray-50 rounded-lg hover:bg-orange-50 transition-all gap-2 sm:gap-0">
-                                        <div class="flex-1 w-full sm:w-auto">
-                                            <p class="font-medium text-gray-800">${escapeHtml(account.account_name)}</p>
-                                            <p class="text-xs text-gray-500">${account.account_code}</p>
-                                            ${account.description ? `<p class="text-xs text-gray-400 mt-1">${escapeHtml(account.description)}</p>` : ''}
+            if (result.success) {
+                const container = document.getElementById('chartOfAccountsContainer');
+                const accounts = result.accounts;
+                
+                let html = '';
+                const typeNames = {
+                    'asset': 'Assets',
+                    'liability': 'Liabilities',
+                    'equity': 'Equity',
+                    'income': 'Income',
+                    'expense': 'Expenses'
+                };
+                
+                for (const [type, typeAccounts] of Object.entries(accounts)) {
+                    if (typeAccounts.length > 0) {
+                        html += `
+                            <div class="mb-6">
+                                <h3 class="text-md font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-200">
+                                    ${typeNames[type] || type.toUpperCase()}
+                                </h3>
+                                <div class="space-y-2">
+                                    ${typeAccounts.map(account => `
+                                        <div class="account-card flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-gray-50 rounded-lg hover:bg-orange-50 transition-all gap-2 sm:gap-0">
+                                            <div class="flex-1 w-full sm:w-auto">
+                                                <p class="font-medium text-gray-800">${escapeHtml(account.account_name)}</p>
+                                                <p class="text-xs text-gray-500">${account.account_code}</p>
+                                                ${account.description ? `<p class="text-xs text-gray-400 mt-1">${escapeHtml(account.description)}</p>` : ''}
+                                            </div>
+                                            <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                                                <span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">${account.account_type}</span>
+                                                <button onclick="openReportModal('${account.id}', '${escapeHtml(account.account_name)}')" 
+                                                        class="report-btn px-3 py-1 bg-orange-500 text-white rounded-lg text-xs hover:bg-orange-600 transition-all">
+                                                    <i class="fas fa-chart-line"></i> <span class="hidden xs:inline">Run Report</span>
+                                                </button>
+                                                <button onclick="deleteAccount('${account.id}', '${escapeHtml(account.account_name)}')" 
+                                                        class="delete-btn px-3 py-1 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 transition-all">
+                                                    <i class="fas fa-trash"></i> <span class="hidden xs:inline">Delete</span>
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-                                            <span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">${account.account_type}</span>
-                                            <button onclick="openReportModal('${account.id}', '${escapeHtml(account.account_name)}')" 
-                                                    class="report-btn px-3 py-1 bg-orange-500 text-white rounded-lg text-xs hover:bg-orange-600 transition-all">
-                                                <i class="fas fa-chart-line"></i> <span class="hidden xs:inline">Run Report</span>
-                                            </button>
-                                            <button onclick="deleteAccount('${account.id}', '${escapeHtml(account.account_name)}')" 
-                                                    class="delete-btn px-3 py-1 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 transition-all">
-                                                <i class="fas fa-trash"></i> <span class="hidden xs:inline">Delete</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                `).join('')}
+                                    `).join('')}
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    }
                 }
+                
+                if (html === '') {
+                    html = '<div class="text-center py-8"><p class="text-gray-500">No accounts created yet. Click "New Account" to get started.</p></div>';
+                }
+                
+                container.innerHTML = html;
             }
-            
-            if (html === '') {
-                html = '<div class="text-center py-8"><p class="text-gray-500">No accounts created yet. Click "New Account" to get started.</p></div>';
-            }
-            
-            container.innerHTML = html;
+        } catch (error) {
+            console.error('Error loading accounts:', error);
+            document.getElementById('chartOfAccountsContainer').innerHTML = '<div class="text-center py-8 text-red-500">Error loading accounts</div>';
         }
-    } catch (error) {
-        console.error('Error loading accounts:', error);
-        document.getElementById('chartOfAccountsContainer').innerHTML = '<div class="text-center py-8 text-red-500">Error loading accounts</div>';
-    }
-}
-
-// Delete Account Function
-async function deleteAccount(accountId, accountName) {
-    // Show confirmation dialog
-    const confirmDelete = confirm(`Are you sure you want to delete "${accountName}"?\n\nThis action cannot be undone.`);
-    
-    if (!confirmDelete) {
-        return;
     }
     
-    try {
-        // Show loading state
-        const deleteBtn = document.querySelector(`button[onclick*="deleteAccount('${accountId}']`);
-        if (deleteBtn) {
-            const originalHTML = deleteBtn.innerHTML;
-            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            deleteBtn.disabled = true;
+    // Delete Account Function
+    async function deleteAccount(accountId, accountName) {
+        const confirmDelete = confirm(`Are you sure you want to delete "${accountName}"?\n\nThis action cannot be undone.`);
+        
+        if (!confirmDelete) {
+            return;
         }
         
-        const response = await fetch(`/accounts/chart-of-accounts/delete/${accountId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            const response = await fetch(`/accounts/chart-of-accounts/delete/${accountId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                showNotification(result.message, 'success');
+                await loadChartOfAccounts();
+            } else {
+                showNotification(result.message, 'error');
             }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            console.error('Error deleting account:', error);
+            showNotification('Error deleting account. Please try again.', 'error');
+        }
+    }
+    
+    // Asset Management Functions
+    async function loadAssets() {
+        try {
+            const response = await fetch('/accounts/assets');
+            const result = await response.json();
+            
+            if (result.success) {
+                displayAssets(result.assets, result.total_assets_value);
+            }
+        } catch (error) {
+            console.error('Error loading assets:', error);
+            document.getElementById('assetsContainer').innerHTML = '<div class="text-center py-8 text-red-500">Error loading assets</div>';
+        }
+    }
+    
+    function displayAssets(assets, totalValue) {
+        const container = document.getElementById('assetsContainer');
+        if (!container) return;
+        
+        if (assets.length === 0) {
+            container.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">No assets found. Click "Add Asset" to get started.</p></div>';
+            return;
+        }
+        
+        let html = `
+            <div class="mb-4 p-4 bg-blue-50 rounded-lg">
+                <h3 class="font-semibold text-blue-800">Total Assets Value</h3>
+                <p class="text-2xl font-bold text-blue-600">UGX ${totalValue.toLocaleString()}</p>
+            </div>
+            <div class="space-y-4">
+        `;
+        
+        assets.forEach(asset => {
+            html += `
+                <div class="border rounded-lg p-4 hover:shadow-md transition-all">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold text-gray-800">${escapeHtml(asset.account_name)}</h4>
+                            <p class="text-sm text-gray-500">${asset.account_code}</p>
+                            ${asset.description ? `<p class="text-sm text-gray-600 mt-1">${escapeHtml(asset.description)}</p>` : ''}
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-bold text-green-600">UGX ${asset.current_balance.toLocaleString()}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
         });
         
-        const result = await response.json();
-        
-        if (result.success) {
-            if (result.soft_delete) {
-                // Show warning that account was deactivated instead of deleted
-                showNotification(result.message, 'warning');
-            } else {
-                showNotification(result.message, 'success');
-            }
-            
-            // Reload the chart of accounts
-            await loadChartOfAccounts();
-            
-            // Also reload the account dropdown if it exists on the page
-            if (typeof loadAccountSelectors === 'function') {
-                await loadAccountSelectors();
-            }
-        } else {
-            showNotification(result.message, 'error');
-        }
-    } catch (error) {
-        console.error('Error deleting account:', error);
-        showNotification('Error deleting account. Please try again.', 'error');
-    }
-}
-
-// Helper function to escape HTML to prevent XSS
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Helper function to show notifications
-function showNotification(message, type = 'info') {
-    // Check if toast notification is available
-    if (typeof toast === 'object' && toast.show) {
-        toast.show(message, type);
-        return;
+        html += `</div>`;
+        container.innerHTML = html;
     }
     
-    // Fallback to alert
-    if (type === 'error') {
-        alert('Error: ' + message);
-    } else if (type === 'success') {
-        alert('Success: ' + message);
-    } else {
-        alert(message);
+    // Liability Management Functions
+    async function loadLiabilities() {
+        try {
+            const response = await fetch('/accounts/liabilities');
+            const result = await response.json();
+            
+            if (result.success) {
+                displayLiabilities(result.liabilities, result.total_liabilities);
+            }
+        } catch (error) {
+            console.error('Error loading liabilities:', error);
+            document.getElementById('liabilitiesContainer').innerHTML = '<div class="text-center py-8 text-red-500">Error loading liabilities</div>';
+        }
     }
-}
-    // Load income transactions with responsive table
+    
+    function displayLiabilities(liabilities, totalLiabilities) {
+        const container = document.getElementById('liabilitiesContainer');
+        if (!container) return;
+        
+        if (liabilities.length === 0) {
+            container.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">No liabilities found. Click "Add Liability" to get started.</p></div>';
+            return;
+        }
+        
+        let html = `
+            <div class="mb-4 p-4 bg-red-50 rounded-lg">
+                <h3 class="font-semibold text-red-800">Total Liabilities</h3>
+                <p class="text-2xl font-bold text-red-600">UGX ${totalLiabilities.toLocaleString()}</p>
+            </div>
+            <div class="space-y-4">
+        `;
+        
+        liabilities.forEach(liability => {
+            const isHighRisk = liability.current_balance > 10000000;
+            html += `
+                <div class="border rounded-lg p-4 hover:shadow-md transition-all">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold text-gray-800">${escapeHtml(liability.account_name)}</h4>
+                            <p class="text-sm text-gray-500">${liability.account_code}</p>
+                            ${liability.description ? `<p class="text-sm text-gray-600 mt-1">${escapeHtml(liability.description)}</p>` : ''}
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-bold ${isHighRisk ? 'text-red-600' : 'text-orange-600'}">
+                                UGX ${liability.current_balance.toLocaleString()}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `</div>`;
+        container.innerHTML = html;
+    }
+    
+    // Load income transactions
     async function loadIncome() {
         try {
             const response = await fetch('/accounts/transactions');
@@ -671,7 +877,7 @@ function showNotification(message, type = 'info') {
         }
     }
     
-    // Load expense transactions with responsive table
+    // Load expense transactions
     async function loadExpenses() {
         try {
             const response = await fetch('/accounts/transactions');
@@ -717,7 +923,7 @@ function showNotification(message, type = 'info') {
         }
     }
     
-    // Load all transactions with responsive table
+    // Load all transactions
     async function loadAllTransactions() {
         try {
             const response = await fetch('/accounts/transactions');
@@ -780,7 +986,6 @@ function showNotification(message, type = 'info') {
         currentAccountName = accountName;
         document.getElementById('reportModalTitle').textContent = `Report: ${accountName}`;
         
-        // Set default date range (current month)
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
         document.getElementById('reportStartDate').value = firstDay.toISOString().split('T')[0];
@@ -840,7 +1045,7 @@ function showNotification(message, type = 'info') {
                                 UGX ${trans.amount.toLocaleString()}
                             </td>
                             <td data-label="Type" class="px-4 py-2 text-sm text-gray-600 capitalize">${trans.type}</td>
-                        </tr>
+                        </table>
                     `;
                 });
                 
@@ -956,25 +1161,30 @@ function showNotification(message, type = 'info') {
     function showTab(tab) {
         currentTab = tab;
         
-        const tabs = ['chart', 'income', 'expense', 'transactions'];
+        const tabs = ['chart', 'income', 'expense', 'transactions', 'assets', 'liabilities'];
         tabs.forEach(t => {
             const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
             const content = document.getElementById(`${t}Tab`);
-            if (t === tab) {
-                btn.classList.remove('tab-inactive');
-                btn.classList.add('tab-active');
-                content.classList.remove('hidden');
-            } else {
-                btn.classList.remove('tab-active');
-                btn.classList.add('tab-inactive');
-                content.classList.add('hidden');
+            if (btn && content) {
+                if (t === tab) {
+                    btn.classList.remove('tab-inactive');
+                    btn.classList.add('tab-active');
+                    content.classList.remove('hidden');
+                } else {
+                    btn.classList.remove('tab-active');
+                    btn.classList.add('tab-inactive');
+                    content.classList.add('hidden');
+                }
             }
         });
         
+        // Load data for the selected tab
         if (tab === 'chart') loadChartOfAccounts();
         else if (tab === 'income') loadIncome();
         else if (tab === 'expense') loadExpenses();
         else if (tab === 'transactions') loadAllTransactions();
+        else if (tab === 'assets') loadAssets();
+        else if (tab === 'liabilities') loadLiabilities();
     }
     
     // Account Modal
@@ -989,6 +1199,38 @@ function showNotification(message, type = 'info') {
         document.getElementById('accountModal').classList.remove('flex');
         document.body.style.overflow = '';
         document.getElementById('accountForm').reset();
+    }
+    
+    // Asset Modal
+    function openAssetModal() {
+        // Set default purchase date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('assetPurchaseDate').value = today;
+        
+        document.getElementById('assetModal').classList.remove('hidden');
+        document.getElementById('assetModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeAssetModal() {
+        document.getElementById('assetModal').classList.add('hidden');
+        document.getElementById('assetModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        document.getElementById('assetForm').reset();
+    }
+    
+    // Liability Modal
+    function openLiabilityModal() {
+        document.getElementById('liabilityModal').classList.remove('hidden');
+        document.getElementById('liabilityModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeLiabilityModal() {
+        document.getElementById('liabilityModal').classList.add('hidden');
+        document.getElementById('liabilityModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        document.getElementById('liabilityForm').reset();
     }
     
     // Transaction Modal
@@ -1057,6 +1299,105 @@ function showNotification(message, type = 'info') {
         }
     });
     
+    // Asset Form Submission
+    document.getElementById('assetForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const data = {
+            create_new_account: true,
+            account_name: document.getElementById('assetName').value,
+            initial_value: parseFloat(document.getElementById('assetValue').value),
+            purchase_date: document.getElementById('assetPurchaseDate').value,
+            description: document.getElementById('assetDescription').value,
+            account_type: 'asset'
+        };
+        
+        try {
+            const response = await fetch('/accounts/assets/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeAssetModal();
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                loadStats();
+                loadChartOfAccounts();
+                loadAssets();
+                setTimeout(() => closeSuccessModal(), 2000);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            console.error('Error adding asset:', error);
+            showMessage('Failed to add asset. Please try again.', 'error');
+        }
+    });
+    
+    // Liability Form Submission
+    document.getElementById('liabilityForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        const data = {
+            create_new_account: true,
+            account_name: document.getElementById('liabilityName').value,
+            initial_balance: parseFloat(document.getElementById('liabilityAmount').value),
+            due_date: document.getElementById('liabilityDueDate').value,
+            description: document.getElementById('liabilityDescription').value,
+            account_type: 'liability'
+        };
+        
+        try {
+            const response = await fetch('/accounts/liabilities/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                closeLiabilityModal();
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                loadStats();
+                loadChartOfAccounts();
+                loadLiabilities();
+                setTimeout(() => closeSuccessModal(), 2000);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            console.error('Error adding liability:', error);
+            showMessage('Failed to add liability. Please try again.', 'error');
+        }
+    });
+    
+    // Transaction Form Submission
     document.getElementById('transactionForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -1140,14 +1481,35 @@ function showNotification(message, type = 'info') {
         }, 5000);
     }
     
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function showNotification(message, type = 'info') {
+        if (type === 'error') {
+            alert('Error: ' + message);
+        } else if (type === 'success') {
+            alert('Success: ' + message);
+        } else {
+            alert(message);
+        }
+    }
+    
     // Close modals on outside click
     window.onclick = function(event) {
         const accountModal = document.getElementById('accountModal');
+        const assetModal = document.getElementById('assetModal');
+        const liabilityModal = document.getElementById('liabilityModal');
         const transactionModal = document.getElementById('transactionModal');
         const reportModal = document.getElementById('reportModal');
         const successModal = document.getElementById('successModal');
         
         if (event.target === accountModal) closeAccountModal();
+        if (event.target === assetModal) closeAssetModal();
+        if (event.target === liabilityModal) closeLiabilityModal();
         if (event.target === transactionModal) closeTransactionModal();
         if (event.target === reportModal) closeReportModal();
         if (event.target === successModal) closeSuccessModal();

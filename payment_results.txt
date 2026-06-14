@@ -1,0 +1,83 @@
+BULK PAYMENT PROCESSING RESULTS
+============================================================
+
+SUCCESSFUL PAYMENTS (0):
+------------------------------------------------------------
+
+FAILED PAYMENTS (25):
+------------------------------------------------------------
+FAIL: Student ID: PRI202606-UQ4W-096
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-SJH8-083
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-ZQFX-081
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-Q48N-066
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-7DUO-070
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-0QFG-071
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-E2US-075
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-VCZK-076
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-ZW0K-050
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-9FPR-056
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-LA9Y-058
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-NWQC-039
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-URE0-040
+    Error: Student not found
+
+FAIL: Student ID: PRI202606-HFR4-042
+    Error: Student not found
+
+FAIL: Student ID: TOP202606-M75T-029
+    Error: Student not found
+
+FAIL: Student ID: TOP202606-VMBU-031
+    Error: Student not found
+
+FAIL: Student ID: TOP202606-J08N-032
+    Error: Student not found
+
+FAIL: Student ID: MID202606-RT0V-020
+    Error: Student not found
+
+FAIL: Student ID: BAB202606-YCWF-004
+    Error: Student not found
+
+FAIL: Student ID: BAB202606-1PUZ-005
+    Error: Student not found
+
+FAIL: Student ID: BAB202606-MYDM-008
+    Error: Student not found
+
+FAIL: Student ID: BAB202606-W51E-009
+    Error: Student not found
+
+FAIL: Student ID: BAB202606-9U5C-011
+    Error: Student not found
+
+FAIL: Student ID: BAB202606-1S8D-012
+    Error: Student not found
+
+FAIL: Student ID: BAB202606-ZIAK-013
+    Error: Student not found
+

@@ -956,3 +956,649 @@ def generate_account_code(institute_id, account_type):
     except Exception as e:
         # Fallback with timestamp for uniqueness
         return f"ACC-{institute_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+ # Add these new routes to your accounts.py file
+
+# ============ ASSET MANAGEMENT APIS ============
+
+@accounts_bp.route('/assets', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def get_assets():
+    """Get all asset accounts with their current balances"""
+    institute = get_institute_from_session()
+    
+    if not institute:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Get all asset accounts from chart of accounts
+        accounts_response = supabase.table('chart_of_accounts')\
+            .select('*')\
+            .eq('institute_id', institute['id'])\
+            .eq('account_type', 'asset')\
+            .order('account_name')\
+            .execute()
+        
+        assets = []
+        
+        for account in (accounts_response.data or []):
+            # Get current balance for this asset account (now synchronous)
+            balance = get_account_balance_sync(account['id'], institute['id'])
+            
+            # Get recent transactions (now synchronous)
+            transactions = get_account_transactions_sync(account['id'], institute['id'], limit=5)
+            
+            assets.append({
+                'id': account['id'],
+                'account_code': account['account_code'],
+                'account_name': account['account_name'],
+                'description': account.get('description', ''),
+                'current_balance': balance,
+                'is_active': account.get('is_active', True),
+                'recent_transactions': transactions
+            })
+        
+        return jsonify({
+            'success': True,
+            'assets': assets,
+            'total_assets_value': sum(asset['current_balance'] for asset in assets)
+        })
+        
+    except Exception as e:
+        print(f"Error getting assets: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@accounts_bp.route('/assets/create', methods=['POST'])
+@role_required(['owner', 'teacher', 'accountant'])
+def create_asset():
+    """Create a new asset account or record asset purchase"""
+    institute = get_institute_from_session()
+    
+    if not institute:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        data = request.get_json()
+        
+        # Check if we're creating a new asset account or recording an asset transaction
+        if data.get('create_new_account'):
+            # Create new asset account
+            account_data = {
+                'id': str(uuid.uuid4()),
+                'institute_id': institute['id'],
+                'account_code': generate_account_code(institute['id'], 'asset'),
+                'account_name': data.get('account_name', '').strip(),
+                'account_type': 'asset',
+                'description': data.get('description', ''),
+                'is_active': True,
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
+            }
+            
+            if not account_data['account_name']:
+                return jsonify({'success': False, 'message': 'Account name is required'}), 400
+            
+            result = supabase.table('chart_of_accounts').insert(account_data).execute()
+            
+            if result.data:
+                # If initial value is provided, record as opening balance
+                if data.get('initial_value', 0) > 0:
+                    record_asset_transaction_sync(
+                        result.data[0]['id'],
+                        institute['id'],
+                        data['initial_value'],
+                        'debit',
+                        'Opening Balance',
+                        data.get('purchase_date', datetime.now().date().isoformat()),
+                        data.get('notes', 'Initial asset value')
+                    )
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Asset account created successfully',
+                    'asset': result.data[0]
+                })
+            else:
+                return jsonify({'success': False, 'message': 'Failed to create asset account'}), 500
+        
+        else:
+            # Record asset transaction (purchase, depreciation, disposal)
+            return record_asset_transaction_api_sync(institute['id'], data)
+            
+    except Exception as e:
+        print(f"Error creating asset: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@accounts_bp.route('/assets/<asset_id>/transactions', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def get_asset_transactions(asset_id):
+    """Get all transactions for a specific asset"""
+    institute = get_institute_from_session()
+    
+    if not institute:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Verify asset belongs to institute
+        asset_response = supabase.table('chart_of_accounts')\
+            .select('*')\
+            .eq('id', asset_id)\
+            .eq('institute_id', institute['id'])\
+            .eq('account_type', 'asset')\
+            .execute()
+        
+        if not asset_response.data:
+            return jsonify({'success': False, 'message': 'Asset not found'}), 404
+        
+        asset = asset_response.data[0]
+        
+        # Get all transactions for this asset
+        transactions = get_account_transactions_sync(asset_id, institute['id'], limit=100)
+        
+        return jsonify({
+            'success': True,
+            'asset': asset,
+            'transactions': transactions,
+            'current_balance': get_account_balance_sync(asset_id, institute['id'])
+        })
+        
+    except Exception as e:
+        print(f"Error getting asset transactions: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============ LIABILITY MANAGEMENT APIS ============
+
+@accounts_bp.route('/liabilities', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def get_liabilities():
+    """Get all liability accounts with their current balances"""
+    institute = get_institute_from_session()
+    
+    if not institute:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Get all liability accounts from chart of accounts
+        accounts_response = supabase.table('chart_of_accounts')\
+            .select('*')\
+            .eq('institute_id', institute['id'])\
+            .eq('account_type', 'liability')\
+            .order('account_name')\
+            .execute()
+        
+        liabilities = []
+        
+        for account in (accounts_response.data or []):
+            # Get current balance for this liability account (synchronous)
+            balance = get_account_balance_sync(account['id'], institute['id'])
+            
+            # Get recent transactions (synchronous)
+            transactions = get_account_transactions_sync(account['id'], institute['id'], limit=5)
+            
+            liabilities.append({
+                'id': account['id'],
+                'account_code': account['account_code'],
+                'account_name': account['account_name'],
+                'description': account.get('description', ''),
+                'current_balance': balance,
+                'is_active': account.get('is_active', True),
+                'recent_transactions': transactions
+            })
+        
+        total_liabilities = sum(liability['current_balance'] for liability in liabilities)
+        
+        return jsonify({
+            'success': True,
+            'liabilities': liabilities,
+            'total_liabilities': total_liabilities
+        })
+        
+    except Exception as e:
+        print(f"Error getting liabilities: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@accounts_bp.route('/liabilities/create', methods=['POST'])
+@role_required(['owner', 'teacher', 'accountant'])
+def create_liability():
+    """Create a new liability account or record liability transaction"""
+    institute = get_institute_from_session()
+    
+    if not institute:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        data = request.get_json()
+        
+        # Check if we're creating a new liability account
+        if data.get('create_new_account'):
+            # Create new liability account
+            account_data = {
+                'id': str(uuid.uuid4()),
+                'institute_id': institute['id'],
+                'account_code': generate_account_code(institute['id'], 'liability'),
+                'account_name': data.get('account_name', '').strip(),
+                'account_type': 'liability',
+                'description': data.get('description', ''),
+                'is_active': True,
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
+            }
+            
+            if not account_data['account_name']:
+                return jsonify({'success': False, 'message': 'Account name is required'}), 400
+            
+            result = supabase.table('chart_of_accounts').insert(account_data).execute()
+            
+            if result.data:
+                # If initial balance is provided, record as opening balance
+                if data.get('initial_balance', 0) > 0:
+                    record_liability_transaction_sync(
+                        result.data[0]['id'],
+                        institute['id'],
+                        data['initial_balance'],
+                        'credit',
+                        'Opening Balance',
+                        data.get('start_date', datetime.now().date().isoformat()),
+                        data.get('notes', 'Initial liability balance')
+                    )
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Liability account created successfully',
+                    'liability': result.data[0]
+                })
+            else:
+                return jsonify({'success': False, 'message': 'Failed to create liability account'}), 500
+        
+        else:
+            # Record liability transaction (loan taken, payment made)
+            return record_liability_transaction_api_sync(institute['id'], data)
+            
+    except Exception as e:
+        print(f"Error creating liability: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============ SYNCHRONOUS HELPER FUNCTIONS ============
+
+def get_account_balance_sync(account_id, institute_id):
+    """Calculate current balance for an account (synchronous version)"""
+    try:
+        total_debits = 0
+        total_credits = 0
+        
+        # Check asset transactions table
+        try:
+            asset_tx_response = supabase.table('asset_transactions')\
+                .select('amount, transaction_type')\
+                .eq('account_id', account_id)\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            for tx in (asset_tx_response.data or []):
+                if tx['transaction_type'] == 'debit':
+                    total_debits += float(tx['amount'])
+                else:
+                    total_credits += float(tx['amount'])
+        except Exception as e:
+            print(f"Error checking asset transactions: {e}")
+        
+        # Check liability transactions table
+        try:
+            liability_tx_response = supabase.table('liability_transactions')\
+                .select('amount, transaction_type')\
+                .eq('account_id', account_id)\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            for tx in (liability_tx_response.data or []):
+                if tx['transaction_type'] == 'debit':
+                    total_debits += float(tx['amount'])
+                else:
+                    total_credits += float(tx['amount'])
+        except Exception as e:
+            print(f"Error checking liability transactions: {e}")
+        
+        # Get account type
+        account_response = supabase.table('chart_of_accounts')\
+            .select('account_type')\
+            .eq('id', account_id)\
+            .execute()
+        
+        if account_response.data:
+            account_type = account_response.data[0]['account_type']
+            if account_type == 'liability':
+                # For liabilities, credit balance is positive
+                return total_credits - total_debits
+            else:
+                # For assets, debit balance is positive
+                return total_debits - total_credits
+        
+        return total_debits - total_credits
+        
+    except Exception as e:
+        print(f"Error calculating account balance: {e}")
+        return 0
+
+
+def get_account_transactions_sync(account_id, institute_id, limit=50):
+    """Get all transactions for a specific account (synchronous version)"""
+    transactions = []
+    
+    try:
+        # Check asset transactions
+        try:
+            asset_tx_response = supabase.table('asset_transactions')\
+                .select('*')\
+                .eq('account_id', account_id)\
+                .eq('institute_id', institute_id)\
+                .order('transaction_date', desc=True)\
+                .limit(limit)\
+                .execute()
+            
+            for tx in (asset_tx_response.data or []):
+                transactions.append({
+                    'id': tx['id'],
+                    'date': tx['transaction_date'],
+                    'type': tx['transaction_type'],
+                    'amount': float(tx['amount']),
+                    'description': tx.get('description', ''),
+                    'reference': tx.get('reference_number', ''),
+                    'source': 'asset_transaction'
+                })
+        except Exception as e:
+            print(f"Error getting asset transactions: {e}")
+        
+        # Check liability transactions
+        try:
+            liability_tx_response = supabase.table('liability_transactions')\
+                .select('*')\
+                .eq('account_id', account_id)\
+                .eq('institute_id', institute_id)\
+                .order('transaction_date', desc=True)\
+                .limit(limit)\
+                .execute()
+            
+            for tx in (liability_tx_response.data or []):
+                transactions.append({
+                    'id': tx['id'],
+                    'date': tx['transaction_date'],
+                    'type': tx['transaction_type'],
+                    'amount': float(tx['amount']),
+                    'description': tx.get('description', ''),
+                    'reference': tx.get('reference_number', ''),
+                    'source': 'liability_transaction'
+                })
+        except Exception as e:
+            print(f"Error getting liability transactions: {e}")
+        
+        # Sort by date
+        transactions.sort(key=lambda x: x['date'], reverse=True)
+        
+        return transactions[:limit]
+        
+    except Exception as e:
+        print(f"Error getting account transactions: {e}")
+        return []
+
+
+def record_asset_transaction_sync(account_id, institute_id, amount, transaction_type, description, date, notes=''):
+    """Helper function to record asset transactions (synchronous version)"""
+    transaction_data = {
+        'id': str(uuid.uuid4()),
+        'account_id': account_id,
+        'institute_id': institute_id,
+        'amount': amount,
+        'transaction_type': transaction_type,
+        'description': description,
+        'notes': notes,
+        'transaction_date': date,
+        'reference_number': f'AST-{datetime.now().strftime("%Y%m%d%H%M%S")}',
+        'created_at': datetime.now().isoformat(),
+        'updated_at': datetime.now().isoformat()
+    }
+    
+    result = supabase.table('asset_transactions').insert(transaction_data).execute()
+    return result.data[0] if result.data else None
+
+
+def record_liability_transaction_sync(account_id, institute_id, amount, transaction_type, description, date, notes='', reference=''):
+    """Helper function to record liability transactions (synchronous version)"""
+    transaction_data = {
+        'id': str(uuid.uuid4()),
+        'account_id': account_id,
+        'institute_id': institute_id,
+        'amount': amount,
+        'transaction_type': transaction_type,
+        'description': description,
+        'notes': notes,
+        'transaction_date': date,
+        'reference_number': reference or f'LIA-{datetime.now().strftime("%Y%m%d%H%M%S")}',
+        'created_at': datetime.now().isoformat(),
+        'updated_at': datetime.now().isoformat()
+    }
+    
+    result = supabase.table('liability_transactions').insert(transaction_data).execute()
+    return result.data[0] if result.data else None
+
+
+def record_asset_transaction_api_sync(institute_id, data):
+    """Record asset transaction from API (synchronous version)"""
+    transaction_data = {
+        'id': str(uuid.uuid4()),
+        'account_id': data.get('account_id'),
+        'institute_id': institute_id,
+        'amount': float(data.get('amount', 0)),
+        'transaction_type': data.get('transaction_type', 'debit'),
+        'description': data.get('description', ''),
+        'notes': data.get('notes', ''),
+        'transaction_date': data.get('transaction_date', datetime.now().date().isoformat()),
+        'reference_number': data.get('reference_number', f'AST-{datetime.now().strftime("%Y%m%d%H%M%S")}'),
+        'created_at': datetime.now().isoformat(),
+        'updated_at': datetime.now().isoformat()
+    }
+    
+    if transaction_data['amount'] <= 0:
+        return jsonify({'success': False, 'message': 'Invalid amount'}), 400
+    
+    result = supabase.table('asset_transactions').insert(transaction_data).execute()
+    
+    if result.data:
+        return jsonify({
+            'success': True,
+            'message': 'Asset transaction recorded successfully',
+            'transaction': result.data[0]
+        })
+    else:
+        return jsonify({'success': False, 'message': 'Failed to record transaction'}), 500
+
+
+def record_liability_transaction_api_sync(institute_id, data):
+    """Record liability transaction from API (synchronous version)"""
+    transaction_data = {
+        'id': str(uuid.uuid4()),
+        'account_id': data.get('account_id'),
+        'institute_id': institute_id,
+        'amount': float(data.get('amount', 0)),
+        'transaction_type': data.get('transaction_type', 'credit'),
+        'description': data.get('description', ''),
+        'notes': data.get('notes', ''),
+        'transaction_date': data.get('transaction_date', datetime.now().date().isoformat()),
+        'reference_number': data.get('reference_number', f'LIA-{datetime.now().strftime("%Y%m%d%H%M%S")}'),
+        'created_at': datetime.now().isoformat(),
+        'updated_at': datetime.now().isoformat()
+    }
+    
+    if transaction_data['amount'] <= 0:
+        return jsonify({'success': False, 'message': 'Invalid amount'}), 400
+    
+    result = supabase.table('liability_transactions').insert(transaction_data).execute()
+    
+    if result.data:
+        return jsonify({
+            'success': True,
+            'message': 'Liability transaction recorded successfully',
+            'transaction': result.data[0]
+        })
+    else:
+        return jsonify({'success': False, 'message': 'Failed to record transaction'}), 500
+    
+    
+    
+    
+# Add these expense management endpoints to your accounts.py
+
+@accounts_bp.route('/expense/update/<expense_id>', methods=['PUT'])
+@role_required(['owner', 'teacher', 'accountant'])
+def update_expense(expense_id):
+    """Update an existing expense transaction"""
+    institute = get_institute_from_session()
+    
+    if not institute:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        data = request.get_json()
+        
+        # First, verify the expense exists and belongs to this institute
+        check_response = supabase.table('expense_transactions')\
+            .select('*')\
+            .eq('id', expense_id)\
+            .eq('institute_id', institute['id'])\
+            .execute()
+        
+        if not check_response.data:
+            return jsonify({'success': False, 'message': 'Expense not found or access denied'}), 404
+        
+        # Prepare update data
+        update_data = {
+            'account_id': data.get('account_id'),
+            'amount': float(data.get('amount', 0)),
+            'transaction_date': data.get('transaction_date'),
+            'payment_method': data.get('payment_method'),
+            'reference_number': data.get('reference_number', ''),
+            'description': data.get('description', ''),
+            'vendor': data.get('vendor', ''),
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        if update_data['amount'] <= 0:
+            return jsonify({'success': False, 'message': 'Invalid amount'}), 400
+        
+        # Update the expense
+        result = supabase.table('expense_transactions')\
+            .update(update_data)\
+            .eq('id', expense_id)\
+            .eq('institute_id', institute['id'])\
+            .execute()
+        
+        if result.data:
+            return jsonify({
+                'success': True,
+                'message': 'Expense updated successfully',
+                'expense': result.data[0]
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to update expense'}), 500
+            
+    except Exception as e:
+        print(f"Error updating expense: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@accounts_bp.route('/expense/delete/<expense_id>', methods=['DELETE'])
+@role_required(['owner', 'teacher', 'accountant'])
+def delete_expense(expense_id):
+    """Delete an expense transaction"""
+    institute = get_institute_from_session()
+    
+    if not institute:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Verify the expense exists and belongs to this institute
+        check_response = supabase.table('expense_transactions')\
+            .select('*')\
+            .eq('id', expense_id)\
+            .eq('institute_id', institute['id'])\
+            .execute()
+        
+        if not check_response.data:
+            return jsonify({'success': False, 'message': 'Expense not found or access denied'}), 404
+        
+        # Delete the expense
+        result = supabase.table('expense_transactions')\
+            .delete()\
+            .eq('id', expense_id)\
+            .eq('institute_id', institute['id'])\
+            .execute()
+        
+        if result.data:
+            return jsonify({
+                'success': True,
+                'message': 'Expense deleted successfully'
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to delete expense'}), 500
+            
+    except Exception as e:
+        print(f"Error deleting expense: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@accounts_bp.route('/expense/<expense_id>', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def get_expense(expense_id):
+    """Get a single expense transaction by ID"""
+    institute = get_institute_from_session()
+    
+    if not institute:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        response = supabase.table('expense_transactions')\
+            .select('*, chart_of_accounts(account_name, account_code)')\
+            .eq('id', expense_id)\
+            .eq('institute_id', institute['id'])\
+            .execute()
+        
+        if not response.data:
+            return jsonify({'success': False, 'message': 'Expense not found'}), 404
+        
+        expense = response.data[0]
+        
+        # Format the response
+        result = {
+            'id': expense['id'],
+            'account_id': expense['account_id'],
+            'account_name': expense['chart_of_accounts']['account_name'] if expense.get('chart_of_accounts') else 'N/A',
+            'account_code': expense['chart_of_accounts']['account_code'] if expense.get('chart_of_accounts') else 'N/A',
+            'amount': float(expense['amount']),
+            'transaction_date': expense['transaction_date'],
+            'payment_method': expense['payment_method'],
+            'reference_number': expense.get('reference_number', ''),
+            'description': expense.get('description', ''),
+            'vendor': expense.get('vendor', ''),
+            'created_at': expense['created_at'],
+            'updated_at': expense['updated_at']
+        }
+        
+        return jsonify({
+            'success': True,
+            'expense': result
+        })
+        
+    except Exception as e:
+        print(f"Error getting expense: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
