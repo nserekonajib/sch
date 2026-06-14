@@ -169,6 +169,6 @@ def serve_static(filename):
 if __name__ == '__main__':
     # The line `app.run(host="0.0.0.0", port=40000)` is starting a development server for the Flask
     # application.
-     app.run(host="0.0.0.0", port=40000)
-    # from waitress import serve
-    # serve(app, host='0.0.0.0', port=40000)  
+    #  app.run(host="0.0.0.0", port=40000)
+    from waitress import serve
+    serve(app, host='0.0.0.0', port=40000)  
