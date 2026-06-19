@@ -1,4 +1,4 @@
-<!-- templates/whatsapp/index.html - WhatsApp Integration -->
+<!-- templates/whatsapp/index.html - WhatsApp Integration (Auto-configured) -->
 {% extends "base.html" %}
 
 {% block title %}WhatsApp Integration - Lunserk ERP{% endblock %}
@@ -105,6 +105,31 @@
         from { transform: translateX(100%); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
     }
+    .config-info {
+        background: #f0fdf4;
+        border: 1px solid #86efac;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 16px;
+    }
+    .config-info .label {
+        font-size: 12px;
+        color: #065f46;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .config-info .value {
+        font-size: 14px;
+        color: #065f46;
+        font-family: 'Courier New', monospace;
+        word-break: break-all;
+    }
+    .config-info .checkmark {
+        color: #059669;
+        font-weight: bold;
+        margin-right: 6px;
+    }
 </style>
 {% endblock %}
 
@@ -116,56 +141,62 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Panel - Settings -->
+        <!-- Left Panel - Configuration Info -->
         <div class="lg:col-span-2">
             <div class="bg-white rounded-xl shadow-md overflow-hidden settings-card">
                 <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-white">
                     <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <i class="fab fa-whatsapp text-green-500 text-xl"></i>
+                        <i class="fas fa-cog text-green-500"></i>
                         Configuration
                     </h2>
                 </div>
                 
                 <div class="p-6">
-                    <form id="whatsappSettingsForm">
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Node.js API URL</label>
-                            <input type="url" id="nodejsApiUrl" name="nodejs_api_url" 
-                                   value="{{ settings.nodejs_api_url if settings else '' }}"
-                                   placeholder="http://localhost:3000"
-                                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500 text-sm">
-                            <p class="text-xs text-gray-500 mt-1">URL of the WhatsApp Node.js API server</p>
+                    <!-- Display fixed configuration -->
+                    <div class="config-info">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="checkmark">✓</span>
+                            <span class="label">Server URL</span>
                         </div>
-                        
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">API Key</label>
-                            <div class="relative">
-                                <input type="password" id="apiKey" name="api_key" 
-                                       value="{{ settings.api_key if settings else '' }}"
-                                       placeholder="Enter API key"
-                                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500 text-sm pr-10">
-                                <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                    <i class="fas fa-eye" id="toggleIcon"></i>
-                                </button>
+                        <div class="value">{{ fixed_url }}</div>
+                    </div>
+                    
+                    <div class="config-info">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="checkmark">✓</span>
+                            <span class="label">API Key</span>
+                        </div>
+                        <div class="value">••••••••••••••••••••••••</div>
+                    </div>
+                    
+                    <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-info-circle text-blue-500 mt-1"></i>
+                            <div>
+                                <p class="text-sm text-blue-800 font-medium">Auto-Configured</p>
+                                <p class="text-xs text-blue-600 mt-1">Your WhatsApp connection is pre-configured. You only need to scan the QR code to connect.</p>
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">API key for authentication with the Node.js server</p>
                         </div>
-                        
-                        <div class="mb-4">
-                            <label class="flex items-center">
-                                <input type="checkbox" id="isEnabled" name="is_enabled" 
-                                       {% if settings and settings.is_enabled %}checked{% endif %}
-                                       class="mr-2 text-green-500 focus:ring-green-500">
-                                <span class="text-sm text-gray-700">Enable WhatsApp Integration</span>
-                            </label>
-                        </div>
-                        
-                        <div class="flex gap-3">
-                            <button type="submit" class="flex-1 px-6 py-2.5 btn-gradient text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all">
-                                <i class="fas fa-save"></i> Save Settings
+                    </div>
+                    
+                    <!-- Only enable/disable toggle -->
+                    <div class="mt-6">
+                        <form id="whatsappSettingsForm">
+                            <div class="mb-4">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="isEnabled" name="is_enabled" 
+                                           {% if settings and settings.is_enabled %}checked{% endif %}
+                                           class="mr-2 text-green-500 focus:ring-green-500 w-5 h-5">
+                                    <span class="text-sm text-gray-700 font-medium">Enable WhatsApp Integration</span>
+                                </label>
+                                <p class="text-xs text-gray-500 mt-1 ml-7">Enable or disable WhatsApp messaging for your institute</p>
+                            </div>
+                            
+                            <button type="submit" class="w-full px-6 py-2.5 btn-gradient text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all">
+                                <i class="fas fa-save"></i> Update Status
                             </button>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -227,11 +258,11 @@
 </div>
 
 <!-- Socket.IO Script - Load from Node.js server -->
-<script src="{{ settings.nodejs_api_url if settings else 'http://localhost:3000' }}/socket.io/socket.io.js"></script>
+<script src="{{ fixed_url }}/socket.io/socket.io.js"></script>
 
 <script>
     // ==================== SOCKET.IO CONNECTION ====================
-    const nodejsUrl = '{{ settings.nodejs_api_url if settings else "http://localhost:3000" }}';
+    const nodejsUrl = '{{ fixed_url }}';
     console.log('Connecting to Node.js at:', nodejsUrl);
     
     // Connect to Node.js Socket.IO server
@@ -255,7 +286,7 @@
     
     socket.on('connect_error', (error) => {
         console.error('❌ Socket connection error:', error);
-        showMessage('Cannot connect to WhatsApp server. Please check Node.js server.', 'error');
+        showMessage('Cannot connect to WhatsApp server. Please check server status.', 'error');
     });
     
     // Listen for QR code from Node.js
@@ -324,22 +355,7 @@
     let statusInterval = null;
     let qrTimeout = null;
     
-    // Toggle password visibility
-    function togglePassword() {
-        const input = document.getElementById('apiKey');
-        const icon = document.getElementById('toggleIcon');
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        } else {
-            input.type = 'password';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
-    }
-    
-    // Save settings
+    // Save settings (only enabled status)
     document.getElementById('whatsappSettingsForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
@@ -348,13 +364,11 @@
         loading.classList.add('flex');
         
         const data = {
-            nodejs_api_url: document.getElementById('nodejsApiUrl').value.trim(),
-            api_key: document.getElementById('apiKey').value.trim(),
             is_enabled: document.getElementById('isEnabled').checked
         };
         
         try {
-            const response = await fetch('/whatsapp-integration/api/settings', {
+            const response = await fetch('/whatsapp-integration/api/settings/update-enabled', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -368,11 +382,6 @@
                 showMessage(result.message, 'success');
                 if (data.is_enabled) {
                     setTimeout(checkStatus, 1000);
-                    // Reconnect socket with new URL
-                    const newUrl = data.nodejs_api_url || 'http://localhost:3000';
-                    if (newUrl !== nodejsUrl) {
-                        window.location.reload();
-                    }
                 }
             } else {
                 showMessage(result.message, 'error');
@@ -380,7 +389,7 @@
         } catch (error) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
-            showMessage('Failed to save settings', 'error');
+            showMessage('Failed to update status', 'error');
         }
     });
     

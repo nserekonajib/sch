@@ -1,4 +1,4 @@
-# whatsappIntegrationSettings.py - Simplified WhatsApp Integration Settings
+# whatsappIntegrationSettings.py - Auto-configured WhatsApp Integration
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
 import os
@@ -18,6 +18,10 @@ SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Fixed configuration - not editable by institutes
+FIXED_NODEJS_API_URL = "https://whatsappconnection-2h64.onrender.com"
+FIXED_API_KEY = "2343243"
+
 whatsapp_bp = Blueprint('whatsapp', __name__, url_prefix='/whatsapp-integration')
 
 def login_required(f):
@@ -28,31 +32,64 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
-@whatsapp_bp.route('/')
-@role_required(['admin', 'owner'])
-def index():
-    """WhatsApp Integration Page"""
-    user = session.get('user')
-    institute_id = get_institute_id(user['id'])
-    
-    if not institute_id:
-        return render_template('whatsapp/index.html', settings=None, institute_id=None)
-    
+def get_or_create_settings(institute_id):
+    """Get existing settings or create default ones"""
     try:
-        # Get WhatsApp settings for this institute
+        # Try to get existing settings
         response = supabase.table('whatsapp_settings_custom')\
             .select('*')\
             .eq('institute_id', institute_id)\
             .execute()
         
-        settings = response.data[0] if response.data else None
+        if response.data:
+            return response.data[0]
         
-        return render_template('whatsapp/index.html', settings=settings, institute_id=institute_id)
+        # Create new settings with fixed values
+        settings_data = {
+            'id': str(uuid.uuid4()),
+            'institute_id': institute_id,
+            'nodejs_api_url': FIXED_NODEJS_API_URL,
+            'api_key': FIXED_API_KEY,
+            'is_enabled': True,
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        result = supabase.table('whatsapp_settings_custom').insert(settings_data).execute()
+        
+        if result.data:
+            return result.data[0]
+        else:
+            return None
+            
+    except Exception as e:
+        print(f"Error getting/creating settings: {e}")
+        return None
+
+
+@whatsapp_bp.route('/')
+@role_required(['admin', 'owner'])
+def index():
+    """WhatsApp Integration Page - Auto-configured"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return render_template('whatsapp/index.html', settings=None, institute_id=None, fixed_url=FIXED_NODEJS_API_URL)
+    
+    try:
+        # Auto-create or get settings
+        settings = get_or_create_settings(institute_id)
+        
+        return render_template('whatsapp/index.html', 
+                             settings=settings, 
+                             institute_id=institute_id,
+                             fixed_url=FIXED_NODEJS_API_URL,
+                             fixed_api_key=FIXED_API_KEY)
         
     except Exception as e:
         print(f"Error loading WhatsApp settings: {e}")
-        return render_template('whatsapp/index.html', settings=None, institute_id=institute_id)
+        return render_template('whatsapp/index.html', settings=None, institute_id=institute_id, fixed_url=FIXED_NODEJS_API_URL)
 
 
 @whatsapp_bp.route('/api/settings', methods=['GET'])
@@ -66,12 +103,7 @@ def get_settings():
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
-        response = supabase.table('whatsapp_settings_custom')\
-            .select('*')\
-            .eq('institute_id', institute_id)\
-            .execute()
-        
-        settings = response.data[0] if response.data else None
+        settings = get_or_create_settings(institute_id)
         
         return jsonify({'success': True, 'settings': settings})
         
@@ -80,10 +112,10 @@ def get_settings():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@whatsapp_bp.route('/api/settings', methods=['POST'])
+@whatsapp_bp.route('/api/settings/update-enabled', methods=['POST'])
 @role_required(['admin', 'owner'])
-def save_settings():
-    """Save WhatsApp settings"""
+def update_enabled_status():
+    """Update only the enabled status"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -92,37 +124,32 @@ def save_settings():
     
     try:
         data = request.get_json()
+        is_enabled = data.get('is_enabled', False)
         
-        settings_data = {
-            'institute_id': institute_id,
-            'nodejs_api_url': data.get('nodejs_api_url', '').strip(),
-            'api_key': data.get('api_key', '').strip(),
-            'is_enabled': data.get('is_enabled', False),
+        # Get existing settings
+        settings = get_or_create_settings(institute_id)
+        
+        if not settings:
+            return jsonify({'success': False, 'message': 'Settings not found'}), 404
+        
+        # Update only the enabled status
+        update_data = {
+            'is_enabled': is_enabled,
             'updated_at': datetime.now().isoformat()
         }
         
-        existing = supabase.table('whatsapp_settings_custom')\
-            .select('id')\
+        result = supabase.table('whatsapp_settings_custom')\
+            .update(update_data)\
             .eq('institute_id', institute_id)\
             .execute()
         
-        if existing.data:
-            result = supabase.table('whatsapp_settings_custom')\
-                .update(settings_data)\
-                .eq('institute_id', institute_id)\
-                .execute()
-        else:
-            settings_data['id'] = str(uuid.uuid4())
-            settings_data['created_at'] = datetime.now().isoformat()
-            result = supabase.table('whatsapp_settings_custom').insert(settings_data).execute()
-        
         if result.data:
-            return jsonify({'success': True, 'message': 'Settings saved successfully'})
+            return jsonify({'success': True, 'message': 'Status updated successfully'})
         else:
-            return jsonify({'success': False, 'message': 'Failed to save settings'}), 500
+            return jsonify({'success': False, 'message': 'Failed to update status'}), 500
             
     except Exception as e:
-        print(f"Error saving settings: {e}")
+        print(f"Error updating status: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -137,15 +164,11 @@ def get_status():
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
-        settings_response = supabase.table('whatsapp_settings_custom')\
-            .select('nodejs_api_url, api_key')\
-            .eq('institute_id', institute_id)\
-            .execute()
+        settings = get_or_create_settings(institute_id)
         
-        if not settings_response.data:
+        if not settings:
             return jsonify({'success': False, 'message': 'WhatsApp not configured'}), 400
         
-        settings = settings_response.data[0]
         nodejs_url = settings.get('nodejs_api_url', '').rstrip('/')
         api_key = settings.get('api_key', '')
         
@@ -185,15 +208,11 @@ def request_qr():
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
-        settings_response = supabase.table('whatsapp_settings_custom')\
-            .select('nodejs_api_url, api_key')\
-            .eq('institute_id', institute_id)\
-            .execute()
+        settings = get_or_create_settings(institute_id)
         
-        if not settings_response.data:
+        if not settings:
             return jsonify({'success': False, 'message': 'WhatsApp not configured'}), 400
         
-        settings = settings_response.data[0]
         nodejs_url = settings.get('nodejs_api_url', '').rstrip('/')
         api_key = settings.get('api_key', '')
         
@@ -230,15 +249,11 @@ def logout_whatsapp():
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
-        settings_response = supabase.table('whatsapp_settings_custom')\
-            .select('nodejs_api_url, api_key')\
-            .eq('institute_id', institute_id)\
-            .execute()
+        settings = get_or_create_settings(institute_id)
         
-        if not settings_response.data:
+        if not settings:
             return jsonify({'success': False, 'message': 'WhatsApp not configured'}), 400
         
-        settings = settings_response.data[0]
         nodejs_url = settings.get('nodejs_api_url', '').rstrip('/')
         api_key = settings.get('api_key', '')
         
@@ -285,15 +300,11 @@ def send_message():
         if not message:
             return jsonify({'success': False, 'message': 'Message is required'}), 400
         
-        settings_response = supabase.table('whatsapp_settings_custom')\
-            .select('nodejs_api_url, api_key')\
-            .eq('institute_id', institute_id)\
-            .execute()
+        settings = get_or_create_settings(institute_id)
         
-        if not settings_response.data:
+        if not settings:
             return jsonify({'success': False, 'message': 'WhatsApp not configured'}), 400
         
-        settings = settings_response.data[0]
         nodejs_url = settings.get('nodejs_api_url', '').rstrip('/')
         api_key = settings.get('api_key', '')
         
@@ -347,15 +358,11 @@ def send_pdf():
         if not pdf_base64:
             return jsonify({'success': False, 'message': 'PDF data is required'}), 400
         
-        settings_response = supabase.table('whatsapp_settings_custom')\
-            .select('nodejs_api_url, api_key')\
-            .eq('institute_id', institute_id)\
-            .execute()
+        settings = get_or_create_settings(institute_id)
         
-        if not settings_response.data:
+        if not settings:
             return jsonify({'success': False, 'message': 'WhatsApp not configured'}), 400
         
-        settings = settings_response.data[0]
         nodejs_url = settings.get('nodejs_api_url', '').rstrip('/')
         api_key = settings.get('api_key', '')
         
