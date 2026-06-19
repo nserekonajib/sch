@@ -1,5 +1,4 @@
-from routes.permissions.permissions import role_required
-# collectFees.py - Simplified with negative balance only (no credit invoices)
+# collectFees.py - Updated with WhatsApp PDF receipt sending
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
 import os
@@ -9,6 +8,7 @@ import string
 from datetime import datetime, timedelta
 import json
 import io
+import requests
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
@@ -37,29 +37,13 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
-    
 MASTER_API_USERNAME = os.getenv('COMMS_API_USERNAME', '')
 MASTER_API_KEY = os.getenv('COMMS_API_KEY', '')
 
 def send_payment_sms(institute, student, amount_paid, balance, receipt_number, payment_method, notes=""):
-    """
-    Send SMS notification for payment with balance checking and deduction
-    
-    Args:
-        institute (dict): Institute object with id, institute_name
-        student (dict): Student object with id, name, contact_number
-        amount_paid (float): Amount paid
-        balance (float): Remaining balance after payment
-        receipt_number (str): Payment receipt number
-        payment_method (str): Method of payment (cash, mobile money, etc.)
-        notes (str): Additional notes to include in SMS
-    
-    Returns:
-        bool: True if SMS sent successfully, False otherwise
-    """
+    """Send SMS notification for payment"""
     try:
-        # ==================== STEP 1: GET SMS SETTINGS ====================
+        # Get SMS settings
         sms_response = supabase.table('sms_settings')\
             .select('*')\
             .eq('institute_id', institute['id'])\
@@ -67,35 +51,29 @@ def send_payment_sms(institute, student, amount_paid, balance, receipt_number, p
             .execute()
         
         if not sms_response.data:
-            print(f"SMS not enabled or no settings found for institute {institute['id']}")
             return False
         
         settings = sms_response.data[0]
         
-        # Check if auto-send on payment is enabled
         if not settings.get('send_on_payment', True):
-            print("SMS on payment is disabled in settings")
             return False
         
-        # ==================== STEP 2: GET STUDENT PHONE NUMBER ====================
         phone = student.get('contact_number') or student.get('phone') or student.get('phone_number') or ''
         
         if not phone:
-            print(f"No phone number for student: {student.get('name', 'Unknown')}")
             return False
         
-        # Format phone number to international format
+        # Format phone
         phone = phone.strip().replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
         if not phone.startswith('+'):
             if phone.startswith('0'):
-                phone = '+256' + phone[1:]  # Uganda format
+                phone = '+256' + phone[1:]
             elif phone.startswith('256'):
                 phone = '+' + phone
             elif len(phone) == 9 and phone.isdigit():
-                phone = '+256' + phone  # Assume Uganda local number
+                phone = '+256' + phone
         
-        # ==================== STEP 3: PREPARE SMS MESSAGE ====================
-        # Format balance display (negative = credit, positive = due)
+        # Prepare message
         if balance < 0:
             balance_display = f"Credit: UGX {abs(balance):,.0f}"
         else:
@@ -115,201 +93,126 @@ Thank you for your payment!"""
         if notes:
             message += f"\n\nNote: {notes}"
         
-        # Ensure message doesn't exceed reasonable length (max 10 segments ~ 1600 chars)
-        if len(message) > 1600:
-            message = message[:1550] + "..."
-        
-        # ==================== STEP 4: CALCULATE SMS COST ====================
-        # Check for Unicode characters (emoji, special chars, non-ASCII)
-        has_unicode = any(ord(c) > 127 for c in message)
-        segment_size = 70 if has_unicode else 160
-        segments = (len(message) + segment_size - 1) // segment_size
-        cost_per_sms = settings.get('cost_per_sms', 35)
-        total_cost = segments * cost_per_sms
-        
-        # Generate log ID for tracking
-        log_id = str(uuid.uuid4())
-        
-        # ==================== STEP 5: CHECK INSTITUTE BALANCE ====================
-        balance_response = supabase.table('institutes')\
-            .select('balance, total_spent')\
-            .eq('id', institute['id'])\
-            .execute()
-        
-        if not balance_response.data:
-            print(f"Institute {institute['id']} not found in database")
-            # Log failed attempt
-            supabase.table('sms_log').insert({
-                'id': log_id,
-                'institute_id': institute['id'],
-                'student_id': student.get('id'),
-                'phone_number': phone,
-                'message': message[:500],
-                'message_length': len(message),
-                'segments': segments,
-                'cost': total_cost,
-                'status': 'failed',
-                'error_message': 'Institute not found in database',
-                'sent_at': datetime.now().isoformat()
-            }).execute()
-            return False
-        
-        current_balance = balance_response.data[0].get('balance', 0)
-        current_total_spent = balance_response.data[0].get('total_spent', 0)
-        
-        # Check if balance is sufficient
-        if current_balance < total_cost:
-            insufficient_msg = f"Insufficient balance. Available: UGX {current_balance:,.0f}, Required: UGX {total_cost:,.0f}"
-            print(insufficient_msg)
-            
-            # Log insufficient balance
-            supabase.table('sms_log').insert({
-                'id': log_id,
-                'institute_id': institute['id'],
-                'student_id': student.get('id'),
-                'phone_number': phone,
-                'message': message[:500],
-                'message_length': len(message),
-                'segments': segments,
-                'cost': total_cost,
-                'status': 'failed',
-                'error_message': insufficient_msg,
-                'sent_at': datetime.now().isoformat()
-            }).execute()
-            return False
-        
-        # ==================== STEP 6: SEND SMS USING MASTER CREDENTIALS ====================
-        # Check if master credentials are configured
+        # Check master credentials
         if not MASTER_API_USERNAME or not MASTER_API_KEY:
-            error_msg = "Master API credentials not configured in .env file"
-            print(error_msg)
-            supabase.table('sms_log').insert({
-                'id': log_id,
-                'institute_id': institute['id'],
-                'student_id': student.get('id'),
-                'phone_number': phone,
-                'message': message[:500],
-                'message_length': len(message),
-                'segments': segments,
-                'cost': total_cost,
-                'status': 'failed',
-                'error_message': error_msg,
-                'sent_at': datetime.now().isoformat()
-            }).execute()
             return False
         
         try:
-            # Import CommsSDK (only import when needed)
             from comms_sdk import CommsSDK, MessagePriority
             
-            # Authenticate using master credentials
             sdk = CommsSDK.authenticate(MASTER_API_USERNAME, MASTER_API_KEY)
             
-            # Send the SMS
             response = sdk.send_sms(
                 [phone],
                 message,
-                sender_id=settings.get('sender_id', 'SCHOOL')[:11],  # Max 11 characters
+                sender_id=settings.get('sender_id', 'SCHOOL')[:11],
                 priority=MessagePriority.HIGHEST
             )
             
-            # ==================== STEP 7: DEDUCT BALANCE ON SUCCESS ====================
-            new_balance = current_balance - total_cost
-            new_total_spent = current_total_spent + total_cost
-            
-            # Update institute balance
-            update_result = supabase.table('institutes')\
-                .update({
-                    'balance': new_balance,
-                    'total_spent': new_total_spent,
-                    'last_balance_update': datetime.now().isoformat()
-                })\
-                .eq('id', institute['id'])\
-                .execute()
-            
-            if not update_result.data:
-                print("Warning: SMS sent but failed to update balance")
-                # Still log as sent since SMS was delivered
-                supabase.table('sms_log').insert({
-                    'id': log_id,
-                    'institute_id': institute['id'],
-                    'student_id': student.get('id'),
-                    'phone_number': phone,
-                    'message': message[:500],
-                    'message_length': len(message),
-                    'segments': segments,
-                    'cost': total_cost,
-                    'status': 'sent_but_no_deduction',
-                    'error_message': 'Balance update failed',
-                    'sent_at': datetime.now().isoformat()
-                }).execute()
-                return True
-            
-            # ==================== STEP 8: LOG SUCCESSFUL SMS ====================
-            supabase.table('sms_log').insert({
-                'id': log_id,
-                'institute_id': institute['id'],
-                'student_id': student.get('id'),
-                'phone_number': phone,
-                'message': message[:500],
-                'message_length': len(message),
-                'segments': segments,
-                'cost': total_cost,
-                'status': 'sent',
-                'error_message': None,
-                'sent_at': datetime.now().isoformat()
-            }).execute()
-            
-            print(f"SMS sent successfully to {phone}")
-            print(f"  - Segments: {segments}, Cost: UGX {total_cost:,.0f}")
-            print(f"  - Balance before: UGX {current_balance:,.0f}, After: UGX {new_balance:,.0f}")
-            
+            print(f"SMS sent to {phone}")
             return True
             
-        except ImportError as e:
-            error_msg = f"CommsSDK not installed: {str(e)}. Run: pip install comms-sdk"
-            print(error_msg)
-            supabase.table('sms_log').insert({
-                'id': log_id,
-                'institute_id': institute['id'],
-                'student_id': student.get('id'),
-                'phone_number': phone,
-                'message': message[:500],
-                'message_length': len(message),
-                'segments': segments,
-                'cost': total_cost,
-                'status': 'failed',
-                'error_message': error_msg[:500],
-                'sent_at': datetime.now().isoformat()
-            }).execute()
-            return False
-            
         except Exception as e:
-            error_msg = str(e)
-            print(f"SMS sending error: {error_msg}")
-            supabase.table('sms_log').insert({
-                'id': log_id,
-                'institute_id': institute['id'],
-                'student_id': student.get('id'),
-                'phone_number': phone,
-                'message': message[:500],
-                'message_length': len(message),
-                'segments': segments,
-                'cost': total_cost,
-                'status': 'failed',
-                'error_message': error_msg[:500],
-                'sent_at': datetime.now().isoformat()
-            }).execute()
+            print(f"SMS error: {e}")
             return False
             
     except Exception as e:
         print(f"Unexpected error in send_payment_sms: {e}")
+        return False
+
+def send_whatsapp_pdf(institute, student, pdf_buffer, filename, phone_number):
+    """
+    Send PDF receipt via WhatsApp using the WhatsApp integration API
+    
+    Args:
+        institute (dict): Institute object
+        student (dict): Student object
+        pdf_buffer (BytesIO): PDF buffer to send
+        filename (str): Filename for the PDF
+        phone_number (str): Recipient phone number
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        # Get WhatsApp settings
+        whatsapp_response = supabase.table('whatsapp_settings_custom')\
+            .select('*')\
+            .eq('institute_id', institute['id'])\
+            .eq('is_enabled', True)\
+            .execute()
+        
+        if not whatsapp_response.data:
+            print(f"WhatsApp not enabled for institute {institute['id']}")
+            return False
+        
+        settings = whatsapp_response.data[0]
+        nodejs_url = settings.get('nodejs_api_url', '').rstrip('/')
+        api_key = settings.get('api_key', '')
+        
+        if not nodejs_url:
+            print("Node.js API URL not configured")
+            return False
+        
+        # Format phone number
+        phone = phone_number.strip().replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+        if not phone.startswith('+'):
+            if phone.startswith('0'):
+                phone = '256' + phone[1:]
+            elif phone.startswith('256'):
+                phone = phone
+            elif len(phone) == 9 and phone.isdigit():
+                phone = '256' + phone
+            else:
+                # Remove any non-digit characters
+                phone = ''.join(filter(str.isdigit, phone))
+                if len(phone) == 9:
+                    phone = '256' + phone
+                elif len(phone) == 10 and phone.startswith('0'):
+                    phone = '256' + phone[1:]
+        
+        # Convert PDF to base64
+        pdf_bytes = pdf_buffer.getvalue()
+        import base64
+        pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+        
+        # Prepare headers
+        headers = {}
+        if api_key:
+            headers['X-API-Key'] = api_key
+        
+        # Send PDF via WhatsApp API
+        response = requests.post(
+            f"{nodejs_url}/api/send-pdf",
+            json={
+                'number': phone,
+                'pdfBuffer': pdf_base64,
+                'filename': filename,
+                'instituteId': institute['id']
+            },
+            headers=headers,
+            timeout=60
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            print(f"WhatsApp PDF sent successfully to {phone}")
+            return True
+        else:
+            print(f"WhatsApp PDF send failed: {response.status_code} - {response.text}")
+            return False
+            
+    except requests.exceptions.ConnectionError:
+        print(f"Node.js API not reachable for institute {institute['id']}")
+        return False
+    except Exception as e:
+        print(f"Error sending WhatsApp PDF: {e}")
         import traceback
         traceback.print_exc()
         return False
-    
+
 @collect_bp.route('/')
-@role_required(['owner', 'teacher', 'accountant'])
+@login_required
 def index():
     """Fee Collection Page"""
     user = session.get('user')
@@ -321,7 +224,7 @@ def index():
     return render_template('fees/collection.html', institute=institute, now=datetime.now())
 
 @collect_bp.route('/search-student', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@login_required
 def search_student():
     """Search for student by name or ID"""
     user = session.get('user')
@@ -360,13 +263,10 @@ def search_student():
         
     except Exception as e:
         print(f"Error searching student: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-    
-    
+
 @collect_bp.route('/get-student-fees/<student_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@login_required
 def get_student_fees(student_id):
     """Get fee details and invoices for a student"""
     user = session.get('user')
@@ -388,7 +288,7 @@ def get_student_fees(student_id):
         
         student = student_response.data[0]
         
-        # Get all invoices for this student (only invoices with balance != 0 or recent)
+        # Get all invoices for this student
         invoices_response = supabase.table('invoices')\
             .select('*, fee_particulars(fee_items)')\
             .eq('student_id', student_id)\
@@ -399,7 +299,7 @@ def get_student_fees(student_id):
         
         invoices = invoices_response.data if invoices_response.data else []
         
-        # Calculate total due (sum of all balances - negative means credit)
+        # Calculate total due
         total_due = sum(inv['balance'] for inv in invoices)
         
         # Prepare invoices for display
@@ -432,15 +332,12 @@ def get_student_fees(student_id):
         
     except Exception as e:
         print(f"Error getting student fees: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-
 @collect_bp.route('/process-payment', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@login_required
 def process_payment():
-    """Process fee payment - balance becomes negative if payment exceeds due"""
+    """Process fee payment and send receipt via WhatsApp"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -455,11 +352,12 @@ def process_payment():
         payment_method = data.get('payment_method', 'cash')
         fee_month = data.get('fee_month')
         notes = data.get('notes', '')
+        whatsapp_enabled = data.get('whatsapp_enabled', True)  # New flag
         
         if not student_id or amount_paid <= 0:
             return jsonify({'success': False, 'message': 'Invalid payment amount'}), 400
         
-        # Get institute details for SMS and receipt
+        # Get institute details
         institute_response = supabase.table('institutes')\
             .select('*')\
             .eq('id', institute_id)\
@@ -467,9 +365,8 @@ def process_payment():
         
         institute = institute_response.data[0] if institute_response.data else {}
         
-        # Handle fee_month - convert from YYYY-MM to first day of month for date field
+        # Handle fee_month
         if fee_month:
-            # If fee_month is in YYYY-MM format, convert to first day of month
             if len(fee_month) == 7 and '-' in fee_month:
                 fee_month_date = f"{fee_month}-01"
             else:
@@ -489,7 +386,7 @@ def process_payment():
         
         student = student_response.data[0]
         
-        # Get all existing receipt numbers
+        # Get existing receipt numbers
         existing_receipts_response = supabase.table('payments')\
             .select('receipt_number')\
             .eq('institute_id', institute_id)\
@@ -503,8 +400,9 @@ def process_payment():
         payments_made = []
         remaining_amount = amount_paid
         
+        # Process payment (same as before)
         if invoice_id:
-            # Pay specific invoice - allow negative balance
+            # Pay specific invoice
             invoice_response = supabase.table('invoices')\
                 .select('*')\
                 .eq('id', invoice_id)\
@@ -517,11 +415,9 @@ def process_payment():
             
             invoice = invoice_response.data[0]
             
-            # Apply payment - balance can go negative
             new_paid = invoice['paid_amount'] + remaining_amount
             new_balance = invoice['total_amount'] - new_paid
             
-            # Determine status
             if new_balance == 0:
                 new_status = 'paid'
             elif new_balance < 0:
@@ -552,7 +448,7 @@ def process_payment():
             remaining_amount = 0
             
         else:
-            # General payment - distribute to oldest invoices with balance > 0 first
+            # General payment - distribute to invoices
             invoices_response = supabase.table('invoices')\
                 .select('*')\
                 .eq('student_id', student_id)\
@@ -594,9 +490,8 @@ def process_payment():
                     
                     remaining_amount -= payment_for_invoice
             
-            # If there's remaining amount, find the most recent invoice to apply negative balance
+            # Handle remaining amount (overpayment)
             if remaining_amount > 0:
-                # Get the most recent invoice (could be any, we'll apply negative to the newest)
                 recent_invoice_response = supabase.table('invoices')\
                     .select('*')\
                     .eq('student_id', student_id)\
@@ -630,7 +525,7 @@ def process_payment():
                         'note': 'Overpayment - Credit balance'
                     })
                 else:
-                    # No invoices exist, create a new invoice with negative balance
+                    # Create credit invoice
                     new_invoice_id = str(uuid.uuid4())
                     new_invoice_number = f"CREDIT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                     
@@ -657,7 +552,7 @@ def process_payment():
                         'note': 'Credit balance from overpayment'
                     })
         
-        # Generate unique receipt number
+        # Generate receipt number
         receipt_number = generate_unique_receipt_number(institute_id, existing_numbers)
         
         # Create payment record
@@ -687,7 +582,7 @@ def process_payment():
         
         total_due = sum(inv['balance'] for inv in updated_invoices.data)
         
-        # Send SMS notification
+        # ==================== SEND SMS ====================
         try:
             send_payment_sms(
                 institute=institute,
@@ -699,8 +594,33 @@ def process_payment():
                 notes=notes
             )
         except Exception as e:
-            print(f"SMS notification error (non-critical): {e}")
-            
+            print(f"SMS notification error: {e}")
+        
+        # ==================== SEND WHATSAPP PDF RECEIPT ====================
+        whatsapp_sent = False
+        if whatsapp_enabled:
+            try:
+                # Generate PDF receipt buffer
+                pdf_buffer = generate_receipt_pdf(institute, student, payment_data, total_due)
+                
+                if pdf_buffer:
+                    # Send via WhatsApp
+                    filename = f"Receipt_{receipt_number}.pdf"
+                    phone = student.get('contact_number') or student.get('phone') or student.get('phone_number') or ''
+                    
+                    if phone:
+                        whatsapp_sent = send_whatsapp_pdf(
+                            institute=institute,
+                            student=student,
+                            pdf_buffer=pdf_buffer,
+                            filename=filename,
+                            phone_number=phone
+                        )
+            except Exception as e:
+                print(f"WhatsApp PDF send error: {e}")
+                import traceback
+                traceback.print_exc()
+        
         return jsonify({
             'success': True,
             'message': f'Payment of UGX {amount_paid:,.0f} processed successfully',
@@ -713,7 +633,8 @@ def process_payment():
             'student_id': student['student_id'],
             'class': student['classes']['name'] if student.get('classes') else 'N/A',
             'payments_made': payments_made,
-            'institute': institute
+            'institute': institute,
+            'whatsapp_sent': whatsapp_sent
         })
         
     except Exception as e:
@@ -722,9 +643,128 @@ def process_payment():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+def generate_receipt_pdf(institute, student, payment, total_due):
+    """
+    Generate PDF receipt for WhatsApp sending
+    
+    Returns:
+        BytesIO: PDF buffer
+    """
+    try:
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=(80*mm, 180*mm),
+                                rightMargin=5*mm, leftMargin=5*mm,
+                                topMargin=5*mm, bottomMargin=5*mm)
+        
+        story = []
+        styles = getSampleStyleSheet()
+        
+        title_style = ParagraphStyle(
+            'Title',
+            parent=styles['Normal'],
+            fontSize=12,
+            alignment=1,
+            spaceAfter=5,
+            fontName='Helvetica-Bold'
+        )
+        
+        normal_style = ParagraphStyle(
+            'Normal',
+            parent=styles['Normal'],
+            fontSize=9,
+            alignment=0,
+            spaceAfter=3
+        )
+        
+        center_style = ParagraphStyle(
+            'Center',
+            parent=styles['Normal'],
+            fontSize=9,
+            alignment=1,
+            spaceAfter=3
+        )
+        
+        # Institute Header
+        story.append(Paragraph(institute.get('institute_name', 'School Name'), title_style))
+        story.append(Paragraph(institute.get('target_line', ''), center_style))
+        story.append(Paragraph(institute.get('address', ''), center_style))
+        story.append(Paragraph(f"Tel: {institute.get('phone_number', '')}", center_style))
+        story.append(Spacer(1, 5))
+        
+        # Receipt Title
+        story.append(Paragraph("=" * 35, normal_style))
+        story.append(Paragraph("FEE PAYMENT RECEIPT", title_style))
+        story.append(Paragraph("=" * 35, normal_style))
+        story.append(Spacer(1, 5))
+        
+        # Receipt Details
+        receipt_data = [
+            ['Receipt No:', payment['receipt_number']],
+            ['Date:', payment['payment_date']],
+            ['', ''],
+            ['Student Name:', student['name']],
+            ['Student ID:', student['student_id']],
+            ['Class:', student['classes']['name'] if student.get('classes') else 'N/A'],
+            ['Fee Month:', payment.get('fee_month', 'N/A')],
+        ]
+        
+        t = Table(receipt_data, colWidths=[30*mm, 40*mm])
+        t.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 5))
+        
+        # Amount
+        story.append(Paragraph("-" * 35, normal_style))
+        
+        balance_text = f"Credit: UGX {abs(total_due):,.0f}" if total_due < 0 else f"Balance Due: UGX {total_due:,.0f}"
+        
+        amount_data = [
+            ['Amount Paid:', f"UGX {payment['amount']:,.0f}"],
+            ['Payment Method:', payment['payment_method'].upper()],
+            [balance_text, '']
+        ]
+        
+        t2 = Table(amount_data, colWidths=[30*mm, 40*mm])
+        t2.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        story.append(t2)
+        
+        # Notes
+        if payment.get('notes'):
+            story.append(Spacer(1, 5))
+            story.append(Paragraph(f"Notes: {payment['notes']}", normal_style))
+        
+        story.append(Paragraph("-" * 35, normal_style))
+        
+        # Footer
+        story.append(Spacer(1, 8))
+        story.append(Paragraph("Thank you for your payment!", center_style))
+        story.append(Paragraph("This is a computer generated receipt", center_style))
+        story.append(Paragraph("No signature required", center_style))
+        
+        doc.build(story)
+        buffer.seek(0)
+        return buffer
+        
+    except Exception as e:
+        print(f"Error generating PDF: {e}")
+        return None
 
 @collect_bp.route('/apply-discount', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@login_required
 def apply_discount():
     """Apply discount to an invoice"""
     user = session.get('user')
@@ -823,9 +863,8 @@ def apply_discount():
         print(f"Error applying discount: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-
 @collect_bp.route('/receipt/<receipt_number>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@login_required
 def get_receipt(receipt_number):
     """Get receipt details for printing"""
     user = session.get('user')
@@ -874,9 +913,8 @@ def get_receipt(receipt_number):
         print(f"Error getting receipt: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-
 @collect_bp.route('/print-receipt/<receipt_number>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@login_required
 def print_receipt(receipt_number):
     """Generate thermal receipt PDF for printing"""
     user = session.get('user')
@@ -905,7 +943,7 @@ def print_receipt(receipt_number):
         
         payment = payment_response.data[0]
         
-        # Get current balance including credits
+        # Get current balance
         invoices_response = supabase.table('invoices')\
             .select('balance')\
             .eq('student_id', payment['student_id'])\
@@ -914,126 +952,21 @@ def print_receipt(receipt_number):
         
         current_balance = sum(inv['balance'] for inv in invoices_response.data) if invoices_response.data else 0
         
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=(80*mm, 180*mm),
-                                rightMargin=5*mm, leftMargin=5*mm,
-                                topMargin=5*mm, bottomMargin=5*mm)
+        buffer = generate_receipt_pdf(institute, payment['students'], payment, current_balance)
         
-        story = []
-        styles = getSampleStyleSheet()
-        
-        title_style = ParagraphStyle(
-            'Title',
-            parent=styles['Normal'],
-            fontSize=12,
-            alignment=1,
-            spaceAfter=5,
-            fontName='Helvetica-Bold'
-        )
-        
-        normal_style = ParagraphStyle(
-            'Normal',
-            parent=styles['Normal'],
-            fontSize=9,
-            alignment=0,
-            spaceAfter=3
-        )
-        
-        center_style = ParagraphStyle(
-            'Center',
-            parent=styles['Normal'],
-            fontSize=9,
-            alignment=1,
-            spaceAfter=3
-        )
-        
-        # Institute Header
-        story.append(Paragraph(institute.get('institute_name', 'School Name'), title_style))
-        story.append(Paragraph(institute.get('target_line', ''), center_style))
-        story.append(Paragraph(institute.get('address', ''), center_style))
-        story.append(Paragraph(f"Tel: {institute.get('phone_number', '')}", center_style))
-        story.append(Spacer(1, 5))
-        
-        # Receipt Title
-        story.append(Paragraph("=" * 35, normal_style))
-        story.append(Paragraph("FEE PAYMENT RECEIPT", title_style))
-        story.append(Paragraph("=" * 35, normal_style))
-        story.append(Spacer(1, 5))
-        
-        # Receipt Details
-        receipt_data = [
-            ['Receipt No:', payment['receipt_number']],
-            ['Date:', payment['payment_date']],
-            ['', ''],
-            ['Student Name:', payment['students']['name']],
-            ['Student ID:', payment['students']['student_id']],
-            ['Class:', payment['students']['classes']['name'] if payment['students'].get('classes') else 'N/A'],
-            ['Fee Month:', payment.get('fee_month', 'N/A')],
-        ]
-        
-        t = Table(receipt_data, colWidths=[30*mm, 40*mm])
-        t.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-        ]))
-        story.append(t)
-        story.append(Spacer(1, 5))
-        
-        # Amount
-        story.append(Paragraph("-" * 35, normal_style))
-        
-        balance_text = f"Credit: UGX {abs(current_balance):,.0f}" if current_balance < 0 else f"Balance Due: UGX {current_balance:,.0f}"
-        
-        amount_data = [
-            ['Amount Paid:', f"UGX {payment['amount']:,.0f}"],
-            ['Payment Method:', payment['payment_method'].upper()],
-            [balance_text, '']
-        ]
-        
-        t2 = Table(amount_data, colWidths=[30*mm, 40*mm])
-        t2.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        story.append(t2)
-        
-        # Notes
-        if payment.get('notes'):
-            story.append(Spacer(1, 5))
-            story.append(Paragraph(f"Notes: {payment['notes']}", normal_style))
-        
-        story.append(Paragraph("-" * 35, normal_style))
-        
-        # Footer
-        story.append(Spacer(1, 8))
-        story.append(Paragraph("Thank you for your payment!", center_style))
-        story.append(Paragraph("This is a computer generated receipt", center_style))
-        story.append(Paragraph("No signature required", center_style))
-        
-        doc.build(story)
-        buffer.seek(0)
-        
-        return send_file(
-            buffer,
-            as_attachment=False,
-            download_name=f"receipt_{receipt_number}.pdf",
-            mimetype='application/pdf'
-        )
+        if buffer:
+            return send_file(
+                buffer,
+                as_attachment=False,
+                download_name=f"receipt_{receipt_number}.pdf",
+                mimetype='application/pdf'
+            )
+        else:
+            return jsonify({'success': False, 'message': 'Failed to generate receipt'}), 500
         
     except Exception as e:
         print(f"Error generating receipt: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
 
 def generate_unique_receipt_number(institute_id, existing_numbers):
     """Generate unique receipt number with retry logic"""
@@ -1074,7 +1007,106 @@ def generate_unique_receipt_number(institute_id, existing_numbers):
     
     return fallback_number
 
-
-def generate_receipt_number(institute_id):
-    """Legacy function - kept for compatibility"""
-    return generate_unique_receipt_number(institute_id, set())
+@collect_bp.route('/resend-receipt/<receipt_number>', methods=['POST'])
+@login_required
+def resend_receipt(receipt_number):
+    """Resend receipt PDF via WhatsApp for an existing payment"""
+    user = session.get('user')
+    
+    if not user:
+        return jsonify({'success': False, 'message': 'User not logged in'}), 401
+    
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Get the payment details - don't try to select phone from students
+        payment_response = supabase.table('payments')\
+            .select('*, students(name, student_id, contact_number, classes(name))')\
+            .eq('receipt_number', receipt_number)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if not payment_response.data:
+            return jsonify({'success': False, 'message': 'Receipt not found'}), 404
+        
+        payment = payment_response.data[0]
+        student = payment.get('students')
+        
+        if not student:
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        # Get institute details
+        institute_response = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        
+        institute = institute_response.data[0] if institute_response.data else {}
+        
+        if not institute:
+            return jsonify({'success': False, 'message': 'Institute not found'}), 404
+        
+        # Get current balance
+        invoices_response = supabase.table('invoices')\
+            .select('balance')\
+            .eq('student_id', payment['student_id'])\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        current_balance = sum(inv['balance'] for inv in invoices_response.data) if invoices_response.data else 0
+        
+        # Generate PDF receipt
+        pdf_buffer = generate_receipt_pdf(institute, student, payment, current_balance)
+        
+        if not pdf_buffer:
+            return jsonify({'success': False, 'message': 'Failed to generate receipt PDF'}), 500
+        
+        # Get phone number - use contact_number (correct column name)
+        data = request.get_json() or {}
+        custom_phone = data.get('phone_number')
+        
+        # Use contact_number from student (this is the correct column name)
+        phone = custom_phone or student.get('contact_number') or student.get('phone_number') or ''
+        
+        if not phone:
+            return jsonify({'success': False, 'message': 'No phone number available'}), 400
+        
+        # Send WhatsApp PDF
+        filename = f"Receipt_{receipt_number}.pdf"
+        whatsapp_sent = send_whatsapp_pdf(
+            institute=institute,
+            student=student,
+            pdf_buffer=pdf_buffer,
+            filename=filename,
+            phone_number=phone
+        )
+        
+        if whatsapp_sent:
+            # Update WhatsApp status
+            supabase.table('payments')\
+                .update({
+                    'whatsapp_status': 'sent',
+                    'whatsapp_sent_at': datetime.now().isoformat()
+                })\
+                .eq('receipt_number', receipt_number)\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Receipt {receipt_number} resent successfully via WhatsApp',
+                'receipt_number': receipt_number,
+                'phone_number': phone,
+                'student_name': student.get('name')
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to send WhatsApp message'}), 500
+            
+    except Exception as e:
+        print(f"Error resending receipt: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500

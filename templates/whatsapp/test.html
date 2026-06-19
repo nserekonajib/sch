@@ -1,0 +1,598 @@
+<!-- templates/whatsapp/test.html - WhatsApp API Test -->
+{% extends "base.html" %}
+
+{% block title %}WhatsApp API Test - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .test-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .api-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border-left: 4px solid #25D366;
+        transition: all 0.3s ease;
+    }
+    
+    .api-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        transform: translateY(-2px);
+    }
+    
+    .api-card h3 {
+        color: #075E54;
+        margin-bottom: 16px;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .api-card h3 .badge {
+        font-size: 11px;
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+    
+    .badge-post {
+        background: #e3f2fd;
+        color: #0d47a1;
+    }
+    
+    .badge-get {
+        background: #e8f5e9;
+        color: #1b5e20;
+    }
+    
+    .form-group {
+        margin-bottom: 16px;
+    }
+    
+    .form-group label {
+        display: block;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 6px;
+        font-size: 14px;
+    }
+    
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.2s;
+    }
+    
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #25D366;
+        box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.1);
+    }
+    
+    .form-group textarea {
+        min-height: 80px;
+        resize: vertical;
+    }
+    
+    .btn-test {
+        padding: 10px 24px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-test:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .btn-test:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .btn-send {
+        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+        color: white;
+    }
+    
+    .btn-pdf {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+    }
+    
+    .btn-test-connection {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .response-area {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 16px;
+        border: 1px solid #e2e8f0;
+        max-height: 300px;
+        overflow-y: auto;
+        display: none;
+    }
+    
+    .response-area.show {
+        display: block;
+    }
+    
+    .response-area .success {
+        color: #065f46;
+    }
+    
+    .response-area .error {
+        color: #991b1b;
+    }
+    
+    .response-area pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-size: 13px;
+        margin: 0;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .file-input-wrapper {
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+    }
+    
+    .file-input-wrapper input[type=file] {
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+    
+    .file-input-label {
+        display: inline-block;
+        padding: 8px 16px;
+        background: #f1f5f9;
+        border: 2px dashed #94a3b8;
+        border-radius: 8px;
+        cursor: pointer;
+        color: #475569;
+        font-size: 13px;
+        transition: all 0.2s;
+        width: 100%;
+        text-align: center;
+    }
+    
+    .file-input-label:hover {
+        border-color: #25D366;
+        background: #f0fdf4;
+    }
+    
+    .file-input-label.has-file {
+        border-color: #25D366;
+        background: #f0fdf4;
+    }
+    
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .status-indicator.connected {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .status-indicator.disconnected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .status-indicator.checking {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    
+    .quick-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+    
+    .quick-action-btn {
+        padding: 6px 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 20px;
+        background: white;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+    }
+    
+    .quick-action-btn:hover {
+        border-color: #25D366;
+        background: #f0fdf4;
+    }
+    
+    .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    
+    @media (max-width: 640px) {
+        .row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="test-container">
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">WhatsApp API Test</h1>
+            <p class="text-sm text-gray-600">Test your WhatsApp integration endpoints</p>
+        </div>
+        <div>
+            <span id="connectionStatus" class="status-indicator disconnected">
+                <i class="fas fa-circle"></i> Checking...
+            </span>
+        </div>
+    </div>
+
+    <!-- Connection Test Card -->
+    <div class="api-card">
+        <h3>
+            <i class="fas fa-plug text-green-500"></i>
+            Connection Test
+            <span class="badge badge-get">GET</span>
+        </h3>
+        <p class="text-sm text-gray-600 mb-4">Test if the WhatsApp server is reachable</p>
+        <button onclick="testConnection()" id="testConnectionBtn" class="btn-test btn-test-connection">
+            <i class="fas fa-link"></i> Test Connection
+        </button>
+        <div id="connectionResponse" class="response-area"></div>
+    </div>
+
+    <!-- Send Message Card -->
+    <div class="api-card">
+        <h3>
+            <i class="fas fa-paper-plane text-green-500"></i>
+            Send Text Message
+            <span class="badge badge-post">POST</span>
+        </h3>
+        
+        <div class="quick-actions">
+            <button class="quick-action-btn" onclick="setQuickMessage('Hello! This is a test message from Capital College.')">Hello</button>
+            <button class="quick-action-btn" onclick="setQuickMessage('Your invoice for this month is ready. Please check your email.')">Invoice</button>
+            <button class="quick-action-btn" onclick="setQuickMessage('Class schedule for tomorrow has been updated. Check the portal.')">Schedule</button>
+            <button class="quick-action-btn" onclick="setQuickMessage('Payment reminder: Your fees are due on 30th June.')">Payment</button>
+        </div>
+        
+        <form id="sendMessageForm">
+            <div class="form-group">
+                <label>Phone Number <span class="text-red-500">*</span></label>
+                <input type="text" id="phoneNumber" placeholder="256XXXXXXXXX" required>
+                <p class="text-xs text-gray-400 mt-1">Format: 256XXXXXXXXX (without +)</p>
+            </div>
+            
+            <div class="form-group">
+                <label>Message <span class="text-red-500">*</span></label>
+                <textarea id="messageText" placeholder="Type your message here..." required></textarea>
+            </div>
+            
+            <button type="submit" id="sendMsgBtn" class="btn-test btn-send">
+                <i class="fas fa-paper-plane"></i> Send Message
+            </button>
+        </form>
+        
+        <div id="sendMessageResponse" class="response-area"></div>
+    </div>
+
+    <!-- Send PDF Card -->
+    <div class="api-card">
+        <h3>
+            <i class="fas fa-file-pdf text-red-500"></i>
+            Send PDF Document
+            <span class="badge badge-post">POST</span>
+        </h3>
+        
+        <form id="sendPdfForm">
+            <div class="form-group">
+                <label>Phone Number <span class="text-red-500">*</span></label>
+                <input type="text" id="pdfPhoneNumber" placeholder="256XXXXXXXXX" required>
+                <p class="text-xs text-gray-400 mt-1">Format: 256XXXXXXXXX (without +)</p>
+            </div>
+            
+            <div class="form-group">
+                <label>PDF File <span class="text-red-500">*</span></label>
+                <div class="file-input-wrapper">
+                    <div class="file-input-label" id="pdfFileLabel">
+                        <i class="fas fa-upload"></i> Click to select PDF
+                    </div>
+                    <input type="file" id="pdfFile" accept=".pdf" required>
+                </div>
+                <p class="text-xs text-gray-400 mt-1" id="pdfFileName">No file selected</p>
+            </div>
+            
+            <div class="form-group">
+                <label>Filename (optional)</label>
+                <input type="text" id="pdfFilename" placeholder="document.pdf">
+            </div>
+            
+            <button type="submit" id="sendPdfBtn" class="btn-test btn-pdf">
+                <i class="fas fa-file-pdf"></i> Send PDF
+            </button>
+        </form>
+        
+        <div id="sendPdfResponse" class="response-area"></div>
+    </div>
+
+    <!-- Quick Test Numbers -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h4 class="text-sm font-semibold text-blue-800 mb-2">
+            <i class="fas fa-info-circle"></i> Test Numbers
+        </h4>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+            <div>
+                <span class="font-medium">Your Number:</span>
+                <span class="text-gray-600" id="userPhoneDisplay">Not set</span>
+            </div>
+            <div>
+                <span class="font-medium">Status:</span>
+                <span id="statusText" class="text-gray-600">Unknown</span>
+            </div>
+        </div>
+        <button onclick="setTestNumber()" class="mt-2 text-sm text-blue-600 hover:text-blue-800">
+            <i class="fas fa-sync"></i> Use my number
+        </button>
+    </div>
+</div>
+
+<script>
+    // ==================== STATE ====================
+    let selectedPdfBase64 = null;
+    let selectedPdfName = null;
+    let testPhoneNumber = '';
+    
+    // ==================== CONNECTION TEST ====================
+    async function testConnection() {
+        const btn = document.getElementById('testConnectionBtn');
+        const responseDiv = document.getElementById('connectionResponse');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+        responseDiv.className = 'response-area show';
+        responseDiv.innerHTML = '<p class="text-gray-500"><i class="fas fa-spinner fa-spin"></i> Checking connection...</p>';
+        
+        try {
+            const response = await fetch('/whatsapp-integration/api/status');
+            const result = await response.json();
+            
+            if (result.success) {
+                const status = result.status;
+                const statusIcon = status.ready ? '✅' : '🔄';
+                const statusText = status.ready ? 'Connected' : (status.qrCode ? 'QR Ready' : 'Disconnected');
+                
+                responseDiv.innerHTML = `
+                    <div class="success">
+                        <strong>✅ Status:</strong> ${statusText}<br>
+                        <strong>📱 QR Code:</strong> ${status.qrCode ? 'Available' : 'Not available'}<br>
+                        <strong>🔄 Reconnect Attempts:</strong> ${status.reconnectAttempts || 0}
+                    </div>
+                `;
+                
+                updateStatusBadge(status.ready, status.qrCode);
+            } else {
+                responseDiv.innerHTML = `<div class="error">❌ ${result.message || 'Failed to get status'}</div>`;
+            }
+        } catch (error) {
+            responseDiv.innerHTML = `<div class="error">❌ Connection error: ${error.message}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-link"></i> Test Connection';
+        }
+    }
+    
+    function updateStatusBadge(ready, hasQr) {
+        const badge = document.getElementById('connectionStatus');
+        if (ready) {
+            badge.className = 'status-indicator connected';
+            badge.innerHTML = '<i class="fas fa-circle"></i> Connected';
+        } else if (hasQr) {
+            badge.className = 'status-indicator checking';
+            badge.innerHTML = '<i class="fas fa-circle"></i> Awaiting Scan';
+        } else {
+            badge.className = 'status-indicator disconnected';
+            badge.innerHTML = '<i class="fas fa-circle"></i> Disconnected';
+        }
+    }
+    
+    // ==================== SEND MESSAGE ====================
+    document.getElementById('sendMessageForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const phoneNumber = document.getElementById('phoneNumber').value.trim();
+        const message = document.getElementById('messageText').value.trim();
+        const btn = document.getElementById('sendMsgBtn');
+        const responseDiv = document.getElementById('sendMessageResponse');
+        
+        if (!phoneNumber || !message) {
+            alert('Please fill in both phone number and message');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        responseDiv.className = 'response-area show';
+        responseDiv.innerHTML = '<p class="text-gray-500"><i class="fas fa-spinner fa-spin"></i> Sending message...</p>';
+        
+        try {
+            const response = await fetch('/whatsapp-integration/api/send-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone_number: phoneNumber,
+                    message: message
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                responseDiv.innerHTML = `
+                    <div class="success">
+                        <strong>✅ Message sent successfully!</strong><br>
+                        <strong>📱 To:</strong> ${phoneNumber}<br>
+                        <strong>💬 Message:</strong> ${message}
+                    </div>
+                `;
+                // Clear message field
+                document.getElementById('messageText').value = '';
+            } else {
+                responseDiv.innerHTML = `<div class="error">❌ ${result.message || 'Failed to send message'}</div>`;
+            }
+        } catch (error) {
+            responseDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Message';
+        }
+    });
+    
+    function setQuickMessage(text) {
+        document.getElementById('messageText').value = text;
+    }
+    
+    // ==================== SEND PDF ====================
+    document.getElementById('pdfFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            selectedPdfBase64 = event.target.result.split(',')[1];
+            selectedPdfName = file.name;
+            document.getElementById('pdfFileName').textContent = file.name;
+            document.getElementById('pdfFileLabel').className = 'file-input-label has-file';
+            document.getElementById('pdfFileLabel').innerHTML = `<i class="fas fa-check-circle text-green-500"></i> ${file.name} selected`;
+        };
+        reader.readAsDataURL(file);
+    });
+    
+    document.getElementById('sendPdfForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const phoneNumber = document.getElementById('pdfPhoneNumber').value.trim();
+        const filename = document.getElementById('pdfFilename').value.trim() || selectedPdfName || 'document.pdf';
+        const btn = document.getElementById('sendPdfBtn');
+        const responseDiv = document.getElementById('sendPdfResponse');
+        
+        if (!phoneNumber) {
+            alert('Please enter a phone number');
+            return;
+        }
+        
+        if (!selectedPdfBase64) {
+            alert('Please select a PDF file');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending PDF...';
+        responseDiv.className = 'response-area show';
+        responseDiv.innerHTML = '<p class="text-gray-500"><i class="fas fa-spinner fa-spin"></i> Sending PDF...</p>';
+        
+        try {
+            const response = await fetch('/whatsapp-integration/api/send-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone_number: phoneNumber,
+                    pdf_base64: selectedPdfBase64,
+                    filename: filename
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                responseDiv.innerHTML = `
+                    <div class="success">
+                        <strong>✅ PDF sent successfully!</strong><br>
+                        <strong>📱 To:</strong> ${phoneNumber}<br>
+                        <strong>📄 File:</strong> ${filename}
+                    </div>
+                `;
+                // Reset file input
+                document.getElementById('pdfFile').value = '';
+                document.getElementById('pdfFileName').textContent = 'No file selected';
+                document.getElementById('pdfFileLabel').className = 'file-input-label';
+                document.getElementById('pdfFileLabel').innerHTML = '<i class="fas fa-upload"></i> Click to select PDF';
+                selectedPdfBase64 = null;
+                selectedPdfName = null;
+            } else {
+                responseDiv.innerHTML = `<div class="error">❌ ${result.message || 'Failed to send PDF'}</div>`;
+            }
+        } catch (error) {
+            responseDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-file-pdf"></i> Send PDF';
+        }
+    });
+    
+    // ==================== HELPERS ====================
+    function setTestNumber() {
+        // Try to get user's phone from session or use a default
+        const phoneInput = document.getElementById('phoneNumber');
+        const pdfPhoneInput = document.getElementById('pdfPhoneNumber');
+        const testNumber = '256712345678'; // Replace with actual user phone
+        
+        phoneInput.value = testNumber;
+        pdfPhoneInput.value = testNumber;
+        document.getElementById('userPhoneDisplay').textContent = testNumber;
+        document.getElementById('statusText').textContent = 'Test number set';
+    }
+    
+    // Auto test connection on load
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(testConnection, 1000);
+        setTestNumber();
+    });
+    
+    // Poll status every 30 seconds
+    setInterval(testConnection, 30000);
+</script>
+{% endblock %}

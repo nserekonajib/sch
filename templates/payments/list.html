@@ -36,6 +36,14 @@
     .btn-gradient:hover {
         background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
     }
+    .btn-whatsapp {
+        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+        color: white;
+    }
+    .btn-whatsapp:hover {
+        background: linear-gradient(135deg, #128C7E 0%, #075E54 100%);
+        transform: translateY(-2px);
+    }
     .loader {
         border: 3px solid #f3f3f3;
         border-top: 3px solid #ffa500;
@@ -71,23 +79,156 @@
         font-size: 14px;
         font-weight: 500;
     }
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .toast-success {
+        background: #d1fae5;
+        color: #065f46;
+        border-left: 4px solid #22c55e;
+    }
+    .toast-error {
+        background: #fee2e2;
+        color: #991b1b;
+        border-left: 4px solid #ef4444;
+    }
+    .toast-warning {
+        background: #fef3c7;
+        color: #d97706;
+        border-left: 4px solid #f59e0b;
+    }
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    .action-buttons {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .action-buttons button {
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .action-buttons button:hover {
+        transform: scale(1.05);
+    }
+    .action-buttons button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+    .btn-sm-whatsapp {
+        background: #25D366;
+        color: white;
+    }
+    .btn-sm-whatsapp:hover:not(:disabled) {
+        background: #128C7E;
+    }
+    .btn-sm-whatsapp-disabled {
+        background: #d1d5db;
+        color: #9ca3af;
+        cursor: not-allowed;
+    }
+    .btn-sm-print {
+        background: #3b82f6;
+        color: white;
+    }
+    .btn-sm-print:hover {
+        background: #2563eb;
+    }
+    .btn-sm-delete {
+        background: #ef4444;
+        color: white;
+    }
+    .btn-sm-delete:hover {
+        background: #dc2626;
+    }
+    .whatsapp-tooltip {
+        position: relative;
+        display: inline-block;
+    }
+    .whatsapp-tooltip .tooltip-text {
+        visibility: hidden;
+        width: 200px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px 10px;
+        position: absolute;
+        z-index: 100;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 11px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        white-space: normal;
+    }
+    .whatsapp-tooltip .tooltip-text::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #333 transparent transparent transparent;
+    }
+    .whatsapp-tooltip:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+    .progress-bar {
+        width: 100%;
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+    .progress-bar .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #25D366, #128C7E);
+        transition: width 0.3s ease;
+        border-radius: 2px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
     <!-- Page Header -->
-    <div class="mb-6 flex justify-between items-center">
+    <div class="mb-6 flex justify-between items-center flex-wrap gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-800 mb-1">Payment Management</h1>
             <p class="text-sm text-gray-600">View, filter, export, and manage fee payments</p>
         </div>
-        {% if institute %}
-        <div class="institute-badge">
-            <i class="fas fa-building mr-2"></i>
-            {{ institute.institute_name }}
+        <div class="flex items-center gap-3 flex-wrap">
+            {% if institute %}
+            <div class="institute-badge">
+                <i class="fas fa-building mr-2"></i>
+                {{ institute.institute_name }}
+            </div>
+            {% endif %}
+            <button onclick="sendReceiptWhatsApp()" id="whatsappBulkBtn" class="btn-whatsapp px-4 py-2 rounded-lg text-sm" style="display: none;">
+                <i class="fab fa-whatsapp"></i> Send Receipts
+            </button>
         </div>
-        {% endif %}
     </div>
 
     <!-- Statistics Cards -->
@@ -140,7 +281,7 @@
 
     <!-- Filter Bar -->
     <div class="filter-bar">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                 <input type="date" id="startDateFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
@@ -170,21 +311,30 @@
                 <input type="text" id="searchFilter" placeholder="Name, Receipt, Student ID..." 
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg">
             </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp Status</label>
+                <select id="whatsappStatusFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">All</option>
+                    <option value="sent">Sent</option>
+                    <option value="pending">Pending</option>
+                    <option value="failed">Failed</option>
+                </select>
+            </div>
         </div>
-        <div class="flex gap-2 mt-4">
+        <div class="flex flex-wrap gap-2 mt-4">
             <button onclick="loadPayments()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm">
                 <i class="fas fa-search"></i> Apply Filters
             </button>
-            <button onclick="resetFilters()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            <button onclick="resetFilters()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm">
                 <i class="fas fa-undo"></i> Reset
             </button>
-            <button onclick="exportPayments('excel')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            <button onclick="exportPayments('excel')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
                 <i class="fas fa-file-excel"></i> Export Excel
             </button>
-            <button onclick="exportPayments('csv')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button onclick="exportPayments('csv')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
                 <i class="fas fa-file-csv"></i> Export CSV
             </button>
-            <button id="bulkDeleteBtn" onclick="bulkDeletePayments()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" style="display: none;">
+            <button id="bulkDeleteBtn" onclick="bulkDeletePayments()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm" style="display: none;">
                 <i class="fas fa-trash"></i> Delete Selected
             </button>
         </div>
@@ -192,11 +342,13 @@
 
     <!-- Payments Table -->
     <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center flex-wrap gap-4">
             <h2 class="text-lg font-semibold text-gray-800">Payment Records</h2>
-            <div class="flex items-center gap-2">
-                <label class="text-sm text-gray-600">Select All</label>
-                <input type="checkbox" id="selectAllCheckbox" class="checkbox-select" onclick="toggleSelectAll()">
+            <div class="flex items-center gap-3">
+                <label class="text-sm text-gray-600 flex items-center gap-2">
+                    <span>Select All</span>
+                    <input type="checkbox" id="selectAllCheckbox" class="checkbox-select" onclick="toggleSelectAll()">
+                </label>
             </div>
         </div>
         <div class="overflow-x-auto">
@@ -207,6 +359,7 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt #</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
                         {% if is_admin %}
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Institute</th>
@@ -215,12 +368,13 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">WhatsApp</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="paymentsTableBody" class="divide-y divide-gray-200">
                     <tr>
-                        <td colspan="12" class="px-4 py-8 text-center">
+                        <td colspan="13" class="px-4 py-8 text-center">
                             <div class="loader mx-auto"></div>
                             <p class="mt-2 text-gray-400">Loading payments...</p>
                         </td>
@@ -230,7 +384,7 @@
         </div>
         
         <!-- Pagination -->
-        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center flex-wrap gap-4">
             <div class="text-sm text-gray-600">
                 Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalRecords">0</span> records
             </div>
@@ -264,22 +418,68 @@
     </div>
 </div>
 
+<!-- WhatsApp Send Modal -->
+<div id="whatsappModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4">
+        <div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-gray-800">
+                <i class="fab fa-whatsapp text-green-500 mr-2"></i> Send Receipt PDF via WhatsApp
+            </h3>
+            <button onclick="closeWhatsAppModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-5">
+            <div class="mb-4">
+                <p class="text-sm text-gray-600 mb-2">Send receipt PDF to <strong id="whatsappStudentName">-</strong></p>
+                <p class="text-sm text-gray-600 mb-4">Phone: <strong id="whatsappPhoneNumber">-</strong></p>
+                <p class="text-sm text-gray-600 mb-2">Receipt: <strong id="whatsappReceiptNumber">-</strong></p>
+            </div>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                <p class="text-sm text-green-800">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    The receipt will be sent as a PDF document via WhatsApp.
+                </p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="sendWhatsAppReceipt()" id="whatsappSendBtn" class="flex-1 btn-whatsapp py-2.5 rounded-lg font-medium">
+                    <i class="fas fa-spinner fa-spin hidden" id="whatsappSpinner"></i>
+                    <span id="whatsappBtnText"><i class="fab fa-whatsapp"></i> Send Receipt PDF</span>
+                </button>
+                <button onclick="closeWhatsAppModal()" class="flex-1 border border-gray-300 py-2.5 rounded-lg text-gray-700 hover:bg-gray-50">
+                    Cancel
+                </button>
+            </div>
+            <div id="whatsappProgress" class="mt-3 hidden">
+                <div class="progress-bar">
+                    <div id="whatsappProgressFill" class="progress-fill" style="width: 0%"></div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1 text-center" id="whatsappProgressText">Sending...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     let currentPage = 1;
     let totalPages = 1;
     let selectedPaymentId = null;
     let selectedPayments = new Set();
+    let currentReceiptData = null;
     let isAdmin = {{ is_admin|tojson }};
+    let paymentsData = [];
+    let isSendingBulk = false;
 
     async function loadPayments() {
         const tbody = document.getElementById('paymentsTableBody');
-        tbody.innerHTML = '<tr><td colspan="12" class="px-4 py-8 text-center"><div class="loader mx-auto"></div><p>Loading...</p></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="px-4 py-8 text-center"><div class="loader mx-auto"></div><p>Loading...</p></td></tr>';
         
         const startDate = document.getElementById('startDateFilter').value;
         const endDate = document.getElementById('endDateFilter').value;
         const method = document.getElementById('methodFilter').value;
         const search = document.getElementById('searchFilter').value;
         const instituteId = document.getElementById('instituteFilter')?.value || '';
+        const whatsappStatus = document.getElementById('whatsappStatusFilter')?.value || '';
         
         let url = `/payments/api/list?page=${currentPage}&per_page=20`;
         if (startDate) url += `&start_date=${startDate}`;
@@ -287,21 +487,23 @@
         if (method) url += `&payment_method=${method}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (instituteId && isAdmin) url += `&institute_id=${instituteId}`;
+        if (whatsappStatus) url += `&whatsapp_status=${whatsappStatus}`;
         
         try {
             const response = await fetch(url);
             const data = await response.json();
             
             if (data.success) {
-                renderPayments(data.payments);
+                paymentsData = data.payments || [];
+                renderPayments(paymentsData);
                 updatePagination(data.page, data.total_pages, data.total);
                 loadSummary();
             } else {
-                tbody.innerHTML = `<tr><td colspan="12" class="px-4 py-8 text-center text-red-500">${data.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="13" class="px-4 py-8 text-center text-red-500">${data.message}</td></tr>`;
             }
         } catch (error) {
             console.error('Error:', error);
-            tbody.innerHTML = '<tr><td colspan="12" class="px-4 py-8 text-center text-red-500">Error loading payments</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="13" class="px-4 py-8 text-center text-red-500">Error loading payments</td></tr>';
         }
     }
 
@@ -309,7 +511,7 @@
         const tbody = document.getElementById('paymentsTableBody');
         
         if (!payments || payments.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="12" class="px-4 py-8 text-center text-gray-400">No payments found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="13" class="px-4 py-8 text-center text-gray-400">No payments found</td></tr>';
             return;
         }
         
@@ -324,6 +526,39 @@
                 `UGX ${payment.current_balance.toLocaleString()}`;
             
             const isSelected = selectedPayments.has(payment.id);
+            
+            // WhatsApp status icon
+            let whatsappIcon = '<span class="text-gray-400"><i class="fas fa-minus"></i></span>';
+            if (payment.whatsapp_status === 'sent') {
+                whatsappIcon = '<span class="text-green-500" title="Sent"><i class="fas fa-check-circle"></i></span>';
+            } else if (payment.whatsapp_status === 'pending') {
+                whatsappIcon = '<span class="text-yellow-500" title="Pending"><i class="fas fa-clock"></i></span>';
+            } else if (payment.whatsapp_status === 'failed') {
+                whatsappIcon = '<span class="text-red-500" title="Failed"><i class="fas fa-times-circle"></i></span>';
+            }
+            
+            // Check if phone number exists
+            const hasPhone = payment.phone_number && payment.phone_number !== 'N/A' && payment.phone_number !== '';
+            
+            // WhatsApp button - always show but disabled if no phone
+            let whatsappButton = '';
+            if (hasPhone) {
+                whatsappButton = `
+                    <button onclick="openWhatsAppModal('${payment.id}', '${escapeJs(payment.student_name)}', '${payment.phone_number}', '${payment.receipt_number}')" 
+                            class="btn-sm-whatsapp" title="Send Receipt PDF via WhatsApp">
+                        <i class="fab fa-whatsapp"></i>
+                    </button>
+                `;
+            } else {
+                whatsappButton = `
+                    <div class="whatsapp-tooltip">
+                        <button class="btn-sm-whatsapp-disabled" disabled title="No phone number available">
+                            <i class="fab fa-whatsapp"></i>
+                        </button>
+                        <span class="tooltip-text">No phone number available for this student</span>
+                    </div>
+                `;
+            }
             
             let rowHtml = '<tr class="payment-row hover:bg-gray-50">';
             
@@ -342,6 +577,7 @@
                         <p class="text-xs text-gray-500">ID: ${payment.student_id_display}</p>
                     </div>
                 </td>
+                <td class="px-4 py-3 text-sm text-gray-600">${payment.phone_number || 'N/A'}</td>
                 <td class="px-4 py-3 text-sm text-gray-600">${payment.class_name}</td>`;
             
             if (isAdmin) {
@@ -362,12 +598,18 @@
                     <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">${statusText}</span>
                 </td>
                 <td class="px-4 py-3 text-center">
-                    <button onclick="viewReceipt('${payment.receipt_number}')" class="text-blue-600 hover:text-blue-800 mr-2" title="View Receipt">
-                        <i class="fas fa-print"></i>
-                    </button>
-                    <button onclick="deletePayment('${payment.id}', '${payment.receipt_number}')" class="text-red-600 hover:text-red-800" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    ${whatsappIcon}
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <div class="action-buttons">
+                        ${whatsappButton}
+                        <button onclick="viewReceipt('${payment.receipt_number}')" class="btn-sm-print" title="View Receipt">
+                            <i class="fas fa-print"></i>
+                        </button>
+                        <button onclick="deletePayment('${payment.id}', '${payment.receipt_number}')" class="btn-sm-delete" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>`;
             
@@ -375,6 +617,12 @@
         }).join('');
         
         updateBulkDeleteButton();
+        updateWhatsAppBulkButton();
+    }
+
+    function escapeJs(text) {
+        if (!text) return '';
+        return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
     }
 
     function togglePaymentSelection(paymentId) {
@@ -384,8 +632,8 @@
             selectedPayments.add(paymentId);
         }
         updateBulkDeleteButton();
+        updateWhatsAppBulkButton();
         
-        // Update select all checkbox
         const checkboxes = document.querySelectorAll('.payment-checkbox');
         const allChecked = checkboxes.length > 0 && Array.from(checkboxes).every(cb => cb.checked);
         if (document.getElementById('selectAllCheckbox')) {
@@ -408,12 +656,29 @@
         });
         
         updateBulkDeleteButton();
+        updateWhatsAppBulkButton();
     }
 
     function updateBulkDeleteButton() {
         const btn = document.getElementById('bulkDeleteBtn');
         if (btn) {
-            btn.style.display = selectedPayments.size > 0 ? 'block' : 'none';
+            btn.style.display = selectedPayments.size > 0 ? 'inline-block' : 'none';
+        }
+    }
+
+    function updateWhatsAppBulkButton() {
+        const btn = document.getElementById('whatsappBulkBtn');
+        if (btn) {
+            // Only show if selected payments have phone numbers
+            let hasPhone = false;
+            for (const paymentId of selectedPayments) {
+                const payment = paymentsData.find(p => p.id === paymentId);
+                if (payment && payment.phone_number && payment.phone_number !== 'N/A' && payment.phone_number !== '') {
+                    hasPhone = true;
+                    break;
+                }
+            }
+            btn.style.display = selectedPayments.size > 0 && hasPhone ? 'inline-block' : 'none';
         }
     }
 
@@ -490,6 +755,190 @@
         }
     }
 
+    // ==================== WHATSAPP FUNCTIONS ====================
+
+    function openWhatsAppModal(paymentId, studentName, phoneNumber, receiptNumber) {
+        currentReceiptData = {
+            paymentId: paymentId,
+            studentName: studentName,
+            phoneNumber: phoneNumber,
+            receiptNumber: receiptNumber
+        };
+        
+        document.getElementById('whatsappStudentName').textContent = studentName;
+        document.getElementById('whatsappPhoneNumber').textContent = phoneNumber;
+        document.getElementById('whatsappReceiptNumber').textContent = receiptNumber;
+        document.getElementById('whatsappModal').classList.remove('hidden');
+        document.getElementById('whatsappModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        document.getElementById('whatsappProgress').classList.add('hidden');
+    }
+
+    function closeWhatsAppModal() {
+        document.getElementById('whatsappModal').classList.add('hidden');
+        document.getElementById('whatsappModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        currentReceiptData = null;
+        document.getElementById('whatsappProgress').classList.add('hidden');
+    }
+
+    async function sendWhatsAppReceipt() {
+        if (!currentReceiptData) return;
+        
+        const btn = document.getElementById('whatsappSendBtn');
+        const spinner = document.getElementById('whatsappSpinner');
+        const btnText = document.getElementById('whatsappBtnText');
+        const progress = document.getElementById('whatsappProgress');
+        const progressFill = document.getElementById('whatsappProgressFill');
+        const progressText = document.getElementById('whatsappProgressText');
+        
+        btn.disabled = true;
+        spinner.classList.remove('hidden');
+        btnText.innerHTML = 'Sending...';
+        progress.classList.remove('hidden');
+        progressFill.style.width = '30%';
+        progressText.textContent = 'Generating receipt PDF...';
+        
+        try {
+            // Use the resend-receipt API to send PDF via WhatsApp
+            progressFill.style.width = '60%';
+            progressText.textContent = 'Sending via WhatsApp...';
+            
+            const response = await fetch(`/collect-fees/resend-receipt/${currentReceiptData.receiptNumber}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone_number: currentReceiptData.phoneNumber
+                })
+            });
+            
+            const result = await response.json();
+            
+            progressFill.style.width = '100%';
+            progressText.textContent = 'Complete!';
+            
+            if (result.success) {
+                showToast('✅ Receipt PDF sent via WhatsApp successfully!', 'success');
+                setTimeout(() => {
+                    closeWhatsAppModal();
+                    loadPayments(); // Refresh the list
+                }, 1000);
+            } else {
+                showToast('❌ Failed to send: ' + (result.message || 'Unknown error'), 'error');
+                setTimeout(() => {
+                    progress.classList.add('hidden');
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('Error sending WhatsApp:', error);
+            showToast('❌ Error sending receipt: ' + error.message, 'error');
+            progressFill.style.width = '100%';
+            progressFill.style.background = '#ef4444';
+            progressText.textContent = 'Failed!';
+            setTimeout(() => {
+                progress.classList.add('hidden');
+                progressFill.style.background = 'linear-gradient(90deg, #25D366, #128C7E)';
+            }, 2000);
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            btnText.innerHTML = '<i class="fab fa-whatsapp"></i> Send Receipt PDF';
+        }
+    }
+
+    async function sendReceiptWhatsApp() {
+        if (selectedPayments.size === 0) {
+            showToast('No payments selected', 'warning');
+            return;
+        }
+        
+        if (isSendingBulk) return;
+        
+        // Filter payments with phone numbers
+        const validPayments = [];
+        const invalidPayments = [];
+        
+        for (const paymentId of selectedPayments) {
+            const payment = paymentsData.find(p => p.id === paymentId);
+            if (payment && payment.phone_number && payment.phone_number !== 'N/A' && payment.phone_number !== '') {
+                validPayments.push(payment);
+            } else {
+                invalidPayments.push(paymentId);
+            }
+        }
+        
+        if (validPayments.length === 0) {
+            showToast('❌ None of the selected payments have phone numbers', 'error');
+            return;
+        }
+        
+        if (invalidPayments.length > 0) {
+            showToast(`⚠️ ${invalidPayments.length} payment(s) skipped (no phone number)`, 'warning');
+        }
+        
+        // Confirm bulk send
+        if (!confirm(`Send receipt PDFs to ${validPayments.length} student(s) via WhatsApp?`)) {
+            return;
+        }
+        
+        isSendingBulk = true;
+        const btn = document.getElementById('whatsappBulkBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        btn.disabled = true;
+        
+        let successCount = 0;
+        let failCount = 0;
+        let currentIndex = 0;
+        
+        showToast(`Sending ${validPayments.length} receipt PDF(s)...`, 'warning');
+        
+        for (const payment of validPayments) {
+            currentIndex++;
+            try {
+                // Use the resend-receipt API
+                const response = await fetch(`/collect-fees/resend-receipt/${payment.receipt_number}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone_number: payment.phone_number
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                    console.error('Failed for', payment.receipt_number, result.message);
+                }
+                
+                btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${currentIndex}/${validPayments.length}`;
+            } catch (error) {
+                console.error('Error sending to:', payment.id, error);
+                failCount++;
+            }
+        }
+        
+        selectedPayments.clear();
+        updateBulkDeleteButton();
+        updateWhatsAppBulkButton();
+        loadPayments(); // Refresh the list
+        
+        isSendingBulk = false;
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        
+        if (successCount > 0) {
+            showToast(`✅ ${successCount} sent, ${failCount} failed`, 'success');
+        } else {
+            showToast(`❌ Failed to send any receipts`, 'error');
+        }
+    }
+
+    // ==================== OTHER FUNCTIONS ====================
+
     async function exportPayments(format) {
         const startDate = document.getElementById('startDateFilter').value;
         const endDate = document.getElementById('endDateFilter').value;
@@ -522,13 +971,13 @@
                 a.click();
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
-                showMessage('Export completed successfully', 'success');
+                showToast('Export completed successfully', 'success');
             } else {
-                showMessage('Export failed', 'error');
+                showToast('Export failed', 'error');
             }
         } catch (error) {
             console.error('Error exporting:', error);
-            showMessage('Export failed', 'error');
+            showToast('Export failed', 'error');
         }
     }
 
@@ -552,14 +1001,14 @@
             const result = await response.json();
             
             if (result.success) {
-                showMessage(result.message, 'success');
+                showToast(result.message, 'success');
                 loadPayments();
             } else {
-                showMessage(result.message, 'error');
+                showToast(result.message, 'error');
             }
         } catch (error) {
             console.error('Error deleting:', error);
-            showMessage('Failed to delete payment', 'error');
+            showToast('Failed to delete payment', 'error');
         }
         
         selectedPaymentId = null;
@@ -567,7 +1016,7 @@
 
     async function bulkDeletePayments() {
         if (selectedPayments.size === 0) {
-            showMessage('No payments selected', 'warning');
+            showToast('No payments selected', 'warning');
             return;
         }
         
@@ -587,15 +1036,15 @@
             const result = await response.json();
             
             if (result.success) {
-                showMessage(result.message, 'success');
+                showToast(result.message, 'success');
                 selectedPayments.clear();
                 loadPayments();
             } else {
-                showMessage(result.message, 'error');
+                showToast(result.message, 'error');
             }
         } catch (error) {
             console.error('Error bulk deleting:', error);
-            showMessage('Failed to delete payments', 'error');
+            showToast('Failed to delete payments', 'error');
         }
     }
 
@@ -610,6 +1059,9 @@
         document.getElementById('searchFilter').value = '';
         if (document.getElementById('instituteFilter')) {
             document.getElementById('instituteFilter').value = '';
+        }
+        if (document.getElementById('whatsappStatusFilter')) {
+            document.getElementById('whatsappStatusFilter').value = '';
         }
         currentPage = 1;
         loadPayments();
@@ -628,22 +1080,15 @@
         return div.innerHTML;
     }
 
-    function showMessage(message, type) {
-        const flashContainer = document.getElementById('flashMessages');
-        if (!flashContainer) {
-            const container = document.createElement('div');
-            container.id = 'flashMessages';
-            container.className = 'flash-messages';
-            document.body.appendChild(container);
-        }
-        const flashMsg = document.createElement('div');
-        flashMsg.className = `flash-message ${type}`;
-        flashMsg.innerHTML = `<div class="flex items-center gap-2">
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-exclamation-circle'}"></i>
-            <span>${message}</span>
-        </div>`;
-        document.getElementById('flashMessages').appendChild(flashMsg);
-        setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
+    function showToast(message, type) {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
     }
 
     // Initialize
@@ -651,5 +1096,55 @@
         loadInstitutes();
     }
     loadPayments();
+
+    // ==================== SOCKET.IO CONNECTION ====================
+    const nodejsUrl = '{{ settings.nodejs_api_url if settings else "http://localhost:3000" }}';
+    console.log('Connecting to Node.js at:', nodejsUrl);
+    
+    // Connect to Node.js Socket.IO server
+    const socket = io(nodejsUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000
+    });
+    
+    // Socket event handlers
+    socket.on('connect', () => {
+        console.log('✅ Connected to Node.js Socket.IO server');
+        // Join the institute room
+        const instituteId = '{{ institute_id }}';
+        if (instituteId) {
+            socket.emit('join_institute', instituteId);
+            console.log('📌 Joined institute room:', instituteId);
+        }
+    });
+
+    // Check status via REST API
+    async function checkStatus() {
+        try {
+            const response = await fetch('/whatsapp-integration/api/status');
+            const result = await response.json();
+            
+            if (result.success && result.status) {
+                // Update UI based on status
+                const statusBadge = document.getElementById('statusBadge');
+                const qrContainer = document.getElementById('qrContainer');
+                
+                if (result.status.ready) {
+                    statusBadge.className = 'status-badge status-connected';
+                    statusBadge.innerHTML = '<i class="fas fa-circle mr-1"></i> Connected';
+                } else if (result.status.qrCode) {
+                    // QR exists but not connected - socket will handle display
+                }
+            }
+        } catch (error) {
+            console.error('Status check error:', error);
+        }
+    }
+
+    // Initial checks
+    setTimeout(checkStatus, 10000);
+    setInterval(checkStatus, 30000);
 </script>
 {% endblock %}

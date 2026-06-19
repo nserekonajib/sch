@@ -1,148 +1,436 @@
-<!-- templates/students/index.html - Student Management with Card/List View and Clickable Cards -->
+<!-- templates/students/index.html - Enhanced Student Management with Full Responsiveness -->
 {% extends "base.html" %}
 
 {% block title %}Student Management - Lunserk ERP{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Card Styles */
+    /* ===== Base Styles ===== */
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+    
+    /* ===== Card Styles ===== */
     .student-card {
-        transition: all 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
         position: relative;
         overflow: hidden;
-    }
-    .student-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
-    }
-    .student-card:active {
-        transform: translateY(0);
+        border: 2px solid transparent;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
     }
     
-    /* List View Styles */
+    .student-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.12), 0 8px 20px -6px rgba(0, 0, 0, 0.05);
+        border-color: #ffa500;
+    }
+    
+    .student-card:active {
+        transform: translateY(-2px) scale(0.99);
+    }
+    
+    .student-card .card-cover {
+        height: 120px;
+        background: linear-gradient(135deg, #ffa500 0%, #f97316 100%);
+        position: relative;
+        flex-shrink: 0;
+    }
+    
+    .student-card .card-cover .avatar {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        border: 3px solid white;
+        position: absolute;
+        bottom: -35px;
+        left: 16px;
+        object-fit: cover;
+        background: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .student-card .card-body {
+        padding: 20px 16px 12px 16px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .student-card .card-body .student-name {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 2px;
+        line-height: 1.2;
+    }
+    
+    .student-card .card-body .student-id {
+        font-size: 11px;
+        color: #ffa500;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        margin-bottom: 8px;
+    }
+    
+    .student-card .card-body .student-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 4px;
+    }
+    
+    .student-card .card-body .detail-tag {
+        font-size: 10px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        background: #f1f5f9;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: 500;
+    }
+    
+    .student-card .card-body .detail-tag i {
+        font-size: 9px;
+        color: #ffa500;
+    }
+    
+    .student-card .card-actions {
+        padding: 10px 16px 16px 16px;
+        display: flex;
+        gap: 8px;
+        border-top: 1px solid #f1f5f9;
+        flex-shrink: 0;
+    }
+    
+    .student-card .card-actions .btn-action {
+        flex: 1;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+    
+    .student-card .card-actions .btn-edit {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
+    .student-card .card-actions .btn-edit:hover {
+        background: #dbeafe;
+        transform: scale(1.02);
+    }
+    
+    .student-card .card-actions .btn-status {
+        background: #fef2f2;
+        color: #ef4444;
+    }
+    .student-card .card-actions .btn-status.active {
+        background: #ecfdf5;
+        color: #10b981;
+    }
+    .student-card .card-actions .btn-status:hover {
+        transform: scale(1.02);
+    }
+    
+    .student-card .card-click-hint {
+        position: absolute;
+        bottom: 10px;
+        right: 14px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 10px;
+        color: #94a3b8;
+        font-weight: 500;
+    }
+    .student-card:hover .card-click-hint {
+        opacity: 1;
+    }
+    
+    /* ===== List View Styles ===== */
     .student-list-item {
         transition: all 0.2s ease;
         cursor: pointer;
-    }
-    .student-list-item:hover {
-        background-color: #fef3c7;
-        transform: translateX(4px);
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
     }
     
-    /* View Toggle Buttons */
-    .view-toggle-btn {
-        transition: all 0.2s ease;
-    }
-    .view-toggle-btn.active {
-        background-color: #ffa500;
-        color: white;
+    .student-list-item:hover {
+        background: #fffbeb;
         border-color: #ffa500;
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(255, 165, 0, 0.08);
     }
+    
+    .student-list-item .list-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 18px;
+        color: #92400e;
+    }
+    
+    .student-list-item .list-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 16px;
+    }
+    
+    .student-list-item .list-info .name {
+        font-weight: 600;
+        color: #1a1a2e;
+        font-size: 14px;
+        white-space: nowrap;
+    }
+    
+    .student-list-item .list-info .id {
+        font-size: 11px;
+        color: #ffa500;
+        font-weight: 500;
+    }
+    
+    .student-list-item .list-info .class-tag {
+        font-size: 11px;
+        color: #475569;
+        background: #f1f5f9;
+        padding: 2px 10px;
+        border-radius: 12px;
+        white-space: nowrap;
+    }
+    
+    .student-list-item .list-info .category-tag {
+        font-size: 10px;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    
+    .student-list-item .list-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    
+    .student-list-item .list-actions button {
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: none;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    /* ===== View Toggle Buttons ===== */
+    .view-toggle-btn {
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: 8px 18px;
+        border: none;
+        background: white;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: 8px;
+    }
+    
+    .view-toggle-btn:hover {
+        background: #f1f5f9;
+        color: #1a1a2e;
+    }
+    
+    .view-toggle-btn.active {
+        background: #ffa500;
+        color: white;
+        box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+    }
+    
     .view-toggle-btn.active i {
         color: white;
     }
     
-    .btn-gradient {
-        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-    }
-    .btn-gradient:hover {
-        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
-        transform: translateY(-2px);
-    }
-    .btn-gradient:disabled {
-        opacity: 0.6;
-        transform: none;
-        cursor: not-allowed;
+    .view-toggle-btn i {
+        margin-right: 6px;
+        font-size: 14px;
     }
     
+    /* ===== Gradient Buttons ===== */
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #f97316 100%);
+        color: white;
+        border: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 14px rgba(255, 165, 0, 0.25);
+    }
+    
+    .btn-gradient:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(255, 165, 0, 0.35);
+    }
+    
+    .btn-gradient:active {
+        transform: translateY(0) scale(0.98);
+    }
+    
+    /* ===== Modals ===== */
     .modal-overlay {
-        animation: fadeIn 0.3s ease-out;
+        animation: fadeIn 0.25s ease-out;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
     }
+    
     .modal-container {
-        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
-    }
-    .success-checkmark {
-        animation: scaleIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+        animation: slideUp 0.35s cubic-bezier(0.34, 1.3, 0.64, 1);
     }
     
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
     }
+    
     @keyframes slideUp {
         from {
             opacity: 0;
-            transform: translateY(50px) scale(0.95);
+            transform: translateY(30px) scale(0.96);
         }
         to {
             opacity: 1;
             transform: translateY(0) scale(1);
         }
     }
+    
     @keyframes scaleIn {
-        from { transform: scale(0); }
-        to { transform: scale(1); }
+        from { transform: scale(0.6); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
     }
     
+    /* ===== Stat Cards ===== */
     .stat-card {
-        transition: all 0.2s;
+        transition: all 0.25s ease;
         cursor: pointer;
-    }
-    .stat-card:hover {
-        transform: translateY(-2px);
+        border-radius: 14px;
+        padding: 14px 16px;
+        background: white;
+        border-left: 4px solid;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    }
+    
+    .stat-card .stat-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a2e;
+        line-height: 1.2;
+    }
+    
+    .stat-card .stat-label {
+        font-size: 11px;
+        color: #94a3b8;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* ===== Status Badges ===== */
     .status-badge {
-        padding: 3px 8px;
+        padding: 3px 10px;
         border-radius: 20px;
         font-size: 10px;
         font-weight: 600;
+        letter-spacing: 0.3px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
     }
     .status-badge.active {
-        background-color: #10b981;
-        color: white;
+        background: #dcfce7;
+        color: #16a34a;
     }
     .status-badge.inactive {
-        background-color: #ef4444;
-        color: white;
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .status-badge.active i,
+    .status-badge.inactive i {
+        font-size: 8px;
     }
     
+    /* ===== Category Badges ===== */
     .category-badge {
         display: inline-block;
-        padding: 2px 6px;
+        padding: 2px 10px;
         border-radius: 12px;
         font-size: 9px;
-        font-weight: 500;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
     }
     .category-boarding {
-        background-color: #fef3c7;
+        background: #fef3c7;
         color: #d97706;
     }
     .category-day {
-        background-color: #d1fae5;
+        background: #d1fae5;
         color: #059669;
     }
     
+    /* ===== File Upload ===== */
     .file-upload-area {
         border: 2px dashed #e2e8f0;
         transition: all 0.3s;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
     }
     .file-upload-area:hover {
         border-color: #ffa500;
-        background-color: #fff7ed;
+        background: #fffbeb;
     }
     
-    .student-avatar {
-        width: 60px;
-        height: 60px;
-        object-fit: cover;
-    }
-    
+    /* ===== Shimmer ===== */
     .shimmer {
-        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
         background-size: 200% 200%;
-        animation: shimmer 1.2s ease-in-out infinite;
+        animation: shimmer 1.4s ease-in-out infinite;
+        border-radius: 14px;
+        height: 280px;
     }
     
     @keyframes shimmer {
@@ -150,259 +438,380 @@
         100% { background-position: -200% 0; }
     }
     
-    /* Students Grid */
+    /* ===== Grid ===== */
     .students-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 20px;
     }
     
-    /* List View Container */
     .students-list-view {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
     }
     
-    /* Balance Colors */
-    .balance-positive {
-        color: #dc2626;
-        font-weight: 600;
-    }
-    .balance-zero {
-        color: #10b981;
-        font-weight: 600;
-    }
-    .balance-negative {
-        color: #f59e0b;
-        font-weight: 600;
+    /* ===== Balance Colors ===== */
+    .balance-positive { color: #dc2626; font-weight: 600; }
+    .balance-zero { color: #10b981; font-weight: 600; }
+    .balance-negative { color: #f59e0b; font-weight: 600; }
+    
+    /* ===== Scrollable Modal Body ===== */
+    .modal-body-scroll {
+        max-height: calc(100vh - 180px);
+        overflow-y: auto;
+        padding: 20px;
     }
     
-    /* Clickable card hint */
-    .card-click-hint {
-        position: absolute;
-        bottom: 8px;
-        right: 12px;
-        opacity: 0;
-        transition: opacity 0.2s;
-        font-size: 10px;
-        color: #9ca3af;
+    .modal-body-scroll::-webkit-scrollbar {
+        width: 4px;
     }
-    .student-card:hover .card-click-hint {
-        opacity: 1;
+    .modal-body-scroll::-webkit-scrollbar-thumb {
+        background: #ffa500;
+        border-radius: 10px;
+    }
+    .modal-body-scroll::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    
+    /* ===== Responsive ===== */
+    @media (max-width: 640px) {
+        .students-grid {
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+        
+        .student-list-item {
+            flex-wrap: wrap;
+            padding: 10px 12px;
+        }
+        
+        .student-list-item .list-info {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+        
+        .student-list-item .list-info .name {
+            font-size: 13px;
+        }
+        
+        .stat-card .stat-value {
+            font-size: 18px;
+        }
+        
+        .modal-container {
+            margin: 10px;
+            max-height: 95vh;
+        }
+        
+        .view-toggle-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .view-toggle-btn i {
+            margin-right: 4px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .student-card .card-cover {
+            height: 100px;
+        }
+        
+        .student-card .card-cover .avatar {
+            width: 56px;
+            height: 56px;
+            bottom: -28px;
+            left: 12px;
+        }
+        
+        .student-card .card-body {
+            padding: 16px 12px 8px 12px;
+        }
+        
+        .student-card .card-body .student-name {
+            font-size: 14px;
+        }
+        
+        .student-card .card-actions .btn-action {
+            font-size: 10px;
+            padding: 4px 8px;
+        }
+    }
+    
+    /* ===== Success Checkmark ===== */
+    .success-checkmark {
+        animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    
+    /* ===== Load More Button ===== */
+    #loadMoreBtn {
+        transition: all 0.3s;
+        padding: 10px 28px;
+        border-radius: 12px;
+        font-weight: 600;
+        border: 2px solid #ffa500;
+        background: transparent;
+        color: #ffa500;
+        cursor: pointer;
+    }
+    
+    #loadMoreBtn:hover {
+        background: #ffa500;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(255, 165, 0, 0.2);
+    }
+    
+    #loadMoreBtn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+    
+    /* ===== Form Inputs ===== */
+    .form-input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 13px;
+        transition: all 0.2s;
+        background: white;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: #ffa500;
+        box-shadow: 0 0 0 3px rgba(255, 165, 0, 0.1);
+    }
+    
+    .form-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 4px;
+        letter-spacing: 0.3px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
-    <!-- Page Header -->
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4">
+    <!-- ===== HEADER ===== -->
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-1">Student Management</h1>
-            <p class="text-sm text-gray-600">Manage all students, enrollments, and student information</p>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+                <i class="fas fa-user-graduate text-orange-500"></i>
+                Student Management
+            </h1>
+            <p class="text-sm text-gray-500">Manage all students, enrollments, and student information</p>
         </div>
-        <div class="flex gap-2">
-            <!-- View Toggle Buttons -->
-            <div class="flex rounded-lg border border-gray-200 overflow-hidden mr-2">
+        <div class="flex flex-wrap gap-2">
+            <!-- View Toggle -->
+            <div class="flex rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
                 <button id="cardViewToggle" onclick="setViewType('card')" 
-                        class="view-toggle-btn px-4 py-2 bg-white text-gray-600 hover:bg-gray-50 transition-all">
+                        class="view-toggle-btn active">
                     <i class="fas fa-th-large"></i> Cards
                 </button>
                 <button id="listViewToggle" onclick="setViewType('list')" 
-                        class="view-toggle-btn px-4 py-2 bg-white text-gray-600 hover:bg-gray-50 transition-all">
+                        class="view-toggle-btn">
                     <i class="fas fa-list"></i> List
                 </button>
             </div>
             
-            <!-- Import Button -->
+            <!-- Import Buttons -->
             <button onclick="openImportModal()" 
-                    class="px-4 py-2 bg-white border border-orange-500 text-orange-500 rounded-lg text-sm font-medium hover:bg-orange-50 transition-all flex items-center gap-2">
+                    class="px-4 py-2 bg-white border-2 border-orange-500 text-orange-500 rounded-xl text-sm font-semibold hover:bg-orange-50 transition-all flex items-center gap-2 shadow-sm">
                 <i class="fas fa-upload text-sm"></i>
                 Import
             </button>
             
-            <!-- School Pay Import Button -->
             <button onclick="openSchoolPayImportModal()" 
-                    class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:from-green-600 hover:to-green-700 transition-all flex items-center gap-2 shadow-sm">
+                    class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold hover:from-green-600 hover:to-emerald-700 transition-all flex items-center gap-2 shadow-md">
                 <i class="fas fa-file-invoice-dollar text-sm"></i>
-                School Pay Import
+                School Pay
             </button>
             
-            <!-- Add Student Button -->
+            <!-- Add Student -->
             <button onclick="openAddModal()" 
-                    class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                    class="btn-gradient px-5 py-2 rounded-xl text-white text-sm font-semibold shadow-lg flex items-center gap-2">
                 <i class="fas fa-plus-circle text-sm"></i>
                 Add Student
             </button>
         </div>
     </div>
-
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6" id="statsContainer">
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-orange-500">
-            <p class="text-gray-500 text-xs">Total</p>
-            <p class="text-xl font-bold text-gray-800" id="statTotal">-</p>
+    
+    <!-- ===== STATS ===== -->
+    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-6" id="statsContainer">
+        <div class="stat-card border-l-orange-500">
+            <p class="stat-label">Total</p>
+            <p class="stat-value" id="statTotal">-</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-green-500">
-            <p class="text-gray-500 text-xs">Active</p>
-            <p class="text-xl font-bold text-gray-800" id="statActive">-</p>
+        <div class="stat-card border-l-green-500">
+            <p class="stat-label">Active</p>
+            <p class="stat-value" id="statActive">-</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-red-500">
-            <p class="text-gray-500 text-xs">Inactive</p>
-            <p class="text-xl font-bold text-gray-800" id="statInactive">-</p>
+        <div class="stat-card border-l-red-500">
+            <p class="stat-label">Inactive</p>
+            <p class="stat-value" id="statInactive">-</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-blue-500">
-            <p class="text-gray-500 text-xs">Boarding</p>
-            <p class="text-xl font-bold text-gray-800" id="statBoarding">-</p>
+        <div class="stat-card border-l-blue-500">
+            <p class="stat-label">Boarding</p>
+            <p class="stat-value" id="statBoarding">-</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-purple-500">
-            <p class="text-gray-500 text-xs">Day</p>
-            <p class="text-xl font-bold text-gray-800" id="statDay">-</p>
+        <div class="stat-card border-l-purple-500">
+            <p class="stat-label">Day</p>
+            <p class="stat-value" id="statDay">-</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm p-3 stat-card border-l-3 border-yellow-500">
-            <p class="text-gray-500 text-xs">Classes</p>
-            <p class="text-xl font-bold text-gray-800" id="statClasses">-</p>
+        <div class="stat-card border-l-yellow-500">
+            <p class="stat-label">Classes</p>
+            <p class="stat-value" id="statClasses">-</p>
         </div>
     </div>
-
-    <!-- Search and Filter -->
-    <div class="bg-white rounded-xl shadow-sm p-3 mb-5">
+    
+    <!-- ===== SEARCH & FILTERS ===== -->
+    <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 mb-5 border border-gray-100">
         <div class="flex flex-wrap gap-2">
-            <div class="flex-1 min-w-[180px]">
+            <div class="flex-1 min-w-[160px]">
                 <div class="relative">
                     <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
                     <input type="text" id="searchInput" placeholder="Search by name, ID..." 
-                           class="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+                           class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100">
                 </div>
             </div>
-            <select id="classFilter" class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+            <select id="classFilter" class="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 bg-white">
                 <option value="">All Classes</option>
                 {% for class in classes %}
                 <option value="{{ class.name }}">{{ class.name }}</option>
                 {% endfor %}
             </select>
-            <select id="categoryFilter" class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+            <select id="categoryFilter" class="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 bg-white">
                 <option value="">All Categories</option>
                 <option value="Boarding">Boarding</option>
-                <option value="Day">Day</option>
+                <option value="Day">Day Scholar</option>
             </select>
-            <select id="statusFilter" class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500">
+            <select id="statusFilter" class="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 bg-white">
                 <option value="">All Status</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
             </select>
         </div>
     </div>
-
-    <!-- Students Container -->
+    
+    <!-- ===== STUDENTS CONTAINER ===== -->
     <div id="studentsContainer">
-        <!-- Card View -->
         <div id="cardView" class="students-grid"></div>
-        
-        <!-- List View -->
         <div id="listView" class="students-list-view" style="display: none;"></div>
         
-        <!-- Loading State -->
+        <!-- Loading -->
         <div id="loadingState" class="students-grid">
-            <div class="shimmer rounded-xl h-64"></div>
-            <div class="shimmer rounded-xl h-64"></div>
-            <div class="shimmer rounded-xl h-64"></div>
-            <div class="shimmer rounded-xl h-64"></div>
-            <div class="shimmer rounded-xl h-64"></div>
-            <div class="shimmer rounded-xl h-64"></div>
+            <div class="shimmer"></div>
+            <div class="shimmer"></div>
+            <div class="shimmer"></div>
+            <div class="shimmer"></div>
+            <div class="shimmer"></div>
+            <div class="shimmer"></div>
         </div>
         
         <!-- No Results -->
-        <div id="noResults" class="text-center py-12 bg-white rounded-xl" style="display: none;">
-            <i class="fas fa-user-graduate text-5xl text-gray-300 mb-4"></i>
-            <h3 class="text-lg font-medium text-gray-600 mb-2">No students found</h3>
-            <p class="text-gray-400">Try adjusting your search or filter criteria</p>
-            <button onclick="openAddModal()" class="mt-4 btn-gradient px-4 py-2 rounded-lg text-white text-sm">
-                <i class="fas fa-plus-circle"></i> Add Student
+        <div id="noResults" class="text-center py-16 bg-white rounded-xl border border-gray-100" style="display: none;">
+            <i class="fas fa-user-graduate text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-lg font-semibold text-gray-600 mb-2">No students found</h3>
+            <p class="text-sm text-gray-400 mb-4">Try adjusting your search or filter criteria</p>
+            <button onclick="openAddModal()" class="btn-gradient px-6 py-2.5 rounded-xl text-white text-sm font-semibold">
+                <i class="fas fa-plus-circle mr-2"></i> Add Student
             </button>
         </div>
     </div>
-
-    <!-- Load More Button -->
+    
+    <!-- ===== LOAD MORE ===== -->
     <div id="loadMoreContainer" class="text-center mt-6 mb-8 hidden">
-        <button id="loadMoreBtn" 
-                class="px-6 py-2 bg-orange-50 border border-orange-500 text-orange-600 rounded-lg text-sm font-medium hover:bg-orange-100 transition-all flex items-center gap-2 mx-auto disabled:opacity-50 disabled:cursor-not-allowed">
+        <button id="loadMoreBtn">
             <i class="fas fa-spinner fa-spin hidden"></i>
             <i class="fas fa-arrow-down"></i>
             Load More Students
-            <span id="loadMoreCount" class="text-xs text-orange-400 ml-1"></span>
+            <span id="loadMoreCount" class="text-xs opacity-70 ml-1"></span>
         </button>
     </div>
 </div>
 
-<!-- Add/Edit Student Modal -->
-<div id="studentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
-    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 my-8 transform transition-all modal-container">
-        <div class="sticky top-0 bg-white rounded-t-xl border-b border-gray-200 px-5 py-3 flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-800" id="modalTitle">Add New Student</h3>
-            <button onclick="closeStudentModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-lg"></i>
+<!-- ===== ADD/EDIT STUDENT MODAL ===== -->
+<div id="studentModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-3 my-8 transform transition-all modal-container">
+        <div class="sticky top-0 bg-white rounded-t-2xl border-b border-gray-200 px-5 py-4 flex items-center justify-between z-10">
+            <h3 class="text-lg font-bold text-gray-800" id="modalTitle">Add New Student</h3>
+            <button onclick="closeStudentModal()" class="text-gray-400 hover:text-gray-600 hover:rotate-90 transition-all duration-200">
+                <i class="fas fa-times text-xl"></i>
             </button>
         </div>
         
-        <form id="studentForm" class="p-5 max-h-[calc(100vh-120px)] overflow-y-auto">
+        <form id="studentForm" class="modal-body-scroll">
             <input type="hidden" name="student_id" id="studentId">
+            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="md:col-span-2">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Student Information</h4>
+                    <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                        <i class="fas fa-user text-orange-500"></i> Student Information
+                    </h4>
+                </div>
+                
+                <div>
+                    <label class="form-label">Full Name <span class="text-red-500">*</span></label>
+                    <input type="text" name="name" id="studentName" required class="form-input" placeholder="e.g. John Doe">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Full Name *</label>
-                    <input type="text" name="name" id="studentName" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Gender *</label>
-                    <select name="gender" id="studentGender" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <label class="form-label">Gender <span class="text-red-500">*</span></label>
+                    <select name="gender" id="studentGender" required class="form-input">
                         <option value="">Select</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Date of Birth *</label>
-                    <input type="date" name="date_of_birth" id="studentDob" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <label class="form-label">Date of Birth <span class="text-red-500">*</span></label>
+                    <input type="date" name="date_of_birth" id="studentDob" required class="form-input">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Nationality *</label>
-                    <select name="nationality" id="studentNationality" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <label class="form-label">Nationality <span class="text-red-500">*</span></label>
+                    <select name="nationality" id="studentNationality" required class="form-input">
                         <option value="">Select</option>
-                        <option value="Ugandan">Uganda</option>
+                        <option value="Ugandan">Ugandan</option>
                         <option value="Foreign">Foreign</option>
                     </select>
                 </div>
                 <div class="md:col-span-2">
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Address</label>
-                    <textarea name="address" id="studentAddress" rows="2" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
+                    <label class="form-label">Address</label>
+                    <textarea name="address" id="studentAddress" rows="2" class="form-input" placeholder="Enter address"></textarea>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Contact Number *</label>
-                    <input type="tel" name="contact_number" id="studentContact" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <label class="form-label">Contact Number <span class="text-red-500">*</span></label>
+                    <input type="tel" name="contact_number" id="studentContact" required class="form-input" placeholder="e.g. 256XXXXXXXXX">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Email</label>
-                    <input type="email" name="email" id="studentEmail" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" id="studentEmail" class="form-input" placeholder="john@example.com">
                 </div>
                 
                 <div class="md:col-span-2 mt-2">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Other Information</h4>
+                    <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                        <i class="fas fa-address-card text-orange-500"></i> Additional Information
+                    </h4>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Father's Name</label>
-                    <input type="text" name="father_name" id="studentFather" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <label class="form-label">Father's Name</label>
+                    <input type="text" name="father_name" id="studentFather" class="form-input" placeholder="Father's name">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Mother's Name</label>
-                    <input type="text" name="mother_name" id="studentMother" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <label class="form-label">Mother's Name</label>
+                    <input type="text" name="mother_name" id="studentMother" class="form-input" placeholder="Mother's name">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Religion *</label>
-                    <select name="religion" id="studentReligion" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <label class="form-label">Religion <span class="text-red-500">*</span></label>
+                    <select name="religion" id="studentReligion" required class="form-input">
                         <option value="">Select</option>
                         <option value="Hindu">Hindu</option>
                         <option value="Muslim">Muslim</option>
@@ -415,8 +824,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Occupation</label>
-                    <select name="occupation" id="studentOccupation" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <label class="form-label">Occupation</label>
+                    <select name="occupation" id="studentOccupation" class="form-input">
                         <option value="">Select</option>
                         <option value="Farmer">Farmer</option>
                         <option value="Employee">Employee</option>
@@ -427,76 +836,79 @@
                     </select>
                 </div>
                 <div class="md:col-span-2">
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Reason for Admission</label>
-                    <textarea name="reason_for_admission" id="studentReason" rows="2" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"></textarea>
+                    <label class="form-label">Reason for Admission</label>
+                    <textarea name="reason_for_admission" id="studentReason" rows="2" class="form-input" placeholder="Reason for admission"></textarea>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">All Parents</label>
-                    <select name="all_parents" id="studentParents" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <label class="form-label">All Parents/Guardians</label>
+                    <select name="all_parents" id="studentParents" class="form-input">
                         <option value="">Select</option>
                         <option value="Father">Father</option>
                         <option value="Mother">Mother</option>
                         <option value="Grandparents">Grandparents</option>
+                        <option value="Guardian">Guardian</option>
                         <option value="Others">Others</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Category *</label>
-                    <select name="category" id="studentCategory" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                    <label class="form-label">Category <span class="text-red-500">*</span></label>
+                    <select name="category" id="studentCategory" required class="form-input">
                         <option value="">Select</option>
                         <option value="Boarding">Boarding</option>
                         <option value="Day">Day Scholar</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Select Class *</label>
-                    <select name="class_id" id="studentClass" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
-                        <option value="">Select</option>
+                    <label class="form-label">Class <span class="text-red-500">*</span></label>
+                    <select name="class_id" id="studentClass" required class="form-input">
+                        <option value="">Select Class</option>
                         {% for class in classes %}
                         <option value="{{ class.id }}">{{ class.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Student Photo</label>
-                    <div class="file-upload-area rounded-lg p-2 text-center cursor-pointer" onclick="document.getElementById('photoInput').click()">
-                        <i class="fas fa-camera text-gray-400 text-sm"></i>
-                        <p class="text-xs text-gray-500">Click to upload</p>
+                    <label class="form-label">Student Photo</label>
+                    <div class="file-upload-area rounded-xl p-3 text-center cursor-pointer" onclick="document.getElementById('photoInput').click()">
+                        <i class="fas fa-camera text-2xl text-orange-400"></i>
+                        <p class="text-xs text-gray-500 mt-1">Click to upload photo</p>
                         <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="previewPhoto(this)">
                     </div>
                     <div id="photoPreview" class="mt-2 hidden">
-                        <img id="previewImg" class="w-12 h-12 rounded-full object-cover mx-auto">
+                        <img id="previewImg" class="w-14 h-14 rounded-full object-cover mx-auto border-2 border-orange-200">
                     </div>
                 </div>
             </div>
             
-            <div class="flex gap-2 pt-4 mt-4 border-t border-gray-200">
-                <button type="button" onclick="closeStudentModal()" class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 text-sm hover:bg-gray-50">
+            <div class="flex gap-3 pt-5 mt-4 border-t border-gray-200">
+                <button type="button" onclick="closeStudentModal()" class="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-xl text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-all">
                     Cancel
                 </button>
-                <button type="submit" class="flex-1 px-3 py-1.5 btn-gradient text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1">
-                    <i class="fas fa-save text-xs"></i>
-                    Save
+                <button type="submit" class="flex-1 px-4 py-2.5 btn-gradient rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2">
+                    <i class="fas fa-save text-sm"></i>
+                    Save Student
                 </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Import Modal -->
-<div id="importModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
-    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
-        <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-800">Import Students</h3>
-            <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-lg"></i>
+<!-- ===== IMPORT MODAL ===== -->
+<div id="importModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-3 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-upload text-orange-500"></i> Import Students
+            </h3>
+            <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600 hover:rotate-90 transition-all duration-200">
+                <i class="fas fa-times text-xl"></i>
             </button>
         </div>
         
         <form id="importForm" enctype="multipart/form-data" class="p-5">
-            <div class="mb-3">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Select Class *</label>
-                <select name="class_id" id="importClassSelect" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+            <div class="mb-4">
+                <label class="form-label">Select Class <span class="text-red-500">*</span></label>
+                <select name="class_id" id="importClassSelect" required class="form-input">
                     <option value="">Select Class</option>
                     {% for class in classes %}
                     <option value="{{ class.id }}">{{ class.name }}</option>
@@ -504,30 +916,31 @@
                 </select>
             </div>
             
-            <div class="mb-3">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Upload File (Excel/CSV)</label>
-                <div class="file-upload-area rounded-lg p-4 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()">
-                    <i class="fas fa-file-excel text-2xl text-orange-500 mb-1"></i>
-                    <p class="text-xs text-gray-500">Click to upload</p>
+            <div class="mb-4">
+                <label class="form-label">Upload File (Excel/CSV)</label>
+                <div class="file-upload-area rounded-xl p-6 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-file-excel text-4xl text-orange-500 mb-2"></i>
+                    <p class="text-sm text-gray-600 font-medium">Click to upload</p>
+                    <p class="text-xs text-gray-400 mt-1">Accepts .xlsx, .csv</p>
                     <input type="file" id="fileInput" name="file" accept=".xlsx,.csv" class="hidden" onchange="showFileName(this)">
                 </div>
-                <p id="fileName" class="text-xs text-gray-500 mt-1 hidden"></p>
+                <p id="fileName" class="text-xs text-gray-500 mt-2 hidden"></p>
             </div>
             
-            <div class="bg-blue-50 rounded-lg p-3 mb-3">
-                <p class="text-xs text-blue-800 font-medium mb-1">File Format:</p>
-                <p class="text-xs text-blue-700">Single column "Name" with student names</p>
-                <a href="{{ url_for('student.download_template') }}" class="text-xs text-blue-600 hover:underline mt-1 inline-block">
-                    <i class="fas fa-download"></i> Download Template
+            <div class="bg-blue-50 rounded-xl p-4 mb-4">
+                <p class="text-xs text-blue-800 font-semibold mb-1">📋 File Format:</p>
+                <p class="text-xs text-blue-700">Single column <strong>"Name"</strong> with student names</p>
+                <a href="{{ url_for('student.download_template') }}" class="text-xs text-blue-600 hover:underline mt-2 inline-block font-medium">
+                    <i class="fas fa-download mr-1"></i> Download Template
                 </a>
             </div>
             
-            <div class="flex gap-2 pt-2">
-                <button type="button" onclick="closeImportModal()" class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 text-sm hover:bg-gray-50">
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeImportModal()" class="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-xl text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-all">
                     Cancel
                 </button>
-                <button type="submit" class="flex-1 px-3 py-1.5 btn-gradient text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1">
-                    <i class="fas fa-upload text-xs"></i>
+                <button type="submit" class="flex-1 px-4 py-2.5 btn-gradient rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2">
+                    <i class="fas fa-upload text-sm"></i>
                     Import
                 </button>
             </div>
@@ -535,36 +948,22 @@
     </div>
 </div>
 
-<!-- Success Modal -->
-<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
-    <div class="bg-white rounded-xl shadow-2xl max-w-xs w-full mx-4 p-4 text-center transform transition-all modal-container">
-        <div class="success-checkmark">
-            <div class="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <i class="fas fa-check-circle text-2xl text-green-500"></i>
-            </div>
-        </div>
-        <h3 class="text-base font-semibold text-gray-800 mb-1" id="successTitle">Success!</h3>
-        <p class="text-xs text-gray-500 mb-3" id="successMessage">Student added successfully</p>
-        <button onclick="closeSuccessModal()" class="btn-gradient px-4 py-1.5 rounded-lg text-white text-sm font-medium">
-            Continue
-        </button>
-    </div>
-</div>
-
-<!-- School Pay Import Modal -->
-<div id="schoolPayImportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
-    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
-        <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-800">Import from School Pay File</h3>
-            <button onclick="closeSchoolPayImportModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-lg"></i>
+<!-- ===== SCHOOL PAY IMPORT MODAL ===== -->
+<div id="schoolPayImportModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-3 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-file-invoice-dollar text-green-500"></i> School Pay Import
+            </h3>
+            <button onclick="closeSchoolPayImportModal()" class="text-gray-400 hover:text-gray-600 hover:rotate-90 transition-all duration-200">
+                <i class="fas fa-times text-xl"></i>
             </button>
         </div>
         
         <form id="schoolPayImportForm" enctype="multipart/form-data" class="p-5">
             <div class="mb-4">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Select Class *</label>
-                <select name="class_id" id="schoolPayClassSelect" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500">
+                <label class="form-label">Select Class <span class="text-red-500">*</span></label>
+                <select name="class_id" id="schoolPayClassSelect" required class="form-input">
                     <option value="">Select Class</option>
                     {% for class in classes %}
                     <option value="{{ class.id }}">{{ class.name }}</option>
@@ -573,62 +972,80 @@
             </div>
             
             <div class="mb-4">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Upload School Pay File (Excel/CSV)</label>
-                <div class="file-upload-area rounded-lg p-4 text-center cursor-pointer border-2 border-dashed border-gray-300 hover:border-orange-500 transition-all" onclick="document.getElementById('schoolPayFileInput').click()">
-                    <i class="fas fa-file-invoice-dollar text-3xl text-orange-500 mb-2"></i>
-                    <p class="text-sm text-gray-600">Click to upload School Pay file</p>
+                <label class="form-label">Upload School Pay File</label>
+                <div class="file-upload-area rounded-xl p-6 text-center cursor-pointer" onclick="document.getElementById('schoolPayFileInput').click()">
+                    <i class="fas fa-file-invoice-dollar text-4xl text-green-500 mb-2"></i>
+                    <p class="text-sm text-gray-600 font-medium">Click to upload</p>
                     <p class="text-xs text-gray-400 mt-1">Accepts .xls, .xlsx, .csv</p>
                     <input type="file" id="schoolPayFileInput" name="file" accept=".xls,.xlsx,.csv" class="hidden" onchange="showSchoolPayFileName(this)">
                 </div>
                 <p id="schoolPayFileName" class="text-xs text-gray-500 mt-2 hidden"></p>
             </div>
             
-            <div class="bg-blue-50 rounded-lg p-3 mb-4">
-                <p class="text-xs text-blue-800 font-medium mb-1">File Format Requirements:</p>
-                <ul class="text-xs text-blue-700 space-y-1">
-                    <li>• <strong>Payment Code</strong> - Used as Student ID</li>
-                    <li>• <strong>First Name</strong> - Student's first name</li>
-                    <li>• <strong>Last Name</strong> - Student's last name</li>
-                    <li>• <strong>Student Phone</strong> - Will be formatted to 256XXXXXXXXX</li>
+            <div class="bg-green-50 rounded-xl p-4 mb-4">
+                <p class="text-xs text-green-800 font-semibold mb-1">📋 Required Columns:</p>
+                <ul class="text-xs text-green-700 space-y-1">
+                    <li>• <strong>Payment Code</strong> → Student ID</li>
+                    <li>• <strong>First Name</strong> → Student first name</li>
+                    <li>• <strong>Last Name</strong> → Student last name</li>
+                    <li>• <strong>Student Phone</strong> → 256XXXXXXXXX format</li>
                 </ul>
             </div>
             
-            <div class="flex gap-2 pt-2">
-                <button type="button" onclick="closeSchoolPayImportModal()" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-gray-600 text-sm hover:bg-gray-50 transition-all">
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeSchoolPayImportModal()" class="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-xl text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-all">
                     Cancel
                 </button>
-                <button type="submit" class="flex-1 px-3 py-2 btn-gradient text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2">
-                    <i class="fas fa-upload text-xs"></i>
-                    Import School Pay File
+                <button type="submit" class="flex-1 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all">
+                    <i class="fas fa-upload text-sm"></i>
+                    Import
                 </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Loading Overlay -->
-<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-xl p-4 flex flex-col items-center">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-2"></div>
-        <p class="text-xs text-gray-600">Processing...</p>
+<!-- ===== SUCCESS MODAL ===== -->
+<div id="successModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-3 p-6 text-center transform transition-all modal-container">
+        <div class="success-checkmark">
+            <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check-circle text-4xl text-green-500"></i>
+            </div>
+        </div>
+        <h3 class="text-xl font-bold text-gray-800 mb-1" id="successTitle">Success!</h3>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage">Student added successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2.5 rounded-xl text-white text-sm font-semibold">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- ===== LOADING OVERLAY ===== -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 flex flex-col items-center shadow-2xl">
+        <div class="animate-spin rounded-full h-10 w-10 border-4 border-orange-500 border-t-transparent mb-3"></div>
+        <p class="text-sm text-gray-600 font-medium">Processing...</p>
     </div>
 </div>
 
 <script>
-    // ==================== Configuration ====================
+    // ============================================================
+    // CONFIGURATION
+    // ============================================================
     let currentPhotoBase64 = null;
     let currentPhotoUrl = null;
     let classesData = {{ classes|tojson }};
     let editingStudentId = null;
     let currentViewType = 'card';
     
-    // Pagination state
     let allStudents = [];
     let currentPage = 1;
     const PAGE_SIZE = 30;
     let isLoading = false;
     let hasMore = true;
     let totalStudents = 0;
+    
     let filtersApplied = {
         search: '',
         class: '',
@@ -636,61 +1053,36 @@
         status: ''
     };
     
-    // Retry configuration
     const MAX_RETRIES = 2;
     const RETRY_DELAY_MS = 1000;
     
-    // ==================== Helper Functions ====================
+    // ============================================================
+    // HELPER FUNCTIONS
+    // ============================================================
     
-    // Navigate to student details page
     function goToStudentDetails(studentId) {
         window.location.href = `/student-details/${studentId}`;
     }
     
-    // Set view type (card or list)
-    function setViewType(type) {
-        currentViewType = type;
-        
-        // Update button styles
-        const cardBtn = document.getElementById('cardViewToggle');
-        const listBtn = document.getElementById('listViewToggle');
-        
-        if (type === 'card') {
-            cardBtn.classList.add('active');
-            listBtn.classList.remove('active');
-            document.getElementById('cardView').style.display = 'grid';
-            document.getElementById('listView').style.display = 'none';
-        } else {
-            cardBtn.classList.remove('active');
-            listBtn.classList.add('active');
-            document.getElementById('cardView').style.display = 'none';
-            document.getElementById('listView').style.display = 'flex';
-        }
-        
-        // Save preference to localStorage
-        localStorage.setItem('studentViewType', type);
-        
-        // Re-render with current students
-        renderStudents();
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
-    // Generic fetch with retry logic
     async function fetchWithRetry(url, options = {}, retryCount = 0) {
         try {
             const response = await fetch(url, options);
             if (response.ok) return response;
-            
             if (retryCount < MAX_RETRIES) {
-                const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
-                console.log(`Retry ${retryCount + 1}/${MAX_RETRIES} for ${url}`);
-                await new Promise(resolve => setTimeout(resolve, delay));
+                await new Promise(r => setTimeout(r, RETRY_DELAY_MS * Math.pow(2, retryCount)));
                 return fetchWithRetry(url, options, retryCount + 1);
             }
             return response;
         } catch (error) {
             if (retryCount < MAX_RETRIES) {
-                const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
-                await new Promise(resolve => setTimeout(resolve, delay));
+                await new Promise(r => setTimeout(r, RETRY_DELAY_MS * Math.pow(2, retryCount)));
                 return fetchWithRetry(url, options, retryCount + 1);
             }
             throw error;
@@ -699,181 +1091,163 @@
     
     async function fetchJSONWithRetry(url, options = {}) {
         const response = await fetchWithRetry(url, options);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();
     }
     
-    // ==================== API Calls ====================
+    // ============================================================
+    // VIEW TOGGLE
+    // ============================================================
+    
+    function setViewType(type) {
+        currentViewType = type;
+        const cardBtn = document.getElementById('cardViewToggle');
+        const listBtn = document.getElementById('listViewToggle');
+        
+        cardBtn.classList.toggle('active', type === 'card');
+        listBtn.classList.toggle('active', type === 'list');
+        
+        document.getElementById('cardView').style.display = type === 'card' ? 'grid' : 'none';
+        document.getElementById('listView').style.display = type === 'list' ? 'flex' : 'none';
+        
+        localStorage.setItem('studentViewType', type);
+        renderStudents();
+    }
+    
+    // ============================================================
+    // API CALLS
+    // ============================================================
     
     async function loadStats() {
         try {
             const result = await fetchJSONWithRetry('/students/stats');
             if (result.success) {
-                const stats = result.stats;
-                document.getElementById('statTotal').textContent = stats.total;
-                document.getElementById('statActive').textContent = stats.active;
-                document.getElementById('statInactive').textContent = stats.inactive;
-                document.getElementById('statBoarding').textContent = stats.boarding;
-                document.getElementById('statDay').textContent = stats.day;
-                document.getElementById('statClasses').textContent = stats.total_classes;
+                const s = result.stats;
+                document.getElementById('statTotal').textContent = s.total;
+                document.getElementById('statActive').textContent = s.active;
+                document.getElementById('statInactive').textContent = s.inactive;
+                document.getElementById('statBoarding').textContent = s.boarding;
+                document.getElementById('statDay').textContent = s.day;
+                document.getElementById('statClasses').textContent = s.total_classes;
             }
-        } catch (error) {
-            console.error('Error loading stats:', error);
-        }
+        } catch (e) { console.error('Stats error:', e); }
     }
     
-    async function fetchStudents(page = 1, pageSize = PAGE_SIZE) {
+    async function fetchStudents(page = 1, size = PAGE_SIZE) {
         if (isLoading) return [];
-        
         isLoading = true;
         
         try {
-            const params = new URLSearchParams({
-                page: page,
-                per_page: pageSize
-            });
-            
+            const params = new URLSearchParams({ page, per_page: size });
             if (filtersApplied.search) params.append('search', filtersApplied.search);
             if (filtersApplied.class) params.append('class', filtersApplied.class);
             if (filtersApplied.category) params.append('category', filtersApplied.category);
             if (filtersApplied.status) params.append('status', filtersApplied.status);
             
-            const url = `/students/api/students?${params.toString()}`;
-            const result = await fetchJSONWithRetry(url);
-            
+            const result = await fetchJSONWithRetry(`/students/api/students?${params}`);
             if (result.success) {
                 totalStudents = result.total || 0;
-                hasMore = result.has_more !== undefined ? result.has_more : (result.data.length === pageSize);
+                hasMore = result.has_more !== undefined ? result.has_more : (result.data.length === size);
                 return result.data || [];
             }
             return [];
-        } catch (error) {
-            console.error('Error fetching students:', error);
+        } catch (e) {
+            console.error('Fetch error:', e);
             return [];
         } finally {
             isLoading = false;
         }
     }
     
-    // Create student card (clickable)
+    // ============================================================
+    // RENDER FUNCTIONS
+    // ============================================================
+    
     function createStudentCard(student) {
         const div = document.createElement('div');
-        div.className = 'bg-white rounded-xl shadow-sm overflow-hidden student-card hover:shadow-md transition-all';
+        div.className = 'student-card';
         div.onclick = () => goToStudentDetails(student.id);
         
+        const initial = student.name ? student.name.charAt(0).toUpperCase() : 'S';
         const photoHtml = student.photo_url 
-            ? `<img src="${student.photo_url}" alt="${escapeHtml(student.name)}" class="w-full h-28 object-cover">`
-            : `<div class="w-full h-28 bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center">
-                <i class="fas fa-user-graduate text-3xl text-orange-400"></i>
-               </div>`;
+            ? `<img src="${student.photo_url}" alt="${escapeHtml(student.name)}" class="avatar">`
+            : `<div class="avatar" style="background: linear-gradient(135deg, #fef3c7, #fde68a); font-size: 24px; display: flex; align-items: center; justify-content: center; color: #92400e; font-weight: 700;">${initial}</div>`;
         
         const statusClass = student.status === 'active' ? 'active' : 'inactive';
+        const statusIcon = student.status === 'active' ? 'fa-circle-check' : 'fa-circle-xmark';
         const statusText = student.status === 'active' ? 'Active' : 'Inactive';
         
         const categoryDisplay = student.category ? 
             `<span class="category-badge ${student.category === 'Boarding' ? 'category-boarding' : 'category-day'}">
-                ${student.category.substring(0, 3)}
+                ${student.category}
             </span>` : '';
         
         const className = student.classes?.name || 'N/A';
         
         div.innerHTML = `
-            <div class="relative">
+            <div class="card-cover">
                 ${photoHtml}
-                <div class="absolute top-2 right-2">
-                    <span class="status-badge ${statusClass} text-xs">
-                        ${statusText}
-                    </span>
+            </div>
+            <div class="card-body">
+                <div class="student-name">${escapeHtml(student.name || 'Unnamed')}</div>
+                <div class="student-id">#${escapeHtml(student.student_id || 'N/A')}</div>
+                <div class="student-details">
+                    <span class="detail-tag"><i class="fas fa-chalkboard"></i> ${escapeHtml(className)}</span>
+                    ${categoryDisplay}
+                    <span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${statusText}</span>
                 </div>
             </div>
-            <div class="p-3">
-                <h3 class="text-sm font-semibold text-gray-800 truncate">${escapeHtml(student.name || '')}</h3>
-                <p class="text-xs text-orange-500 mb-1">${escapeHtml(student.student_id || '')}</p>
-                <div class="flex items-center justify-between mt-2">
-                    <div class="flex items-center gap-1 text-xs text-gray-500">
-                        <i class="fas fa-chalkboard text-orange-400 text-xs"></i>
-                        <span class="truncate max-w-[100px]">${escapeHtml(className)}</span>
-                    </div>
-                    ${categoryDisplay}
-                </div>
+            <div class="card-actions">
+                <button class="btn-action btn-edit" onclick="event.stopPropagation(); editStudent('${student.id}')">
+                    <i class="fas fa-pen"></i> Edit
+                </button>
+                <button class="btn-action btn-status ${student.status === 'active' ? '' : 'active'}" 
+                        onclick="event.stopPropagation(); toggleStatus('${student.id}', '${student.status}')">
+                    <i class="fas ${student.status === 'active' ? 'fa-ban' : 'fa-check-circle'}"></i>
+                    ${student.status === 'active' ? 'Deactivate' : 'Activate'}
+                </button>
             </div>
             <div class="card-click-hint">
                 <i class="fas fa-arrow-right"></i> View Details
             </div>
         `;
         
-        // Prevent card click when clicking on action buttons
-        const buttons = div.querySelectorAll('button');
-        buttons.forEach(btn => {
-            btn.onclick = (e) => {
-                e.stopPropagation();
-            };
-        });
-        
-        // Add action buttons container
-        const actionDiv = document.createElement('div');
-        actionDiv.className = 'px-3 pb-3 flex gap-2';
-        actionDiv.innerHTML = `
-            <button onclick="editStudent('${student.id}')" class="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-all">
-                <i class="fas fa-edit text-xs"></i> Edit
-            </button>
-            <button onclick="toggleStatus('${student.id}', '${student.status}')" class="flex-1 py-1.5 ${student.status === 'active' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'} rounded text-xs transition-all">
-                <i class="fas ${student.status === 'active' ? 'fa-ban' : 'fa-check-circle'} text-xs"></i> ${student.status === 'active' ? 'Deactivate' : 'Activate'}
-            </button>
-        `;
-        div.appendChild(actionDiv);
-        
         return div;
     }
     
-    // Create student list row (clickable)
     function createStudentListRow(student) {
         const row = document.createElement('div');
-        row.className = 'bg-white rounded-lg shadow-sm overflow-hidden student-list-item border border-gray-200';
+        row.className = 'student-list-item';
         row.onclick = () => goToStudentDetails(student.id);
         
+        const initial = student.name ? student.name.charAt(0).toUpperCase() : 'S';
+        const avatarHtml = student.photo_url 
+            ? `<img src="${student.photo_url}" alt="" class="list-avatar">`
+            : `<div class="list-avatar">${initial}</div>`;
+        
         const statusClass = student.status === 'active' ? 'active' : 'inactive';
+        const statusIcon = student.status === 'active' ? 'fa-circle-check' : 'fa-circle-xmark';
         const statusText = student.status === 'active' ? 'Active' : 'Inactive';
         
+        const categoryClass = student.category === 'Boarding' ? 'category-boarding' : 'category-day';
+        
         row.innerHTML = `
-            <div class="flex items-center justify-between p-3">
-                <div class="flex items-center gap-3 flex-1">
-                    <div class="flex-shrink-0">
-                        ${student.photo_url ? 
-                            `<img src="${student.photo_url}" class="w-10 h-10 rounded-full object-cover">` : 
-                            `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-sm font-bold">
-                                ${student.name ? student.name.charAt(0).toUpperCase() : 'S'}
-                            </div>`
-                        }
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-800 truncate">${escapeHtml(student.name || '')}</p>
-                        <p class="text-xs text-gray-500">${escapeHtml(student.student_id || '')}</p>
-                    </div>
-                    <div class="hidden md:block w-32">
-                        <p class="text-xs text-gray-600">${escapeHtml(student.classes?.name || 'N/A')}</p>
-                    </div>
-                    <div class="hidden md:block w-24">
-                        ${student.category ? 
-                            `<span class="category-badge ${student.category === 'Boarding' ? 'category-boarding' : 'category-day'}">
-                                ${student.category}
-                            </span>` : '-'
-                        }
-                    </div>
-                    <div class="w-20">
-                        <span class="status-badge ${statusClass} text-xs">${statusText}</span>
-                    </div>
-                </div>
-                <div class="flex gap-1" onclick="event.stopPropagation()">
-                    <button onclick="editStudent('${student.id}')" class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-all">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button onclick="toggleStatus('${student.id}', '${student.status}')" class="px-2 py-1 ${student.status === 'active' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'} rounded text-xs transition-all">
-                        <i class="fas ${student.status === 'active' ? 'fa-ban' : 'fa-check-circle'}"></i>
-                    </button>
-                </div>
+            ${avatarHtml}
+            <div class="list-info">
+                <span class="name">${escapeHtml(student.name || 'Unnamed')}</span>
+                <span class="id">#${escapeHtml(student.student_id || 'N/A')}</span>
+                <span class="class-tag">${escapeHtml(student.classes?.name || 'N/A')}</span>
+                ${student.category ? `<span class="category-tag ${categoryClass}">${student.category}</span>` : ''}
+                <span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${statusText}</span>
+            </div>
+            <div class="list-actions" onclick="event.stopPropagation()">
+                <button onclick="editStudent('${student.id}')" style="background: #eff6ff; color: #3b82f6;">
+                    <i class="fas fa-pen"></i>
+                </button>
+                <button onclick="toggleStatus('${student.id}', '${student.status}')" 
+                        style="background: ${student.status === 'active' ? '#fef2f2' : '#ecfdf5'}; color: ${student.status === 'active' ? '#ef4444' : '#10b981'};">
+                    <i class="fas ${student.status === 'active' ? 'fa-ban' : 'fa-check-circle'}"></i>
+                </button>
             </div>
         `;
         
@@ -886,32 +1260,29 @@
         const cardContainer = document.getElementById('cardView');
         const listContainer = document.getElementById('listView');
         
+        cardContainer.innerHTML = '';
+        listContainer.innerHTML = '';
+        
         if (currentViewType === 'card') {
-            cardContainer.innerHTML = '';
-            allStudents.forEach(student => {
-                cardContainer.appendChild(createStudentCard(student));
-            });
+            allStudents.forEach(s => cardContainer.appendChild(createStudentCard(s)));
         } else {
-            listContainer.innerHTML = '';
-            allStudents.forEach(student => {
-                listContainer.appendChild(createStudentListRow(student));
-            });
+            allStudents.forEach(s => listContainer.appendChild(createStudentListRow(s)));
         }
     }
     
     function showLoading(show) {
-        const loadingState = document.getElementById('loadingState');
+        const loading = document.getElementById('loadingState');
         const cardView = document.getElementById('cardView');
         const listView = document.getElementById('listView');
         const noResults = document.getElementById('noResults');
         
         if (show) {
-            loadingState.style.display = 'grid';
+            loading.style.display = 'grid';
             cardView.style.display = 'none';
             listView.style.display = 'none';
             noResults.style.display = 'none';
         } else {
-            loadingState.style.display = 'none';
+            loading.style.display = 'none';
             if (allStudents.length === 0) {
                 cardView.style.display = 'none';
                 listView.style.display = 'none';
@@ -924,22 +1295,19 @@
         }
     }
     
+    // ============================================================
+    // LOAD & FILTER
+    // ============================================================
+    
     async function loadInitialStudents() {
         showLoading(true);
-        
         allStudents = [];
         currentPage = 1;
         hasMore = true;
         
         const students = await fetchStudents(1, PAGE_SIZE);
-        
-        if (students.length > 0) {
-            allStudents = [...students];
-            renderStudents();
-        } else {
-            showLoading(false);
-        }
-        
+        allStudents = students;
+        renderStudents();
         showLoading(false);
         updateLoadMoreButton();
         await loadStats();
@@ -948,23 +1316,23 @@
     async function loadMoreStudents() {
         if (isLoading || !hasMore) return;
         
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
-        const spinnerIcon = loadMoreBtn?.querySelector('.fa-spinner');
-        const arrowIcon = loadMoreBtn?.querySelector('.fa-arrow-down');
+        const btn = document.getElementById('loadMoreBtn');
+        const spinner = btn?.querySelector('.fa-spinner');
+        const arrow = btn?.querySelector('.fa-arrow-down');
         
-        if (loadMoreBtn) {
-            loadMoreBtn.disabled = true;
-            if (spinnerIcon) spinnerIcon.classList.remove('hidden');
-            if (arrowIcon) arrowIcon.classList.add('hidden');
+        if (btn) {
+            btn.disabled = true;
+            if (spinner) spinner.classList.remove('hidden');
+            if (arrow) arrow.classList.add('hidden');
         }
         
         currentPage++;
         const newStudents = await fetchStudents(currentPage, PAGE_SIZE);
         
-        if (loadMoreBtn) {
-            loadMoreBtn.disabled = false;
-            if (spinnerIcon) spinnerIcon.classList.add('hidden');
-            if (arrowIcon) arrowIcon.classList.remove('hidden');
+        if (btn) {
+            btn.disabled = false;
+            if (spinner) spinner.classList.add('hidden');
+            if (arrow) arrow.classList.remove('hidden');
         }
         
         if (newStudents.length > 0) {
@@ -976,18 +1344,15 @@
     }
     
     function updateLoadMoreButton() {
-        const loadMoreContainer = document.getElementById('loadMoreContainer');
-        const loadMoreCount = document.getElementById('loadMoreCount');
-        
+        const container = document.getElementById('loadMoreContainer');
+        const count = document.getElementById('loadMoreCount');
         const remaining = totalStudents - allStudents.length;
         
         if (hasMore && remaining > 0) {
-            loadMoreContainer.classList.remove('hidden');
-            if (loadMoreCount) {
-                loadMoreCount.textContent = `(${remaining} more)`;
-            }
+            container.classList.remove('hidden');
+            if (count) count.textContent = `(${remaining} more)`;
         } else {
-            loadMoreContainer.classList.add('hidden');
+            container.classList.add('hidden');
         }
     }
     
@@ -1000,11 +1365,12 @@
         currentPage = 1;
         allStudents = [];
         hasMore = true;
-        
         await loadInitialStudents();
     }
     
-    // ==================== Modal Functions ====================
+    // ============================================================
+    // MODAL FUNCTIONS
+    // ============================================================
     
     function openAddModal() {
         editingStudentId = null;
@@ -1020,41 +1386,38 @@
     
     async function editStudent(studentId) {
         editingStudentId = studentId;
-        
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
         
         try {
             const result = await fetchJSONWithRetry(`/students/${studentId}`);
-            
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             
             if (result.success) {
-                const student = result.student;
-                
+                const s = result.student;
                 document.getElementById('modalTitle').textContent = 'Edit Student';
-                document.getElementById('studentId').value = student.id;
-                document.getElementById('studentName').value = student.name || '';
-                document.getElementById('studentGender').value = student.gender || '';
-                document.getElementById('studentDob').value = student.date_of_birth || '';
-                document.getElementById('studentNationality').value = student.nationality || '';
-                document.getElementById('studentAddress').value = student.address || '';
-                document.getElementById('studentContact').value = student.contact_number || '';
-                document.getElementById('studentEmail').value = student.email || '';
-                document.getElementById('studentFather').value = student.father_name || '';
-                document.getElementById('studentMother').value = student.mother_name || '';
-                document.getElementById('studentReligion').value = student.religion || '';
-                document.getElementById('studentOccupation').value = student.occupation || '';
-                document.getElementById('studentReason').value = student.reason_for_admission || '';
-                document.getElementById('studentParents').value = student.all_parents || '';
-                document.getElementById('studentCategory').value = student.category || '';
-                document.getElementById('studentClass').value = student.class_id || '';
+                document.getElementById('studentId').value = s.id;
+                document.getElementById('studentName').value = s.name || '';
+                document.getElementById('studentGender').value = s.gender || '';
+                document.getElementById('studentDob').value = s.date_of_birth || '';
+                document.getElementById('studentNationality').value = s.nationality || '';
+                document.getElementById('studentAddress').value = s.address || '';
+                document.getElementById('studentContact').value = s.contact_number || '';
+                document.getElementById('studentEmail').value = s.email || '';
+                document.getElementById('studentFather').value = s.father_name || '';
+                document.getElementById('studentMother').value = s.mother_name || '';
+                document.getElementById('studentReligion').value = s.religion || '';
+                document.getElementById('studentOccupation').value = s.occupation || '';
+                document.getElementById('studentReason').value = s.reason_for_admission || '';
+                document.getElementById('studentParents').value = s.all_parents || '';
+                document.getElementById('studentCategory').value = s.category || '';
+                document.getElementById('studentClass').value = s.class_id || '';
                 
-                if (student.photo_url) {
-                    currentPhotoUrl = student.photo_url;
-                    document.getElementById('previewImg').src = student.photo_url;
+                if (s.photo_url) {
+                    currentPhotoUrl = s.photo_url;
+                    document.getElementById('previewImg').src = s.photo_url;
                     document.getElementById('photoPreview').classList.remove('hidden');
                 }
                 
@@ -1062,7 +1425,7 @@
                 document.getElementById('studentModal').classList.add('flex');
                 document.body.style.overflow = 'hidden';
             }
-        } catch (error) {
+        } catch (e) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             openSuccessModal('Error', 'Failed to load student data');
@@ -1114,8 +1477,7 @@
         document.getElementById('successModal').classList.remove('hidden');
         document.getElementById('successModal').classList.add('flex');
         document.body.style.overflow = 'hidden';
-        
-        setTimeout(() => closeSuccessModal(), 2000);
+        setTimeout(() => closeSuccessModal(), 2500);
     }
     
     function closeSuccessModal() {
@@ -1139,39 +1501,33 @@
     
     function showFileName(input) {
         if (input.files && input.files[0]) {
-            const fileName = document.getElementById('fileName');
-            fileName.textContent = `Selected: ${input.files[0].name}`;
-            fileName.classList.remove('hidden');
+            const el = document.getElementById('fileName');
+            el.textContent = `📎 ${input.files[0].name}`;
+            el.classList.remove('hidden');
         }
     }
     
     function showSchoolPayFileName(input) {
         if (input.files && input.files[0]) {
-            const fileName = document.getElementById('schoolPayFileName');
-            fileName.textContent = `Selected: ${input.files[0].name}`;
-            fileName.classList.remove('hidden');
+            const el = document.getElementById('schoolPayFileName');
+            el.textContent = `📎 ${input.files[0].name}`;
+            el.classList.remove('hidden');
         }
     }
     
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    // ==================== Form Submissions ====================
+    // ============================================================
+    // FORM SUBMISSIONS
+    // ============================================================
     
     document.getElementById('studentForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
         
         const formData = new FormData(this);
         const data = {};
-        formData.forEach((value, key) => { if (value) data[key] = value; });
+        formData.forEach((v, k) => { if (v) data[k] = v; });
         
         const selectedClass = classesData.find(c => c.id === data.class_id);
         if (selectedClass) data.class_name = selectedClass.name;
@@ -1188,7 +1544,6 @@
                 body: JSON.stringify(data)
             });
             const result = await response.json();
-            
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             
@@ -1200,7 +1555,7 @@
             } else {
                 openSuccessModal('Error', result.message);
             }
-        } catch (error) {
+        } catch (e) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             openSuccessModal('Error', 'Failed to save student');
@@ -1209,20 +1564,14 @@
     
     document.getElementById('importForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
         
         const formData = new FormData(this);
-        
         try {
-            const response = await fetchWithRetry('/students/import', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetchWithRetry('/students/import', { method: 'POST', body: formData });
             const result = await response.json();
-            
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             
@@ -1234,7 +1583,7 @@
             } else {
                 openSuccessModal('Import Failed', result.message);
             }
-        } catch (error) {
+        } catch (e) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             openSuccessModal('Error', 'Failed to import students');
@@ -1243,20 +1592,14 @@
     
     document.getElementById('schoolPayImportForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
         
         const formData = new FormData(this);
-        
         try {
-            const response = await fetchWithRetry('/students/import-from-school-pay', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetchWithRetry('/students/import-from-school-pay', { method: 'POST', body: formData });
             const result = await response.json();
-            
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             
@@ -1268,7 +1611,7 @@
             } else {
                 openSuccessModal('Import Failed', result.message);
             }
-        } catch (error) {
+        } catch (e) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             openSuccessModal('Error', 'Failed to import students');
@@ -1277,7 +1620,6 @@
     
     async function toggleStatus(studentId, currentStatus) {
         const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-        
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
@@ -1289,7 +1631,6 @@
                 body: JSON.stringify({ status: newStatus })
             });
             const result = await response.json();
-            
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             
@@ -1300,39 +1641,41 @@
             } else {
                 openSuccessModal('Error', result.message);
             }
-        } catch (error) {
+        } catch (e) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             openSuccessModal('Error', 'Failed to update status');
         }
     }
     
-    // ==================== Event Listeners ====================
+    // ============================================================
+    // EVENT LISTENERS
+    // ============================================================
     
     function setupEventListeners() {
-        const searchInput = document.getElementById('searchInput');
+        const search = document.getElementById('searchInput');
         const classFilter = document.getElementById('classFilter');
         const categoryFilter = document.getElementById('categoryFilter');
         const statusFilter = document.getElementById('statusFilter');
         const loadMoreBtn = document.getElementById('loadMoreBtn');
         
         let debounceTimer;
-        if (searchInput) {
-            searchInput.addEventListener('input', function() {
+        if (search) {
+            search.addEventListener('input', function() {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => applyFiltersAndReload(), 500);
             });
         }
-        
-        if (classFilter) classFilter.addEventListener('change', () => applyFiltersAndReload());
-        if (categoryFilter) categoryFilter.addEventListener('change', () => applyFiltersAndReload());
-        if (statusFilter) statusFilter.addEventListener('change', () => applyFiltersAndReload());
-        if (loadMoreBtn) loadMoreBtn.addEventListener('click', () => loadMoreStudents());
+        if (classFilter) classFilter.addEventListener('change', applyFiltersAndReload);
+        if (categoryFilter) categoryFilter.addEventListener('change', applyFiltersAndReload);
+        if (statusFilter) statusFilter.addEventListener('change', applyFiltersAndReload);
+        if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMoreStudents);
     }
     
-    // ==================== Initialize ====================
+    // ============================================================
+    // INITIALIZE
+    // ============================================================
     
-    // Load saved view preference
     const savedView = localStorage.getItem('studentViewType');
     if (savedView) setViewType(savedView);
     
@@ -1340,17 +1683,18 @@
     loadInitialStudents();
     setupEventListeners();
     
-    // Modal close on outside click
+    // Close modals on outside click
     window.onclick = function(event) {
-        const studentModal = document.getElementById('studentModal');
-        const importModal = document.getElementById('importModal');
-        const schoolPayModal = document.getElementById('schoolPayImportModal');
-        const successModal = document.getElementById('successModal');
-        
-        if (event.target === studentModal) closeStudentModal();
-        if (event.target === importModal) closeImportModal();
-        if (event.target === schoolPayModal) closeSchoolPayImportModal();
-        if (event.target === successModal) closeSuccessModal();
+        const modals = ['studentModal', 'importModal', 'schoolPayImportModal', 'successModal'];
+        modals.forEach(id => {
+            const el = document.getElementById(id);
+            if (event.target === el) {
+                if (id === 'studentModal') closeStudentModal();
+                else if (id === 'importModal') closeImportModal();
+                else if (id === 'schoolPayImportModal') closeSchoolPayImportModal();
+                else if (id === 'successModal') closeSuccessModal();
+            }
+        });
     };
 </script>
 {% endblock %}
