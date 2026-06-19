@@ -163,7 +163,8 @@ def get_students():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
+    
 @student_list_bp.route('/api/export-pdf', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def export_pdf():
@@ -184,15 +185,37 @@ def export_pdf():
         if not students:
             return jsonify({'success': False, 'message': 'No students to export'}), 400
         
+        # Sanitize students data - ensure each student is a dictionary
+        sanitized_students = []
+        for student in students:
+            if student is None:
+                student = {}
+            if not isinstance(student, dict):
+                student = {}
+            # Ensure all expected fields exist with defaults
+            sanitized_students.append({
+                'student_id': student.get('student_id', 'N/A') or 'N/A',
+                'name': student.get('name', 'N/A') or 'N/A',
+                'gender': student.get('gender', 'N/A') or 'N/A',
+                'contact_number': student.get('contact_number', 'N/A') or 'N/A',
+                'fees_balance': student.get('fees_balance', 0) or 0,
+                'class_name': student.get('class_name', '') or '',
+                'academic_year': student.get('academic_year', '') or '',
+            })
+        
         # Get institute details for PDF header
         institute_response = supabase.table('institutes')\
             .select('*')\
             .eq('id', institute_id)\
             .execute()
         
-        institute = institute_response.data[0] if institute_response.data else {}
+        # FIX: Check if data exists and is not None
+        institute = {}
+        if institute_response.data and len(institute_response.data) > 0:
+            institute = institute_response.data[0] or {}
         
-        html_content = generate_student_list_html(institute, students, class_name, academic_year, summary)
+        # Pass None if institute is empty, the generate function will handle it
+        html_content = generate_student_list_html(institute, sanitized_students, class_name, academic_year, summary)
         pdf_buffer = convert_html_to_pdf(html_content)
         
         return send_file(
@@ -208,12 +231,36 @@ def export_pdf():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-
 def generate_student_list_html(institute, students, class_name, academic_year, summary):
     """
-    Fixed version to prevent Student ID overflow.
-    Uses 'table-layout: fixed' and 'word-wrap' to force text containment.
+    Fixed version to handle None, null, and empty values properly.
+    All dictionary access uses .get() with safe defaults.
     """
+    
+    # Ensure institute is a dictionary, even if None
+    if institute is None:
+        institute = {}
+    
+    # Ensure summary is a dictionary, even if None
+    if summary is None:
+        summary = {}
+    
+    # Safely get values with defaults
+    institute_name = institute.get('institute_name', 'School Name') or 'School Name'
+    institute_logo = institute.get('logo_url', '') or ''
+    institute_target = institute.get('target_line', '') or ''
+    institute_address = institute.get('address', '') or ''
+    institute_phone = institute.get('phone_number', '') or ''
+    
+    # Ensure students is a list and each student is a dict with safe defaults
+    if students is None:
+        students = []
+    
+    # Safely get summary values
+    total_students = summary.get('total_students', 0) or 0
+    male_count = summary.get('male_count', 0) or 0
+    female_count = summary.get('female_count', 0) or 0
+    total_fees_balance = summary.get('total_fees_balance', 0) or 0
     
     html_template = """
     <!DOCTYPE html>
@@ -280,19 +327,42 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
             .sig-section { margin-top: 40px; }
             .sig-box { border: none; padding-top: 30px; }
             .sig-line { border-top: 1px solid #2d3436; width: 80%; margin: 0 auto; padding-top: 4px; font-size: 8pt; }
+            
+            .logo-container {
+                width: 50px;
+                height: 50px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .logo-container img {
+                max-width: 50px;
+                max-height: 50px;
+                object-fit: contain;
+            }
         </style>
     </head>
     <body>
         <div class="header-container">
             <table>
                 <tr>
-                    <td style="width: 60px; border:none;">
-                        {% if institute.get('logo_url') %}<img src="{{ institute.get('logo_url') }}" width="50" height="50">{% endif %}
+                    <td style="width: 60px; border:none; vertical-align: middle;">
+                        {% if logo_url and logo_url|string|trim %}
+                        <div class="logo-container">
+                            <img src="{{ logo_url }}" alt="Logo" width="50" height="50">
+                        </div>
+                        {% endif %}
                     </td>
-                    <td class="text-center" style="border:none;">
-                        <div class="institute-name">{{ institute.get('institute_name', 'School Name') | upper }}</div>
-                        <div style="font-style: italic; font-size: 8pt;">{{ institute.get('target_line', '') }}</div>
-                        <div style="font-size: 8pt;">{{ institute.get('address', '') }} | {{ institute.get('phone_number', '') }}</div>
+                    <td class="text-center" style="border:none; vertical-align: middle;">
+                        <div class="institute-name">{{ institute_name | upper }}</div>
+                        {% if target_line and target_line|string|trim %}
+                        <div style="font-style: italic; font-size: 8pt;">{{ target_line }}</div>
+                        {% endif %}
+                        <div style="font-size: 8pt;">
+                            {% if address and address|string|trim %}{{ address }}{% endif %}
+                            {% if address and address|string|trim and phone and phone|string|trim %} | {% endif %}
+                            {% if phone and phone|string|trim %}{{ phone }}{% endif %}
+                        </div>
                     </td>
                     <td style="width: 60px; border:none;"></td>
                 </tr>
@@ -306,9 +376,9 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
 
         <table class="summary-table">
             <tr>
-                <td class="text-center">Total Students<br><strong>{{ summary.total_students }}</strong></td>
-                <td class="text-center">M / F<br><strong>{{ summary.male_count }} / {{ summary.female_count }}</strong></td>
-                <td class="text-center">Total Balance<br><strong>UGX {{ "{:,.0f}".format(summary.total_fees_balance) }}</strong></td>
+                <td class="text-center">Total Students<br><strong>{{ total_students }}</strong></td>
+                <td class="text-center">M / F<br><strong>{{ male_count }} / {{ female_count }}</strong></td>
+                <td class="text-center">Total Balance<br><strong>UGX {{ total_fees_balance_formatted }}</strong></td>
             </tr>
         </table>
 
@@ -327,12 +397,12 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
                 {% for student in students %}
                 <tr>
                     <td class="text-center">{{ loop.index }}</td>
-                    <td class="bold">{{ student.student_id }}</td>
-                    <td>{{ student.name | upper }}</td>
-                    <td class="text-center">{{ student.gender[:1] | upper }}</td>
-                    <td class="text-center">{{ student.contact_number }}</td>
-                    <td class="text-right {{ 'text-danger' if student.fees_balance > 0 else 'text-success' }}">
-                        {{ "{:,.0f}".format(student.fees_balance) }}
+                    <td class="bold">{{ student.get('student_id', 'N/A') }}</td>
+                    <td>{{ student.get('name', 'N/A') | upper }}</td>
+                    <td class="text-center">{{ (student.get('gender', 'N/A')[:1]) | upper }}</td>
+                    <td class="text-center">{{ student.get('contact_number', 'N/A') }}</td>
+                    <td class="text-right {{ 'text-danger' if student.get('fees_balance', 0)|float > 0 else 'text-success' }}">
+                        {{ "{:,.0f}".format(student.get('fees_balance', 0)|float) }}
                     </td>
                 </tr>
                 {% endfor %}
@@ -359,15 +429,25 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
     """
 
     from jinja2 import Template
+    
+    # Format the total fees balance with commas
+    total_fees_balance_formatted = "{:,.0f}".format(total_fees_balance or 0)
+    
     return Template(html_template).render(
-        institute=institute, 
-        students=students, 
-        class_name=class_name, 
-        academic_year=academic_year, 
-        summary=summary, 
+        institute_name=institute_name,
+        logo_url=institute_logo,
+        target_line=institute_target,
+        address=institute_address,
+        phone=institute_phone,
+        students=students,
+        class_name=class_name or 'Class',
+        academic_year=academic_year or '2026',
+        total_students=total_students,
+        male_count=male_count,
+        female_count=female_count,
+        total_fees_balance_formatted=total_fees_balance_formatted,
         generated_at=datetime.now().strftime('%d/%m/%Y')
     )
-
 
 def convert_html_to_pdf(html_content):
     """Convert HTML to PDF using xhtml2pdf"""
@@ -379,3 +459,94 @@ def convert_html_to_pdf(html_content):
     
     pdf_buffer.seek(0)
     return pdf_buffer
+
+# Add these routes after your existing routes
+
+@student_list_bp.route('/api/student/<student_id>', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def get_student(student_id):
+    """Get a single student's details for editing"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        response = supabase.table('students')\
+            .select('id, name, student_id, gender, contact_number, email, photo_url, status')\
+            .eq('id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if not response.data:
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'student': response.data[0]
+        })
+        
+    except Exception as e:
+        print(f"Error getting student: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@student_list_bp.route('/api/student/<student_id>', methods=['PUT'])
+@role_required(['owner', 'teacher', 'accountant'])
+def update_student(student_id):
+    """Update student details (name and contact_number)"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        data = request.get_json()
+        name = data.get('name', '').strip()
+        contact_number = data.get('contact_number', '').strip()
+        
+        if not name:
+            return jsonify({'success': False, 'message': 'Student name is required'}), 400
+        
+        # Check if student exists and belongs to this institute
+        check_response = supabase.table('students')\
+            .select('id')\
+            .eq('id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if not check_response.data:
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        # Update student
+        update_data = {
+            'name': name,
+            'contact_number': contact_number,
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        response = supabase.table('students')\
+            .update(update_data)\
+            .eq('id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        # Get updated student data
+        updated_response = supabase.table('students')\
+            .select('id, name, student_id, gender, contact_number, email, photo_url, status')\
+            .eq('id', student_id)\
+            .execute()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Student updated successfully',
+            'student': updated_response.data[0] if updated_response.data else None
+        })
+        
+    except Exception as e:
+        print(f"Error updating student: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500

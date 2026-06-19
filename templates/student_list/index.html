@@ -1,4 +1,4 @@
-<!-- templates/student_list/index.html - Student List Printing -->
+<!-- templates/student_list/index.html - Fully Responsive Student List -->
 {% extends "base.html" %}
 
 {% block title %}Student List - Lunserk ERP{% endblock %}
@@ -37,22 +37,352 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    .btn-edit {
+        background: #3b82f6;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .btn-edit:hover {
+        background: #2563eb;
+        transform: scale(1.05);
+    }
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .toast-success {
+        background: #d1fae5;
+        color: #065f46;
+        border-left: 4px solid #22c55e;
+    }
+    .toast-error {
+        background: #fee2e2;
+        color: #991b1b;
+        border-left: 4px solid #ef4444;
+    }
+    .toast-warning {
+        background: #fef3c7;
+        color: #d97706;
+        border-left: 4px solid #f59e0b;
+    }
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Student Card Styles for Mobile */
+    .student-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.2s;
+        border: 1px solid #f3f4f6;
+    }
+    .student-card:hover {
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    .student-card .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+    .student-card .card-field {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .student-card .card-field:last-child {
+        border-bottom: none;
+    }
+    .student-card .field-label {
+        font-size: 12px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+    .student-card .field-value {
+        font-size: 13px;
+        color: #1f2937;
+        font-weight: 500;
+        text-align: right;
+        word-break: break-word;
+    }
+    .student-card .field-value.balance-positive {
+        color: #dc2626;
+    }
+    .student-card .field-value.balance-negative {
+        color: #16a34a;
+    }
+    .student-card .card-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+        justify-content: flex-end;
+    }
+
+    /* Responsive Table - FIXED LAYOUT */
+    .table-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .table-scroll table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+    }
+    
+    /* Column width distribution - NO WHITE SPACE */
+    .table-scroll .col-index {
+        width: 5%;
+        min-width: 40px;
+        max-width: 60px;
+    }
+    .table-scroll .col-id {
+        width: 15%;
+        min-width: 100px;
+    }
+    .table-scroll .col-name {
+        width: 28%;
+        min-width: 130px;
+    }
+    .table-scroll .col-gender {
+        width: 10%;
+        min-width: 70px;
+        max-width: 90px;
+    }
+    .table-scroll .col-phone {
+        width: 15%;
+        min-width: 100px;
+    }
+    .table-scroll .col-balance {
+        width: 17%;
+        min-width: 110px;
+        text-align: right;
+    }
+    .table-scroll .col-action {
+        width: 10%;
+        min-width: 60px;
+        max-width: 80px;
+        text-align: center;
+    }
+
+    /* Table cell styling */
+    .table-scroll th,
+    .table-scroll td {
+        padding: 10px 8px;
+        vertical-align: middle;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .table-scroll th {
+        background-color: #f9fafb;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 0.5px;
+        color: #6b7280;
+        border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .table-scroll td {
+        border-bottom: 1px solid #f3f4f6;
+        font-size: 13px;
+    }
+    
+    /* Allow name column to wrap if needed */
+    .table-scroll .col-name .name-cell {
+        white-space: normal;
+        word-break: break-word;
+    }
+    
+    /* Student name with avatar */
+    .name-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+    .name-cell .student-avatar {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff7ed;
+        color: #f97316;
+        font-size: 14px;
+    }
+    .name-cell .student-name {
+        font-weight: 500;
+        color: #1f2937;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .name-cell .student-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    /* Gender badge */
+    .gender-badge {
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+        white-space: nowrap;
+    }
+    .gender-male {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .gender-female {
+        background: #fce7f3;
+        color: #9d174d;
+    }
+    .gender-other {
+        background: #e5e7eb;
+        color: #4b5563;
+    }
+
+    /* Hide table on mobile, show cards */
+    .table-view {
+        display: block;
+    }
+    .card-view {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .table-view {
+            display: none !important;
+        }
+        .card-view {
+            display: grid !important;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        
+        /* Make summary cards stack on mobile */
+        .summary-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+        
+        /* Filter section adjustments */
+        .filter-grid {
+            grid-template-columns: 1fr !important;
+        }
+        
+        /* Responsive padding */
+        .table-scroll th,
+        .table-scroll td {
+            padding: 8px 6px;
+            font-size: 12px;
+        }
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .summary-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+    }
+    .empty-state i {
+        font-size: 48px;
+        color: #d1d5db;
+        margin-bottom: 12px;
+    }
+    .empty-state p {
+        color: #9ca3af;
+    }
+
+    /* Status indicator dot */
+    .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+    }
+    .status-dot.active {
+        background: #22c55e;
+    }
+    .status-dot.inactive {
+        background: #ef4444;
+    }
+
+    /* Toast container */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-width: 400px;
+        width: 100%;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-6">
+<div class="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
     <!-- Page Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 mb-1">Student List</h1>
+    <div class="mb-4 sm:mb-6">
+        <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Student List</h1>
         <p class="text-sm text-gray-600">View and print student lists by class with fees balance</p>
     </div>
 
     <!-- Filter Section -->
-    <div class="bg-white rounded-xl shadow-md p-5 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-white rounded-xl shadow-md p-4 sm:p-5 mb-4 sm:mb-6">
+        <div class="filter-grid grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Select Class *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Select Class *</label>
                 <div class="relative">
                     <i class="fas fa-chalkboard absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
                     <select id="classSelect" class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
@@ -64,7 +394,7 @@
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Academic Year</label>
                 <select id="academicYearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                     <option value="2023">2023</option>
                     <option value="2024">2024</option>
@@ -75,7 +405,7 @@
                 </select>
             </div>
             <div class="flex items-end">
-                <button onclick="loadStudents()" class="w-full btn-gradient px-4 py-2 rounded-lg text-white font-medium">
+                <button onclick="loadStudents()" class="w-full btn-gradient px-4 py-2 rounded-lg text-white font-medium text-sm sm:text-base">
                     <i class="fas fa-search"></i> Load Students
                 </button>
             </div>
@@ -91,69 +421,141 @@
     </div>
 
     <!-- Summary Cards -->
-    <div id="summaryContainer" class="hidden grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
+    <div id="summaryContainer" class="hidden summary-grid grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div class="summary-card bg-white rounded-xl shadow-md p-3 sm:p-4 text-center">
             <p class="text-xs text-gray-500">Total Students</p>
-            <p class="text-2xl font-bold text-gray-800" id="totalStudents">0</p>
+            <p class="text-xl sm:text-2xl font-bold text-gray-800" id="totalStudents">0</p>
         </div>
-        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
-            <p class="text-xs text-gray-500">Male Students</p>
-            <p class="text-2xl font-bold text-blue-600" id="maleCount">0</p>
+        <div class="summary-card bg-white rounded-xl shadow-md p-3 sm:p-4 text-center">
+            <p class="text-xs text-gray-500">Male</p>
+            <p class="text-xl sm:text-2xl font-bold text-blue-600" id="maleCount">0</p>
         </div>
-        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
-            <p class="text-xs text-gray-500">Female Students</p>
-            <p class="text-2xl font-bold text-pink-600" id="femaleCount">0</p>
+        <div class="summary-card bg-white rounded-xl shadow-md p-3 sm:p-4 text-center">
+            <p class="text-xs text-gray-500">Female</p>
+            <p class="text-xl sm:text-2xl font-bold text-pink-600" id="femaleCount">0</p>
         </div>
-        <div class="summary-card bg-white rounded-xl shadow-md p-4 text-center">
-            <p class="text-xs text-gray-500">Total Fees Balance</p>
-            <p class="text-2xl font-bold text-orange-600" id="totalFeesBalance">UGX 0</p>
+        <div class="summary-card bg-white rounded-xl shadow-md p-3 sm:p-4 text-center">
+            <p class="text-xs text-gray-500">Total Balance</p>
+            <p class="text-sm sm:text-xl font-bold text-orange-600" id="totalFeesBalance">UGX 0</p>
         </div>
     </div>
 
-    <!-- Students Table -->
+    <!-- Students Container -->
     <div id="tableContainer" class="hidden bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-wrap gap-3">
+        <!-- Header -->
+        <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h2 class="text-lg font-semibold text-gray-800" id="tableTitle">Student List</h2>
-                <p class="text-sm text-gray-500" id="classInfo">-</p>
+                <h2 class="text-base sm:text-lg font-semibold text-gray-800" id="tableTitle">Student List</h2>
+                <p class="text-xs sm:text-sm text-gray-500" id="classInfo">-</p>
             </div>
-            <button onclick="exportToPDF()" id="exportBtn" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2">
-                <i class="fas fa-file-pdf"></i> Export to PDF
+            <button onclick="exportToPDF()" id="exportBtn" class="btn-gradient px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-white text-xs sm:text-sm font-medium flex items-center gap-2">
+                <i class="fas fa-file-pdf"></i> <span class="hidden xs:inline">Export to PDF</span>
+                <span class="xs:hidden">PDF</span>
             </button>
         </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+
+        <!-- TABLE VIEW (Desktop) - FIXED LAYOUT -->
+        <div class="table-view table-scroll">
+            <table>
+                <thead>
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">#</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
-                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Gender</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
-                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Fees Balance (UGX)</th>
+                        <th class="col-index text-center">#</th>
+                        <th class="col-id">Student ID</th>
+                        <th class="col-name">Student Name</th>
+                        <th class="col-gender text-center">Gender</th>
+                        <th class="col-phone">Phone</th>
+                        <th class="col-balance">Balance (UGX)</th>
+                        <th class="col-action text-center">Action</th>
                     </tr>
                 </thead>
-                <tbody id="studentsTableBody" class="divide-y divide-gray-200">
+                <tbody id="studentsTableBody">
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-gray-400">
+                        <td colspan="7" class="text-center py-8 text-gray-400">
                             Select a class to load students
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
+
+        <!-- CARD VIEW (Mobile) -->
+        <div id="studentsCardContainer" class="card-view p-3 sm:p-4">
+            <!-- Cards will be rendered here by JavaScript -->
+        </div>
+    </div>
+</div>
+
+<!-- Edit Student Modal -->
+<div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-auto">
+        <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-800">
+                <i class="fas fa-user-edit text-orange-500 mr-2"></i> Edit Student
+            </h3>
+            <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-4 sm:p-5">
+            <form id="editForm" onsubmit="submitEdit(event)">
+                <input type="hidden" id="editStudentId">
+                
+                <div class="mb-3 sm:mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Student ID</label>
+                    <input type="text" id="editStudentIdDisplay" disabled 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-sm">
+                </div>
+                
+                <div class="mb-3 sm:mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                    <input type="text" id="editName" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                
+                <div class="mb-3 sm:mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                    <input type="text" id="editGender" disabled 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-sm">
+                </div>
+                
+                <div class="mb-3 sm:mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <input type="tel" id="editContact" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"
+                           placeholder="e.g., 07XXXXXXXX">
+                </div>
+                
+                <div class="mb-3 sm:mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="editEmail" disabled 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-sm">
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-6">
+                    <button type="submit" id="saveEditBtn" 
+                            class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium text-sm">
+                        <i class="fas fa-spinner fa-spin hidden" id="editSpinner"></i>
+                        <span id="editBtnText"><i class="fas fa-save"></i> Update Student</span>
+                    </button>
+                    <button type="button" onclick="closeEditModal()" 
+                            class="flex-1 border border-gray-300 py-2 rounded-lg text-gray-700 hover:bg-gray-50 text-sm">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 <!-- Error Modal -->
-<div id="errorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
-    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 text-center transform transition-all modal-container">
+<div id="errorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-auto p-6 text-center">
         <div class="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fas fa-exclamation-triangle text-2xl text-red-500"></i>
         </div>
         <h3 class="text-lg font-semibold text-gray-800 mb-2">Error</h3>
         <p class="text-sm text-gray-600 mb-6" id="errorMessage"></p>
-        <button onclick="closeErrorModal()" class="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">
+        <button onclick="closeErrorModal()" class="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 text-sm">
             Close
         </button>
     </div>
@@ -166,6 +568,9 @@
         <p class="text-gray-600 text-sm">Generating PDF...</p>
     </div>
 </div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
 
 <script>
     let currentStudents = [];
@@ -225,40 +630,105 @@
     
     function displayStudents(students) {
         const tbody = document.getElementById('studentsTableBody');
+        const cardContainer = document.getElementById('studentsCardContainer');
         
         if (students.length === 0) {
-            tbody.innerHTML = `
+            const emptyHtml = `
                 <tr>
-                    <td colspan="6" class="px-4 py-8 text-center text-gray-400">
+                    <td colspan="7" class="text-center py-8 text-gray-400">
                         <i class="fas fa-user-graduate text-3xl mb-2 block"></i>
                         No students found in this class
                     </td>
                 </tr>
             `;
+            tbody.innerHTML = emptyHtml;
+            cardContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-user-graduate"></i>
+                    <p>No students found in this class</p>
+                </div>
+            `;
             return;
         }
         
+        // Render Table (Desktop) - FIXED: No white space
         tbody.innerHTML = students.map((student, idx) => {
             const balanceClass = student.fees_balance > 0 ? 'text-red-600 font-semibold' : 'text-green-600';
+            const genderClass = student.gender === 'Male' ? 'gender-male' : 
+                              student.gender === 'Female' ? 'gender-female' : 'gender-other';
+            const genderDisplay = student.gender || 'N/A';
+            
             return `
                 <tr class="student-row hover:bg-orange-50">
-                    <td class="px-4 py-3 text-sm text-gray-600">${idx + 1}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">${student.student_id}</td>
-                    <td class="px-4 py-3">
-                        <div class="flex items-center gap-2">
+                    <td class="col-index text-center text-sm text-gray-600">${idx + 1}</td>
+                    <td class="col-id text-sm text-gray-600 font-mono">${student.student_id}</td>
+                    <td class="col-name">
+                        <div class="name-cell">
                             ${student.photo_url ? 
-                                `<img src="${student.photo_url}" class="w-8 h-8 rounded-full object-cover">` : 
-                                `<div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-                                    <i class="fas fa-user-graduate text-orange-500 text-sm"></i>
-                                </div>`
+                                `<div class="student-avatar"><img src="${student.photo_url}" alt="${student.name}"></div>` : 
+                                `<div class="student-avatar"><i class="fas fa-user-graduate"></i></div>`
                             }
-                            <span class="font-medium text-gray-800">${student.name}</span>
+                            <span class="student-name">${student.name}</span>
                         </div>
                     </td>
-                    <td class="px-4 py-3 text-sm text-center">${student.gender}</td>
-                    <td class="px-4 py-3 text-sm">${student.contact_number}</td>
-                    <td class="px-4 py-3 text-sm text-right ${balanceClass}">UGX ${student.fees_balance.toLocaleString()}</td>
+                    <td class="col-gender text-center">
+                        <span class="gender-badge ${genderClass}">${genderDisplay}</span>
+                    </td>
+                    <td class="col-phone text-sm">${student.contact_number || 'N/A'}</td>
+                    <td class="col-balance text-sm ${balanceClass}">UGX ${student.fees_balance.toLocaleString()}</td>
+                    <td class="col-action text-center">
+                        <button onclick="openEditModal('${student.id}')" class="btn-edit" title="Edit Student">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </td>
                 </tr>
+            `;
+        }).join('');
+        
+        // Render Cards (Mobile)
+        cardContainer.innerHTML = students.map((student, idx) => {
+            const balanceClass = student.fees_balance > 0 ? 'balance-positive' : 'balance-negative';
+            const genderClass = student.gender === 'Male' ? 'gender-male' : 
+                              student.gender === 'Female' ? 'gender-female' : 'gender-other';
+            const avatarBg = student.gender === 'Male' ? 'bg-blue-100 text-blue-600' : 
+                           student.gender === 'Female' ? 'bg-pink-100 text-pink-600' : 'bg-gray-100 text-gray-600';
+            
+            return `
+                <div class="student-card">
+                    <div class="flex items-start gap-3 mb-3">
+                        <div class="avatar ${avatarBg}">
+                            ${student.photo_url ? 
+                                `<img src="${student.photo_url}" class="w-full h-full rounded-full object-cover">` : 
+                                `<i class="fas fa-user-graduate"></i>`
+                            }
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-semibold text-gray-800 truncate">${student.name}</h4>
+                                <span class="text-xs text-gray-500 font-mono">#${idx + 1}</span>
+                            </div>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="gender-badge ${genderClass} text-xs">${student.gender || 'N/A'}</span>
+                                <span class="text-xs text-gray-500 font-mono">${student.student_id}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-field">
+                        <span class="field-label">Phone</span>
+                        <span class="field-value">${student.contact_number || 'N/A'}</span>
+                    </div>
+                    <div class="card-field">
+                        <span class="field-label">Fees Balance</span>
+                        <span class="field-value ${balanceClass}">UGX ${student.fees_balance.toLocaleString()}</span>
+                    </div>
+                    
+                    <div class="card-actions">
+                        <button onclick="openEditModal('${student.id}')" class="btn-edit btn-edit-sm text-xs">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
+                </div>
             `;
         }).join('');
     }
@@ -269,6 +739,117 @@
         document.getElementById('femaleCount').textContent = summary.female_count || 0;
         document.getElementById('totalFeesBalance').textContent = `UGX ${(summary.total_fees_balance || 0).toLocaleString()}`;
     }
+    
+    // ==================== EDIT FUNCTIONS ====================
+    
+    async function openEditModal(studentId) {
+        const modal = document.getElementById('editModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        
+        // Reset form
+        document.getElementById('editStudentId').value = studentId;
+        document.getElementById('editName').value = '';
+        document.getElementById('editContact').value = '';
+        document.getElementById('editGender').value = '';
+        document.getElementById('editStudentIdDisplay').value = '';
+        document.getElementById('editEmail').value = '';
+        
+        try {
+            const response = await fetch(`/student-list/api/student/${studentId}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                const student = result.student;
+                document.getElementById('editStudentId').value = student.id;
+                document.getElementById('editStudentIdDisplay').value = student.student_id || 'N/A';
+                document.getElementById('editName').value = student.name || '';
+                document.getElementById('editContact').value = student.contact_number || '';
+                document.getElementById('editGender').value = student.gender || 'N/A';
+                document.getElementById('editEmail').value = student.email || 'N/A';
+            } else {
+                showError(result.message);
+                closeEditModal();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to load student data');
+            closeEditModal();
+        }
+    }
+    
+    function closeEditModal() {
+        document.getElementById('editModal').classList.add('hidden');
+        document.getElementById('editModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        document.getElementById('editForm').reset();
+    }
+    
+    async function submitEdit(event) {
+        event.preventDefault();
+        
+        const studentId = document.getElementById('editStudentId').value;
+        const name = document.getElementById('editName').value.trim();
+        const contact = document.getElementById('editContact').value.trim();
+        
+        if (!name) {
+            showError('Student name is required');
+            return;
+        }
+        
+        // Show loading state
+        const btn = document.getElementById('saveEditBtn');
+        const spinner = document.getElementById('editSpinner');
+        const btnText = document.getElementById('editBtnText');
+        btn.disabled = true;
+        spinner.classList.remove('hidden');
+        btnText.innerHTML = 'Updating...';
+        
+        try {
+            const response = await fetch(`/student-list/api/student/${studentId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    contact_number: contact
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('✅ Student updated successfully!', 'success');
+                closeEditModal();
+                loadStudents();
+            } else {
+                showError(result.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to update student');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            btnText.innerHTML = '<i class="fas fa-save"></i> Update Student';
+        }
+    }
+    
+    // ==================== TOAST NOTIFICATION ====================
+    
+    function showToast(message, type) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+    
+    // ==================== EXPORT FUNCTIONS ====================
     
     async function exportToPDF() {
         if (currentStudents.length === 0) {
@@ -315,6 +896,8 @@
         }
     }
     
+    // ==================== ERROR MODAL ====================
+    
     function closeErrorModal() {
         document.getElementById('errorModal').classList.add('hidden');
         document.getElementById('errorModal').classList.remove('flex');
@@ -328,10 +911,15 @@
         document.body.style.overflow = 'hidden';
     }
     
+    // Close modals on outside click
     window.onclick = function(event) {
         const errorModal = document.getElementById('errorModal');
         if (event.target === errorModal) {
             closeErrorModal();
+        }
+        const editModal = document.getElementById('editModal');
+        if (event.target === editModal) {
+            closeEditModal();
         }
     };
 </script>

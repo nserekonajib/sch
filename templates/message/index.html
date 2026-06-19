@@ -1,4 +1,3 @@
-<!-- templates/message/index.html - Updated with Live Student Search -->
 {% extends "base.html" %}
 
 {% block title %}Send Message - Lunserk ERP{% endblock %}
@@ -10,6 +9,14 @@
     }
     .btn-gradient:hover {
         background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .btn-whatsapp {
+        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+        color: white;
+    }
+    .btn-whatsapp:hover {
+        background: linear-gradient(135deg, #128C7E 0%, #075E54 100%);
         transform: translateY(-2px);
     }
     .recipient-card {
@@ -74,6 +81,75 @@
         background-color: #fef3c7;
         font-weight: bold;
     }
+    .message-type-btn {
+        transition: all 0.2s;
+        border: 2px solid transparent;
+    }
+    .message-type-btn.active {
+        border-color: #ffa500;
+        background-color: #fff7ed;
+    }
+    .message-type-btn:hover {
+        transform: translateY(-2px);
+    }
+    .phone-badge {
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+    }
+    .phone-badge.no-phone {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .file-upload-area {
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .file-upload-area:hover {
+        border-color: #25D366;
+        background: #f0fdf4;
+    }
+    .file-upload-area.has-file {
+        border-color: #25D366;
+        background: #f0fdf4;
+    }
+    .file-upload-area .file-icon {
+        font-size: 32px;
+        color: #9ca3af;
+    }
+    .file-upload-area .file-name {
+        font-weight: 500;
+        color: #1f2937;
+    }
+    .file-upload-area .file-size {
+        font-size: 12px;
+        color: #6b7280;
+    }
+    .file-upload-area .remove-file {
+        color: #ef4444;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .file-upload-area .remove-file:hover {
+        color: #dc2626;
+    }
+    .pdf-preview {
+        max-height: 200px;
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-top: 8px;
+    }
+    .pdf-preview object {
+        width: 100%;
+        height: 250px;
+    }
 </style>
 {% endblock %}
 
@@ -82,7 +158,7 @@
     <!-- Page Header -->
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800 mb-1">Send Message to Parents</h1>
-        <p class="text-sm text-gray-600">Compose and send SMS messages to parents/guardians</p>
+        <p class="text-sm text-gray-600">Compose and send SMS or WhatsApp messages to parents/guardians</p>
     </div>
 
     <!-- SMS Status Alert -->
@@ -118,7 +194,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Send To</label>
                         <div class="flex gap-3">
                             <label class="flex items-center gap-2">
-                                <input type="radio" name="apply_to" value="all" class="text-orange-500 focus:ring-orange-500">
+                                <input type="radio" name="apply_to" value="all" checked class="text-orange-500 focus:ring-orange-500">
                                 <span class="text-sm">All Students</span>
                             </label>
                             <label class="flex items-center gap-2">
@@ -169,6 +245,7 @@
                             <p class="text-sm font-medium text-gray-700">Recipients</p>
                             <p class="text-2xl font-bold text-orange-600" id="recipientCount">0</p>
                             <p class="text-xs text-gray-500 mt-1" id="recipientList"></p>
+                            <p class="text-xs text-gray-500 mt-1" id="phoneSummary"></p>
                         </div>
                     </div>
                 </div>
@@ -186,47 +263,132 @@
                 </div>
                 
                 <div class="p-5">
-                    <!-- Templates -->
+                    <!-- Message Type Selection -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Quick Templates</label>
-                        <div class="flex flex-wrap gap-2">
-                            <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('general')">
-                                General Announcement
-                            </span>
-                            <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('fee')">
-                                Fee Reminder
-                            </span>
-                            <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('exam')">
-                                Exam Notification
-                            </span>
-                            <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('event')">
-                                School Event
-                            </span>
-                            <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('holiday')">
-                                Holiday Notice
-                            </span>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Message Type</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="setMessageType('text')" id="textTypeBtn" class="message-type-btn active p-3 rounded-lg bg-gray-50 text-center">
+                                <i class="fas fa-comment text-blue-500 text-xl mb-1"></i>
+                                <p class="text-sm font-medium">Text Message</p>
+                                <p class="text-xs text-gray-500">Send via SMS or WhatsApp</p>
+                            </button>
+                            <button onclick="setMessageType('pdf')" id="pdfTypeBtn" class="message-type-btn p-3 rounded-lg bg-gray-50 text-center">
+                                <i class="fas fa-file-pdf text-red-500 text-xl mb-1"></i>
+                                <p class="text-sm font-medium">PDF Document</p>
+                                <p class="text-xs text-gray-500">Send via WhatsApp only</p>
+                            </button>
                         </div>
                     </div>
-                    
-                    <!-- Message Input -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                        <textarea id="messageText" rows="6" 
-                                  placeholder="Type your message here... Use {student_name} for student name"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
-                        <div class="flex justify-between mt-1">
-                            <p class="text-xs text-gray-500">Use {student_name} to insert student's name</p>
-                            <p id="charCount" class="text-xs text-gray-500 char-counter">0 / 160 characters</p>
+
+                    <!-- Message Type: Text -->
+                    <div id="textMessageDiv">
+                        <!-- Templates -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Quick Templates</label>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('general')">
+                                    General Announcement
+                                </span>
+                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('fee')">
+                                    Fee Reminder
+                                </span>
+                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('exam')">
+                                    Exam Notification
+                                </span>
+                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('event')">
+                                    School Event
+                                </span>
+                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('holiday')">
+                                    Holiday Notice
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Message Input -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                            <textarea id="messageText" rows="6" 
+                                      placeholder="Type your message here... Use {student_name} for student name"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
+                            <div class="flex justify-between mt-1">
+                                <p class="text-xs text-gray-500">Use {student_name} to insert student's name</p>
+                                <p id="charCount" class="text-xs text-gray-500 char-counter">0 / 160 characters</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Sender ID -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Sender ID</label>
+                            <input type="text" id="senderId" value="{{ sms_settings.sender_id if sms_settings else 'SCHOOL' }}" 
+                                   maxlength="11" placeholder="SCHOOL"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            <p class="text-xs text-gray-500 mt-1">Maximum 11 characters. This will appear as the sender name</p>
+                        </div>
+                        
+                        <!-- Channel Selection -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Send Via</label>
+                            <div class="flex gap-3">
+                                <label class="flex items-center gap-2">
+                                    <input type="radio" name="channel" value="sms" checked class="text-orange-500 focus:ring-orange-500">
+                                    <span class="text-sm">SMS</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="radio" name="channel" value="whatsapp" class="text-green-500 focus:ring-green-500">
+                                    <span class="text-sm">WhatsApp</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
-                    
-                    <!-- Sender ID -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Sender ID</label>
-                        <input type="text" id="senderId" value="{{ sms_settings.sender_id if sms_settings else 'SCHOOL' }}" 
-                               maxlength="11" placeholder="SCHOOL"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                        <p class="text-xs text-gray-500 mt-1">Maximum 11 characters. This will appear as the sender name</p>
+
+                    <!-- Message Type: PDF Document -->
+                    <div id="pdfMessageDiv" style="display: none;">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">PDF Document <span class="text-red-500">*</span></label>
+                            
+                            <!-- File Upload Area -->
+                            <div id="fileUploadArea" class="file-upload-area" onclick="document.getElementById('pdfFileInput').click()">
+                                <div id="fileUploadContent">
+                                    <i class="fas fa-cloud-upload-alt file-icon"></i>
+                                    <p class="mt-2 text-sm text-gray-600">Click to upload a PDF document</p>
+                                    <p class="text-xs text-gray-400">or drag and drop</p>
+                                </div>
+                                <div id="fileSelectedContent" style="display: none;">
+                                    <i class="fas fa-file-pdf text-red-500 file-icon"></i>
+                                    <p class="mt-2 font-medium file-name" id="selectedFileName">document.pdf</p>
+                                    <p class="file-size" id="selectedFileSize">0 KB</p>
+                                    <button type="button" onclick="removeFile(event)" class="remove-file mt-2">
+                                        <i class="fas fa-times-circle"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                            <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;" onchange="handleFileSelect(event)">
+                            <p class="text-xs text-gray-400 mt-1">Only PDF files are accepted. Max size: 10MB</p>
+                        </div>
+
+                        <!-- PDF Preview -->
+                        <div id="pdfPreviewContainer" style="display: none;" class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
+                            <div class="pdf-preview">
+                                <object id="pdfPreview" data="" type="application/pdf">
+                                    <p>PDF preview not available. <a href="#" id="pdfDownloadLink" target="_blank">Download PDF</a></p>
+                                </object>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                            <p class="text-sm text-green-800">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                The PDF will be sent via WhatsApp to each selected recipient.
+                            </p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Additional Message (Optional)</label>
+                            <textarea id="pdfMessage" rows="3" 
+                                      placeholder="Add a message to accompany the PDF..."
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
+                        </div>
                     </div>
                     
                     <!-- Preview -->
@@ -299,15 +461,19 @@
 <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl p-6 flex flex-col items-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
-        <p class="text-gray-700">Sending messages...</p>
+        <p id="loadingText" class="text-gray-700">Sending messages...</p>
+        <p id="loadingProgress" class="text-sm text-gray-500 mt-2"></p>
     </div>
 </div>
 
 <script>
     let currentRecipients = [];
-    let selectedStudents = new Map(); // Store selected students
+    let selectedStudents = new Map();
     let searchTimeout;
-    
+    let currentMessageType = 'text';
+    let selectedPdfBase64 = null;
+    let selectedPdfName = null;
+
     // Apply To radio change
     document.querySelectorAll('input[name="apply_to"]').forEach(radio => {
         radio.addEventListener('change', function() {
@@ -327,11 +493,9 @@
             } else if (this.value === 'student') {
                 studentSearchDiv.classList.remove('hidden');
                 loadBtn.classList.add('hidden');
-                // Clear selected students
                 selectedStudents.clear();
                 updateSelectedStudentsDisplay();
             } else {
-                // All students
                 loadBtn.classList.remove('hidden');
                 document.getElementById('recipientsSummary').classList.add('hidden');
                 currentRecipients = [];
@@ -339,7 +503,82 @@
             }
         });
     });
+
+    // Message Type Toggle
+    function setMessageType(type) {
+        currentMessageType = type;
+        document.getElementById('textTypeBtn').classList.toggle('active', type === 'text');
+        document.getElementById('pdfTypeBtn').classList.toggle('active', type === 'pdf');
+        document.getElementById('textMessageDiv').style.display = type === 'text' ? 'block' : 'none';
+        document.getElementById('pdfMessageDiv').style.display = type === 'pdf' ? 'block' : 'none';
+        updatePreview();
+        validateSendButton();
+    }
+
+    // File upload handling
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // Validate file type
+        if (file.type !== 'application/pdf') {
+            showError('Please select a PDF file');
+            event.target.value = '';
+            return;
+        }
+        
+        // Validate file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            showError('File size exceeds 10MB limit');
+            event.target.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            selectedPdfBase64 = e.target.result.split(',')[1];
+            selectedPdfName = file.name;
+            
+            // Update UI
+            document.getElementById('fileUploadContent').style.display = 'none';
+            document.getElementById('fileSelectedContent').style.display = 'block';
+            document.getElementById('selectedFileName').textContent = file.name;
+            document.getElementById('selectedFileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+            document.getElementById('fileUploadArea').classList.add('has-file');
+            
+            // Show preview
+            document.getElementById('pdfPreviewContainer').style.display = 'block';
+            document.getElementById('pdfPreview').data = URL.createObjectURL(file);
+            document.getElementById('pdfDownloadLink').href = URL.createObjectURL(file);
+            
+            validateSendButton();
+        };
+        reader.readAsDataURL(file);
+    }
     
+    function removeFile(event) {
+        event.stopPropagation();
+        selectedPdfBase64 = null;
+        selectedPdfName = null;
+        document.getElementById('pdfFileInput').value = '';
+        document.getElementById('fileUploadContent').style.display = 'block';
+        document.getElementById('fileSelectedContent').style.display = 'none';
+        document.getElementById('fileUploadArea').classList.remove('has-file');
+        document.getElementById('pdfPreviewContainer').style.display = 'none';
+        validateSendButton();
+    }
+    
+    function validateSendButton() {
+        const withPhone = currentRecipients.filter(r => r.phone && r.phone.length > 0);
+        let canSend = withPhone.length > 0;
+        
+        if (currentMessageType === 'pdf') {
+            canSend = canSend && selectedPdfBase64 !== null;
+        }
+        
+        document.getElementById('sendBtn').disabled = !canSend;
+    }
+
     // Live search functionality
     const searchInput = document.getElementById('studentSearchInput');
     const searchResults = document.getElementById('searchResults');
@@ -380,15 +619,19 @@
         searchResults.innerHTML = students.map(student => {
             const highlightedName = student.name.replace(regex, '<span class="search-highlight">$1</span>');
             const isSelected = selectedStudents.has(student.id);
+            const phone = student.contact_number || student.phone || '';
+            const hasPhone = phone && phone.length > 0;
             
             return `
                 <div class="search-result-item p-3 border-b border-gray-100 ${isSelected ? 'bg-orange-50' : ''}" 
-                     onclick="selectStudent('${student.id}', '${student.name.replace(/'/g, "\\'")}', '${student.student_id}', '${student.phone}')">
+                     onclick="selectStudent('${student.id}', '${student.name.replace(/'/g, "\\'")}', '${student.student_id}', '${phone}')">
                     <div class="flex justify-between items-center">
                         <div>
                             <p class="text-sm font-medium text-gray-800">${highlightedName}</p>
-                            <p class="text-xs text-gray-500">${student.student_id} | ${student.class_name}</p>
-                            <p class="text-xs text-gray-400">📱 ${student.phone || 'No phone'}</p>
+                            <p class="text-xs text-gray-500">${student.student_id} | ${student.class_name || 'N/A'}</p>
+                            <p class="text-xs ${hasPhone ? 'text-gray-600' : 'text-red-400'}">
+                                📱 ${hasPhone ? phone : 'No phone number'}
+                            </p>
                         </div>
                         ${isSelected ? '<i class="fas fa-check-circle text-green-500"></i>' : ''}
                     </div>
@@ -401,15 +644,12 @@
     
     function selectStudent(id, name, studentId, phone) {
         if (!selectedStudents.has(id)) {
-            selectedStudents.set(id, { id, name, student_id: studentId, phone });
+            selectedStudents.set(id, { id, name, student_id: studentId, phone: phone || '' });
             updateSelectedStudentsDisplay();
         }
         
-        // Clear search input and hide results
         searchInput.value = '';
         searchResults.classList.add('hidden');
-        
-        // Update recipients
         updateRecipientsFromSelected();
     }
     
@@ -427,17 +667,20 @@
             return;
         }
         
-        container.innerHTML = Array.from(selectedStudents.values()).map(student => `
-            <div class="flex items-center justify-between p-2 bg-orange-50 rounded-lg">
-                <div>
-                    <p class="text-sm font-medium text-gray-800">${student.name}</p>
-                    <p class="text-xs text-gray-500">${student.student_id} | 📱 ${student.phone || 'No phone'}</p>
+        container.innerHTML = Array.from(selectedStudents.values()).map(student => {
+            const hasPhone = student.phone && student.phone.length > 0;
+            return `
+                <div class="flex items-center justify-between p-2 bg-orange-50 rounded-lg">
+                    <div>
+                        <p class="text-sm font-medium text-gray-800">${student.name}</p>
+                        <p class="text-xs text-gray-500">${student.student_id} | <span class="${hasPhone ? 'text-green-600' : 'text-red-400'}">📱 ${hasPhone ? student.phone : 'No phone'}</span></p>
+                    </div>
+                    <button onclick="removeSelectedStudent('${student.id}')" class="text-red-400 hover:text-red-600">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
                 </div>
-                <button onclick="removeSelectedStudent('${student.id}')" class="text-red-400 hover:text-red-600">
-                    <i class="fas fa-times-circle"></i>
-                </button>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
     
     function updateRecipientsFromSelected() {
@@ -446,23 +689,35 @@
             name: student.name,
             student_id: student.student_id,
             phone: student.phone
-        })).filter(r => r.phone);
+        }));
         
+        updateRecipientsUI();
+    }
+    
+    function updateRecipientsUI() {
         const count = currentRecipients.length;
+        const withPhone = currentRecipients.filter(r => r.phone && r.phone.length > 0).length;
+        const withoutPhone = count - withPhone;
+        
         document.getElementById('recipientCount').textContent = count;
         
         const recipientList = currentRecipients.slice(0, 5).map(r => r.name).join(', ');
         if (count > 5) {
             document.getElementById('recipientList').innerHTML = `${recipientList} and ${count - 5} more...`;
         } else {
-            document.getElementById('recipientList').innerHTML = recipientList;
+            document.getElementById('recipientList').innerHTML = recipientList || 'No recipients';
         }
         
+        // Show phone summary
+        document.getElementById('phoneSummary').innerHTML = `
+            <span class="${withPhone > 0 ? 'text-green-600' : 'text-red-400'}">📱 ${withPhone} with phone</span>
+            ${withoutPhone > 0 ? `<span class="text-red-400 ml-2">⚠️ ${withoutPhone} without phone</span>` : ''}
+        `;
+        
         document.getElementById('recipientsSummary').classList.remove('hidden');
-        document.getElementById('sendBtn').disabled = count === 0;
+        validateSendButton();
     }
     
-    // Close search results when clicking outside
     document.addEventListener('click', function(e) {
         if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
             searchResults.classList.add('hidden');
@@ -487,9 +742,19 @@
         
         updatePreview();
     });
+
+    document.getElementById('pdfMessage').addEventListener('input', updatePreview);
     
     function updatePreview() {
-        let message = document.getElementById('messageText').value;
+        let message = '';
+        if (currentMessageType === 'text') {
+            message = document.getElementById('messageText').value;
+        } else {
+            const pdfMsg = document.getElementById('pdfMessage').value;
+            const fileName = selectedPdfName || 'document.pdf';
+            message = `📄 Sending PDF: ${fileName}\n\n${pdfMsg}`;
+        }
+        
         const preview = document.getElementById('messagePreview');
         if (message) {
             preview.innerHTML = message.replace(/\n/g, '<br>');
@@ -513,6 +778,8 @@
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
+        document.getElementById('loadingText').textContent = 'Loading recipients...';
+        document.getElementById('loadingProgress').textContent = '';
         
         try {
             const response = await fetch('/send-message/api/get-recipients', {
@@ -531,25 +798,21 @@
             loading.classList.remove('flex');
             
             if (result.success) {
-                currentRecipients = result.recipients;
-                document.getElementById('recipientCount').textContent = result.count;
-                
-                const recipientList = result.recipients.slice(0, 5).map(r => r.name).join(', ');
-                if (result.count > 5) {
-                    document.getElementById('recipientList').innerHTML = `${recipientList} and ${result.count - 5} more...`;
-                } else {
-                    document.getElementById('recipientList').innerHTML = recipientList;
-                }
-                
-                document.getElementById('recipientsSummary').classList.remove('hidden');
-                document.getElementById('sendBtn').disabled = result.count === 0;
+                // Map recipients to ensure phone is using contact_number
+                currentRecipients = result.recipients.map(r => ({
+                    id: r.id,
+                    name: r.name,
+                    student_id: r.student_id,
+                    phone: r.contact_number || r.phone || ''
+                }));
+                updateRecipientsUI();
             } else {
                 showError(result.message);
             }
         } catch (error) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
-            showError('Failed to load recipients');
+            showError('Failed to load recipients: ' + error.message);
         }
     }
     
@@ -576,57 +839,234 @@
         updatePreview();
     }
     
+    // Helper function to format phone number
+    function formatPhoneNumber(phone) {
+        if (!phone) return '';
+        // Remove any non-digit characters
+        let cleaned = phone.replace(/\D/g, '');
+        // If it starts with 0, remove it
+        if (cleaned.startsWith('0')) {
+            cleaned = cleaned.substring(1);
+        }
+        // If it doesn't start with 256, add it
+        if (!cleaned.startsWith('256')) {
+            cleaned = '256' + cleaned;
+        }
+        return cleaned;
+    }
+    
     async function sendMessage() {
-        const message = document.getElementById('messageText').value.trim();
-        const senderId = document.getElementById('senderId').value.trim();
+        const withPhone = currentRecipients.filter(r => r.phone && r.phone.length > 0);
         
-        if (!message) {
-            showError('Please enter a message');
+        if (withPhone.length === 0) {
+            showError('No recipients with phone numbers available.');
             return;
         }
-        
-        if (currentRecipients.length === 0) {
-            showError('No recipients selected. Please load recipients first.');
+
+        if (currentMessageType === 'pdf' && !selectedPdfBase64) {
+            showError('Please select a PDF file to send.');
             return;
         }
-        
+
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
+        document.getElementById('loadingText').textContent = 'Sending messages...';
+        document.getElementById('loadingProgress').textContent = `0 / ${withPhone.length}`;
         
         try {
-            const response = await fetch('/send-message/api/send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    recipients: currentRecipients,
-                    message: message,
-                    sender_id: senderId || 'SCHOOL'
-                })
-            });
-            
-            const result = await response.json();
-            
-            loading.classList.add('hidden');
-            loading.classList.remove('flex');
-            
-            if (result.success) {
-                document.getElementById('successMessage').innerHTML = result.message;
-                document.getElementById('successModal').classList.remove('hidden');
-                document.getElementById('successModal').classList.add('flex');
-                document.body.style.overflow = 'hidden';
-                
-                // Clear form
-                clearForm();
-                loadMessageHistory();
+            if (currentMessageType === 'text') {
+                await sendTextMessage(withPhone, loading);
             } else {
-                showError(result.message);
+                await sendPdfMessages(withPhone, loading);
             }
         } catch (error) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
             showError('Failed to send message: ' + error.message);
         }
+    }
+    
+    async function sendTextMessage(recipients, loading) {
+        const message = document.getElementById('messageText').value.trim();
+        const senderId = document.getElementById('senderId').value.trim();
+        const channel = document.querySelector('input[name="channel"]:checked').value;
+        
+        if (!message) {
+            showError('Please enter a message');
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            return;
+        }
+
+        try {
+            if (channel === 'sms') {
+                // Send via SMS
+                const response = await fetch('/send-message/api/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        recipients: recipients,
+                        message: message,
+                        sender_id: senderId || 'SCHOOL'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                
+                if (result.success) {
+                    showSuccess(result.message);
+                    clearForm();
+                    loadMessageHistory();
+                } else {
+                    showError(result.message);
+                }
+            } else {
+                // Send via WhatsApp text - with timeout handling
+                let successCount = 0;
+                let failCount = 0;
+                let total = recipients.length;
+                
+                for (let i = 0; i < recipients.length; i++) {
+                    const recipient = recipients[i];
+                    document.getElementById('loadingProgress').textContent = `${i + 1} / ${total}`;
+                    
+                    if (!recipient.phone) {
+                        failCount++;
+                        continue;
+                    }
+                    
+                    const formattedPhone = formatPhoneNumber(recipient.phone);
+                    const personalizedMessage = message.replace(/{student_name}/g, recipient.name);
+                    
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 30000);
+                        
+                        const response = await fetch('/whatsapp-integration/api/send-message', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                phone_number: formattedPhone,
+                                message: personalizedMessage
+                            }),
+                            signal: controller.signal
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            successCount++;
+                        } else {
+                            failCount++;
+                            console.error('WhatsApp send failed for', recipient.name, result);
+                        }
+                    } catch (err) {
+                        if (err.name === 'AbortError') {
+                            console.error('Timeout for', recipient.name);
+                            failCount++;
+                        } else {
+                            failCount++;
+                            console.error('Error sending to', recipient.name, err);
+                        }
+                    }
+                }
+                
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                
+                if (successCount > 0) {
+                    showSuccess(`✅ ${successCount} WhatsApp messages sent successfully${failCount > 0 ? `, ${failCount} failed` : ''}`);
+                    clearForm();
+                    loadMessageHistory();
+                } else {
+                    showError(`Failed to send any WhatsApp messages. ${failCount} failed.`);
+                }
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showError('Failed to send: ' + error.message);
+        }
+    }
+    
+    async function sendPdfMessages(recipients, loading) {
+        const message = document.getElementById('pdfMessage').value.trim();
+        let successCount = 0;
+        let failCount = 0;
+        let total = recipients.length;
+        
+        for (let i = 0; i < recipients.length; i++) {
+            const recipient = recipients[i];
+            document.getElementById('loadingProgress').textContent = `${i + 1} / ${total}`;
+            
+            if (!recipient.phone) {
+                failCount++;
+                continue;
+            }
+            
+            const formattedPhone = formatPhoneNumber(recipient.phone);
+            
+            try {
+                // Send PDF via WhatsApp API
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
+                
+                const response = await fetch('/whatsapp-integration/api/send-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone_number: formattedPhone,
+                        pdf_base64: selectedPdfBase64,
+                        filename: selectedPdfName || 'document.pdf',
+                        message: message || `Dear ${recipient.name}, please find the attached document.`
+                    }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                const result = await response.json();
+                
+                if (result.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                    console.error('PDF send failed for', recipient.name, result);
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.error('Timeout for PDF send', recipient.name);
+                } else {
+                    console.error('Error sending PDF to', recipient.name, error);
+                }
+                failCount++;
+            }
+        }
+        
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        
+        let summary = `✅ ${successCount} PDFs sent successfully`;
+        if (failCount > 0) summary += `, ❌ ${failCount} failed`;
+        
+        if (successCount > 0) {
+            showSuccess(summary);
+            clearForm();
+            loadMessageHistory();
+        } else {
+            showError('Failed to send any PDFs');
+        }
+    }
+    
+    function showSuccess(message) {
+        document.getElementById('successMessage').innerHTML = message;
+        document.getElementById('successModal').classList.remove('hidden');
+        document.getElementById('successModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
     }
     
     async function loadMessageHistory() {
@@ -646,7 +1086,7 @@
                             </div>
                             <div class="text-right">
                                 <p class="text-xs text-gray-400">${new Date(log.created_at).toLocaleString()}</p>
-                                <span class="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs mt-1">Sent</span>
+                                <span class="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs mt-1">${log.channel || 'SMS'}</span>
                             </div>
                         </div>
                     </div>
@@ -662,11 +1102,22 @@
     
     function clearForm() {
         document.getElementById('messageText').value = '';
+        document.getElementById('pdfMessage').value = '';
         document.getElementById('senderId').value = 'SCHOOL';
         document.getElementById('recipientsSummary').classList.add('hidden');
         currentRecipients = [];
         selectedStudents.clear();
         updateSelectedStudentsDisplay();
+        
+        // Clear PDF
+        selectedPdfBase64 = null;
+        selectedPdfName = null;
+        document.getElementById('pdfFileInput').value = '';
+        document.getElementById('fileUploadContent').style.display = 'block';
+        document.getElementById('fileSelectedContent').style.display = 'none';
+        document.getElementById('fileUploadArea').classList.remove('has-file');
+        document.getElementById('pdfPreviewContainer').style.display = 'none';
+        
         document.getElementById('sendBtn').disabled = true;
         updatePreview();
     }
@@ -699,5 +1150,8 @@
     
     // Load message history on page load
     loadMessageHistory();
+
+    // Load initial recipients (All Students)
+    setTimeout(loadRecipients, 500);
 </script>
 {% endblock %}

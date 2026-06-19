@@ -315,6 +315,7 @@ def send_message():
             result = response.json()
             return jsonify({'success': True, 'result': result})
         else:
+            print(f"Failed to send message: {response.status_code} - {response.text}")
             return jsonify({'success': False, 'message': f'Failed to send message: {response.status_code}'}), 500
             
     except requests.exceptions.ConnectionError:
@@ -377,6 +378,7 @@ def send_pdf():
             result = response.json()
             return jsonify({'success': True, 'result': result})
         else:
+            print(f"Failed to send PDF: {response.status_code} - {response.text}")
             return jsonify({'success': False, 'message': f'Failed to send PDF: {response.status_code}'}), 500
             
     except requests.exceptions.ConnectionError:
