@@ -662,7 +662,7 @@
     }
 
     // NEW: Load fee collection summary using the overall-payable-summary API
-   // In your dashboard template, update the loadFeeCollectionSummary function
+ // Replace the loadFeeCollectionSummary function in your dashboard template
 async function loadFeeCollectionSummary() {
     const feeLoaders = ['loaderTotalInvoiced', 'loaderTotalDiscounts', 'loaderTotalPayable', 'loaderCollectionPercentage'];
     
@@ -672,49 +672,69 @@ async function loadFeeCollectionSummary() {
     });
     
     try {
-        // Make sure this URL is correct for your app
-        const response = await fetch('/fees/overall-payable-summary');
-        const data = await response.json();
+        // Use the stats API which already has all the data including revenue_collected
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const statsResponse = await fetch(`/dashboard/api/stats?start_date=${startDate}&end_date=${endDate}`);
+        const statsData = await statsResponse.json();
         
-        if (data.success) {
-            // Update card values with proper formatting
-            document.getElementById('totalInvoiced').textContent = `UGX ${Number(data.summary.total_invoiced).toLocaleString()}`;
-            document.getElementById('totalDiscounts').textContent = `UGX ${Number(data.summary.total_discount_applied).toLocaleString()}`;
-            document.getElementById('totalPayable').textContent = `UGX ${Number(data.summary.total_payable).toLocaleString()}`;
+        if (statsData.success) {
+            const stats = statsData.stats;
             
-            const percentage = Number(data.summary.overall_collection_percentage);
-            document.getElementById('collectionPercentage').textContent = `${percentage.toFixed(1)}%`;
+            // Update invoiced, discounts, payable from stats
+            document.getElementById('totalInvoiced').textContent = `UGX ${Number(stats.total_invoiced || 0).toLocaleString()}`;
+            document.getElementById('totalDiscounts').textContent = `UGX ${Number(stats.total_discounts || 0).toLocaleString()}`;
+            
+            // Calculate payable = invoiced - discounts
+            const totalPayable = (stats.total_invoiced || 0) - (stats.total_discounts || 0);
+            document.getElementById('totalPayable').textContent = `UGX ${Number(totalPayable).toLocaleString()}`;
+            
+            // 🔥 FIX: Calculate collection rate using revenue_collected (which includes SchoolPay)
+            const revenueCollected = stats.revenue_collected || 0;
+            let percentage = 0;
+            
+            if (totalPayable > 0) {
+                percentage = (revenueCollected / totalPayable) * 100;
+            } else if (revenueCollected > 0) {
+                percentage = 100;
+            }
+            
+            // Round to 1 decimal place
+            percentage = Math.round(percentage * 10) / 10;
+            
+            // Update the display
+            const percentageElement = document.getElementById('collectionPercentage');
+            percentageElement.textContent = `${percentage.toFixed(1)}%`;
             
             // Update progress bar
             const progressBar = document.getElementById('collectionProgressBar');
-            progressBar.style.width = `${Math.min(percentage, 100)}%`;
+            const displayPercentage = Math.min(percentage, 100);
+            progressBar.style.width = `${displayPercentage}%`;
             
-            // Change progress bar color based on percentage
+            // Color code based on percentage
             progressBar.classList.remove('danger', 'warning');
+            percentageElement.classList.remove('text-cyan-600', 'text-red-600', 'text-yellow-600', 'text-green-600');
+            
             if (percentage < 50) {
                 progressBar.classList.add('danger');
-            } else if (percentage < 75) {
-                progressBar.classList.add('warning');
-            }
-            
-            // Color code the percentage text
-            const percentageElement = document.getElementById('collectionPercentage');
-            percentageElement.classList.remove('text-cyan-600', 'text-red-600', 'text-yellow-600', 'text-green-600');
-            if (percentage < 50) {
                 percentageElement.classList.add('text-red-600');
             } else if (percentage < 75) {
+                progressBar.classList.add('warning');
                 percentageElement.classList.add('text-yellow-600');
             } else {
                 percentageElement.classList.add('text-green-600');
             }
             
-            console.log('Fee collection summary loaded:', data.summary);
+            // Also update the card to show SchoolPay breakdown if available
+            if (stats.payment_method_breakdown) {
+                console.log('Payment breakdown:', stats.payment_method_breakdown);
+                // You could add additional UI elements here to show SchoolPay vs Manual
+            }
             
-            // You could also display additional info like total payments count
-            // document.getElementById('totalPayments').textContent = data.summary.total_payments;
+            console.log('Fee collection summary loaded with collection rate:', percentage);
         } else {
-            console.error('Error from server:', data.message);
-            showFeeError(data.message || 'Failed to load fee summary');
+            console.error('Error from stats API:', statsData.message);
+            showFeeError('Failed to load fee summary');
         }
     } catch (error) {
         console.error('Error loading fee collection summary:', error);
@@ -726,6 +746,7 @@ async function loadFeeCollectionSummary() {
         });
     }
 }
+
 function showFeeError(message) {
     document.getElementById('totalInvoiced').textContent = 'Error';
     document.getElementById('totalDiscounts').textContent = 'Error';

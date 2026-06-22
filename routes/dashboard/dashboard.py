@@ -166,10 +166,7 @@ async def index():
 @dashboard_bp.route('/api/stats', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 async def get_dashboard_stats():
-    """
-    Dashboard statistics — properly includes SchoolPay payments in collection rate.
-    🔥 FIX: Invoices are now filtered by the same date range as payments.
-    """
+    """Dashboard statistics — properly includes SchoolPay payments."""
     user_id = session.get('user_id') or session.get('user', {}).get('id')
     institute_id = await run(get_institute_id, user_id)
 
@@ -183,11 +180,12 @@ async def get_dashboard_stats():
             datetime.now().date().isoformat()
 
         cache_key = f"stats:{institute_id}:{start_date}:{end_date}"
-        cached = await cache_get(cache_key, ttl=60)
-        if cached is not None:
-            return cached
-
-        # 🔥 FIX: Filter invoices by date range (created_at between start_date and end_date)
+        
+        # 🔥 FIX: Clear cache to get fresh data
+        async with _cache_lock:
+            if cache_key in _cache:
+                del _cache[cache_key]
+        
         # Run all queries in parallel
         (students_res, employees_res, payments_res, invoices_res, 
          income_res, expense_res, discounts_res) = await asyncio.gather(
@@ -203,7 +201,7 @@ async def get_dashboard_stats():
                 .eq('status', 'active')
                 .execute()),
 
-            # Get ALL payments (including SchoolPay) for the period
+            # 🔥 FIX: Get ALL payments (including SchoolPay) for the period
             run(lambda: supabase.table('payments')
                 .select('amount, student_id, payment_method')
                 .eq('institute_id', institute_id)
@@ -233,7 +231,6 @@ async def get_dashboard_stats():
                 .lte('transaction_date', end_date)
                 .execute()),
 
-            # 🔥 FIX: Get discounts created within the date range
             run(lambda: supabase.table('discounts')
                 .select('discount_amount, student_id, created_at')
                 .eq('institute_id', institute_id)
@@ -246,13 +243,18 @@ async def get_dashboard_stats():
         total_students = students_res.count or 0
         total_employees = employees_res.count or 0
 
-        # Calculate revenue from ALL payments (including SchoolPay) in date range
-        revenue_collected = sum(float(p['amount']) for p in (payments_res.data or []))
-        other_income = sum(float(i['amount']) for i in (income_res.data or []))
+        # 🔥 FIX: Calculate revenue from ALL payments (including SchoolPay)
+        payments_data = payments_res.data or []
+        revenue_collected = sum(float(p['amount']) for p in payments_data)
+        
+        # 🔥 FIX: Calculate other income
+        income_data = income_res.data or []
+        other_income = sum(float(i['amount']) for i in income_data)
 
-        # 🔥 FIX: Calculate total invoiced from invoices in date range (positive amounts only)
+        # 🔥 FIX: Calculate total invoiced (positive amounts only)
+        invoices_data = invoices_res.data or []
         total_invoiced = 0.0
-        for inv in (invoices_res.data or []):
+        for inv in invoices_data:
             try:
                 amount = float(inv.get('total_amount', 0))
                 if amount > 0:
@@ -260,9 +262,10 @@ async def get_dashboard_stats():
             except (ValueError, TypeError):
                 continue
 
-        # 🔥 FIX: Calculate total discounts in date range
+        # 🔥 FIX: Calculate total discounts
+        discounts_data = discounts_res.data or []
         total_discounts = 0.0
-        for d in (discounts_res.data or []):
+        for d in discounts_data:
             try:
                 discount_amount = float(d.get('discount_amount', 0))
                 if discount_amount > 0:
@@ -270,34 +273,46 @@ async def get_dashboard_stats():
             except (ValueError, TypeError):
                 continue
 
-        # Calculate total payable = invoices - discounts
+        # 🔥 FIX: Calculate total payable
         total_payable = total_invoiced - total_discounts
         
-        # 🔥 FIX: Collection rate using ALL payments vs total payable in the SAME period
+        # 🔥 FIX: Collection rate using ALL payments
         if total_payable > 0:
             collection_rate = (revenue_collected / total_payable) * 100
         else:
-            # If no payable amount, collection is 100% if there are payments
             collection_rate = 100.0 if revenue_collected > 0 else 0.0
-        
-        # 🔥 FIX: Don't cap at 100% - allow showing over 100% for overpayments
-        # This is important for schools where students pay in advance
-        # If you want to cap it, uncomment the line below:
-        # if collection_rate > 100:
-        #     collection_rate = 100.0
 
         total_income = revenue_collected + other_income
         total_expenses = sum(float(e['amount']) for e in (expense_res.data or []))
         total_profit = total_income - total_expenses
 
-        # Breakdown of payments by method
+        # 🔥 FIX: Breakdown of payments by method
         payment_method_breakdown = {}
-        for p in (payments_res.data or []):
+        schoolpay_total = 0
+        manual_total = 0
+        for p in payments_data:
             method = p.get('payment_method', 'unknown')
             amount = float(p['amount'])
             payment_method_breakdown[method] = payment_method_breakdown.get(method, 0) + amount
+            if method == 'schoolpay':
+                schoolpay_total += amount
+            else:
+                manual_total += amount
 
-        response = jsonify({
+        # 🔥 DEBUG: Log the values
+        print(f"=== DASHBOARD STATS ===")
+        print(f"Payments count: {len(payments_data)}")
+        print(f"Revenue collected: {revenue_collected}")
+        print(f"Invoices count: {len(invoices_data)}")
+        print(f"Total invoiced: {total_invoiced}")
+        print(f"Total discounts: {total_discounts}")
+        print(f"Total payable: {total_payable}")
+        print(f"Collection rate: {collection_rate}%")
+        print(f"SchoolPay total: {schoolpay_total}")
+        print(f"Manual total: {manual_total}")
+        print(f"======================")
+
+        response_data = {
             'success': True,
             'stats': {
                 'total_students': total_students,
@@ -314,11 +329,14 @@ async def get_dashboard_stats():
                 'start_date': start_date,
                 'end_date': end_date,
                 'payment_method_breakdown': payment_method_breakdown,
-                # 🔥 NEW: Show invoice count for debugging
-                'invoice_count': len(invoices_res.data or []),
-                'payment_count': len(payments_res.data or [])
+                'schoolpay_total': schoolpay_total,
+                'manual_total': manual_total,
+                'payment_count': len(payments_data),
+                'invoice_count': len(invoices_data)
             }
-        })
+        }
+        
+        response = jsonify(response_data)
         await cache_set(cache_key, response)
         return response
 
