@@ -27,13 +27,34 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ==================== SUPABASE SETUP ====================
 let supabase = null;
+let supabase2 = null;
+
+// Initialize first Supabase client
 try {
   if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
     supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-    console.log('✅ Supabase connected');
+    console.log('✅ Supabase Primary connected');
   }
 } catch (error) {
-  console.log('⚠️ Supabase not configured');
+  console.log('⚠️ Supabase Primary not configured');
+}
+
+// Initialize second Supabase client
+try {
+  if (process.env.SUPABASE_URL2 && process.env.SUPABASE_KEY2) {
+    supabase2 = createClient(process.env.SUPABASE_URL2, process.env.SUPABASE_KEY2);
+    console.log('✅ Supabase Secondary connected');
+  }
+} catch (error) {
+  console.log('⚠️ Supabase Secondary not configured');
+}
+
+// Determine which Supabase client to use
+function getSupabaseClient() {
+  // If primary is available, use it; otherwise use secondary
+  if (supabase) return supabase;
+  if (supabase2) return supabase2;
+  return null;
 }
 
 // ==================== AUTH FOLDER SETUP ====================
@@ -44,6 +65,7 @@ if (!fs.existsSync(BASE_AUTH_FOLDER)) {
 
 // ==================== CLIENT STORE ====================
 const clients = new Map();
+const qrRequests = new Map(); // Track which institutes have requested QR
 
 // ==================== HELPERS ====================
 function getInstituteAuthFolder(instituteId) {
@@ -55,10 +77,12 @@ function getInstituteAuthFolder(instituteId) {
 }
 
 async function syncFromSupabase(instituteId) {
-  if (!supabase) return false;
+  const supabaseClient = getSupabaseClient();
+  if (!supabaseClient) return false;
+  
   try {
     const authFolder = getInstituteAuthFolder(instituteId);
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('whatsapp_auth_files_custom')
       .select('filename, content')
       .eq('institute_id', instituteId);
@@ -79,7 +103,9 @@ async function syncFromSupabase(instituteId) {
 }
 
 async function syncToSupabase(instituteId) {
-  if (!supabase) return;
+  const supabaseClient = getSupabaseClient();
+  if (!supabaseClient) return;
+  
   try {
     const authFolder = getInstituteAuthFolder(instituteId);
     const files = fs.readdirSync(authFolder);
@@ -87,7 +113,7 @@ async function syncToSupabase(instituteId) {
       const filePath = path.join(authFolder, filename);
       const content = fs.readFileSync(filePath, 'utf-8');
       
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('whatsapp_auth_files_custom')
         .upsert(
           { 
@@ -127,9 +153,10 @@ async function clearAuthData(instituteId) {
     fs.mkdirSync(authFolder, { recursive: true });
   }
   
-  if (supabase) {
+  const supabaseClient = getSupabaseClient();
+  if (supabaseClient) {
     try {
-      await supabase
+      await supabaseClient
         .from('whatsapp_auth_files_custom')
         .delete()
         .eq('institute_id', instituteId);
@@ -140,9 +167,11 @@ async function clearAuthData(instituteId) {
 }
 
 async function storeMessage(instituteId, phoneNumber, message, messageType = 'text', status = 'sent') {
-  if (!supabase) return;
+  const supabaseClient = getSupabaseClient();
+  if (!supabaseClient) return;
+  
   try {
-    await supabase
+    await supabaseClient
       .from('whatsapp_messages_custom')
       .insert([{
         institute_id: instituteId,
@@ -158,7 +187,7 @@ async function storeMessage(instituteId, phoneNumber, message, messageType = 'te
 }
 
 // ==================== CONNECT TO WHATSAPP ====================
-async function connectToWhatsApp(instituteId) {
+async function connectToWhatsApp(instituteId, forceQR = false) {
   console.log(`🔄 Connecting to WhatsApp for institute ${instituteId}...`);
   
   // Remove existing client if any
@@ -174,7 +203,8 @@ async function connectToWhatsApp(instituteId) {
     sock: null,
     qr: null,
     isReady: false,
-    reconnectAttempts: 0
+    reconnectAttempts: 0,
+    qrRequested: forceQR || false
   };
   clients.set(instituteId, client);
   
@@ -200,7 +230,8 @@ async function connectToWhatsApp(instituteId) {
     sock.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
       
-      if (qr) {
+      // Only generate and emit QR if requested or if forced
+      if (qr && (client.qrRequested || forceQR)) {
         console.log(`📱 QR Code generated for institute ${instituteId}`);
         client.qr = qr;
         
@@ -213,6 +244,10 @@ async function connectToWhatsApp(instituteId) {
           io.to(`institute_${instituteId}`).emit('qr', qr);
         }
         client.reconnectAttempts = 0;
+      } else if (qr && !client.qrRequested) {
+        // Store QR but don't emit unless requested
+        client.qr = qr;
+        console.log(`📱 QR Code generated for institute ${instituteId} (stored, waiting for request)`);
       }
       
       if (connection === 'close') {
@@ -225,7 +260,7 @@ async function connectToWhatsApp(instituteId) {
           client.reconnectAttempts++;
           const delay = Math.min(5000 * client.reconnectAttempts, 30000);
           console.log(`🔄 Reconnecting institute ${instituteId} in ${delay/1000}s... (Attempt ${client.reconnectAttempts})`);
-          setTimeout(() => connectToWhatsApp(instituteId), delay);
+          setTimeout(() => connectToWhatsApp(instituteId, forceQR), delay);
         } else if (statusCode === DisconnectReason.loggedOut) {
           client.isReady = false;
           io.to(`institute_${instituteId}`).emit('disconnected', 'Logged out');
@@ -251,7 +286,7 @@ async function connectToWhatsApp(instituteId) {
     
   } catch (error) {
     console.error(`❌ Connection error for institute ${instituteId}:`, error.message);
-    setTimeout(() => connectToWhatsApp(instituteId), 10000);
+    setTimeout(() => connectToWhatsApp(instituteId, forceQR), 10000);
   }
 }
 
@@ -262,17 +297,19 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    clients: clients.size
+    clients: clients.size,
+    supabase: !!getSupabaseClient()
   });
 });
 
 // Get status for an institute
 app.get('/api/status/:instituteId', async (req, res) => {
   const { instituteId } = req.params;
+  const supabaseClient = getSupabaseClient();
   
-  if (supabase) {
+  if (supabaseClient) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('whatsapp_settings_custom')
         .select('is_enabled')
         .eq('institute_id', instituteId)
@@ -299,18 +336,20 @@ app.get('/api/status/:instituteId', async (req, res) => {
   
   res.json({
     ready: client.isReady,
-    qrCode: client.qr,
-    reconnectAttempts: client.reconnectAttempts
+    qrCode: client.qr || null,
+    reconnectAttempts: client.reconnectAttempts,
+    qrRequested: client.qrRequested
   });
 });
 
-// Request QR code
+// Request QR code - only generates QR when this endpoint is called
 app.post('/api/request-qr/:instituteId', async (req, res) => {
   const { instituteId } = req.params;
+  const supabaseClient = getSupabaseClient();
   
-  if (supabase) {
+  if (supabaseClient) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('whatsapp_settings_custom')
         .select('is_enabled')
         .eq('institute_id', instituteId)
@@ -325,10 +364,13 @@ app.post('/api/request-qr/:instituteId', async (req, res) => {
     } catch(e) {}
   }
   
+  // Clear existing auth data to force new QR
   await clearAuthData(instituteId);
-  setTimeout(() => connectToWhatsApp(instituteId), 1000);
   
-  res.json({ success: true, message: 'QR code requested' });
+  // Set QR requested flag and connect
+  setTimeout(() => connectToWhatsApp(instituteId, true), 1000);
+  
+  res.json({ success: true, message: 'QR code requested. QR will be generated and sent via socket.' });
 });
 
 // Logout / Disconnect
@@ -414,13 +456,14 @@ app.post('/api/send-pdf', async (req, res) => {
 app.get('/api/messages/:instituteId', async (req, res) => {
   const { instituteId } = req.params;
   const limit = parseInt(req.query.limit) || 50;
+  const supabaseClient = getSupabaseClient();
   
-  if (!supabase) {
+  if (!supabaseClient) {
     return res.status(500).json({ error: 'Supabase not configured' });
   }
   
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('whatsapp_messages_custom')
       .select('*')
       .eq('institute_id', instituteId)
@@ -448,15 +491,44 @@ io.on('connection', (socket) => {
       if (client.isReady) {
         socket.emit('ready', 'WhatsApp client is ready!');
         console.log(`✅ Sent ready to ${socket.id}`);
-      } else if (client.qr) {
+      } else if (client.qr && client.qrRequested) {
+        // Only send QR if it was requested
         qrcode.toDataURL(client.qr, { scale: 8 }).then(qrImage => {
           socket.emit('qr', qrImage);
           console.log(`✅ Sent QR to ${socket.id}`);
         }).catch(() => {
           socket.emit('qr', client.qr);
         });
+      } else if (client.qr && !client.qrRequested) {
+        socket.emit('qr_available', 'QR code is available. Request it via /api/request-qr');
+        console.log(`ℹ️ QR available but not requested for ${instituteId}`);
       }
     }
+  });
+  
+  socket.on('request_qr', async (instituteId) => {
+    console.log(`📱 QR requested via socket for institute ${instituteId}`);
+    // Call the request QR endpoint logic
+    const supabaseClient = getSupabaseClient();
+    
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('whatsapp_settings_custom')
+          .select('is_enabled')
+          .eq('institute_id', instituteId)
+          .single();
+        
+        if (error || !data || !data.is_enabled) {
+          socket.emit('error', 'WhatsApp is disabled for this institute');
+          return;
+        }
+      } catch(e) {}
+    }
+    
+    await clearAuthData(instituteId);
+    setTimeout(() => connectToWhatsApp(instituteId, true), 1000);
+    socket.emit('qr_requested', 'QR code requested. Please wait for QR generation.');
   });
   
   socket.on('disconnect', () => {
@@ -468,13 +540,14 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 
 async function startInstitutes() {
-  if (!supabase) {
+  const supabaseClient = getSupabaseClient();
+  if (!supabaseClient) {
     console.log('⚠️ Supabase not configured. Starting without multi-institute support.');
     return;
   }
   
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('whatsapp_settings_custom')
       .select('institute_id')
       .eq('is_enabled', true);
@@ -484,7 +557,8 @@ async function startInstitutes() {
     if (data && data.length > 0) {
       console.log(`📱 Starting WhatsApp for ${data.length} institute(s)...`);
       for (const setting of data) {
-        await connectToWhatsApp(setting.institute_id);
+        // Don't force QR on initial connection - wait for request
+        await connectToWhatsApp(setting.institute_id, false);
       }
     } else {
       console.log('ℹ️ No institutes with WhatsApp enabled found.');
@@ -496,7 +570,7 @@ async function startInstitutes() {
 
 server.listen(PORT, async () => {
   console.log(`\n🚀 WhatsApp API Server: http://localhost:${PORT}`);
-  console.log(`💾 Auth: ${supabase ? 'Supabase' : 'Local'}`);
+  console.log(`💾 Auth: ${getSupabaseClient() ? 'Supabase' : 'Local'}`);
   console.log(`📱 Server ready\n`);
   
   await startInstitutes();
