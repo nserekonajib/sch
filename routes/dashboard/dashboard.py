@@ -178,75 +178,57 @@ async def get_dashboard_stats():
         end_date = request.args.get('end_date') or \
             datetime.now().date().isoformat()
 
-        # Check cache first
         cache_key = f"stats:{institute_id}:{start_date}:{end_date}"
         cached = await cache_get(cache_key, ttl=60)
         if cached is not None:
             return cached
 
-        # Get ALL students (for total count)
-        students_res = await run(
-            lambda: supabase.table('students')
-            .select('id', count='exact')
-            .eq('institute_id', institute_id)
-            .eq('status', 'active')
-            .execute()
-        )
+        # Run all queries in parallel
+        (students_res, employees_res, payments_res, invoices_res, 
+         income_res, expense_res, discounts_res) = await asyncio.gather(
+            run(lambda: supabase.table('students')
+                .select('id', count='exact')
+                .eq('institute_id', institute_id)
+                .eq('status', 'active')
+                .execute()),
 
-        # Get ALL employees
-        employees_res = await run(
-            lambda: supabase.table('employees')
-            .select('id', count='exact')
-            .eq('institute_id', institute_id)
-            .eq('status', 'active')
-            .execute()
-        )
+            run(lambda: supabase.table('employees')
+                .select('id', count='exact')
+                .eq('institute_id', institute_id)
+                .eq('status', 'active')
+                .execute()),
 
-        # Get ALL payments in date range (including SchoolPay)
-        payments_res = await run(
-            lambda: supabase.table('payments')
-            .select('amount')
-            .eq('institute_id', institute_id)
-            .gte('payment_date', start_date)
-            .lte('payment_date', end_date)
-            .execute()
-        )
+            run(lambda: supabase.table('payments')
+                .select('amount')
+                .eq('institute_id', institute_id)
+                .gte('payment_date', start_date)
+                .lte('payment_date', end_date)
+                .execute()),
 
-        # Get ALL invoices (for total invoiced)
-        invoices_res = await run(
-            lambda: supabase.table('invoices')
-            .select('total_amount')
-            .eq('institute_id', institute_id)
-            .execute()
-        )
+            run(lambda: supabase.table('invoices')
+                .select('total_amount')
+                .eq('institute_id', institute_id)
+                .execute()),
 
-        # Get other income
-        income_res = await run(
-            lambda: supabase.table('income_transactions')
-            .select('amount')
-            .eq('institute_id', institute_id)
-            .gte('transaction_date', start_date)
-            .lte('transaction_date', end_date)
-            .execute()
-        )
+            run(lambda: supabase.table('income_transactions')
+                .select('amount')
+                .eq('institute_id', institute_id)
+                .gte('transaction_date', start_date)
+                .lte('transaction_date', end_date)
+                .execute()),
 
-        # Get expenses
-        expense_res = await run(
-            lambda: supabase.table('expense_transactions')
-            .select('amount')
-            .eq('institute_id', institute_id)
-            .gte('transaction_date', start_date)
-            .lte('transaction_date', end_date)
-            .execute()
-        )
+            run(lambda: supabase.table('expense_transactions')
+                .select('amount')
+                .eq('institute_id', institute_id)
+                .gte('transaction_date', start_date)
+                .lte('transaction_date', end_date)
+                .execute()),
 
-        # Get discounts
-        discounts_res = await run(
-            lambda: supabase.table('discounts')
-            .select('discount_amount')
-            .eq('institute_id', institute_id)
-            .eq('is_active', True)
-            .execute()
+            run(lambda: supabase.table('discounts')
+                .select('discount_amount')
+                .eq('institute_id', institute_id)
+                .eq('is_active', True)
+                .execute())
         )
 
         total_students = students_res.count or 0
@@ -258,20 +240,24 @@ async def get_dashboard_stats():
         total_expenses = sum(float(e['amount']) for e in (expense_res.data or []))
 
         # Total invoiced (only positive amounts)
-        total_invoiced = sum(
-            float(inv['total_amount']) for inv in (invoices_res.data or [])
-            if inv.get('total_amount') and float(inv['total_amount']) > 0
-        )
+        total_invoiced = 0.0
+        for inv in (invoices_res.data or []):
+            try:
+                amount = float(inv.get('total_amount', 0))
+                if amount > 0:
+                    total_invoiced += amount
+            except (ValueError, TypeError):
+                continue
 
         # Total discounts
         total_discounts = sum(
-            float(d['discount_amount']) for d in (discounts_res.data or [])
+            float(d.get('discount_amount', 0)) for d in (discounts_res.data or [])
             if d.get('discount_amount')
         )
 
         total_payable = total_invoiced - total_discounts
         
-        # Collection rate
+        # Collection rate (using all payments, not just invoice-linked)
         if total_payable > 0:
             collection_rate = (revenue_collected / total_payable) * 100
         else:
@@ -833,6 +819,151 @@ def get_fee_collection_summary():
         
     except Exception as e:
         print(f"Error getting fee collection summary: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+# Add this to your routes/fees/fees.py or wherever your fee endpoints are
+
+@fees_bp.route('/overall-payable-summary', methods=['GET'])
+@login_required
+@role_required(['owner', 'teacher', 'accountant'])
+def get_overall_payable_summary():
+    """Get overall payable summary with SchoolPay payments included"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Get ALL invoices for the institute
+        invoices_response = supabase.table('invoices')\
+            .select('total_amount, paid_amount, balance, status')\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        invoices = invoices_response.data if invoices_response.data else []
+        
+        # Get ALL payments (including SchoolPay payments)
+        payments_response = supabase.table('payments')\
+            .select('amount')\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        payments = payments_response.data if payments_response.data else []
+        
+        # Get all discounts
+        discounts_response = supabase.table('discounts')\
+            .select('discount_amount, is_active')\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        discounts = discounts_response.data if discounts_response.data else []
+        
+        # Calculate totals
+        total_invoiced = 0.0
+        total_invoice_paid = 0.0
+        
+        for inv in invoices:
+            try:
+                total_amount = inv.get('total_amount')
+                if total_amount is not None and total_amount != '':
+                    amount = float(total_amount)
+                    if amount > 0:  # Only positive invoices
+                        total_invoiced += amount
+                
+                # Get paid amount from invoices (for reference)
+                paid_amount = inv.get('paid_amount')
+                if paid_amount is not None and paid_amount != '':
+                    total_invoice_paid += float(paid_amount)
+            except (ValueError, TypeError):
+                continue
+        
+        # Calculate total paid from ALL payments (including SchoolPay)
+        total_paid_from_payments = 0.0
+        for p in payments:
+            try:
+                amount = p.get('amount')
+                if amount is not None and amount != '':
+                    total_paid_from_payments += float(amount)
+            except (ValueError, TypeError):
+                continue
+        
+        # Calculate total discounts (only active ones)
+        total_discount = 0.0
+        for d in discounts:
+            try:
+                if d.get('is_active', True):  # Only active discounts
+                    discount_amount = d.get('discount_amount')
+                    if discount_amount is not None and discount_amount != '':
+                        total_discount += float(discount_amount)
+            except (ValueError, TypeError):
+                continue
+        
+        # Total payable = total invoiced - total discounts
+        total_payable = total_invoiced - total_discount
+        
+        # Use the higher of invoice-paid or payment-collected for total collected
+        # This ensures SchoolPay payments are counted
+        total_collected = max(total_paid_from_payments, total_invoice_paid)
+        
+        # If total_collected is 0 but we have payments, use payments total
+        if total_collected == 0 and total_paid_from_payments > 0:
+            total_collected = total_paid_from_payments
+        
+        # Collection percentage based on total payable
+        if total_payable > 0:
+            collection_percentage = (total_collected / total_payable) * 100
+        else:
+            collection_percentage = 100.0 if total_collected > 0 else 0.0
+        
+        # Ensure percentage doesn't exceed 100%
+        if collection_percentage > 100:
+            collection_percentage = 100.0
+        
+        # Get category breakdown (optional)
+        category_breakdown = []
+        try:
+            # Get invoices by category if you have category field
+            category_response = supabase.table('invoices')\
+                .select('category, total_amount')\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            category_data = {}
+            for inv in (category_response.data or []):
+                cat = inv.get('category', 'Uncategorized')
+                amount = float(inv.get('total_amount', 0))
+                if amount > 0:
+                    category_data[cat] = category_data.get(cat, 0) + amount
+            
+            category_breakdown = [
+                {'category': cat, 'amount': amount}
+                for cat, amount in category_data.items()
+            ]
+        except Exception as e:
+            print(f"Error getting category breakdown: {e}")
+        
+        return jsonify({
+            'success': True,
+            'summary': {
+                'total_invoiced': round(total_invoiced, 2),
+                'total_discount_applied': round(total_discount, 2),
+                'total_payable': round(total_payable, 2),
+                'total_collected': round(total_collected, 2),
+                'overall_collection_percentage': round(collection_percentage, 2),
+                'total_invoices': len(invoices),
+                'total_discount_records': len(discounts),
+                'total_payments': len(payments),
+                'total_paid_from_payments': round(total_paid_from_payments, 2),
+                'total_paid_from_invoices': round(total_invoice_paid, 2)
+            },
+            'category_breakdown': category_breakdown
+        })
+        
+    except Exception as e:
+        print(f"Error getting overall payable summary: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
