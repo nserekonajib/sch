@@ -253,11 +253,12 @@ def student_details(student_id):
                              student=None, 
                              institute=institute,
                              error=str(e))
+        
 
 @student_detail_bp.route('/api/student-statement/<student_id>', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def api_get_student_statement(student_id):
-    """API to get student statement with date filtering"""
+    """API to get student statement with date filtering and carry-forward balance"""
     institute = get_institute_from_session()
     
     if not institute:
@@ -279,50 +280,74 @@ def api_get_student_statement(student_id):
         
         student = student_response.data[0]
         
-        # Get ALL invoices for this student
-        invoice_query = supabase.table('invoices')\
+        # ---------- GET ALL INVOICES (for carry-forward calculation) ----------
+        all_invoices_query = supabase.table('invoices')\
             .select('*')\
             .eq('student_id', student_id)\
             .eq('institute_id', institute['id'])
         
-        if start_date:
-            invoice_query = invoice_query.gte('created_at', f"{start_date}T00:00:00")
-        if end_date:
-            invoice_query = invoice_query.lte('created_at', f"{end_date}T23:59:59")
+        all_invoices_response = all_invoices_query.execute()
+        all_invoices = all_invoices_response.data if all_invoices_response.data else []
         
-        invoices_response = invoice_query.order('created_at', desc=False).execute()
-        invoices = invoices_response.data if invoices_response.data else []
-        
-        # Get all payments for this student
-        payment_query = supabase.table('payments')\
-            .select('*, invoices(invoice_number)')\
+        # ---------- GET ALL PAYMENTS (for carry-forward calculation) ----------
+        all_payments_query = supabase.table('payments')\
+            .select('*')\
             .eq('student_id', student_id)\
             .eq('institute_id', institute['id'])
         
-        if start_date:
-            payment_query = payment_query.gte('payment_date', start_date)
-        if end_date:
-            payment_query = payment_query.lte('payment_date', end_date)
+        all_payments_response = all_payments_query.execute()
+        all_payments = all_payments_response.data if all_payments_response.data else []
         
-        payments_response = payment_query.order('payment_date', desc=False).order('created_at', desc=False).execute()
-        payments = payments_response.data if payments_response.data else []
-        
-        # Get all discounts
-        discounts_response = supabase.table('discounts')\
+        # ---------- GET ALL DISCOUNTS ----------
+        all_discounts_response = supabase.table('discounts')\
             .select('*')\
             .eq('student_id', student_id)\
             .eq('institute_id', institute['id'])\
             .execute()
         
-        discounts = discounts_response.data if discounts_response.data else []
+        all_discounts = all_discounts_response.data if all_discounts_response.data else []
         
-        # Build transactions list
+        # ---------- CALCULATE CARRY-FORWARD BALANCE (BEFORE START DATE) ----------
+        carry_forward_balance = 0
+        
+        if start_date:
+            # Get all transactions BEFORE the start date
+            # Process invoices before start date
+            for inv in all_invoices:
+                inv_date = inv.get('created_at', '').split('T')[0] if inv.get('created_at') else ''
+                if inv_date < start_date:
+                    # Add invoice amount to carry-forward
+                    if inv['total_amount'] > 0:
+                        carry_forward_balance += inv['total_amount']
+                    elif inv['total_amount'] < 0:
+                        # Credit note reduces balance
+                        carry_forward_balance += inv['total_amount']  # negative amount
+            
+            # Process payments before start date
+            for pay in all_payments:
+                pay_date = pay.get('payment_date', '')
+                if pay_date < start_date:
+                    carry_forward_balance -= pay['amount']
+            
+            # Process discounts before start date
+            for disc in all_discounts:
+                disc_date = disc.get('created_at', '').split('T')[0] if disc.get('created_at') else ''
+                if disc_date < start_date:
+                    carry_forward_balance -= disc.get('discount_amount', 0)
+        
+        # ---------- GET TRANSACTIONS IN FILTERED DATE RANGE ----------
         transactions = []
         
-        # Add invoices as transactions
-        for invoice in invoices:
+        # Add invoices in date range
+        for invoice in all_invoices:
             timestamp = invoice['created_at']
             date_only = timestamp[:10]
+            
+            # Skip if outside date range
+            if start_date and date_only < start_date:
+                continue
+            if end_date and date_only > end_date:
+                continue
             
             if invoice['total_amount'] < 0:
                 transactions.append({
@@ -351,11 +376,16 @@ def api_get_student_statement(student_id):
                     'reference': invoice['invoice_number']
                 })
         
-        # Add payments as credit transactions
-        for payment in payments:
-            timestamp = f"{payment['payment_date']}T{payment['created_at'][11:]}"
+        # Add payments in date range
+        for payment in all_payments:
             date_only = payment['payment_date']
             
+            if start_date and date_only < start_date:
+                continue
+            if end_date and date_only > end_date:
+                continue
+            
+            timestamp = f"{payment['payment_date']}T{payment['created_at'][11:]}"
             invoice_ref = payment.get('invoices', {}).get('invoice_number', 'N/A') if payment.get('invoices') else 'N/A'
             transactions.append({
                 'timestamp': timestamp,
@@ -368,8 +398,8 @@ def api_get_student_statement(student_id):
                 'invoice_ref': invoice_ref
             })
         
-        # Add discounts as credit transactions
-        for discount in discounts:
+        # Add discounts in date range
+        for discount in all_discounts:
             if discount.get('discount_amount', 0) > 0:
                 timestamp = discount.get('created_at', datetime.now().isoformat())
                 date_only = timestamp[:10]
@@ -392,9 +422,21 @@ def api_get_student_statement(student_id):
         # Sort transactions by timestamp
         transactions.sort(key=lambda x: x['timestamp'])
         
-        # Calculate running balance
-        running_balance = 0
+        # Calculate running balance with carry-forward
+        running_balance = carry_forward_balance
         statement_entries = []
+        
+        # Add carry-forward row if there's a balance before the start date
+        if start_date and carry_forward_balance != 0:
+            statement_entries.append({
+                'date': f'Before {start_date}',
+                'description': 'Balance Brought Forward',
+                'debit': 0,
+                'credit': 0,
+                'balance': carry_forward_balance,
+                'type': 'carry_forward',
+                'is_carry_forward': True
+            })
         
         for trans in transactions:
             if trans['debit'] > 0:
@@ -408,15 +450,20 @@ def api_get_student_statement(student_id):
                 'debit': trans['debit'],
                 'credit': trans['credit'],
                 'balance': running_balance,
-                'type': trans['type']
+                'type': trans['type'],
+                'is_carry_forward': False
             })
         
-        # Calculate summary
-        total_debits = sum(inv['total_amount'] for inv in invoices if inv['total_amount'] > 0)
-        total_credits = sum(p['amount'] for p in payments) + sum(d.get('discount_amount', 0) for d in discounts)
-        total_credits += sum(abs(inv['total_amount']) for inv in invoices if inv['total_amount'] < 0)
-        
+        # Calculate summary for the filtered period
+        total_debits = sum(t['debit'] for t in statement_entries if not t.get('is_carry_forward'))
+        total_credits = sum(t['credit'] for t in statement_entries if not t.get('is_carry_forward'))
         current_balance = running_balance
+        
+        # Overall balance (all-time)
+        overall_invoiced = sum(inv['total_amount'] for inv in all_invoices if inv['total_amount'] > 0)
+        overall_paid = sum(p['amount'] for p in all_payments)
+        overall_discount = sum(d.get('discount_amount', 0) for d in all_discounts)
+        overall_balance = overall_invoiced - overall_paid - overall_discount
         
         return jsonify({
             'success': True,
@@ -439,7 +486,12 @@ def api_get_student_statement(student_id):
             'summary': {
                 'total_debits': total_debits,
                 'total_credits': total_credits,
-                'current_balance': current_balance
+                'current_balance': current_balance,
+                'carry_forward_balance': carry_forward_balance,
+                'overall_balance': overall_balance,
+                'overall_invoiced': overall_invoiced,
+                'overall_paid': overall_paid,
+                'overall_discount': overall_discount
             },
             'date_range': {
                 'start_date': start_date,
@@ -491,4 +543,387 @@ def api_get_student_basic_info(student_id):
         
     except Exception as e:
         print(f"Error fetching student info: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+@student_detail_bp.route('/api/export-statement/<student_id>', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def api_export_statement(student_id):
+    """Export student statement to Excel or PDF"""
+    institute = get_institute_from_session()
+    
+    if not institute:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        format_type = request.args.get('format', 'excel')  # excel or pdf
+        
+        # Get student details
+        student_response = supabase.table('students')\
+            .select('*, classes(name)')\
+            .eq('id', student_id)\
+            .eq('institute_id', institute['id'])\
+            .execute()
+        
+        if not student_response.data:
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        student = student_response.data[0]
+        
+        # Get ALL invoices
+        all_invoices_query = supabase.table('invoices')\
+            .select('*')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute['id'])
+        
+        all_invoices_response = all_invoices_query.execute()
+        all_invoices = all_invoices_response.data if all_invoices_response.data else []
+        
+        # Get ALL payments
+        all_payments_query = supabase.table('payments')\
+            .select('*')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute['id'])
+        
+        all_payments_response = all_payments_query.execute()
+        all_payments = all_payments_response.data if all_payments_response.data else []
+        
+        # Get ALL discounts
+        all_discounts_response = supabase.table('discounts')\
+            .select('*')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute['id'])\
+            .execute()
+        
+        all_discounts = all_discounts_response.data if all_discounts_response.data else []
+        
+        # Calculate carry-forward balance
+        carry_forward_balance = 0
+        
+        if start_date:
+            for inv in all_invoices:
+                inv_date = inv.get('created_at', '').split('T')[0] if inv.get('created_at') else ''
+                if inv_date < start_date:
+                    if inv['total_amount'] > 0:
+                        carry_forward_balance += inv['total_amount']
+                    elif inv['total_amount'] < 0:
+                        carry_forward_balance += inv['total_amount']
+            
+            for pay in all_payments:
+                pay_date = pay.get('payment_date', '')
+                if pay_date < start_date:
+                    carry_forward_balance -= pay['amount']
+            
+            for disc in all_discounts:
+                disc_date = disc.get('created_at', '').split('T')[0] if disc.get('created_at') else ''
+                if disc_date < start_date:
+                    carry_forward_balance -= disc.get('discount_amount', 0)
+        
+        # Build transactions for the period
+        transactions = []
+        
+        # Add invoices in date range
+        for invoice in all_invoices:
+            timestamp = invoice['created_at']
+            date_only = timestamp[:10]
+            
+            if start_date and date_only < start_date:
+                continue
+            if end_date and date_only > end_date:
+                continue
+            
+            if invoice['total_amount'] < 0:
+                transactions.append({
+                    'Date': date_only,
+                    'Description': f"Credit Note {invoice['invoice_number']} - Overpayment Credit",
+                    'Debit (UGX)': 0,
+                    'Credit (UGX)': abs(invoice['total_amount']),
+                    'Reference': invoice['invoice_number']
+                })
+            else:
+                status_text = invoice['status'].upper()
+                if invoice['balance'] == 0:
+                    status_text = "PAID"
+                elif invoice['balance'] < invoice['total_amount']:
+                    status_text = "PARTIAL"
+                
+                transactions.append({
+                    'Date': date_only,
+                    'Description': f"Invoice {invoice['invoice_number']} - {status_text}",
+                    'Debit (UGX)': invoice['total_amount'],
+                    'Credit (UGX)': 0,
+                    'Reference': invoice['invoice_number']
+                })
+        
+        # Add payments in date range
+        for payment in all_payments:
+            date_only = payment['payment_date']
+            
+            if start_date and date_only < start_date:
+                continue
+            if end_date and date_only > end_date:
+                continue
+            
+            transactions.append({
+                'Date': date_only,
+                'Description': f"Payment - {payment['receipt_number']} ({payment['payment_method'].upper()})",
+                'Debit (UGX)': 0,
+                'Credit (UGX)': payment['amount'],
+                'Reference': payment['receipt_number']
+            })
+        
+        # Add discounts in date range
+        for discount in all_discounts:
+            if discount.get('discount_amount', 0) > 0:
+                timestamp = discount.get('created_at', datetime.now().isoformat())
+                date_only = timestamp[:10]
+                
+                if start_date and date_only < start_date:
+                    continue
+                if end_date and date_only > end_date:
+                    continue
+                    
+                transactions.append({
+                    'Date': date_only,
+                    'Description': f"Discount - {discount['discount_type'].upper()} {discount['discount_value']}{'%' if discount['discount_type'] == 'percentage' else ' UGX'}",
+                    'Debit (UGX)': 0,
+                    'Credit (UGX)': discount['discount_amount'],
+                    'Reference': discount.get('reason', 'N/A')
+                })
+        
+        # Sort transactions by date
+        transactions.sort(key=lambda x: x['Date'])
+        
+        # Calculate running balance
+        running_balance = carry_forward_balance
+        for trans in transactions:
+            running_balance += trans['Debit (UGX)'] - trans['Credit (UGX)']
+            trans['Balance (UGX)'] = running_balance
+        
+        # Calculate totals
+        total_debits = sum(t['Debit (UGX)'] for t in transactions)
+        total_credits = sum(t['Credit (UGX)'] for t in transactions)
+        final_balance = running_balance
+        
+        # Get institute name
+        institute_name = institute.get('institute_name', 'School')
+        
+        # Get current date for filename
+        current_date = datetime.now().strftime('%Y%m%d')
+        filename_base = f"student_statement_{student['student_id']}_{current_date}"
+        
+        if format_type == 'pdf':
+            # PDF export using reportlab with BytesIO
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4, landscape
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import inch, mm
+            from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+            
+            # Create BytesIO object for PDF
+            pdf_buffer = io.BytesIO()
+            
+            doc = SimpleDocTemplate(pdf_buffer, pagesize=A4, 
+                                   rightMargin=72, leftMargin=72, 
+                                   topMargin=72, bottomMargin=72)
+            
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=16,
+                textColor=colors.HexColor('#ff8c00'),
+                alignment=TA_CENTER,
+                spaceAfter=10
+            )
+            
+            story = []
+            
+            # Title
+            story.append(Paragraph(f"{institute_name}", title_style))
+            story.append(Paragraph(f"Student Fee Statement", styles['Heading2']))
+            story.append(Spacer(1, 12))
+            
+            # Student Info
+            info_data = [
+                ['Student Name:', student['name']],
+                ['Student ID:', student['student_id']],
+                ['Class:', student['classes']['name'] if student.get('classes') else 'N/A'],
+                ['Period:', f"{start_date or 'All Time'} to {end_date or 'All Time'}"]
+            ]
+            
+            info_table = Table(info_data, colWidths=[100, 300])
+            info_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            story.append(info_table)
+            story.append(Spacer(1, 12))
+            
+            # Transaction Table
+            table_data = [['Date', 'Description', 'Debit (UGX)', 'Credit (UGX)', 'Balance (UGX)']]
+            
+            # Add carry-forward row if applicable
+            if start_date and carry_forward_balance != 0:
+                table_data.append([
+                    f'Before {start_date}',
+                    'Balance Brought Forward',
+                    '',
+                    '',
+                    f'{carry_forward_balance:,.0f}'
+                ])
+            
+            for trans in transactions:
+                table_data.append([
+                    trans['Date'],
+                    trans['Description'],
+                    f"{trans['Debit (UGX)']:,.0f}" if trans['Debit (UGX)'] > 0 else '',
+                    f"{trans['Credit (UGX)']:,.0f}" if trans['Credit (UGX)'] > 0 else '',
+                    f"{trans['Balance (UGX)']:,.0f}"
+                ])
+            
+            # Add totals row
+            table_data.append([
+                '',
+                'TOTALS',
+                f"{total_debits:,.0f}",
+                f"{total_credits:,.0f}",
+                f"{final_balance:,.0f}"
+            ])
+            
+            table = Table(table_data, colWidths=[80, 220, 80, 80, 80])
+            table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ffa500')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f0f0f0')),
+                ('FONTWEIGHT', (0, -1), (-1, -1), 'BOLD'),
+            ]))
+            
+            story.append(table)
+            story.append(Spacer(1, 12))
+            
+            # Summary
+            summary_style = ParagraphStyle(
+                'Summary',
+                parent=styles['Normal'],
+                fontSize=10,
+                spaceAfter=6
+            )
+            
+            summary_text = f"""
+            <b>Summary:</b><br/>
+            Total Debits: UGX {total_debits:,.0f}<br/>
+            Total Credits: UGX {total_credits:,.0f}<br/>
+            <b>Balance: UGX {final_balance:,.0f}</b><br/>
+            Carry Forward: UGX {carry_forward_balance:,.0f}
+            """
+            story.append(Paragraph(summary_text, summary_style))
+            
+            # Build PDF
+            doc.build(story)
+            
+            # Get PDF data from buffer
+            pdf_buffer.seek(0)
+            
+            # Return PDF as download
+            return send_file(
+                pdf_buffer,
+                as_attachment=True,
+                download_name=f"{filename_base}.pdf",
+                mimetype='application/pdf'
+            )
+            
+        else:
+            # Excel export
+            import pandas as pd
+            
+            # Create DataFrame
+            df_data = []
+            
+            # Add carry-forward row
+            if start_date and carry_forward_balance != 0:
+                df_data.append({
+                    'Date': f'Before {start_date}',
+                    'Description': 'Balance Brought Forward',
+                    'Debit (UGX)': 0,
+                    'Credit (UGX)': 0,
+                    'Balance (UGX)': carry_forward_balance
+                })
+            
+            for trans in transactions:
+                df_data.append(trans)
+            
+            df = pd.DataFrame(df_data)
+            
+            output = io.BytesIO()
+            
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                # Write main statement
+                df.to_excel(writer, sheet_name='Statement', index=False)
+                
+                # Get workbook and worksheet
+                workbook = writer.book
+                worksheet = writer.sheets['Statement']
+                
+                # Format currency columns
+                for col in ['Debit (UGX)', 'Credit (UGX)', 'Balance (UGX)']:
+                    if col in df.columns:
+                        col_idx = df.columns.get_loc(col) + 1
+                        for row in range(2, len(df) + 2):
+                            cell = worksheet.cell(row=row, column=col_idx)
+                            if cell.value:
+                                cell.number_format = '#,##0.00'
+                
+                # Add summary sheet
+                summary_data = {
+                    'Student Name': [student['name']],
+                    'Student ID': [student['student_id']],
+                    'Class': [student['classes']['name'] if student.get('classes') else 'N/A'],
+                    'Period Start': [start_date or 'All Time'],
+                    'Period End': [end_date or 'All Time'],
+                    'Total Debits': [total_debits],
+                    'Total Credits': [total_credits],
+                    'Carry Forward Balance': [carry_forward_balance],
+                    'Current Balance': [final_balance]
+                }
+                summary_df = pd.DataFrame(summary_data)
+                summary_df.to_excel(writer, sheet_name='Summary', index=False)
+                
+                # Auto-adjust column widths
+                for sheet_name in writer.sheets:
+                    worksheet = writer.sheets[sheet_name]
+                    for column in worksheet.columns:
+                        max_length = 0
+                        column_letter = column[0].column_letter
+                        for cell in column:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                        adjusted_width = min(max_length + 2, 50)
+                        worksheet.column_dimensions[column_letter].width = adjusted_width
+            
+            output.seek(0)
+            
+            return send_file(
+                output,
+                as_attachment=True,
+                download_name=f"{filename_base}.xlsx",
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        
+    except Exception as e:
+        print(f"Error exporting statement: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500

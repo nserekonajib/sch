@@ -218,12 +218,12 @@ def get_daily_collection():
     except Exception as e:
         print(f"Error getting daily collection: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-
-
+    
+    
 @center_bp.route('/api/balance-report', methods=['POST'])
 @login_required
 def get_balance_report():
-    """Get fees balance report with pagination"""
+    """Get fees balance report with pagination - Optimized with batch queries"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -238,9 +238,9 @@ def get_balance_report():
         page = data.get('page', 1)
         per_page = 20
         
-        # Build query for students
+        # ---------- STEP 1: Get all active students ----------
         students_query = supabase.table('students')\
-            .select('*, classes(name)')\
+            .select('id, name, student_id, contact_number, class_id')\
             .eq('institute_id', institute_id)\
             .eq('status', 'active')
         
@@ -250,6 +250,104 @@ def get_balance_report():
         students_response = students_query.execute()
         students = students_response.data if students_response.data else []
         
+        if not students:
+            return jsonify({
+                'success': True,
+                'data': [],
+                'summary': {
+                    'total_invoiced': 0,
+                    'total_paid': 0,
+                    'total_discount': 0,
+                    'total_balance': 0,
+                    'student_count': 0
+                },
+                'pagination': {
+                    'current_page': page,
+                    'total_pages': 0,
+                    'total_items': 0,
+                    'per_page': per_page
+                }
+            })
+        
+        # Get all student IDs
+        student_ids = [s['id'] for s in students]
+        
+        # ---------- STEP 2: Batch fetch all invoices for all students ----------
+        invoices_query = supabase.table('invoices')\
+            .select('student_id, total_amount, paid_amount, balance, discount_applied, created_at, status')\
+            .eq('institute_id', institute_id)\
+            .in_('student_id', student_ids)
+        
+        invoices_response = invoices_query.execute()
+        all_invoices = invoices_response.data if invoices_response.data else []
+        
+        # ---------- STEP 3: Batch fetch all payments for all students ----------
+        payments_query = supabase.table('payments')\
+            .select('student_id, amount, payment_date')\
+            .eq('institute_id', institute_id)\
+            .in_('student_id', student_ids)
+        
+        payments_response = payments_query.execute()
+        all_payments = payments_response.data if payments_response.data else []
+        
+        # ---------- STEP 4: Get class names in one query ----------
+        class_ids = list(set([s.get('class_id') for s in students if s.get('class_id')]))
+        classes_map = {}
+        if class_ids:
+            classes_response = supabase.table('classes')\
+                .select('id, name')\
+                .in_('id', class_ids)\
+                .execute()
+            if classes_response.data:
+                classes_map = {c['id']: c['name'] for c in classes_response.data}
+        
+        # ---------- STEP 5: Aggregate data per student ----------
+        # Initialize data structures
+        student_invoices = {}
+        student_payments = {}
+        student_invoice_activity = set()
+        student_payment_activity = set()
+        
+        # Group invoices by student
+        for inv in all_invoices:
+            student_id = inv['student_id']
+            if student_id not in student_invoices:
+                student_invoices[student_id] = []
+            student_invoices[student_id].append(inv)
+            
+            # Check activity based on date filters
+            if start_date or end_date:
+                created_at = inv.get('created_at', '')
+                if created_at:
+                    inv_date = created_at.split('T')[0] if 'T' in created_at else created_at[:10]
+                    if start_date and inv_date < start_date:
+                        continue
+                    if end_date and inv_date > end_date:
+                        continue
+                    student_invoice_activity.add(student_id)
+            else:
+                student_invoice_activity.add(student_id)
+        
+        # Group payments by student
+        for pay in all_payments:
+            student_id = pay['student_id']
+            if student_id not in student_payments:
+                student_payments[student_id] = []
+            student_payments[student_id].append(pay)
+            
+            # Check activity based on date filters
+            if start_date or end_date:
+                pay_date = pay.get('payment_date', '')
+                if pay_date:
+                    if start_date and pay_date < start_date:
+                        continue
+                    if end_date and pay_date > end_date:
+                        continue
+                    student_payment_activity.add(student_id)
+            else:
+                student_payment_activity.add(student_id)
+        
+        # ---------- STEP 6: Build report data ----------
         report_data = []
         total_invoiced = 0
         total_paid = 0
@@ -257,36 +355,44 @@ def get_balance_report():
         total_balance = 0
         
         for student in students:
+            student_id = student['id']
+            
             # Get invoices for this student
-            invoices_query = supabase.table('invoices')\
-                .select('*')\
-                .eq('student_id', student['id'])\
-                .eq('institute_id', institute_id)
+            invoices = student_invoices.get(student_id, [])
+            payments = student_payments.get(student_id, [])
             
-            if start_date:
-                invoices_query = invoices_query.gte('created_at', f"{start_date}T00:00:00")
-            if end_date:
-                invoices_query = invoices_query.lte('created_at', f"{end_date}T23:59:59")
-            
-            invoices_response = invoices_query.execute()
-            invoices = invoices_response.data if invoices_response.data else []
-            
-            student_total_invoiced = sum(float(inv['total_amount']) for inv in invoices)
-            student_total_paid = sum(float(inv['paid_amount']) for inv in invoices)
+            # Calculate totals
+            student_total_invoiced = sum(float(inv.get('total_amount', 0)) for inv in invoices if float(inv.get('total_amount', 0)) > 0)
+            student_total_paid = sum(float(p.get('amount', 0)) for p in payments)
             student_discount = sum(float(inv.get('discount_applied', 0)) for inv in invoices)
-            student_balance = sum(float(inv['balance']) for inv in invoices if inv['status'] != 'paid')
+            student_balance = student_total_invoiced - student_total_paid - student_discount
             
-            if student_balance > 0 or student_total_paid > 0:
+            # Determine if student has activity in the date range
+            has_activity = (student_id in student_invoice_activity) or (student_id in student_payment_activity)
+            
+            # Determine if we should include this student
+            include_student = False
+            if start_date or end_date:
+                if has_activity:
+                    include_student = True
+            else:
+                if student_balance != 0 or student_total_paid > 0 or student_total_invoiced > 0:
+                    include_student = True
+            
+            if include_student and (len(invoices) > 0 or len(payments) > 0):
+                class_name = classes_map.get(student.get('class_id'), 'N/A')
+                
                 report_data.append({
-                    'student_uuid': student['id'],
+                    'student_uuid': student_id,
                     'student_name': student['name'],
-                    'student_id': student['student_id'],
+                    'student_id': student.get('student_id', 'N/A'),
                     'mobile_number': student.get('contact_number', 'N/A'),
-                    'class': student['classes']['name'] if student.get('classes') else 'N/A',
+                    'class': class_name,
                     'total_invoiced': student_total_invoiced,
                     'total_paid': student_total_paid,
                     'discount': student_discount,
-                    'balance': student_balance
+                    'balance': student_balance,
+                    'has_activity_in_period': has_activity
                 })
                 
                 total_invoiced += student_total_invoiced
@@ -297,9 +403,11 @@ def get_balance_report():
         # Sort by balance (highest first)
         report_data.sort(key=lambda x: x['balance'], reverse=True)
         
-        total_pages = (len(report_data) + per_page - 1) // per_page if len(report_data) > 0 else 1
+        # ---------- STEP 7: Apply pagination ----------
+        total_items = len(report_data)
+        total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 1
         start_idx = (page - 1) * per_page
-        end_idx = start_idx + per_page
+        end_idx = min(start_idx + per_page, total_items)
         paginated_data = report_data[start_idx:end_idx]
         
         return jsonify({
@@ -310,21 +418,21 @@ def get_balance_report():
                 'total_paid': total_paid,
                 'total_discount': total_discount,
                 'total_balance': total_balance,
-                'student_count': len(report_data)
+                'student_count': total_items
             },
             'pagination': {
                 'current_page': page,
                 'total_pages': total_pages,
-                'total_items': len(report_data),
+                'total_items': total_items,
                 'per_page': per_page
             }
         })
         
     except Exception as e:
         print(f"Error getting balance report: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
-
 @center_bp.route('/api/income-expense', methods=['POST'])
 @login_required
 def get_income_expense_report():

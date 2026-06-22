@@ -287,68 +287,77 @@
         </div>
         
         <!-- Right Column - Statement -->
-        <div class="lg:col-span-2">
-            <!-- Statement Header with Filters -->
-            <div class="info-card">
-                <div class="flex flex-wrap justify-between items-center mb-4">
-                    <h3 class="font-semibold text-gray-800">
-                        <i class="fas fa-file-invoice-dollar text-orange-500 mr-2"></i> Fee Statement
-                    </h3>
-                    <div class="flex gap-2 no-print">
-                        <input type="date" id="startDate" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
-                        <input type="date" id="endDate" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
-                        <button onclick="loadStatement()" class="btn-gradient px-4 py-1.5 rounded-lg text-white text-sm">
-                            <i class="fas fa-search"></i> Filter
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Summary Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" id="summaryContainer">
-                    <div class="summary-card">
-                        <p class="text-sm text-gray-600 mb-1">Total Debits</p>
-                        <p class="text-2xl font-bold text-red-600" id="totalDebits">UGX 0</p>
-                    </div>
-                    <div class="summary-card">
-                        <p class="text-sm text-gray-600 mb-1">Total Credits</p>
-                        <p class="text-2xl font-bold text-green-600" id="totalCredits">UGX 0</p>
-                    </div>
-                    <div class="summary-card" id="balanceCard">
-                        <p class="text-sm text-gray-600 mb-1">Current Balance</p>
-                        <p class="text-2xl font-bold" id="currentBalance">UGX 0</p>
-                    </div>
-                </div>
-                
-                <!-- Loading indicator -->
-                <div id="statementLoader" class="text-center py-8 hidden">
-                    <div class="loader mx-auto"></div>
-                    <p class="text-gray-500 mt-2">Loading statement...</p>
-                </div>
-                
-                <!-- Statement Table -->
-                <div id="statementContainer" class="overflow-x-auto">
-                    <table class="transaction-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Description</th>
-                                <th class="text-right">Debit (UGX)</th>
-                                <th class="text-right">Credit (UGX)</th>
-                                <th class="text-right">Balance (UGX)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="statementBody">
-                            <tr>
-                                <td colspan="5" class="text-center py-8 text-gray-400">
-                                    Select date range to view statement
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+<div class="lg:col-span-2">
+    <!-- Statement Header with Filters -->
+    <div class="info-card">
+        <div class="flex flex-wrap justify-between items-center mb-4">
+            <h3 class="font-semibold text-gray-800">
+                <i class="fas fa-file-invoice-dollar text-orange-500 mr-2"></i> Fee Statement
+            </h3>
+            <div class="flex flex-wrap gap-2 no-print">
+                <input type="date" id="startDate" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
+                <input type="date" id="endDate" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
+                <button onclick="loadStatement()" class="btn-gradient px-4 py-1.5 rounded-lg text-white text-sm">
+                    <i class="fas fa-search"></i> Filter
+                </button>
+                <button onclick="exportStatement('excel')" class="bg-green-600 hover:bg-green-700 px-4 py-1.5 rounded-lg text-white text-sm transition-colors">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+                <button onclick="exportStatement('pdf')" class="bg-red-600 hover:bg-red-700 px-4 py-1.5 rounded-lg text-white text-sm transition-colors">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
             </div>
         </div>
+        
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" id="summaryContainer">
+            <div class="summary-card">
+                <p class="text-sm text-gray-600 mb-1">Total Debits</p>
+                <p class="text-2xl font-bold text-red-600" id="totalDebits">UGX 0</p>
+            </div>
+            <div class="summary-card">
+                <p class="text-sm text-gray-600 mb-1">Total Credits</p>
+                <p class="text-2xl font-bold text-green-600" id="totalCredits">UGX 0</p>
+            </div>
+            <div class="summary-card" id="balanceCard">
+                <p class="text-sm text-gray-600 mb-1">Current Balance</p>
+                <p class="text-2xl font-bold" id="currentBalance">UGX 0</p>
+            </div>
+             <div class="summary-card bg-blue-50 border-2 border-blue-300" id="carryForwardCard">
+                <p class="text-sm text-gray-600 mb-1">Balance Brought Forward</p>
+                <p class="text-2xl font-bold text-blue-600" id="carryForwardBalance">UGX 0</p>
+            </div> 
+        </div>
+        
+        <!-- Loading indicator -->
+        <div id="statementLoader" class="text-center py-8 hidden">
+            <div class="loader mx-auto"></div>
+            <p class="text-gray-500 mt-2">Loading statement...</p>
+        </div>
+        
+        <!-- Statement Table -->
+        <div id="statementContainer" class="overflow-x-auto">
+            <table class="transaction-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th class="text-right">Debit (UGX)</th>
+                        <th class="text-right">Credit (UGX)</th>
+                        <th class="text-right">Balance (UGX)</th>
+                    </tr>
+                </thead>
+                <tbody id="statementBody">
+                    <tr>
+                        <td colspan="5" class="text-center py-8 text-gray-400">
+                            Select date range to view statement
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
+</div>
     {% else %}
     <!-- Student Not Found -->
     <div class="text-center py-12">
@@ -419,6 +428,7 @@
     function updateSummary(summary) {
         document.getElementById('totalDebits').textContent = `UGX ${summary.total_debits.toLocaleString()}`;
         document.getElementById('totalCredits').textContent = `UGX ${summary.total_credits.toLocaleString()}`;
+        document.getElementById('carryForwardBalance').textContent = `UGX ${summary.carry_forward_balance.toLocaleString()}`;
         
         const balanceElement = document.getElementById('currentBalance');
         const balance = summary.current_balance;
@@ -459,10 +469,12 @@
         tbody.innerHTML = statement.map(trans => {
             const debitClass = trans.debit > 0 ? 'debit-row' : '';
             const creditClass = trans.credit > 0 ? 'credit-row' : '';
+            const isCarryForward = trans.is_carry_forward || false;
+            const rowClass = isCarryForward ? 'bg-blue-50 font-semibold' : '';
             
             return `
-                <tr>
-                    <td class="whitespace-nowrap">${trans.date}</td>
+                <tr class="${rowClass}">
+                    <td class="whitespace-nowrap">${escapeHtml(trans.date)}</td>
                     <td>${escapeHtml(trans.description)}</td>
                     <td class="text-right ${debitClass}">${trans.debit > 0 ? trans.debit.toLocaleString() : '-'}</td>
                     <td class="text-right ${creditClass}">${trans.credit > 0 ? trans.credit.toLocaleString() : '-'}</td>
@@ -470,6 +482,19 @@
                 </tr>
             `;
         }).join('');
+    }
+    
+    async function exportStatement(format) {
+        if (!studentId) return;
+        
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        let url = `/student-details/api/export-statement/${studentId}?format=${format}`;
+        if (startDate) url += `&start_date=${startDate}`;
+        if (endDate) url += `&end_date=${endDate}`;
+        
+        window.open(url, '_blank');
     }
     
     function showError(message) {

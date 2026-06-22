@@ -1588,3 +1588,230 @@ Thank you for your payment!
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+
+@payments_bp.route('/api/edit/<payment_id>', methods=['PUT'])
+@role_required(['owner', 'accountant'])
+def edit_payment(payment_id):
+    """Edit payment amount - updates payment and reverses/reapplies to invoice"""
+    try:
+        user = session.get('user')
+        user_email = user.get('email', '')
+        admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
+        is_admin = user_email in admin_emails
+        
+        # Get institute ID for filtering
+        if not is_admin:
+            institute_id = get_institute_id(user['id'])
+            if not institute_id:
+                return jsonify({'success': False, 'message': 'Institute not found'}), 404
+        else:
+            institute_id = request.args.get('institute_id', '')
+        
+        # Get the payment data
+        data = request.get_json()
+        new_amount = data.get('amount')
+        
+        if new_amount is None:
+            return jsonify({'success': False, 'message': 'Amount is required'}), 400
+        
+        try:
+            new_amount = float(new_amount)
+            if new_amount <= 0:
+                return jsonify({'success': False, 'message': 'Amount must be greater than 0'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'Invalid amount format'}), 400
+        
+        # Get the existing payment
+        query = supabase.table('payments')\
+            .select('*')\
+            .eq('id', payment_id)
+        
+        if institute_id and not is_admin:
+            query = query.eq('institute_id', institute_id)
+        elif institute_id and is_admin:
+            query = query.eq('institute_id', institute_id)
+        
+        payment_response = query.execute()
+        
+        if not payment_response.data:
+            return jsonify({'success': False, 'message': 'Payment not found or access denied'}), 404
+        
+        payment = payment_response.data[0]
+        old_amount = float(payment['amount'])
+        difference = new_amount - old_amount
+        
+        # If amount hasn't changed, return early
+        if difference == 0:
+            return jsonify({
+                'success': True,
+                'message': 'No changes made',
+                'payment': payment
+            })
+        
+        affected_invoices = []
+        
+        # If payment was linked to an invoice, update the invoice
+        if payment.get('invoice_id'):
+            invoice_response = supabase.table('invoices')\
+                .select('*')\
+                .eq('id', payment['invoice_id'])\
+                .execute()
+            
+            if invoice_response.data:
+                invoice = invoice_response.data[0]
+                
+                # Calculate new invoice values
+                new_paid_amount = float(invoice['paid_amount']) + difference
+                new_balance = float(invoice['total_amount']) - new_paid_amount
+                
+                # Determine new status
+                if new_balance <= 0:
+                    if new_balance < 0:
+                        new_status = 'credit'
+                    else:
+                        new_status = 'paid'
+                elif new_paid_amount > 0:
+                    new_status = 'partial'
+                else:
+                    new_status = 'pending'
+                
+                # Update the invoice
+                supabase.table('invoices')\
+                    .update({
+                        'paid_amount': new_paid_amount,
+                        'balance': new_balance,
+                        'status': new_status,
+                        'updated_at': datetime.now().isoformat()
+                    })\
+                    .eq('id', payment['invoice_id'])\
+                    .execute()
+                
+                affected_invoices.append({
+                    'invoice_number': invoice['invoice_number'],
+                    'old_balance': float(invoice['balance']),
+                    'new_balance': new_balance
+                })
+        
+        # Update the payment with new amount
+        update_data = {
+            'amount': new_amount,
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        # Add a note about the edit
+        notes = payment.get('notes', '')
+        edit_note = f"Amount changed from UGX {old_amount:,.0f} to UGX {new_amount:,.0f} on {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        if notes:
+            update_data['notes'] = f"{notes}\n{edit_note}"
+        else:
+            update_data['notes'] = edit_note
+        
+        response = supabase.table('payments')\
+            .update(update_data)\
+            .eq('id', payment_id)\
+            .execute()
+        
+        if not response.data:
+            return jsonify({'success': False, 'message': 'Failed to update payment'}), 500
+        
+        updated_payment = response.data[0]
+        
+        return jsonify({
+            'success': True,
+            'message': f'Payment amount updated from UGX {old_amount:,.0f} to UGX {new_amount:,.0f}',
+            'payment': {
+                'id': updated_payment['id'],
+                'receipt_number': updated_payment['receipt_number'],
+                'old_amount': old_amount,
+                'new_amount': new_amount,
+                'difference': difference
+            },
+            'affected_invoices': affected_invoices
+        })
+        
+    except Exception as e:
+        print(f"Error editing payment: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@payments_bp.route('/api/edit/<payment_id>', methods=['GET'])
+@role_required(['owner', 'accountant'])
+def get_payment_for_edit(payment_id):
+    """Get payment details for editing"""
+    try:
+        user = session.get('user')
+        user_email = user.get('email', '')
+        admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
+        is_admin = user_email in admin_emails
+        
+        # Get institute ID for filtering
+        if not is_admin:
+            institute_id = get_institute_id(user['id'])
+            if not institute_id:
+                return jsonify({'success': False, 'message': 'Institute not found'}), 404
+        else:
+            institute_id = request.args.get('institute_id', '')
+        
+        # Get the payment with student info
+        query = supabase.table('payments')\
+            .select('*, students(name, student_id, contact_number, class_id)')\
+            .eq('id', payment_id)
+        
+        if institute_id and not is_admin:
+            query = query.eq('institute_id', institute_id)
+        elif institute_id and is_admin:
+            query = query.eq('institute_id', institute_id)
+        
+        payment_response = query.execute()
+        
+        if not payment_response.data:
+            return jsonify({'success': False, 'message': 'Payment not found or access denied'}), 404
+        
+        payment = payment_response.data[0]
+        student = payment.get('students', {})
+        
+        # Get class name
+        class_name = 'N/A'
+        if student.get('class_id'):
+            class_resp = supabase.table('classes')\
+                .select('name')\
+                .eq('id', student['class_id'])\
+                .execute()
+            if class_resp.data:
+                class_name = class_resp.data[0].get('name', 'N/A')
+        
+        # Get current balance
+        current_balance = 0
+        balance_invoices = supabase.table('invoices')\
+            .select('balance')\
+            .eq('student_id', payment['student_id'])\
+            .eq('institute_id', payment['institute_id'])\
+            .execute()
+        
+        if balance_invoices.data:
+            current_balance = sum(inv['balance'] for inv in balance_invoices.data)
+        
+        return jsonify({
+            'success': True,
+            'payment': {
+                'id': payment['id'],
+                'receipt_number': payment['receipt_number'],
+                'amount': float(payment['amount']),
+                'payment_date': payment['payment_date'],
+                'payment_method': payment['payment_method'],
+                'student_name': student.get('name', 'N/A'),
+                'student_id': student.get('student_id', 'N/A'),
+                'phone_number': student.get('contact_number', 'N/A'),
+                'class_name': class_name,
+                'current_balance': current_balance,
+                'notes': payment.get('notes', ''),
+                'invoice_id': payment.get('invoice_id')
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error getting payment for edit: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
