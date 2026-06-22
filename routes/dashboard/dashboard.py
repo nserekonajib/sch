@@ -166,7 +166,10 @@ async def index():
 @dashboard_bp.route('/api/stats', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 async def get_dashboard_stats():
-    """Dashboard statistics — properly includes SchoolPay payments in collection rate."""
+    """
+    Dashboard statistics — properly includes SchoolPay payments in collection rate.
+    🔥 FIX: Invoices are now filtered by the same date range as payments.
+    """
     user_id = session.get('user_id') or session.get('user', {}).get('id')
     institute_id = await run(get_institute_id, user_id)
 
@@ -184,6 +187,7 @@ async def get_dashboard_stats():
         if cached is not None:
             return cached
 
+        # 🔥 FIX: Filter invoices by date range (created_at between start_date and end_date)
         # Run all queries in parallel
         (students_res, employees_res, payments_res, invoices_res, 
          income_res, expense_res, discounts_res) = await asyncio.gather(
@@ -207,10 +211,12 @@ async def get_dashboard_stats():
                 .lte('payment_date', end_date)
                 .execute()),
 
-            # Get ALL invoices
+            # 🔥 FIX: Get invoices created within the date range
             run(lambda: supabase.table('invoices')
-                .select('total_amount, student_id, status')
+                .select('total_amount, student_id, status, created_at')
                 .eq('institute_id', institute_id)
+                .gte('created_at', f"{start_date}T00:00:00")
+                .lte('created_at', f"{end_date}T23:59:59")
                 .execute()),
 
             run(lambda: supabase.table('income_transactions')
@@ -227,21 +233,24 @@ async def get_dashboard_stats():
                 .lte('transaction_date', end_date)
                 .execute()),
 
+            # 🔥 FIX: Get discounts created within the date range
             run(lambda: supabase.table('discounts')
-                .select('discount_amount, student_id')
+                .select('discount_amount, student_id, created_at')
                 .eq('institute_id', institute_id)
                 .eq('is_active', True)
+                .gte('created_at', f"{start_date}T00:00:00")
+                .lte('created_at', f"{end_date}T23:59:59")
                 .execute())
         )
 
         total_students = students_res.count or 0
         total_employees = employees_res.count or 0
 
-        # Calculate revenue from ALL payments (including SchoolPay)
+        # Calculate revenue from ALL payments (including SchoolPay) in date range
         revenue_collected = sum(float(p['amount']) for p in (payments_res.data or []))
         other_income = sum(float(i['amount']) for i in (income_res.data or []))
 
-        # Calculate total invoiced from ALL invoices (positive amounts only)
+        # 🔥 FIX: Calculate total invoiced from invoices in date range (positive amounts only)
         total_invoiced = 0.0
         for inv in (invoices_res.data or []):
             try:
@@ -251,7 +260,7 @@ async def get_dashboard_stats():
             except (ValueError, TypeError):
                 continue
 
-        # Calculate total discounts
+        # 🔥 FIX: Calculate total discounts in date range
         total_discounts = 0.0
         for d in (discounts_res.data or []):
             try:
@@ -261,25 +270,27 @@ async def get_dashboard_stats():
             except (ValueError, TypeError):
                 continue
 
-        # 🔥 FIX: Calculate total payable = invoices - discounts
+        # Calculate total payable = invoices - discounts
         total_payable = total_invoiced - total_discounts
         
-        # 🔥 FIX: Collection rate using ALL payments vs total payable
+        # 🔥 FIX: Collection rate using ALL payments vs total payable in the SAME period
         if total_payable > 0:
             collection_rate = (revenue_collected / total_payable) * 100
         else:
             # If no payable amount, collection is 100% if there are payments
             collection_rate = 100.0 if revenue_collected > 0 else 0.0
         
-        # Cap at 100% (overpayments shouldn't show >100%)
-        if collection_rate > 100:
-            collection_rate = 100.0
+        # 🔥 FIX: Don't cap at 100% - allow showing over 100% for overpayments
+        # This is important for schools where students pay in advance
+        # If you want to cap it, uncomment the line below:
+        # if collection_rate > 100:
+        #     collection_rate = 100.0
 
         total_income = revenue_collected + other_income
         total_expenses = sum(float(e['amount']) for e in (expense_res.data or []))
         total_profit = total_income - total_expenses
 
-        # 🔥 NEW: Breakdown of payments by method
+        # Breakdown of payments by method
         payment_method_breakdown = {}
         for p in (payments_res.data or []):
             method = p.get('payment_method', 'unknown')
@@ -302,7 +313,10 @@ async def get_dashboard_stats():
                 'collection_rate': round(collection_rate, 2),
                 'start_date': start_date,
                 'end_date': end_date,
-                'payment_method_breakdown': payment_method_breakdown
+                'payment_method_breakdown': payment_method_breakdown,
+                # 🔥 NEW: Show invoice count for debugging
+                'invoice_count': len(invoices_res.data or []),
+                'payment_count': len(payments_res.data or [])
             }
         })
         await cache_set(cache_key, response)
@@ -852,9 +866,9 @@ def get_fee_collection_summary():
         else:
             collection_percentage = 100.0 if total_paid > 0 else 0.0
         
-        # Ensure percentage doesn't exceed 100%
-        if collection_percentage > 100:
-            collection_percentage = 100.0
+        # Don't cap - allow showing >100% for overpayments
+        # if collection_percentage > 100:
+        #     collection_percentage = 100.0
         
         # Get breakdown by student
         student_payments = {}
