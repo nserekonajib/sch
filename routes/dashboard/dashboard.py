@@ -1,6 +1,7 @@
 
 
 from flask import *
+from flask import session
 from supabase import create_client, Client
 import httpx
 import os
@@ -825,7 +826,7 @@ def get_fee_collection_summary():
     
 # Add this to your routes/fees/fees.py or wherever your fee endpoints are
 
-@fees_bp.route('/overall-payable-summary', methods=['GET'])
+@dashboard_bp.route('/overall-payable-summary', methods=['GET'])
 @login_required
 @role_required(['owner', 'teacher', 'accountant'])
 def get_overall_payable_summary():
