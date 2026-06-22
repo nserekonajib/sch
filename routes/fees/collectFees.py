@@ -1,4 +1,4 @@
-# collectFees.py - Updated with WhatsApp PDF receipt sending
+# collectFees.py - Updated with WhatsApp PDF receipt sending and CORRECT balance calculation
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
 import os
@@ -39,6 +39,77 @@ def login_required(f):
 
 MASTER_API_USERNAME = os.getenv('COMMS_API_USERNAME', '')
 MASTER_API_KEY = os.getenv('COMMS_API_KEY', '')
+
+
+# ==================== HELPER FUNCTION: Calculate Student Balance ====================
+def calculate_student_balance(student_id, institute_id):
+    """
+    Calculate student's actual balance including ALL payments (SchoolPay + Manual)
+    Balance = Total Invoiced - Total Paid (all payments) - Total Discounts
+    """
+    total_invoiced = 0.0
+    total_paid = 0.0
+    total_discount = 0.0
+    
+    try:
+        # Get ALL invoices for this student
+        invoices_response = supabase.table('invoices')\
+            .select('total_amount')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        for inv in (invoices_response.data or []):
+            try:
+                amount = float(inv.get('total_amount', 0))
+                if amount > 0:  # Only count positive invoices (debits)
+                    total_invoiced += amount
+            except (ValueError, TypeError):
+                continue
+        
+        # Get ALL payments for this student (including SchoolPay)
+        payments_response = supabase.table('payments')\
+            .select('amount')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        for p in (payments_response.data or []):
+            try:
+                amount = float(p.get('amount', 0))
+                if amount > 0:
+                    total_paid += amount
+            except (ValueError, TypeError):
+                continue
+        
+        # Get ALL discounts for this student
+        discounts_response = supabase.table('discounts')\
+            .select('discount_amount')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        for d in (discounts_response.data or []):
+            try:
+                amount = float(d.get('discount_amount', 0))
+                if amount > 0:
+                    total_discount += amount
+            except (ValueError, TypeError):
+                continue
+        
+        # Calculate balance
+        balance = total_invoiced - total_paid - total_discount
+        
+        # Don't show negative balance (overpayment)
+        if balance < 0:
+            balance = 0
+            
+        return balance
+        
+    except Exception as e:
+        print(f"Error calculating balance for student {student_id}: {e}")
+        return 0
+
 
 def send_payment_sms(institute, student, amount_paid, balance, receipt_number, payment_method, notes=""):
     """Send SMS notification for payment"""
@@ -264,11 +335,12 @@ def search_student():
     except Exception as e:
         print(f"Error searching student: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
+    
 @collect_bp.route('/get-student-fees/<student_id>', methods=['GET'])
 @login_required
 def get_student_fees(student_id):
-    """Get fee details and invoices for a student"""
+    """Get fee details and invoices for a student - ALWAYS RECALCULATE from payments"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -288,34 +360,138 @@ def get_student_fees(student_id):
         
         student = student_response.data[0]
         
-        # Get all invoices for this student
+        # Get ALL invoices for this student
         invoices_response = supabase.table('invoices')\
-            .select('*, fee_particulars(fee_items)')\
+            .select('*')\
             .eq('student_id', student_id)\
             .eq('institute_id', institute_id)\
-            .neq('balance', 0)\
             .order('created_at', desc=True)\
             .execute()
         
-        invoices = invoices_response.data if invoices_response.data else []
+        all_invoices = invoices_response.data if invoices_response.data else []
         
-        # Calculate total due
-        total_due = sum(inv['balance'] for inv in invoices)
+        # Get ALL payments for this student (including SchoolPay)
+        payments_response = supabase.table('payments')\
+            .select('*')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
         
-        # Prepare invoices for display
+        all_payments = payments_response.data if payments_response.data else []
+        
+        # Get ALL discounts for this student
+        discounts_response = supabase.table('discounts')\
+            .select('*')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        all_discounts = discounts_response.data if discounts_response.data else []
+        
+        # 🔥 FIX: If there are unlinked payments, distribute them to invoices
+        # This is the key fix - find payments without invoice_id and link them
+        
+        # Get invoice IDs
+        invoice_ids = [inv['id'] for inv in all_invoices]
+        
+        # Find payments not linked to any invoice
+        unlinked_payments = [p for p in all_payments if p.get('invoice_id') is None or p.get('invoice_id') == '']
+        
+        if unlinked_payments and all_invoices:
+            print(f"Found {len(unlinked_payments)} unlinked payments. Distributing to invoices...")
+            
+            # Distribute unlinked payments to invoices with positive balance
+            for payment in unlinked_payments:
+                amount = float(payment['amount'])
+                remaining = amount
+                
+                # Find invoices with balance > 0
+                for inv in all_invoices:
+                    if remaining <= 0:
+                        break
+                    
+                    inv_balance = float(inv['balance'])
+                    if inv_balance > 0:
+                        # Link this payment to the invoice
+                        payment_for_invoice = min(remaining, inv_balance)
+                        
+                        # Update payment
+                        supabase.table('payments')\
+                            .update({'invoice_id': inv['id']})\
+                            .eq('id', payment['id'])\
+                            .execute()
+                        
+                        # Update invoice balance
+                        new_balance = inv_balance - payment_for_invoice
+                        new_paid = float(inv['paid_amount']) + payment_for_invoice
+                        
+                        if new_balance < 0:
+                            new_balance = 0
+                        
+                        status = 'paid' if new_balance == 0 else 'partial'
+                        
+                        supabase.table('invoices')\
+                            .update({
+                                'paid_amount': new_paid,
+                                'balance': new_balance,
+                                'status': status
+                            })\
+                            .eq('id', inv['id'])\
+                            .execute()
+                        
+                        remaining -= payment_for_invoice
+                        print(f"  Linked {payment_for_invoice} to {inv['invoice_number']}")
+        
+        # Now recalculate everything from scratch
         invoice_list = []
-        for inv in invoices:
-            invoice_list.append({
-                'id': inv['id'],
-                'invoice_number': inv['invoice_number'],
-                'total_amount': float(inv['total_amount']),
-                'paid_amount': float(inv['paid_amount']),
-                'balance': float(inv['balance']),
-                'status': inv['status'],
-                'due_date': inv['due_date'],
-                'created_at': inv['created_at'],
-                'discount_applied': float(inv.get('discount_applied', 0))
-            })
+        total_due = 0
+        
+        for inv in all_invoices:
+            # Calculate total paid for this invoice from payments
+            inv_payments = [p for p in all_payments if p.get('invoice_id') == inv['id']]
+            total_paid = sum(float(p['amount']) for p in inv_payments)
+            
+            # Calculate total discount for this invoice
+            inv_discounts = [d for d in all_discounts if d.get('invoice_id') == inv['id']]
+            total_discount = sum(float(d.get('discount_amount', 0)) for d in inv_discounts)
+            
+            # Calculate correct balance
+            invoice_total = float(inv['total_amount'])
+            correct_balance = invoice_total - total_paid - total_discount
+            
+            if correct_balance < 0:
+                correct_balance = 0
+            
+            # Determine status
+            if invoice_total == 0:
+                status = 'paid'
+            elif correct_balance == 0 and total_paid > 0:
+                status = 'paid'
+            elif correct_balance < invoice_total and total_paid > 0:
+                status = 'partial'
+            elif correct_balance == invoice_total and invoice_total > 0:
+                status = 'pending'
+            else:
+                status = 'pending'
+            
+            if invoice_total > 0 or total_paid > 0:
+                invoice_list.append({
+                    'id': inv['id'],
+                    'invoice_number': inv['invoice_number'],
+                    'total_amount': invoice_total,
+                    'paid_amount': total_paid,
+                    'balance': correct_balance,
+                    'status': status,
+                    'due_date': inv.get('due_date', 'N/A'),
+                    'created_at': inv.get('created_at', ''),
+                    'discount_applied': total_discount
+                })
+                
+                if correct_balance > 0:
+                    total_due += correct_balance
+        
+        # Also calculate total due from ALL payments using helper
+        total_due_calculated = calculate_student_balance(student_id, institute_id)
         
         return jsonify({
             'success': True,
@@ -327,13 +503,16 @@ def get_student_fees(student_id):
                 'contact': student.get('contact_number', 'N/A')
             },
             'invoices': invoice_list,
-            'total_due': total_due
+            'total_due': total_due_calculated
         })
         
     except Exception as e:
         print(f"Error getting student fees: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
+    
 @collect_bp.route('/process-payment', methods=['POST'])
 @login_required
 def process_payment():
@@ -573,14 +752,8 @@ def process_payment():
         
         supabase.table('payments').insert(payment_data).execute()
         
-        # Get updated totals
-        updated_invoices = supabase.table('invoices')\
-            .select('*')\
-            .eq('student_id', student_id)\
-            .eq('institute_id', institute_id)\
-            .execute()
-        
-        total_due = sum(inv['balance'] for inv in updated_invoices.data)
+        # 🔥 FIX: Get updated total due using ALL payments
+        total_due = calculate_student_balance(student_id, institute_id)
         
         # ==================== SEND SMS ====================
         try:
@@ -643,9 +816,17 @@ def process_payment():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
+# ==================== FIXED: generate_receipt_pdf with CORRECT balance ====================
 def generate_receipt_pdf(institute, student, payment, total_due):
     """
-    Generate PDF receipt for WhatsApp sending
+    Generate PDF receipt for WhatsApp sending - FIXED balance calculation
+    
+    Args:
+        institute (dict): Institute details
+        student (dict): Student details
+        payment (dict): Payment details
+        total_due (float): Correct total balance (calculated with ALL payments)
     
     Returns:
         BytesIO: PDF buffer
@@ -721,15 +902,21 @@ def generate_receipt_pdf(institute, student, payment, total_due):
         story.append(t)
         story.append(Spacer(1, 5))
         
-        # Amount
+        # Amount - 🔥 FIXED: Use total_due passed from caller
         story.append(Paragraph("-" * 35, normal_style))
         
-        balance_text = f"Credit: UGX {abs(total_due):,.0f}" if total_due < 0 else f"Balance Due: UGX {total_due:,.0f}"
+        # Format balance display
+        if total_due < 0:
+            balance_display = f"Credit: UGX {abs(total_due):,.0f}"
+        elif total_due == 0:
+            balance_display = "Balance: FULLY PAID"
+        else:
+            balance_display = f"Balance Due: UGX {total_due:,.0f}"
         
         amount_data = [
             ['Amount Paid:', f"UGX {payment['amount']:,.0f}"],
             ['Payment Method:', payment['payment_method'].upper()],
-            [balance_text, '']
+            [balance_display, '']
         ]
         
         t2 = Table(amount_data, colWidths=[30*mm, 40*mm])
@@ -761,6 +948,8 @@ def generate_receipt_pdf(institute, student, payment, total_due):
         
     except Exception as e:
         print(f"Error generating PDF: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 @collect_bp.route('/apply-discount', methods=['POST'])
@@ -893,6 +1082,10 @@ def get_receipt(receipt_number):
         
         payment = payment_response.data[0]
         
+        # 🔥 FIX: Calculate correct balance
+        student_id = payment.get('student_id')
+        current_balance = calculate_student_balance(student_id, institute_id)
+        
         return jsonify({
             'success': True,
             'receipt': {
@@ -905,6 +1098,7 @@ def get_receipt(receipt_number):
                 'payment_method': payment['payment_method'],
                 'fee_month': payment.get('fee_month', 'N/A'),
                 'notes': payment.get('notes', ''),
+                'balance': current_balance,
                 'institute': institute
             }
         })
@@ -916,7 +1110,7 @@ def get_receipt(receipt_number):
 @collect_bp.route('/print-receipt/<receipt_number>', methods=['GET'])
 @login_required
 def print_receipt(receipt_number):
-    """Generate thermal receipt PDF for printing"""
+    """Generate thermal receipt PDF for printing - FIXED balance"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -942,17 +1136,13 @@ def print_receipt(receipt_number):
             return jsonify({'success': False, 'message': 'Receipt not found'}), 404
         
         payment = payment_response.data[0]
+        student = payment['students']
+        student_id = payment.get('student_id')
         
-        # Get current balance
-        invoices_response = supabase.table('invoices')\
-            .select('balance')\
-            .eq('student_id', payment['student_id'])\
-            .eq('institute_id', institute_id)\
-            .execute()
+        # 🔥 FIX: Calculate correct balance using ALL payments
+        current_balance = calculate_student_balance(student_id, institute_id)
         
-        current_balance = sum(inv['balance'] for inv in invoices_response.data) if invoices_response.data else 0
-        
-        buffer = generate_receipt_pdf(institute, payment['students'], payment, current_balance)
+        buffer = generate_receipt_pdf(institute, student, payment, current_balance)
         
         if buffer:
             return send_file(
@@ -966,6 +1156,8 @@ def print_receipt(receipt_number):
         
     except Exception as e:
         print(f"Error generating receipt: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 def generate_unique_receipt_number(institute_id, existing_numbers):
@@ -1010,7 +1202,7 @@ def generate_unique_receipt_number(institute_id, existing_numbers):
 @collect_bp.route('/resend-receipt/<receipt_number>', methods=['POST'])
 @login_required
 def resend_receipt(receipt_number):
-    """Resend receipt PDF via WhatsApp for an existing payment"""
+    """Resend receipt PDF via WhatsApp for an existing payment - FIXED balance"""
     user = session.get('user')
     
     if not user:
@@ -1022,7 +1214,7 @@ def resend_receipt(receipt_number):
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
     
     try:
-        # Get the payment details - don't try to select phone from students
+        # Get the payment details
         payment_response = supabase.table('payments')\
             .select('*, students(name, student_id, contact_number, classes(name))')\
             .eq('receipt_number', receipt_number)\
@@ -1049,14 +1241,9 @@ def resend_receipt(receipt_number):
         if not institute:
             return jsonify({'success': False, 'message': 'Institute not found'}), 404
         
-        # Get current balance
-        invoices_response = supabase.table('invoices')\
-            .select('balance')\
-            .eq('student_id', payment['student_id'])\
-            .eq('institute_id', institute_id)\
-            .execute()
-        
-        current_balance = sum(inv['balance'] for inv in invoices_response.data) if invoices_response.data else 0
+        # 🔥 FIX: Calculate correct balance using ALL payments
+        student_id = payment.get('student_id')
+        current_balance = calculate_student_balance(student_id, institute_id)
         
         # Generate PDF receipt
         pdf_buffer = generate_receipt_pdf(institute, student, payment, current_balance)
@@ -1064,11 +1251,9 @@ def resend_receipt(receipt_number):
         if not pdf_buffer:
             return jsonify({'success': False, 'message': 'Failed to generate receipt PDF'}), 500
         
-        # Get phone number - use contact_number (correct column name)
+        # Get phone number
         data = request.get_json() or {}
         custom_phone = data.get('phone_number')
-        
-        # Use contact_number from student (this is the correct column name)
         phone = custom_phone or student.get('contact_number') or student.get('phone_number') or ''
         
         if not phone:
@@ -1100,7 +1285,8 @@ def resend_receipt(receipt_number):
                 'message': f'Receipt {receipt_number} resent successfully via WhatsApp',
                 'receipt_number': receipt_number,
                 'phone_number': phone,
-                'student_name': student.get('name')
+                'student_name': student.get('name'),
+                'current_balance': current_balance
             })
         else:
             return jsonify({'success': False, 'message': 'Failed to send WhatsApp message'}), 500

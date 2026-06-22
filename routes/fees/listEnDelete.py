@@ -1,4 +1,5 @@
 # listEnDelete.py - Payment listing, filtering, export, and deletion (Institute-Specific)
+# FIXED: Balance calculation now includes SchoolPay payments
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
 import os
@@ -37,6 +38,75 @@ def admin_required(f):
     return decorated_function
 
 
+def calculate_student_balance(student_id, institute_id):
+    """
+    🔥 FIX: Calculate student's actual balance including all payments (SchoolPay + Manual)
+    Balance = Total Invoiced - Total Paid (all payments) - Total Discounts
+    """
+    total_invoiced = 0.0
+    total_paid = 0.0
+    total_discount = 0.0
+    
+    try:
+        # Get ALL invoices for this student
+        invoices_response = supabase.table('invoices')\
+            .select('total_amount')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        for inv in (invoices_response.data or []):
+            try:
+                amount = float(inv.get('total_amount', 0))
+                if amount > 0:  # Only count positive invoices (debits)
+                    total_invoiced += amount
+            except (ValueError, TypeError):
+                continue
+        
+        # Get ALL payments for this student (including SchoolPay)
+        payments_response = supabase.table('payments')\
+            .select('amount')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        for p in (payments_response.data or []):
+            try:
+                amount = float(p.get('amount', 0))
+                if amount > 0:
+                    total_paid += amount
+            except (ValueError, TypeError):
+                continue
+        
+        # Get ALL discounts for this student
+        discounts_response = supabase.table('discounts')\
+            .select('discount_amount')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        for d in (discounts_response.data or []):
+            try:
+                amount = float(d.get('discount_amount', 0))
+                if amount > 0:
+                    total_discount += amount
+            except (ValueError, TypeError):
+                continue
+        
+        # Calculate balance
+        balance = total_invoiced - total_paid - total_discount
+        
+        # Don't show negative balance (overpayment)
+        if balance < 0:
+            balance = 0
+            
+        return balance
+        
+    except Exception as e:
+        print(f"Error calculating balance for student {student_id}: {e}")
+        return 0
+
+
 @payments_bp.route('/')
 @role_required(['owner', 'teacher', 'accountant', 'admin'])
 def index():
@@ -63,14 +133,10 @@ def index():
                          is_admin=is_admin,
                          institute=institute)
 
-# Change the route mapping - remove the duplicate /api/list route and keep only one
-# Remove the second @payments_bp.route('/api/list') and keep the main one
-
-# Update the main get_payments function to include phone numbers
 @payments_bp.route('/api/list', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant', 'admin'])
 def get_payments():
-    """Get payments with institute-specific filtering and phone numbers"""
+    """Get payments with institute-specific filtering - OPTIMIZED with bulk balance calculation"""
     try:
         user = session.get('user')
         user_email = user.get('email', '')
@@ -197,7 +263,11 @@ def get_payments():
             if student_uuid and student_uuid not in student_uuids:
                 student_uuids.append(student_uuid)
         
-        # Fetch all students data in one query
+        # ============================================================
+        # 🔥 OPTIMIZATION: BULK FETCH all data in parallel
+        # ============================================================
+        
+        # 1. Fetch all students data in one query
         students_map = {}
         if student_uuids:
             student_resp = supabase.table('students')\
@@ -208,9 +278,8 @@ def get_payments():
             if student_resp.data:
                 for student in student_resp.data:
                     students_map[student['id']] = student
-                    print(f"Student: {student.get('name')}, Phone: {student.get('contact_number')}")
         
-        # Fetch all classes data
+        # 2. Fetch all classes data
         class_ids = []
         for student in students_map.values():
             if student.get('class_id') and student['class_id'] not in class_ids:
@@ -227,6 +296,97 @@ def get_payments():
                 for cls in class_resp.data:
                     classes_map[cls['id']] = cls
         
+        # 3. 🔥 OPTIMIZATION: BULK calculate balances for ALL students at once
+        student_balances = {}
+        if student_uuids and institute_id:
+            # Get ALL invoices for ALL students in one query
+            invoices_response = supabase.table('invoices')\
+                .select('student_id, total_amount')\
+                .eq('institute_id', institute_id)\
+                .in_('student_id', student_uuids)\
+                .execute()
+            
+            # Group invoices by student
+            invoices_by_student = {}
+            for inv in (invoices_response.data or []):
+                sid = inv.get('student_id')
+                if sid:
+                    if sid not in invoices_by_student:
+                        invoices_by_student[sid] = []
+                    invoices_by_student[sid].append(inv)
+            
+            # Get ALL payments for ALL students in one query
+            payments_response = supabase.table('payments')\
+                .select('student_id, amount')\
+                .eq('institute_id', institute_id)\
+                .in_('student_id', student_uuids)\
+                .execute()
+            
+            # Group payments by student
+            payments_by_student = {}
+            for p in (payments_response.data or []):
+                sid = p.get('student_id')
+                if sid:
+                    if sid not in payments_by_student:
+                        payments_by_student[sid] = []
+                    payments_by_student[sid].append(p)
+            
+            # Get ALL discounts for ALL students in one query
+            discounts_response = supabase.table('discounts')\
+                .select('student_id, discount_amount')\
+                .eq('institute_id', institute_id)\
+                .in_('student_id', student_uuids)\
+                .execute()
+            
+            # Group discounts by student
+            discounts_by_student = {}
+            for d in (discounts_response.data or []):
+                sid = d.get('student_id')
+                if sid:
+                    if sid not in discounts_by_student:
+                        discounts_by_student[sid] = []
+                    discounts_by_student[sid].append(d)
+            
+            # Calculate balance for each student
+            for student_uuid in student_uuids:
+                total_invoiced = 0.0
+                total_paid = 0.0
+                total_discount = 0.0
+                
+                # Sum invoices
+                for inv in invoices_by_student.get(student_uuid, []):
+                    try:
+                        amount = float(inv.get('total_amount', 0))
+                        if amount > 0:
+                            total_invoiced += amount
+                    except (ValueError, TypeError):
+                        continue
+                
+                # Sum payments
+                for p in payments_by_student.get(student_uuid, []):
+                    try:
+                        amount = float(p.get('amount', 0))
+                        if amount > 0:
+                            total_paid += amount
+                    except (ValueError, TypeError):
+                        continue
+                
+                # Sum discounts
+                for d in discounts_by_student.get(student_uuid, []):
+                    try:
+                        amount = float(d.get('discount_amount', 0))
+                        if amount > 0:
+                            total_discount += amount
+                    except (ValueError, TypeError):
+                        continue
+                
+                # Calculate balance
+                balance = total_invoiced - total_paid - total_discount
+                if balance < 0:
+                    balance = 0
+                
+                student_balances[student_uuid] = balance
+        
         # Get institute name
         institute_name = ''
         if institute_id:
@@ -237,7 +397,7 @@ def get_payments():
             if inst_resp.data:
                 institute_name = inst_resp.data[0].get('institute_name', '')
         
-        # Build formatted payments
+        # Build formatted payments with pre-calculated balances
         formatted_payments = []
         for payment in payments:
             student_uuid = payment.get('student_id')
@@ -250,18 +410,15 @@ def get_payments():
             
             phone_number = student.get('contact_number', '')
             
-            # Get current balance
-            current_balance = 0
-            balance_status = 'paid'
-            if student_uuid and institute_id:
-                invoices_response = supabase.table('invoices')\
-                    .select('balance')\
-                    .eq('student_id', student_uuid)\
-                    .eq('institute_id', institute_id)\
-                    .execute()
-                if invoices_response.data:
-                    current_balance = sum(inv['balance'] for inv in invoices_response.data)
-                    balance_status = 'credit' if current_balance < 0 else 'due' if current_balance > 0 else 'paid'
+            # Get pre-calculated balance
+            current_balance = student_balances.get(student_uuid, 0)
+            
+            if current_balance > 0:
+                balance_status = 'due'
+            elif current_balance < 0:
+                balance_status = 'credit'
+            else:
+                balance_status = 'paid'
             
             formatted_payments.append({
                 'id': payment.get('id'),
@@ -295,10 +452,11 @@ def get_payments():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @payments_bp.route('/api/export', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant', 'admin'])
 def export_payments():
-    """Export payments to Excel or CSV - institute specific"""
+    """Export payments to Excel or CSV - includes correct balance calculation"""
     try:
         user = session.get('user')
         user_email = user.get('email', '')
@@ -412,14 +570,13 @@ def export_payments():
         # Prepare data for export
         export_data = []
         for payment in payments:
-            # Get current balance
-            invoices_response = supabase.table('invoices')\
-                .select('balance')\
-                .eq('student_id', payment['student_id'])\
-                .eq('institute_id', payment['institute_id'])\
-                .execute()
+            # 🔥 FIX: Calculate correct balance using ALL payments
+            student_id = payment.get('student_id')
+            payment_institute_id = payment.get('institute_id')
+            current_balance = 0
             
-            current_balance = sum(inv['balance'] for inv in invoices_response.data) if invoices_response.data else 0
+            if student_id and payment_institute_id:
+                current_balance = calculate_student_balance(student_id, payment_institute_id)
             
             export_data.append({
                 'Receipt Number': payment['receipt_number'],
@@ -432,7 +589,7 @@ def export_payments():
                 'Payment Method': payment['payment_method'].upper(),
                 'Fee Month': payment.get('fee_month', 'N/A'),
                 'Current Balance (UGX)': float(current_balance),
-                'Status': 'Credit' if current_balance < 0 else 'Due' if current_balance > 0 else 'Paid',
+                'Balance Status': 'Credit' if current_balance < 0 else 'Due' if current_balance > 0 else 'Paid',
                 'Notes': payment.get('notes', ''),
                 'Created At': payment.get('created_at', '')
             })
@@ -494,12 +651,12 @@ def export_payments():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
-
+    
+    
 @payments_bp.route('/api/delete/<payment_id>', methods=['DELETE'])
 @role_required(['owner'])
 def delete_payment(payment_id):
-    """Delete a payment record (admin only)"""
+    """Delete a payment record and properly recalculate all balances"""
     try:
         # Get payment details before deletion
         payment_response = supabase.table('payments')\
@@ -511,48 +668,95 @@ def delete_payment(payment_id):
             return jsonify({'success': False, 'message': 'Payment not found'}), 404
         
         payment = payment_response.data[0]
+        student_id = payment.get('student_id')
+        institute_id = payment.get('institute_id')
         
-        # Get the invoice(s) affected by this payment
-        affected_invoices = []
+        print(f"=== DELETING PAYMENT ===")
+        print(f"Payment ID: {payment_id}")
+        print(f"Receipt: {payment.get('receipt_number')}")
+        print(f"Student ID: {student_id}")
+        print(f"Invoice ID: {payment.get('invoice_id')}")
         
-        # If payment was for a specific invoice
-        if payment.get('invoice_id'):
-            invoice_response = supabase.table('invoices')\
+        # 🔥 FIX: Recalculate ALL invoices for this student
+        if student_id and institute_id:
+            # Get all invoices for this student
+            invoices_response = supabase.table('invoices')\
                 .select('*')\
-                .eq('id', payment['invoice_id'])\
+                .eq('student_id', student_id)\
+                .eq('institute_id', institute_id)\
+                .order('created_at', desc=False)\
                 .execute()
             
-            if invoice_response.data:
-                invoice = invoice_response.data[0]
-                # Reverse the payment on this invoice
-                new_paid_amount = invoice['paid_amount'] - payment['amount']
-                new_balance = invoice['total_amount'] - new_paid_amount
+            # Get all payments for this student (excluding the one being deleted)
+            payments_response = supabase.table('payments')\
+                .select('*')\
+                .eq('student_id', student_id)\
+                .eq('institute_id', institute_id)\
+                .neq('id', payment_id)\
+                .order('payment_date', desc=False)\
+                .execute()
+            
+            all_payments = payments_response.data if payments_response.data else []
+            
+            # Get all discounts for this student
+            discounts_response = supabase.table('discounts')\
+                .select('*')\
+                .eq('student_id', student_id)\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            all_discounts = discounts_response.data if discounts_response.data else []
+            
+            print(f"Recalculating {len(invoices_response.data)} invoices...")
+            
+            affected_invoices = []
+            
+            for invoice in invoices_response.data:
+                # Find payments for this invoice
+                inv_payments = [p for p in all_payments if p.get('invoice_id') == invoice['id']]
+                total_paid = sum(float(p['amount']) for p in inv_payments)
                 
-                # Update invoice status
+                # Find discounts for this invoice
+                inv_discounts = [d for d in all_discounts if d.get('invoice_id') == invoice['id']]
+                total_discount = sum(float(d.get('discount_amount', 0)) for d in inv_discounts)
+                
+                # Calculate new balance
+                new_balance = float(invoice['total_amount']) - total_paid - total_discount
+                
+                # Determine status
                 if new_balance <= 0:
                     if new_balance < 0:
                         new_status = 'credit'
                     else:
                         new_status = 'paid'
-                elif new_paid_amount > 0:
+                elif total_paid > 0:
                     new_status = 'partial'
                 else:
                     new_status = 'pending'
                 
+                print(f"  Invoice {invoice['invoice_number']}: Balance {invoice.get('balance')} -> {new_balance}")
+                
+                # Update invoice
                 supabase.table('invoices')\
                     .update({
-                        'paid_amount': new_paid_amount,
+                        'paid_amount': total_paid,
                         'balance': new_balance,
                         'status': new_status,
                         'updated_at': datetime.now().isoformat()
                     })\
-                    .eq('id', payment['invoice_id'])\
+                    .eq('id', invoice['id'])\
+                    .eq('institute_id', institute_id)\
                     .execute()
                 
-                affected_invoices.append({
-                    'invoice_number': invoice['invoice_number'],
-                    'new_balance': new_balance
-                })
+                if new_balance != float(invoice.get('balance', 0)):
+                    affected_invoices.append({
+                        'invoice_number': invoice['invoice_number'],
+                        'old_balance': float(invoice.get('balance', 0)),
+                        'new_balance': new_balance
+                    })
+        else:
+            # Fallback: if no student_id, just delete the payment
+            affected_invoices = []
         
         # Delete the payment
         supabase.table('payments')\
@@ -563,7 +767,12 @@ def delete_payment(payment_id):
         return jsonify({
             'success': True,
             'message': f'Payment {payment["receipt_number"]} deleted successfully',
-            'affected_invoices': affected_invoices
+            'affected_invoices': affected_invoices,
+            'payment_deleted': {
+                'receipt_number': payment['receipt_number'],
+                'amount': float(payment['amount']),
+                'student_id': student_id
+            }
         })
         
     except Exception as e:
@@ -571,7 +780,6 @@ def delete_payment(payment_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
 
 @payments_bp.route('/api/bulk-delete', methods=['POST'])
 @admin_required
@@ -793,11 +1001,13 @@ def get_institute_info():
     except Exception as e:
         print(f"Error getting institute info: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
- # ==================== WHATSAPP RECEIPT ROUTES ====================
-@payments_bp.route('/api/receipt-pdf/<receipt_number>', methods=['GET'])
+
+
+# ==================== WHATSAPP RECEIPT ROUTES ====================
+payments_bp.route('/api/receipt-pdf/<receipt_number>', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant', 'admin'])
 def get_receipt_pdf(receipt_number):
-    """Generate receipt PDF for WhatsApp"""
+    """Generate receipt PDF for WhatsApp - FIXED balance"""
     try:
         user = session.get('user')
         user_email = user.get('email', '')
@@ -817,7 +1027,6 @@ def get_receipt_pdf(receipt_number):
             .select('*')\
             .eq('receipt_number', receipt_number)
         
-        # Apply institute filter for non-admin
         if institute_id:
             query = query.eq('institute_id', institute_id)
         elif not is_admin:
@@ -852,7 +1061,30 @@ def get_receipt_pdf(receipt_number):
             if class_resp.data:
                 class_name = class_resp.data[0].get('name', 'N/A')
         
-        # Generate PDF using reportlab
+        # Get institute data
+        institute_data = {}
+        institute_id = payment.get('institute_id')
+        if institute_id:
+            inst_resp = supabase.table('institutes')\
+                .select('institute_name, address, phone_number, logo_url, target_line, institute_code')\
+                .eq('id', institute_id)\
+                .execute()
+            if inst_resp.data:
+                institute_data = inst_resp.data[0]
+        
+        institute_name = institute_data.get('institute_name', 'SCHOOL')
+        institute_address = institute_data.get('address', '')
+        institute_phone = institute_data.get('phone_number', '')
+        target_line = institute_data.get('target_line', '')
+        
+        # 🔥 FIX: Calculate correct balance using ALL payments
+        current_balance = 0
+        if student_uuid and payment.get('institute_id'):
+            current_balance = calculate_student_balance(student_uuid, payment.get('institute_id'))
+        
+        # Get fee month
+        fee_month = payment.get('fee_month', payment.get('payment_date', ''))
+        
         from reportlab.lib.pagesizes import letter
         from reportlab.lib.units import inch
         from reportlab.pdfgen import canvas
@@ -864,40 +1096,101 @@ def get_receipt_pdf(receipt_number):
         c = canvas.Canvas(buffer, pagesize=letter)
         width, height = letter
         
-        # Header
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(1*inch, height - 1*inch, "CAPITAL COLLEGE")
-        c.setFont("Helvetica", 10)
-        c.drawString(1*inch, height - 1.2*inch, "Payment Receipt")
-        
-        # Receipt details
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(1*inch, height - 1.8*inch, f"Receipt: {receipt_number}")
-        c.setFont("Helvetica", 11)
-        c.drawString(1*inch, height - 2.2*inch, f"Date: {payment.get('payment_date', datetime.now().strftime('%Y-%m-%d'))}")
-        c.drawString(1*inch, height - 2.6*inch, f"Student: {student_data.get('name', 'N/A')}")
-        c.drawString(1*inch, height - 3.0*inch, f"Student ID: {student_data.get('student_id', 'N/A')}")
-        c.drawString(1*inch, height - 3.4*inch, f"Class: {class_name}")
-        
-        # Amount
-        c.setFont("Helvetica-Bold", 14)
-        c.setFillColor(colors.green)
-        c.drawString(1*inch, height - 4.2*inch, f"Amount Paid: UGX {float(payment.get('amount', 0)):,.0f}")
+        # ===== HEADER =====
+        c.setFont("Helvetica-Bold", 18)
+        c.setFillColor(colors.HexColor('#0d47a1'))
+        c.drawString(1*inch, height - 0.8*inch, institute_name.upper())
         c.setFillColor(colors.black)
-        c.setFont("Helvetica", 11)
-        c.drawString(1*inch, height - 4.6*inch, f"Method: {payment.get('payment_method', 'N/A').upper()}")
         
-        # Balance
-        balance = float(payment.get('current_balance', 0))
-        balance_color = colors.green if balance < 0 else colors.red
-        c.setFillColor(balance_color)
+        if target_line:
+            c.setFont("Helvetica", 9)
+            c.setFillColor(colors.HexColor('#555555'))
+            c.drawString(1*inch, height - 1.1*inch, target_line)
+            c.setFillColor(colors.black)
+        
+        y_pos = height - 1.4*inch
+        if institute_address:
+            c.setFont("Helvetica", 8)
+            c.drawString(1*inch, y_pos, institute_address)
+            y_pos -= 0.2*inch
+        if institute_phone:
+            c.setFont("Helvetica", 8)
+            c.drawString(1*inch, y_pos, f"Tel: {institute_phone}")
+        
+        c.setStrokeColor(colors.HexColor('#0d47a1'))
+        c.setLineWidth(2)
+        c.line(1*inch, height - 1.8*inch, width - 1*inch, height - 1.8*inch)
+        
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(colors.HexColor('#0d47a1'))
+        c.drawString(1*inch, height - 2.3*inch, "FEE PAYMENT RECEIPT")
+        c.setFillColor(colors.black)
+        
+        c.setStrokeColor(colors.black)
+        c.setLineWidth(0.5)
+        c.line(1*inch, height - 2.5*inch, width - 1*inch, height - 2.5*inch)
+        
+        # ===== RECEIPT DETAILS =====
+        y_pos = height - 2.9*inch
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(1*inch, y_pos, f"Receipt No: {receipt_number}")
+        y_pos -= 0.3*inch
+        c.drawString(1*inch, y_pos, f"Date: {payment.get('payment_date', datetime.now().strftime('%Y-%m-%d'))}")
+        y_pos -= 0.3*inch
+        c.drawString(1*inch, y_pos, f"Student Name: {student_data.get('name', 'N/A').upper()}")
+        y_pos -= 0.3*inch
+        c.drawString(1*inch, y_pos, f"Student ID: {student_data.get('student_id', 'N/A')}")
+        y_pos -= 0.3*inch
+        c.drawString(1*inch, y_pos, f"Class: {class_name.upper()}")
+        y_pos -= 0.3*inch
+        c.drawString(1*inch, y_pos, f"Fee Month: {fee_month[:10] if fee_month else 'N/A'}")
+        
+        y_pos -= 0.2*inch
+        c.setStrokeColor(colors.black)
+        c.setLineWidth(0.5)
+        c.line(1*inch, y_pos, width - 1*inch, y_pos)
+        y_pos -= 0.3*inch
+        
+        # ===== AMOUNT =====
         c.setFont("Helvetica-Bold", 12)
-        c.drawString(1*inch, height - 5.0*inch, f"Balance: UGX {abs(balance):,.0f} { '(Credit)' if balance < 0 else '(Due)' }")
+        c.drawString(1*inch, y_pos, "Amount Paid:")
+        c.setFillColor(colors.green)
+        c.drawString(3.5*inch, y_pos, f"UGX {float(payment.get('amount', 0)):,.0f}")
+        c.setFillColor(colors.black)
+        y_pos -= 0.3*inch
         
-        # Footer
+        c.setFont("Helvetica", 10)
+        c.drawString(1*inch, y_pos, f"Payment Method: {payment.get('payment_method', 'N/A').upper()}")
+        y_pos -= 0.3*inch
+        
+        # ===== BALANCE (CORRECT) =====
+        c.setFont("Helvetica-Bold", 12)
+        if current_balance == 0:
+            c.setFillColor(colors.green)
+            c.drawString(1*inch, y_pos, "Balance: FULLY PAID")
+        else:
+            c.setFillColor(colors.red)
+            c.drawString(1*inch, y_pos, f"Balance Due: UGX {current_balance:,.0f}")
+        c.setFillColor(colors.black)
+        
+        y_pos -= 0.3*inch
+        c.setStrokeColor(colors.black)
+        c.setLineWidth(0.5)
+        c.line(1*inch, y_pos, width - 1*inch, y_pos)
+        y_pos -= 0.3*inch
+        
+        # ===== FOOTER =====
+        c.setFont("Helvetica", 9)
+        c.setFillColor(colors.HexColor('#555555'))
+        c.drawString(1*inch, y_pos, "Thank you for your payment!")
+        y_pos -= 0.3*inch
+        c.setFont("Helvetica", 7)
+        c.drawString(1*inch, y_pos, "This is a computer generated receipt")
+        y_pos -= 0.2*inch
+        c.drawString(1*inch, y_pos, "No signature required")
+        
+        c.setFont("Helvetica", 6)
         c.setFillColor(colors.grey)
-        c.setFont("Helvetica", 8)
-        c.drawString(1*inch, 1*inch, "This is a system-generated receipt. For inquiries, contact the accounts department.")
         c.drawString(1*inch, 0.8*inch, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
         c.save()
@@ -916,11 +1209,10 @@ def get_receipt_pdf(receipt_number):
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-
 @payments_bp.route('/api/get/<payment_id>', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant', 'admin'])
 def get_payment(payment_id):
-    """Get single payment details with student info"""
+    """Get single payment details with student info and correct balance"""
     try:
         user = session.get('user')
         user_email = user.get('email', '')
@@ -964,6 +1256,11 @@ def get_payment(payment_id):
             if student_query.data:
                 student_data = student_query.data[0]
         
+        # 🔥 FIX: Calculate correct balance
+        current_balance = 0
+        if student_id and payment.get('institute_id'):
+            current_balance = calculate_student_balance(student_id, payment.get('institute_id'))
+        
         phone_number = student_data.get('contact_number', '')
         
         return jsonify({
@@ -976,7 +1273,8 @@ def get_payment(payment_id):
                 'payment_method': payment.get('payment_method'),
                 'student_name': student_data.get('name', 'N/A'),
                 'student_id': student_data.get('student_id', 'N/A'),
-                'phone_number': phone_number
+                'phone_number': phone_number,
+                'current_balance': current_balance
             }
         })
         
@@ -1181,9 +1479,10 @@ def bulk_send_whatsapp():
     except Exception as e:
         print(f"Error bulk sending WhatsApp: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
+    
 def generate_receipt_pdf(receipt_number, payment_id=None):
-    """Helper function to generate receipt PDF and return base64"""
+    """Helper function to generate receipt PDF and return base64 - FIXED balance using calculate_student_balance()"""
     try:
         # Get payment data
         query = supabase.table('payments')\
@@ -1205,7 +1504,7 @@ def generate_receipt_pdf(receipt_number, payment_id=None):
         student_uuid = payment.get('student_id')
         if student_uuid:
             student_resp = supabase.table('students')\
-                .select('name, student_id, contact_number, class_id')\
+                .select('name, student_id, contact_number, class_id, gender, date_of_birth, address, father_name, mother_name')\
                 .eq('id', student_uuid)\
                 .execute()
             if student_resp.data:
@@ -1222,6 +1521,30 @@ def generate_receipt_pdf(receipt_number, payment_id=None):
             if class_resp.data:
                 class_name = class_resp.data[0].get('name', 'N/A')
         
+        # Get institute data
+        institute_data = {}
+        institute_id = payment.get('institute_id')
+        if institute_id:
+            inst_resp = supabase.table('institutes')\
+                .select('institute_name, address, phone_number, logo_url, target_line, institute_code')\
+                .eq('id', institute_id)\
+                .execute()
+            if inst_resp.data:
+                institute_data = inst_resp.data[0]
+        
+        institute_name = institute_data.get('institute_name', 'SCHOOL')
+        institute_address = institute_data.get('address', '')
+        institute_phone = institute_data.get('phone_number', '')
+        target_line = institute_data.get('target_line', '')
+        
+        # 🔥 FIX: Calculate correct balance using ALL payments (SchoolPay + Manual)
+        current_balance = 0
+        if student_uuid and payment.get('institute_id'):
+            current_balance = calculate_student_balance(student_uuid, payment.get('institute_id'))
+        
+        # Get fee month from payment
+        fee_month = payment.get('fee_month', payment.get('payment_date', ''))
+        
         from reportlab.lib.pagesizes import letter
         from reportlab.lib.units import inch
         from reportlab.pdfgen import canvas
@@ -1233,40 +1556,110 @@ def generate_receipt_pdf(receipt_number, payment_id=None):
         c = canvas.Canvas(buffer, pagesize=letter)
         width, height = letter
         
-        # Header
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(1*inch, height - 1*inch, "CAPITAL COLLEGE")
-        c.setFont("Helvetica", 10)
-        c.drawString(1*inch, height - 1.2*inch, "Payment Receipt")
-        
-        # Receipt details
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(1*inch, height - 1.8*inch, f"Receipt: {receipt_number}")
-        c.setFont("Helvetica", 11)
-        c.drawString(1*inch, height - 2.2*inch, f"Date: {payment.get('payment_date', datetime.now().strftime('%Y-%m-%d'))}")
-        c.drawString(1*inch, height - 2.6*inch, f"Student: {student_data.get('name', 'N/A')}")
-        c.drawString(1*inch, height - 3.0*inch, f"Student ID: {student_data.get('student_id', 'N/A')}")
-        c.drawString(1*inch, height - 3.4*inch, f"Class: {class_name}")
-        
-        # Amount
-        c.setFont("Helvetica-Bold", 14)
-        c.setFillColor(colors.green)
-        c.drawString(1*inch, height - 4.2*inch, f"Amount Paid: UGX {float(payment.get('amount', 0)):,.0f}")
+        # ===== HEADER =====
+        c.setFont("Helvetica-Bold", 18)
+        c.setFillColor(colors.HexColor('#0d47a1'))
+        c.drawString(1*inch, height - 0.8*inch, institute_name.upper())
         c.setFillColor(colors.black)
-        c.setFont("Helvetica", 11)
-        c.drawString(1*inch, height - 4.6*inch, f"Method: {payment.get('payment_method', 'N/A').upper()}")
         
-        # Balance
-        balance = float(payment.get('current_balance', 0))
-        balance_color = colors.green if balance < 0 else colors.red
-        c.setFillColor(balance_color)
+        # Target line
+        if target_line:
+            c.setFont("Helvetica", 9)
+            c.setFillColor(colors.HexColor('#555555'))
+            c.drawString(1*inch, height - 1.1*inch, target_line)
+            c.setFillColor(colors.black)
+        
+        # Address and phone
+        y_pos = height - 1.4*inch
+        if institute_address:
+            c.setFont("Helvetica", 8)
+            c.drawString(1*inch, y_pos, institute_address)
+            y_pos -= 0.2*inch
+        if institute_phone:
+            c.setFont("Helvetica", 8)
+            c.drawString(1*inch, y_pos, f"Tel: {institute_phone}")
+        
+        # Separator line
+        c.setStrokeColor(colors.HexColor('#0d47a1'))
+        c.setLineWidth(2)
+        c.line(1*inch, height - 1.8*inch, width - 1*inch, height - 1.8*inch)
+        
+        # Title
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(colors.HexColor('#0d47a1'))
+        c.drawString(1*inch, height - 2.3*inch, "FEE PAYMENT RECEIPT")
+        c.setFillColor(colors.black)
+        
+        # Separator
+        c.setStrokeColor(colors.black)
+        c.setLineWidth(0.5)
+        c.line(1*inch, height - 2.5*inch, width - 1*inch, height - 2.5*inch)
+        
+        # ===== RECEIPT DETAILS =====
+        y_pos = height - 2.9*inch
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(1*inch, y_pos, f"Receipt No: {receipt_number}")
+        y_pos -= 0.3*inch
+        c.drawString(1*inch, y_pos, f"Date: {payment.get('payment_date', datetime.now().strftime('%Y-%m-%d'))}")
+        y_pos -= 0.3*inch
+        c.drawString(1*inch, y_pos, f"Student Name: {student_data.get('name', 'N/A').upper()}")
+        y_pos -= 0.3*inch
+        c.drawString(1*inch, y_pos, f"Student ID: {student_data.get('student_id', 'N/A')}")
+        y_pos -= 0.3*inch
+        c.drawString(1*inch, y_pos, f"Class: {class_name.upper()}")
+        y_pos -= 0.3*inch
+        c.drawString(1*inch, y_pos, f"Fee Month: {fee_month[:10] if fee_month else 'N/A'}")
+        
+        # Separator
+        y_pos -= 0.2*inch
+        c.setStrokeColor(colors.black)
+        c.setLineWidth(0.5)
+        c.line(1*inch, y_pos, width - 1*inch, y_pos)
+        y_pos -= 0.3*inch
+        
+        # ===== AMOUNT SECTION =====
         c.setFont("Helvetica-Bold", 12)
-        c.drawString(1*inch, height - 5.0*inch, f"Balance: UGX {abs(balance):,.0f} { '(Credit)' if balance < 0 else '(Due)' }")
+        c.drawString(1*inch, y_pos, "Amount Paid:")
+        c.setFillColor(colors.green)
+        c.drawString(3.5*inch, y_pos, f"UGX {float(payment.get('amount', 0)):,.0f}")
+        c.setFillColor(colors.black)
+        y_pos -= 0.3*inch
         
-        # Footer
+        c.setFont("Helvetica", 10)
+        c.drawString(1*inch, y_pos, f"Payment Method: {payment.get('payment_method', 'N/A').upper()}")
+        y_pos -= 0.3*inch
+        
+        # ===== BALANCE SECTION =====
+        c.setFont("Helvetica-Bold", 12)
+        if current_balance == 0:
+            c.setFillColor(colors.green)
+            c.drawString(1*inch, y_pos, "Balance: FULLY PAID")
+        else:
+            c.setFillColor(colors.red)
+            c.drawString(1*inch, y_pos, f"Balance Due: UGX {current_balance:,.0f}")
+        c.setFillColor(colors.black)
+        
+        # Separator
+        y_pos -= 0.3*inch
+        c.setStrokeColor(colors.black)
+        c.setLineWidth(0.5)
+        c.line(1*inch, y_pos, width - 1*inch, y_pos)
+        y_pos -= 0.3*inch
+        
+        # ===== FOOTER =====
+        c.setFont("Helvetica", 9)
+        c.setFillColor(colors.HexColor('#555555'))
+        c.drawString(1*inch, y_pos, "Thank you for your payment!")
+        y_pos -= 0.3*inch
+        c.setFont("Helvetica", 7)
+        c.drawString(1*inch, y_pos, "This is a computer generated receipt")
+        y_pos -= 0.2*inch
+        c.drawString(1*inch, y_pos, "No signature required")
+        c.setFillColor(colors.black)
+        
+        # Generated timestamp
+        c.setFont("Helvetica", 6)
         c.setFillColor(colors.grey)
-        c.setFont("Helvetica", 8)
-        c.drawString(1*inch, 1*inch, "This is a system-generated receipt. For inquiries, contact the accounts department.")
         c.drawString(1*inch, 0.8*inch, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
         c.save()
@@ -1379,13 +1772,11 @@ def get_whatsapp_stats():
     except Exception as e:
         print(f"Error getting WhatsApp stats: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-    
-    
 
-# Add a public route for receipt PDFs (no authentication required for viewing)
+
 @payments_bp.route('/public/receipt/<receipt_number>', methods=['GET'])
 def public_receipt_pdf(receipt_number):
-    """Public route to view receipt PDF - accessible via link"""
+    """Public route to view receipt PDF - accessible via link - FIXED balance"""
     try:
         # Get payment data
         query = supabase.table('payments')\
@@ -1420,6 +1811,11 @@ def public_receipt_pdf(receipt_number):
                 .execute()
             if class_resp.data:
                 class_name = class_resp.data[0].get('name', 'N/A')
+        
+        # 🔥 FIX: Calculate correct balance
+        current_balance = 0
+        if student_uuid and payment.get('institute_id'):
+            current_balance = calculate_student_balance(student_uuid, payment.get('institute_id'))
         
         # Generate PDF
         from reportlab.lib.pagesizes import letter
@@ -1456,12 +1852,12 @@ def public_receipt_pdf(receipt_number):
         c.setFont("Helvetica", 11)
         c.drawString(1*inch, height - 4.6*inch, f"Method: {payment.get('payment_method', 'N/A').upper()}")
         
-        # Balance
-        balance = float(payment.get('current_balance', 0))
-        balance_color = colors.green if balance < 0 else colors.red
+        # Balance - using CORRECT calculation
+        balance_color = colors.green if current_balance <= 0 else colors.red
         c.setFillColor(balance_color)
         c.setFont("Helvetica-Bold", 12)
-        c.drawString(1*inch, height - 5.0*inch, f"Balance: UGX {abs(balance):,.0f} { '(Credit)' if balance < 0 else '(Due)' }")
+        balance_text = "Fully Paid" if current_balance == 0 else f"Balance: UGX {current_balance:,.0f}"
+        c.drawString(1*inch, height - 5.0*inch, balance_text)
         
         # Footer
         c.setFillColor(colors.grey)
@@ -1482,8 +1878,8 @@ def public_receipt_pdf(receipt_number):
     except Exception as e:
         print(f"Error generating public receipt PDF: {e}")
         return "Error generating receipt", 500
-    
-    
+
+
 @payments_bp.route('/api/send-whatsapp-link/<payment_id>', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant', 'admin'])
 def send_whatsapp_link(payment_id):
@@ -1554,6 +1950,13 @@ def send_whatsapp_link(payment_id):
         receipt_url = f"{base_url}/payments/public/receipt/{payment['receipt_number']}"
         print(f"Receipt URL: {receipt_url}")
         
+        # 🔥 FIX: Calculate correct balance for the message
+        current_balance = 0
+        if student_uuid and payment.get('institute_id'):
+            current_balance = calculate_student_balance(student_uuid, payment.get('institute_id'))
+        
+        balance_text = "Fully Paid" if current_balance == 0 else f"Balance: UGX {current_balance:,.0f}"
+        
         # Create message with link
         message = f"""🎓 *Payment Receipt*
 
@@ -1566,6 +1969,7 @@ Your payment receipt is ready. Click the link below to view/download your receip
 Receipt: {payment['receipt_number']}
 Amount: UGX {float(payment['amount']):,.0f}
 Date: {payment['payment_date']}
+{balance_text}
 
 Thank you for your payment!
 
@@ -1579,7 +1983,8 @@ Thank you for your payment!
                 'phone_number': phone_number,
                 'message': message,
                 'receipt_url': receipt_url,
-                'payment_id': payment_id
+                'payment_id': payment_id,
+                'current_balance': current_balance
             }
         })
         
@@ -1588,7 +1993,7 @@ Thank you for your payment!
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-    
+
 
 @payments_bp.route('/api/edit/<payment_id>', methods=['PUT'])
 @role_required(['owner', 'accountant'])
@@ -1740,7 +2145,7 @@ def edit_payment(payment_id):
 @payments_bp.route('/api/edit/<payment_id>', methods=['GET'])
 @role_required(['owner', 'accountant'])
 def get_payment_for_edit(payment_id):
-    """Get payment details for editing"""
+    """Get payment details for editing with correct balance"""
     try:
         user = session.get('user')
         user_email = user.get('email', '')
@@ -1783,16 +2188,13 @@ def get_payment_for_edit(payment_id):
             if class_resp.data:
                 class_name = class_resp.data[0].get('name', 'N/A')
         
-        # Get current balance
+        # 🔥 FIX: Calculate correct balance using ALL payments
         current_balance = 0
-        balance_invoices = supabase.table('invoices')\
-            .select('balance')\
-            .eq('student_id', payment['student_id'])\
-            .eq('institute_id', payment['institute_id'])\
-            .execute()
+        student_id = payment.get('student_id')
+        payment_institute_id = payment.get('institute_id')
         
-        if balance_invoices.data:
-            current_balance = sum(inv['balance'] for inv in balance_invoices.data)
+        if student_id and payment_institute_id:
+            current_balance = calculate_student_balance(student_id, payment_institute_id)
         
         return jsonify({
             'success': True,

@@ -435,7 +435,7 @@
                         <a href="{{url_for('houses.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student Houses</a>
                         <a href="{{url_for('id.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Student ID Cards</a>
                         <a href="{{url_for('student_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Print Basic List</a>
-                        <a href="#" @click.prevent="activeMenu = 'manage-login'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Login</a>
+                        <!--<a href="#" @click.prevent="activeMenu = 'manage-login'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Login</a>-->
                         <a href="{{url_for('promote.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Promote Students</a>
                     </div>
                 </div>
@@ -499,7 +499,7 @@
                         
                         <a href="{{ url_for('edit_invoice.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Edit Invoice</a>
                         
-                         <a href="{{ url_for('fee_reports.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fees Reports</a>
+                         <!--<a href="{{ url_for('fee_reports.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fees Reports</a>-->
                         
                     </div>
                 </div>
@@ -532,6 +532,8 @@
                     </button>
                     <div x-show="openMenus.attendance" x-cloak class="pl-11 mt-2 space-y-1.5">
                         <a href="{{ url_for('center.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Fees Reports</a>
+
+                        <!--<a href="{{ url_for('financial_reports.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Profit & Loss</a>-->
                        
                     </div>
                 </div>

@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}Balance Sheet{% endblock %}
+
+{% block content %}
+<div x-data="balanceSheetReport()" x-init="init()">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Balance Sheet</h1>
+            <p class="text-gray-500 text-sm mt-1">Assets, liabilities, and equity position</p>
+        </div>
+        <div class="flex items-center gap-3 mt-3 md:mt-0">
+            <button @click="exportReport('excel')" class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-sm font-medium hover:bg-emerald-100 transition-colors">
+                <i class="fas fa-file-excel mr-2"></i> Excel
+            </button>
+            <button @click="exportReport('csv')" class="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-100 transition-colors">
+                <i class="fas fa-file-csv mr-2"></i> CSV
+            </button>
+            <button @click="refreshReport()" class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <i class="fas fa-sync-alt mr-2" :class="{'animate-spin': loading}"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Date Filter -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+        <div class="flex flex-wrap items-end gap-4">
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">As of Date</label>
+                <input type="date" x-model="asOfDate" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+            </div>
+            <button @click="loadReport()" class="px-6 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors">
+                <i class="fas fa-search mr-2"></i> Generate
+            </button>
+            <button @click="setToday()" class="px-4 py-2 bg-gray-50 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">
+                Today
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="flex items-center justify-center py-12">
+        <div class="text-center">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-orange-500 border-t-transparent"></div>
+            <p class="text-gray-500 mt-4">Loading balance sheet data...</p>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div x-show="reportLoaded && !loading" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <p class="text-sm text-gray-500 font-medium">Total Assets</p>
+            <p class="text-2xl font-bold text-blue-600 mt-1">UGX <span x-text="formatCurrency(report.assets.total)"></span></p>
+            <div class="mt-2 text-xs text-gray-400">
+                <span x-text="report.assets.all.length"></span> asset accounts
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <p class="text-sm text-gray-500 font-medium">Total Liabilities</p>
+            <p class="text-2xl font-bold text-red-600 mt-1">UGX <span x-text="formatCurrency(report.liabilities.total)"></span></p>
+            <div class="mt-2 text-xs text-gray-400">
+                <span x-text="report.liabilities.all.length"></span> liability accounts
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <p class="text-sm text-gray-500 font-medium">Net Assets</p>
+            <p class="text-2xl font-bold mt-1" :class="netAssets >= 0 ? 'text-emerald-600' : 'text-red-600'">
+                UGX <span x-text="formatCurrency(netAssets)"></span>
+            </p>
+            <div class="mt-2 text-xs text-gray-400">
+                <span :class="netAssets >= 0 ? 'text-emerald-600' : 'text-red-600'" x-text="netAssets >= 0 ? 'Positive' : 'Negative'"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Balance Sheet Content -->
+    <div x-show="reportLoaded && !loading" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Assets Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-building text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-800">Assets</h3>
+                            <p class="text-xs text-gray-500">Total: UGX <span x-text="formatCurrency(report.assets.total)"></span></p>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-lg" x-text="report.assets.all.length + ' accounts'"></span>
+                </div>
+            </div>
+            <div class="divide-y divide-gray-100">
+                <!-- Current Assets -->
+                <div x-show="report.assets.current.length > 0" class="p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-medium text-gray-700">Current Assets</span>
+                        <span class="text-sm font-semibold text-blue-600">UGX <span x-text="formatCurrency(report.assets.current_total)"></span></span>
+                    </div>
+                    <div class="space-y-1 ml-4">
+                        <template x-for="asset in report.assets.current" :key="asset.id">
+                            <div class="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 last:border-0">
+                                <button @click="viewAccountDetails(asset.id)" class="text-gray-700 hover:text-orange-500 transition-colors flex items-center gap-2">
+                                    <i class="fas fa-external-link-alt text-xs text-gray-400"></i>
+                                    <span x-text="asset.account_name"></span>
+                                </button>
+                                <span class="font-mono text-gray-600">UGX <span x-text="formatCurrency(asset.balance)"></span></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Non-Current Assets -->
+                <div x-show="report.assets.non_current.length > 0" class="p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-medium text-gray-700">Non-Current Assets</span>
+                        <span class="text-sm font-semibold text-blue-600">UGX <span x-text="formatCurrency(report.assets.non_current_total)"></span></span>
+                    </div>
+                    <div class="space-y-1 ml-4">
+                        <template x-for="asset in report.assets.non_current" :key="asset.id">
+                            <div class="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 last:border-0">
+                                <button @click="viewAccountDetails(asset.id)" class="text-gray-700 hover:text-orange-500 transition-colors flex items-center gap-2">
+                                    <i class="fas fa-external-link-alt text-xs text-gray-400"></i>
+                                    <span x-text="asset.account_name"></span>
+                                </button>
+                                <span class="font-mono text-gray-600">UGX <span x-text="formatCurrency(asset.balance)"></span></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div x-show="report.assets.all.length === 0" class="p-6 text-center text-gray-400 text-sm">
+                    <i class="fas fa-inbox text-2xl block mb-2"></i>
+                    No asset accounts found
+                </div>
+
+                <!-- Total Assets -->
+                <div class="px-6 py-3 bg-blue-50 border-t border-blue-100">
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold text-gray-800">Total Assets</span>
+                        <span class="text-lg font-bold text-blue-700">UGX <span x-text="formatCurrency(report.assets.total)"></span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liabilities & Equity Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-amber-50 to-white">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-arrow-left text-amber-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-800">Liabilities & Equity</h3>
+                            <p class="text-xs text-gray-500">Total: UGX <span x-text="formatCurrency(report.liabilities.total + report.equity.total)"></span></p>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-lg" x-text="(report.liabilities.all.length + report.equity.items.length) + ' accounts'"></span>
+                </div>
+            </div>
+            <div class="divide-y divide-gray-100">
+                <!-- Current Liabilities -->
+                <div x-show="report.liabilities.current.length > 0" class="p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-medium text-gray-700">Current Liabilities</span>
+                        <span class="text-sm font-semibold text-red-600">UGX <span x-text="formatCurrency(report.liabilities.current_total)"></span></span>
+                    </div>
+                    <div class="space-y-1 ml-4">
+                        <template x-for="liability in report.liabilities.current" :key="liability.id">
+                            <div class="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 last:border-0">
+                                <button @click="viewAccountDetails(liability.id)" class="text-gray-700 hover:text-orange-500 transition-colors flex items-center gap-2">
+                                    <i class="fas fa-external-link-alt text-xs text-gray-400"></i>
+                                    <span x-text="liability.account_name"></span>
+                                </button>
+                                <span class="font-mono text-gray-600">UGX <span x-text="formatCurrency(liability.balance)"></span></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Non-Current Liabilities -->
+                <div x-show="report.liabilities.non_current.length > 0" class="p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-medium text-gray-700">Non-Current Liabilities</span>
+                        <span class="text-sm font-semibold text-red-600">UGX <span x-text="formatCurrency(report.liabilities.non_current_total)"></span></span>
+                    </div>
+                    <div class="space-y-1 ml-4">
+                        <template x-for="liability in report.liabilities.non_current" :key="liability.id">
+                            <div class="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 last:border-0">
+                                <button @click="viewAccountDetails(liability.id)" class="text-gray-700 hover:text-orange-500 transition-colors flex items-center gap-2">
+                                    <i class="fas fa-external-link-alt text-xs text-gray-400"></i>
+                                    <span x-text="liability.account_name"></span>
+                                </button>
+                                <span class="font-mono text-gray-600">UGX <span x-text="formatCurrency(liability.balance)"></span></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Equity -->
+                <div x-show="report.equity.items.length > 0" class="p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-medium text-gray-700">Equity</span>
+                        <span class="text-sm font-semibold text-emerald-600">UGX <span x-text="formatCurrency(report.equity.total)"></span></span>
+                    </div>
+                    <div class="space-y-1 ml-4">
+                        <template x-for="item in report.equity.items" :key="item.id">
+                            <div class="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 last:border-0">
+                                <button @click="viewAccountDetails(item.id)" class="text-gray-700 hover:text-orange-500 transition-colors flex items-center gap-2">
+                                    <i class="fas fa-external-link-alt text-xs text-gray-400"></i>
+                                    <span x-text="item.account_name"></span>
+                                </button>
+                                <span class="font-mono text-gray-600">UGX <span x-text="formatCurrency(item.balance)"></span></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div x-show="report.liabilities.all.length === 0 && report.equity.items.length === 0" class="p-6 text-center text-gray-400 text-sm">
+                    <i class="fas fa-inbox text-2xl block mb-2"></i>
+                    No liabilities or equity found
+                </div>
+
+                <!-- Totals -->
+                <div class="px-6 py-3 bg-amber-50 border-t border-amber-100">
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-gray-700">Total Liabilities</span>
+                            <span class="font-semibold text-red-700">UGX <span x-text="formatCurrency(report.liabilities.total)"></span></span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-gray-700">Total Equity</span>
+                            <span class="font-semibold text-emerald-700">UGX <span x-text="formatCurrency(report.equity.total)"></span></span>
+                        </div>
+                        <div class="flex items-center justify-between pt-1 border-t border-amber-200">
+                            <span class="font-semibold text-gray-800">Total Liabilities & Equity</span>
+                            <span class="text-lg font-bold text-amber-700">UGX <span x-text="formatCurrency(report.liabilities.total + report.equity.total)"></span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Ratios -->
+    <div x-show="reportLoaded && !loading" class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
+            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Current Ratio</p>
+            <p class="text-2xl font-bold text-blue-600 mt-1" x-text="report.ratios?.current_ratio?.toFixed(2) || '0.00'"></p>
+            <p class="text-xs text-gray-400 mt-1">Current Assets / Current Liabilities</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
+            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Working Capital</p>
+            <p class="text-2xl font-bold" :class="report.ratios?.working_capital >= 0 ? 'text-emerald-600' : 'text-red-600'" x-text="'UGX ' + formatCurrency(report.ratios?.working_capital || 0)"></p>
+            <p class="text-xs text-gray-400 mt-1">Current Assets - Current Liabilities</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
+            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Debt-to-Equity</p>
+            <p class="text-2xl font-bold text-orange-600 mt-1" x-text="debtToEquity.toFixed(2)"></p>
+            <p class="text-xs text-gray-400 mt-1">Total Liabilities / Total Equity</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
+            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Equity Ratio</p>
+            <p class="text-2xl font-bold text-purple-600 mt-1" x-text="equityRatio.toFixed(1) + '%'"></p>
+            <p class="text-xs text-gray-400 mt-1">Total Equity / Total Assets</p>
+        </div>
+    </div>
+
+    <!-- Account Detail Modal -->
+    <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" @click="showModal = false"></div>
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden" @click.stop>
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800">Account Details</h3>
+                        <p class="text-sm text-gray-500" x-text="selectedAccount?.account_name || ''"></p>
+                    </div>
+                    <button @click="showModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                    <div x-show="loadingDetails" class="flex items-center justify-center py-12">
+                        <div class="text-center">
+                            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-orange-500 border-t-transparent"></div>
+                            <p class="text-gray-500 mt-4">Loading transactions...</p>
+                        </div>
+                    </div>
+                    <div x-show="!loadingDetails && transactions.length === 0" class="text-center py-12">
+                        <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">No transactions found for this account</p>
+                    </div>
+                    <div x-show="!loadingDetails && transactions.length > 0">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-sm text-gray-500">
+                                Showing <span x-text="transactions.length"></span> transactions
+                            </div>
+                            <div class="flex items-center gap-4 text-sm">
+                                <span class="text-emerald-600">Debits: UGX <span x-text="formatCurrency(summary.total_debits)"></span></span>
+                                <span class="text-red-600">Credits: UGX <span x-text="formatCurrency(summary.total_credits)"></span></span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <template x-for="tx in transactions" :key="tx.id">
+                                        <tr class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 py-3 text-gray-600" x-text="formatDate(tx.date)"></td>
+                                            <td class="px-4 py-3 text-gray-800" x-text="tx.description || 'N/A'"></td>
+                                            <td class="px-4 py-3 text-gray-500 text-xs" x-text="tx.reference || 'N/A'"></td>
+                                            <td class="px-4 py-3 text-right">
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full" :class="tx.type === 'debit' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
+                                                    <span x-text="tx.type.toUpperCase()"></span>
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-right font-medium" :class="tx.type === 'debit' ? 'text-emerald-600' : 'text-red-600'">
+                                                UGX <span x-text="formatCurrency(tx.amount)"></span>
+                                            </td>
+                                            <td class="px-4 py-3 text-right text-gray-600">
+                                                UGX <span x-text="formatCurrency(tx.running_balance || 0)"></span>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function balanceSheetReport() {
+    return {
+        asOfDate: '',
+        reportLoaded: false,
+        loading: false,
+        loadingDetails: false,
+        showModal: false,
+        selectedAccount: null,
+        transactions: [],
+        summary: { total_debits: 0, total_credits: 0 },
+        report: {
+            assets: { current: [], current_total: 0, non_current: [], non_current_total: 0, all: [], total: 0 },
+            liabilities: { current: [], current_total: 0, non_current: [], non_current_total: 0, all: [], total: 0 },
+            equity: { items: [], total: 0 },
+            ratios: { working_capital: 0, current_ratio: 0 }
+        },
+        
+        get netAssets() {
+            return this.report.assets.total - this.report.liabilities.total;
+        },
+        
+        get debtToEquity() {
+            return this.report.liabilities.total > 0 && this.report.equity.total > 0 
+                ? this.report.liabilities.total / this.report.equity.total 
+                : 0;
+        },
+        
+        get equityRatio() {
+            return this.report.assets.total > 0 
+                ? (this.report.equity.total / this.report.assets.total) * 100 
+                : 0;
+        },
+        
+        init() {
+            this.setToday();
+            this.loadReport();
+        },
+        
+        setToday() {
+            const now = new Date();
+            this.asOfDate = now.toISOString().split('T')[0];
+        },
+        
+        async loadReport() {
+            if (!this.asOfDate) {
+                showToast('Please select a date', 'warning');
+                return;
+            }
+            
+            this.loading = true;
+            this.reportLoaded = false;
+            
+            try {
+                const response = await fetch('/financial-reports/api/balance-sheet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ as_of_date: this.asOfDate })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.report = data.report;
+                    this.reportLoaded = true;
+                } else {
+                    showToast(data.message || 'Error loading report', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error loading report data', 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        refreshReport() {
+            this.loadReport();
+        },
+        
+        async viewAccountDetails(accountId) {
+            this.showModal = true;
+            this.loadingDetails = true;
+            this.transactions = [];
+            this.selectedAccount = null;
+            
+            try {
+                // Get account details
+                const accountResponse = await fetch(`/financial-reports/api/account-details/${accountId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        start_date: this.asOfDate,
+                        end_date: this.asOfDate
+                    })
+                });
+                
+                const data = await accountResponse.json();
+                
+                if (data.success) {
+                    this.selectedAccount = data.account;
+                    this.transactions = data.transactions || [];
+                    this.summary = data.summary || { total_debits: 0, total_credits: 0 };
+                } else {
+                    showToast(data.message || 'Error loading account details', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error loading account details', 'error');
+            } finally {
+                this.loadingDetails = false;
+            }
+        },
+        
+        async exportReport(format) {
+            if (!this.asOfDate) {
+                showToast('Please select a date first', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/financial-reports/api/export/balance-sheet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        as_of_date: this.asOfDate,
+                        format: format
+                    })
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const extension = format === 'excel' ? 'xlsx' : 'csv';
+                    a.download = `Balance_Sheet_${this.asOfDate}.${extension}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } else {
+                    const error = await response.json();
+                    showToast(error.message || 'Failed to export report', 'error');
+                }
+            } catch (error) {
+                console.error('Export error:', error);
+                showToast('Error exporting report', 'error');
+            }
+        },
+        
+        formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US').format(amount || 0);
+        },
+        
+        formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+    }
+}
+
+// Toast notification helper
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    const colors = {
+        info: 'bg-blue-500',
+        success: 'bg-emerald-500',
+        warning: 'bg-amber-500',
+        error: 'bg-red-500'
+    };
+    toast.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-xl text-white text-sm font-medium shadow-lg transform transition-all duration-300 ${colors[type] || colors.info}`;
+    toast.innerHTML = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+</script>
+{% endblock %}

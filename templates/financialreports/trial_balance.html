@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+
+{% block title %}Trial Balance Report{% endblock %}
+
+{% block content %}
+<div x-data="trialBalanceReport()" x-init="init()">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Trial Balance</h1>
+            <p class="text-gray-500 text-sm mt-1">Verify your accounts with debit and credit balances</p>
+        </div>
+        <div class="flex items-center gap-3 mt-3 md:mt-0">
+            <button @click="exportReport()" class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-sm font-medium hover:bg-emerald-100 transition-colors">
+                <i class="fas fa-file-excel mr-2"></i> Export
+            </button>
+            <button @click="refreshReport()" class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <i class="fas fa-sync-alt mr-2" :class="{'animate-spin': loading}"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Date Selector -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+        <div class="flex flex-wrap items-end gap-4">
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">As of Date</label>
+                <input type="date" x-model="asOfDate" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+            </div>
+            <button @click="loadReport()" class="px-6 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors">
+                <i class="fas fa-search mr-2"></i> Generate
+            </button>
+            <button @click="setToday()" class="px-4 py-2 bg-gray-50 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">
+                Today
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="flex items-center justify-center py-12">
+        <div class="text-center">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-orange-500 border-t-transparent"></div>
+            <p class="text-gray-500 mt-4">Loading trial balance data...</p>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div x-show="reportLoaded && !loading" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <p class="text-sm text-gray-500 font-medium">Total Debits</p>
+            <p class="text-2xl font-bold text-emerald-600 mt-1">UGX {{ formatCurrency(report.totals.debits) }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <p class="text-sm text-gray-500 font-medium">Total Credits</p>
+            <p class="text-2xl font-bold text-red-600 mt-1">UGX {{ formatCurrency(report.totals.credits) }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <p class="text-sm text-gray-500 font-medium">Status</p>
+            <p class="text-2xl font-bold mt-1" :class="report.totals.is_balanced ? 'text-emerald-600' : 'text-red-600'">
+                <i class="fas" :class="report.totals.is_balanced ? 'fa-check-circle' : 'fa-exclamation-circle'"></i>
+                {{ report.totals.is_balanced ? 'Balanced' : 'Not Balanced' }}
+            </p>
+            <div class="mt-2 text-xs text-gray-400">
+                Difference: UGX {{ formatCurrency(Math.abs(report.totals.debits - report.totals.credits)) }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Table -->
+    <div x-show="reportLoaded && !loading" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-list text-gray-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-800">Account Balances</h3>
+                        <p class="text-xs text-gray-500">As of {{ formatDate(asOfDate) }}</p>
+                    </div>
+                </div>
+                <span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-lg">{{ report.accounts.length }} accounts</span>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Code</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <template x-for="(account, index) in report.accounts" :key="account.account_id">
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-3 text-gray-400 text-xs" x-text="index + 1"></td>
+                            <td class="px-4 py-3 font-mono text-xs text-gray-600" x-text="account.account_code"></td>
+                            <td class="px-4 py-3 font-medium text-gray-800" x-text="account.account_name"></td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 text-xs font-medium rounded-full" :class="{
+                                    'bg-blue-100 text-blue-700': account.account_type === 'asset',
+                                    'bg-red-100 text-red-700': account.account_type === 'liability',
+                                    'bg-purple-100 text-purple-700': account.account_type === 'equity',
+                                    'bg-emerald-100 text-emerald-700': account.account_type === 'income',
+                                    'bg-orange-100 text-orange-700': account.account_type === 'expense'
+                                }" x-text="account.account_type.toUpperCase()"></span>
+                            </td>
+                            <td class="px-4 py-3 text-right font-mono text-emerald-600" x-text="formatCurrency(account.debit)"></td>
+                            <td class="px-4 py-3 text-right font-mono text-red-600" x-text="formatCurrency(account.credit)"></td>
+                            <td class="px-4 py-3 text-center">
+                                <button @click="viewAccountDetails(account.account_id)" class="text-orange-500 hover:text-orange-600 transition-colors">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="report.accounts.length === 0">
+                        <td colspan="7" class="px-4 py-6 text-center text-gray-400 text-sm">
+                            <i class="fas fa-inbox text-2xl block mb-2"></i>
+                            No accounts found
+                        </td>
+                    </tr>
+                    <!-- Totals Row -->
+                    <tr class="bg-gray-50 font-semibold border-t-2 border-gray-200">
+                        <td colspan="4" class="px-4 py-3 text-gray-800 text-right">TOTALS</td>
+                        <td class="px-4 py-3 text-right text-emerald-700">UGX {{ formatCurrency(report.totals.debits) }}</td>
+                        <td class="px-4 py-3 text-right text-red-700">UGX {{ formatCurrency(report.totals.credits) }}</td>
+                        <td class="px-4 py-3"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Transaction Details Modal -->
+    <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" @click="showModal = false"></div>
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden" @click.stop>
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800">Transaction Details</h3>
+                        <p class="text-sm text-gray-500" x-text="'Account: ' + (selectedAccount?.account_name || '')"></p>
+                    </div>
+                    <button @click="showModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                    <div x-show="loadingDetails" class="flex items-center justify-center py-12">
+                        <div class="text-center">
+                            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-orange-500 border-t-transparent"></div>
+                            <p class="text-gray-500 mt-4">Loading transactions...</p>
+                        </div>
+                    </div>
+                    <div x-show="!loadingDetails && transactions.length === 0" class="text-center py-12">
+                        <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">No transactions found for this account</p>
+                    </div>
+                    <div x-show="!loadingDetails && transactions.length > 0">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-sm text-gray-500">
+                                Showing <span x-text="transactions.length"></span> transactions
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <template x-for="tx in transactions" :key="tx.id">
+                                        <tr class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 py-3 text-gray-600" x-text="formatDate(tx.date)"></td>
+                                            <td class="px-4 py-3 text-gray-800" x-text="tx.description || 'N/A'"></td>
+                                            <td class="px-4 py-3 text-gray-500 text-xs" x-text="tx.reference || 'N/A'"></td>
+                                            <td class="px-4 py-3 text-right">
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full" :class="tx.type === 'debit' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
+                                                    <span x-text="tx.type.toUpperCase()"></span>
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-right font-medium" :class="tx.type === 'debit' ? 'text-emerald-600' : 'text-red-600'">
+                                                UGX <span x-text="formatCurrency(tx.amount)"></span>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function trialBalanceReport() {
+    return {
+        asOfDate: '',
+        reportLoaded: false,
+        loading: false,
+        loadingDetails: false,
+        showModal: false,
+        selectedAccount: null,
+        transactions: [],
+        report: {
+            accounts: [],
+            totals: { debits: 0, credits: 0, is_balanced: true }
+        },
+        
+        init() {
+            this.setToday();
+            this.loadReport();
+        },
+        
+        setToday() {
+            const now = new Date();
+            this.asOfDate = now.toISOString().split('T')[0];
+        },
+        
+        async loadReport() {
+            if (!this.asOfDate) {
+                alert('Please select a date');
+                return;
+            }
+            
+            this.loading = true;
+            this.reportLoaded = false;
+            
+            try {
+                const response = await fetch('/reports/api/trial-balance', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        as_of_date: this.asOfDate
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.report = data.report;
+                    this.reportLoaded = true;
+                } else {
+                    alert(data.message || 'Failed to load trial balance');
+                }
+            } catch (error) {
+                console.error('Error loading trial balance:', error);
+                alert('Error loading trial balance. Please try again.');
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        refreshReport() {
+            this.loadReport();
+        },
+        
+        async viewAccountDetails(accountId) {
+            this.showModal = true;
+            this.loadingDetails = true;
+            this.transactions = [];
+            
+            try {
+                const response = await fetch(`/reports/api/account-details/${accountId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        start_date: this.asOfDate,
+                        end_date: this.asOfDate
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.selectedAccount = data.account;
+                    this.transactions = data.transactions || [];
+                } else {
+                    alert(data.message || 'Failed to load transactions');
+                }
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+                alert('Error loading transactions. Please try again.');
+            } finally {
+                this.loadingDetails = false;
+            }
+        },
+        
+        async exportReport() {
+            try {
+                // For trial balance export, we can use the balance sheet export
+                const response = await fetch('/reports/api/export/balance-sheet', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        as_of_date: this.asOfDate,
+                        format: 'excel'
+                    })
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Trial_Balance_${this.asOfDate}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } else {
+                    const error = await response.json();
+                    alert(error.message || 'Failed to export report');
+                }
+            } catch (error) {
+                console.error('Error exporting report:', error);
+                alert('Error exporting report. Please try again.');
+            }
+        },
+        
+        formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US').format(amount || 0);
+        },
+        
+        formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+    }
+}
+</script>
+{% endblock %}

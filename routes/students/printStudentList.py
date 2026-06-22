@@ -1,5 +1,6 @@
-from routes.permissions.permissions import role_required
 # printStudentList.py - Fixed Student List Printing Blueprint
+# FIXED: Properly calculates balances including SchoolPay payments
+from routes.permissions.permissions import role_required
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
 import os
@@ -10,6 +11,7 @@ import io
 from xhtml2pdf import pisa
 import requests
 from routes.accounts.accounts import get_institute_id
+
 load_dotenv()
 
 # Initialize Supabase client
@@ -26,6 +28,7 @@ def login_required(f):
             return jsonify({'success': False, 'message': 'Please login'}), 401
         return f(*args, **kwargs)
     return decorated_function
+
 
 @student_list_bp.route('/')
 @role_required(['owner', 'teacher', 'accountant'])
@@ -65,7 +68,11 @@ def index():
 @student_list_bp.route('/api/students', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def get_students():
-    """Get students by class with fees balance"""
+    """
+    Get students by class with fees balance.
+    FIXED: Properly calculates balance including SchoolPay payments.
+    Balance = Total Invoiced - Total Paid (including SchoolPay) - Total Discounts
+    """
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -109,22 +116,69 @@ def get_students():
         
         students = students_response.data if students_response.data else []
         
-        # Get fees balance for each student
+        # 🔥 FIX: Get fees balance for each student using ALL transactions
         students_with_balance = []
         total_fees_balance = 0
         male_count = 0
         female_count = 0
         
         for student in students:
-            # Get fees balance from invoices
+            # 🔥 FIX: Get ALL invoices (both paid and unpaid) for this student
             invoices_response = supabase.table('invoices')\
-                .select('balance')\
+                .select('total_amount')\
                 .eq('student_id', student['id'])\
                 .eq('institute_id', institute_id)\
-                .neq('status', 'paid')\
                 .execute()
             
-            balance = sum(float(inv['balance']) for inv in invoices_response.data) if invoices_response.data else 0
+            # Calculate total invoiced (positive amounts only)
+            total_invoiced = 0.0
+            for inv in (invoices_response.data or []):
+                try:
+                    amount = float(inv.get('total_amount', 0))
+                    if amount > 0:
+                        total_invoiced += amount
+                except (ValueError, TypeError):
+                    continue
+            
+            # 🔥 FIX: Get ALL payments (including SchoolPay) for this student
+            payments_response = supabase.table('payments')\
+                .select('amount')\
+                .eq('student_id', student['id'])\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            total_paid = 0.0
+            for p in (payments_response.data or []):
+                try:
+                    amount = float(p.get('amount', 0))
+                    if amount > 0:
+                        total_paid += amount
+                except (ValueError, TypeError):
+                    continue
+            
+            # 🔥 FIX: Get ALL discounts for this student
+            discounts_response = supabase.table('discounts')\
+                .select('discount_amount')\
+                .eq('student_id', student['id'])\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            total_discount = 0.0
+            for d in (discounts_response.data or []):
+                try:
+                    amount = float(d.get('discount_amount', 0))
+                    if amount > 0:
+                        total_discount += amount
+                except (ValueError, TypeError):
+                    continue
+            
+            # 🔥 FIX: Calculate actual balance = invoiced - paid - discount
+            balance = total_invoiced - total_paid - total_discount
+            
+            # Don't show negative balance (overpayment)
+            if balance < 0:
+                balance = 0
+            
             total_fees_balance += balance
             
             if student.get('gender') == 'Male':
@@ -141,7 +195,11 @@ def get_students():
                 'email': student.get('email', 'N/A'),
                 'photo_url': student.get('photo_url'),
                 'status': student.get('status', 'active'),
-                'fees_balance': balance
+                'fees_balance': balance,
+                # 🔥 Optional debug info - remove for production
+                '_debug_total_invoiced': total_invoiced,
+                '_debug_total_paid': total_paid,
+                '_debug_total_discount': total_discount
             })
         
         # Sort by name
@@ -163,8 +221,8 @@ def get_students():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-    
-    
+
+
 @student_list_bp.route('/api/export-pdf', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def export_pdf():
@@ -230,6 +288,7 @@ def export_pdf():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 def generate_student_list_html(institute, students, class_name, academic_year, summary):
     """
@@ -449,6 +508,7 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
         generated_at=datetime.now().strftime('%d/%m/%Y')
     )
 
+
 def convert_html_to_pdf(html_content):
     """Convert HTML to PDF using xhtml2pdf"""
     pdf_buffer = io.BytesIO()
@@ -460,7 +520,6 @@ def convert_html_to_pdf(html_content):
     pdf_buffer.seek(0)
     return pdf_buffer
 
-# Add these routes after your existing routes
 
 @student_list_bp.route('/api/student/<student_id>', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
@@ -549,4 +608,88 @@ def update_student(student_id):
         print(f"Error updating student: {e}")
         import traceback
         traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================================================
+# 🔥 NEW: API endpoint to get student balance (for Payment Management page)
+# ============================================================================
+@student_list_bp.route('/api/student-balance/<student_id>', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant'])
+def get_student_balance(student_id):
+    """
+    Get a student's current balance including SchoolPay payments.
+    Used by Payment Management page to show accurate balance.
+    """
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Get ALL invoices for this student
+        invoices_response = supabase.table('invoices')\
+            .select('total_amount')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        total_invoiced = 0.0
+        for inv in (invoices_response.data or []):
+            try:
+                amount = float(inv.get('total_amount', 0))
+                if amount > 0:
+                    total_invoiced += amount
+            except (ValueError, TypeError):
+                continue
+        
+        # Get ALL payments (including SchoolPay) for this student
+        payments_response = supabase.table('payments')\
+            .select('amount')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        total_paid = 0.0
+        for p in (payments_response.data or []):
+            try:
+                amount = float(p.get('amount', 0))
+                if amount > 0:
+                    total_paid += amount
+            except (ValueError, TypeError):
+                continue
+        
+        # Get ALL discounts for this student
+        discounts_response = supabase.table('discounts')\
+            .select('discount_amount')\
+            .eq('student_id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        total_discount = 0.0
+        for d in (discounts_response.data or []):
+            try:
+                amount = float(d.get('discount_amount', 0))
+                if amount > 0:
+                    total_discount += amount
+            except (ValueError, TypeError):
+                continue
+        
+        # Calculate balance
+        balance = total_invoiced - total_paid - total_discount
+        if balance < 0:
+            balance = 0
+        
+        return jsonify({
+            'success': True,
+            'student_id': student_id,
+            'balance': balance,
+            'total_invoiced': total_invoiced,
+            'total_paid': total_paid,
+            'total_discount': total_discount
+        })
+        
+    except Exception as e:
+        print(f"Error getting student balance: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
