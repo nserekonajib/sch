@@ -271,7 +271,7 @@ def employee_login():
 
 # ========== REGISTER ROUTE (Institute Owners Only) ==========
 
-@auth_bp.route('/register', methods=['GET', 'POST'])
+@auth_bp.route('/registe', methods=['GET', 'POST'])
 def register():
     """Registration route for institute owners only - Institute created ONLY after user auth success"""
     if request.method == 'POST':
