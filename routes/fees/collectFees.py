@@ -865,11 +865,18 @@ def generate_receipt_pdf(institute, student, payment, total_due):
             spaceAfter=3
         )
         
-        # Institute Header
-        story.append(Paragraph(institute.get('institute_name', 'School Name'), title_style))
-        story.append(Paragraph(institute.get('target_line', ''), center_style))
-        story.append(Paragraph(institute.get('address', ''), center_style))
-        story.append(Paragraph(f"Tel: {institute.get('phone_number', '')}", center_style))
+        # Helper function to safely get string values
+        def safe_str(value, default=''):
+            """Safely convert value to string, handling None"""
+            if value is None:
+                return default
+            return str(value)
+        
+        # Institute Header - FIXED: ensure all values are strings
+        story.append(Paragraph(safe_str(institute.get('institute_name', 'School Name')), title_style))
+        story.append(Paragraph(safe_str(institute.get('target_line', '')), center_style))
+        story.append(Paragraph(safe_str(institute.get('address', '')), center_style))
+        story.append(Paragraph(f"Tel: {safe_str(institute.get('phone_number', ''))}", center_style))
         story.append(Spacer(1, 5))
         
         # Receipt Title
@@ -878,15 +885,23 @@ def generate_receipt_pdf(institute, student, payment, total_due):
         story.append(Paragraph("=" * 35, normal_style))
         story.append(Spacer(1, 5))
         
-        # Receipt Details
+        # Receipt Details - FIXED: ensure all values are strings
+        student_name = safe_str(student.get('name', 'N/A'))
+        student_id = safe_str(student.get('student_id', 'N/A'))
+        class_name = student.get('classes', {}).get('name', 'N/A') if student.get('classes') else 'N/A'
+        class_name = safe_str(class_name)
+        fee_month = safe_str(payment.get('fee_month', 'N/A'))
+        receipt_number = safe_str(payment.get('receipt_number', 'N/A'))
+        payment_date = safe_str(payment.get('payment_date', 'N/A'))
+        
         receipt_data = [
-            ['Receipt No:', payment['receipt_number']],
-            ['Date:', payment['payment_date']],
+            ['Receipt No:', receipt_number],
+            ['Date:', payment_date],
             ['', ''],
-            ['Student Name:', student['name']],
-            ['Student ID:', student['student_id']],
-            ['Class:', student['classes']['name'] if student.get('classes') else 'N/A'],
-            ['Fee Month:', payment.get('fee_month', 'N/A')],
+            ['Student Name:', student_name],
+            ['Student ID:', student_id],
+            ['Class:', class_name],
+            ['Fee Month:', fee_month],
         ]
         
         t = Table(receipt_data, colWidths=[30*mm, 40*mm])
@@ -906,6 +921,9 @@ def generate_receipt_pdf(institute, student, payment, total_due):
         story.append(Paragraph("-" * 35, normal_style))
         
         # Format balance display
+        amount_paid = float(payment.get('amount', 0))
+        payment_method = safe_str(payment.get('payment_method', 'CASH')).upper()
+        
         if total_due < 0:
             balance_display = f"Credit: UGX {abs(total_due):,.0f}"
         elif total_due == 0:
@@ -914,8 +932,8 @@ def generate_receipt_pdf(institute, student, payment, total_due):
             balance_display = f"Balance Due: UGX {total_due:,.0f}"
         
         amount_data = [
-            ['Amount Paid:', f"UGX {payment['amount']:,.0f}"],
-            ['Payment Method:', payment['payment_method'].upper()],
+            ['Amount Paid:', f"UGX {amount_paid:,.0f}"],
+            ['Payment Method:', payment_method],
             [balance_display, '']
         ]
         
@@ -929,10 +947,11 @@ def generate_receipt_pdf(institute, student, payment, total_due):
         ]))
         story.append(t2)
         
-        # Notes
-        if payment.get('notes'):
+        # Notes - FIXED: ensure notes is a string
+        notes = payment.get('notes')
+        if notes:
             story.append(Spacer(1, 5))
-            story.append(Paragraph(f"Notes: {payment['notes']}", normal_style))
+            story.append(Paragraph(f"Notes: {safe_str(notes)}", normal_style))
         
         story.append(Paragraph("-" * 35, normal_style))
         
