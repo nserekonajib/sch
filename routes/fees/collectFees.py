@@ -970,7 +970,9 @@ def generate_receipt_pdf(institute, student, payment, total_due):
         import traceback
         traceback.print_exc()
         return None
-
+    
+    
+    
 @collect_bp.route('/apply-discount', methods=['POST'])
 @login_required
 def apply_discount():
@@ -991,7 +993,7 @@ def apply_discount():
         if not invoice_id or discount_value <= 0:
             return jsonify({'success': False, 'message': 'Invalid discount value'}), 400
         
-        # Get invoice details
+        # Get invoice details with proper balance calculation
         invoice_response = supabase.table('invoices')\
             .select('*')\
             .eq('id', invoice_id)\
@@ -1003,24 +1005,62 @@ def apply_discount():
         
         invoice = invoice_response.data[0]
         
+        # 🔥 FIX: Get the correct balance by calculating from payments and discounts
+        # Get all payments for this invoice
+        payments_response = supabase.table('payments')\
+            .select('amount')\
+            .eq('invoice_id', invoice_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        total_paid = sum(float(p.get('amount', 0)) for p in (payments_response.data or []))
+        
+        # Get all discounts for this invoice
+        discounts_response = supabase.table('discounts')\
+            .select('discount_amount')\
+            .eq('invoice_id', invoice_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        total_discounts = sum(float(d.get('discount_amount', 0)) for d in (discounts_response.data or []))
+        
+        # Calculate actual balance
+        invoice_total = float(invoice.get('total_amount', 0))
+        current_balance = invoice_total - total_paid - total_discounts
+        
+        # Ensure balance is not negative
+        if current_balance < 0:
+            current_balance = 0
+        
+        print(f"Invoice {invoice_id}: Total={invoice_total}, Paid={total_paid}, Discounts={total_discounts}, Balance={current_balance}")
+        
         # Calculate discount amount based on current balance
         if discount_type == 'percentage':
-            discount_amount = (discount_value / 100) * invoice['balance']
+            discount_amount = (discount_value / 100) * current_balance
         else:
-            discount_amount = min(discount_value, abs(invoice['balance']))
+            # Fixed amount - cannot exceed current balance
+            discount_amount = min(discount_value, current_balance)
+        
+        # Ensure discount amount is not zero
+        if discount_amount <= 0:
+            return jsonify({
+                'success': False, 
+                'message': f'Cannot apply discount. Current balance is {current_balance:,.0f}. Discount amount would be 0.'
+            }), 400
         
         # Apply discount to invoice
-        new_balance = invoice['balance'] - discount_amount
+        new_balance = current_balance - discount_amount
         
         # Update status
-        if new_balance == 0:
+        if new_balance <= 0:
             new_status = 'paid'
-        elif new_balance < 0:
-            new_status = 'credit'
+            new_balance = 0
+        elif new_balance < invoice_total:
+            new_status = 'partial'
         else:
-            new_status = 'partial' if invoice['paid_amount'] > 0 else 'pending'
+            new_status = 'pending'
         
-        # Update invoice
+        # Update invoice with correct balance
         supabase.table('invoices')\
             .update({
                 'balance': new_balance,
@@ -1049,7 +1089,7 @@ def apply_discount():
             'invoice_id': invoice_id,
             'discount_type': discount_type,
             'discount_value': discount_value,
-            'discount_amount': discount_amount,
+            'discount_amount': discount_amount,  # Now this will be correct
             'reason': reason,
             'apply_to': 'invoice',
             'is_active': True,
@@ -1064,11 +1104,15 @@ def apply_discount():
             'message': f'Discount of UGX {discount_amount:,.0f} applied successfully',
             'new_balance': new_balance,
             'discount_amount': discount_amount,
-            'invoice_balance': new_balance
+            'invoice_balance': new_balance,
+            'invoice_id': invoice_id,
+            'student_name': student_name
         })
         
     except Exception as e:
         print(f"Error applying discount: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @collect_bp.route('/receipt/<receipt_number>', methods=['GET'])
@@ -1312,6 +1356,504 @@ def resend_receipt(receipt_number):
             
     except Exception as e:
         print(f"Error resending receipt: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+
+# Add these routes to your collectFees.py file
+@collect_bp.route('/discounts')
+@login_required
+def discounts_page():
+    """Discounts Management Page"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return render_template('fees/discounts.html', institute=None)
+    
+    # Get institute details
+    institute_response = supabase.table('institutes')\
+        .select('*')\
+        .eq('id', institute_id)\
+        .execute()
+    
+    institute = institute_response.data[0] if institute_response.data else None
+    
+    return render_template('fees/discounts.html', institute=institute)
+
+
+@collect_bp.route('/api/discounts', methods=['GET'])
+@login_required
+def get_discounts():
+    """Get all discounts for the institute with pagination and filters"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        # Get query parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '').strip()
+        discount_type = request.args.get('discount_type', '')
+        status = request.args.get('status', '')
+        
+        # Build query
+        query = supabase.table('discounts')\
+            .select('*, students(name, student_id, classes(name))', count='exact')\
+            .eq('institute_id', institute_id)
+        
+        # Apply filters
+        if search:
+            query = query.ilike('student_name', f'%{search}%')
+        
+        if discount_type:
+            query = query.eq('discount_type', discount_type)
+        
+        if status == 'active':
+            query = query.eq('is_active', True)
+        elif status == 'inactive':
+            query = query.eq('is_active', False)
+        
+        # Apply pagination
+        offset = (page - 1) * per_page
+        query = query.order('created_at', desc=True)\
+            .range(offset, offset + per_page - 1)\
+            .execute()
+        
+        discounts = query.data if query.data else []
+        total_count = query.count or 0
+        
+        # Format the response
+        formatted_discounts = []
+        for discount in discounts:
+            student = discount.get('students', {})
+            
+            # 🔥 FIX: Calculate actual discount amount from invoice balance
+            invoice_id = discount.get('invoice_id')
+            actual_discount_amount = float(discount.get('discount_amount', 0))
+            
+            # If discount_amount is 0 but should have a value, recalculate
+            if actual_discount_amount == 0 and invoice_id:
+                try:
+                    # Get invoice
+                    invoice_response = supabase.table('invoices')\
+                        .select('total_amount, balance')\
+                        .eq('id', invoice_id)\
+                        .eq('institute_id', institute_id)\
+                        .execute()
+                    
+                    if invoice_response.data:
+                        invoice = invoice_response.data[0]
+                        invoice_total = float(invoice.get('total_amount', 0))
+                        invoice_balance = float(invoice.get('balance', 0))
+                        
+                        # Recalculate discount amount
+                        discount_value = float(discount.get('discount_value', 0))
+                        discount_type = discount.get('discount_type', 'fixed')
+                        
+                        if discount_type == 'percentage':
+                            # Calculate what the discount should be based on invoice total
+                            actual_discount_amount = (discount_value / 100) * invoice_total
+                        else:
+                            # Fixed amount - should be the discount value or less
+                            actual_discount_amount = min(discount_value, invoice_total)
+                        
+                        # If discount amount is still 0, use a default calculation
+                        if actual_discount_amount == 0 and invoice_balance > 0:
+                            actual_discount_amount = invoice_balance
+                        
+                        # Update the discount record with correct amount
+                        if actual_discount_amount > 0:
+                            supabase.table('discounts')\
+                                .update({
+                                    'discount_amount': actual_discount_amount,
+                                    'updated_at': datetime.now().isoformat()
+                                })\
+                                .eq('id', discount['id'])\
+                                .eq('institute_id', institute_id)\
+                                .execute()
+                except Exception as e:
+                    print(f"Error recalculating discount amount: {e}")
+            
+            formatted_discounts.append({
+                'id': discount['id'],
+                'student_id': discount['student_id'],
+                'student_name': discount.get('student_name', student.get('name', 'Unknown')),
+                'student_id_number': student.get('student_id', 'N/A'),
+                'class': student.get('classes', {}).get('name', 'N/A') if student.get('classes') else 'N/A',
+                'invoice_id': discount.get('invoice_id'),
+                'discount_type': discount.get('discount_type', 'fixed'),
+                'discount_value': float(discount.get('discount_value', 0)),
+                'discount_amount': actual_discount_amount,
+                'reason': discount.get('reason', ''),
+                'is_active': discount.get('is_active', True),
+                'created_at': discount.get('created_at'),
+                'updated_at': discount.get('updated_at')
+            })
+        
+        return jsonify({
+            'success': True,
+            'discounts': formatted_discounts,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total_count,
+                'total_pages': (total_count + per_page - 1) // per_page
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error getting discounts: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@collect_bp.route('/api/discounts/<discount_id>', methods=['GET'])
+@login_required
+def get_discount(discount_id):
+    """Get a single discount by ID"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        response = supabase.table('discounts')\
+            .select('*, students(name, student_id, classes(name))')\
+            .eq('id', discount_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if not response.data:
+            return jsonify({'success': False, 'message': 'Discount not found'}), 404
+        
+        discount = response.data[0]
+        student = discount.get('students', {})
+        
+        # Calculate actual discount amount
+        discount_amount = float(discount.get('discount_amount', 0))
+        if discount_amount == 0 and discount.get('invoice_id'):
+            invoice_response = supabase.table('invoices')\
+                .select('total_amount')\
+                .eq('id', discount.get('invoice_id'))\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            if invoice_response.data:
+                invoice = invoice_response.data[0]
+                discount_value = float(discount.get('discount_value', 0))
+                discount_type = discount.get('discount_type', 'fixed')
+                invoice_total = float(invoice.get('total_amount', 0))
+                
+                if discount_type == 'percentage':
+                    discount_amount = (discount_value / 100) * invoice_total
+                else:
+                    discount_amount = min(discount_value, invoice_total)
+        
+        return jsonify({
+            'success': True,
+            'discount': {
+                'id': discount['id'],
+                'student_id': discount['student_id'],
+                'student_name': discount.get('student_name', student.get('name', 'Unknown')),
+                'student_id_number': student.get('student_id', 'N/A'),
+                'class': student.get('classes', {}).get('name', 'N/A') if student.get('classes') else 'N/A',
+                'invoice_id': discount.get('invoice_id'),
+                'discount_type': discount.get('discount_type', 'fixed'),
+                'discount_value': float(discount.get('discount_value', 0)),
+                'discount_amount': discount_amount,
+                'reason': discount.get('reason', ''),
+                'is_active': discount.get('is_active', True),
+                'created_at': discount.get('created_at'),
+                'updated_at': discount.get('updated_at')
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error getting discount: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@collect_bp.route('/api/discounts/<discount_id>', methods=['PUT'])
+@login_required
+def update_discount(discount_id):
+    """Update an existing discount"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        data = request.get_json()
+        
+        # Get existing discount
+        existing_response = supabase.table('discounts')\
+            .select('*')\
+            .eq('id', discount_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if not existing_response.data:
+            return jsonify({'success': False, 'message': 'Discount not found'}), 404
+        
+        existing = existing_response.data[0]
+        
+        # Get the invoice to calculate correct discount amount
+        invoice_id = existing.get('invoice_id')
+        invoice_total = 0
+        current_balance = 0
+        
+        if invoice_id:
+            invoice_response = supabase.table('invoices')\
+                .select('total_amount, balance, paid_amount')\
+                .eq('id', invoice_id)\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            if invoice_response.data:
+                invoice = invoice_response.data[0]
+                invoice_total = float(invoice.get('total_amount', 0))
+                current_balance = float(invoice.get('balance', 0))
+                
+                # Get existing discounts for this invoice
+                existing_discounts_response = supabase.table('discounts')\
+                    .select('discount_amount')\
+                    .eq('invoice_id', invoice_id)\
+                    .eq('institute_id', institute_id)\
+                    .neq('id', discount_id)\
+                    .execute()
+                
+                total_existing_discounts = sum(float(d.get('discount_amount', 0)) for d in (existing_discounts_response.data or []))
+                
+                # Get payments for this invoice
+                payments_response = supabase.table('payments')\
+                    .select('amount')\
+                    .eq('invoice_id', invoice_id)\
+                    .eq('institute_id', institute_id)\
+                    .execute()
+                
+                total_paid = sum(float(p.get('amount', 0)) for p in (payments_response.data or []))
+                
+                # Calculate actual balance
+                current_balance = invoice_total - total_paid - total_existing_discounts
+                if current_balance < 0:
+                    current_balance = 0
+        
+        # Prepare update data
+        new_discount_type = data.get('discount_type', existing.get('discount_type'))
+        new_discount_value = float(data.get('discount_value', existing.get('discount_value', 0)))
+        
+        # Calculate new discount amount
+        if new_discount_type == 'percentage':
+            new_discount_amount = (new_discount_value / 100) * invoice_total if invoice_total > 0 else 0
+        else:
+            new_discount_amount = min(new_discount_value, current_balance) if current_balance > 0 else 0
+        
+        # If discount amount is 0 but should be something, use a default
+        if new_discount_amount == 0 and new_discount_value > 0 and invoice_total > 0:
+            if new_discount_type == 'percentage':
+                new_discount_amount = (new_discount_value / 100) * invoice_total
+            else:
+                new_discount_amount = min(new_discount_value, invoice_total)
+        
+        update_data = {
+            'discount_type': new_discount_type,
+            'discount_value': new_discount_value,
+            'discount_amount': new_discount_amount,
+            'reason': data.get('reason', existing.get('reason', '')),
+            'is_active': data.get('is_active', existing.get('is_active', True)),
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        # Update invoice balance if invoice exists
+        if invoice_id:
+            # Recalculate invoice balance with new discount
+            payments_response = supabase.table('payments')\
+                .select('amount')\
+                .eq('invoice_id', invoice_id)\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            total_paid = sum(float(p.get('amount', 0)) for p in (payments_response.data or []))
+            
+            # Get all other discounts (excluding this one)
+            other_discounts_response = supabase.table('discounts')\
+                .select('discount_amount')\
+                .eq('invoice_id', invoice_id)\
+                .eq('institute_id', institute_id)\
+                .neq('id', discount_id)\
+                .execute()
+            
+            total_other_discounts = sum(float(d.get('discount_amount', 0)) for d in (other_discounts_response.data or []))
+            
+            # Total discounts including this one
+            total_discounts = total_other_discounts + new_discount_amount
+            
+            # Calculate new balance
+            new_balance = invoice_total - total_paid - total_discounts
+            if new_balance < 0:
+                new_balance = 0
+            
+            # Update status
+            if new_balance == 0:
+                new_status = 'paid'
+            elif new_balance < invoice_total:
+                new_status = 'partial'
+            else:
+                new_status = 'pending'
+            
+            # Update invoice
+            supabase.table('invoices')\
+                .update({
+                    'balance': new_balance,
+                    'status': new_status,
+                    'updated_at': datetime.now().isoformat()
+                })\
+                .eq('id', invoice_id)\
+                .eq('institute_id', institute_id)\
+                .execute()
+        
+        # Update discount
+        result = supabase.table('discounts')\
+            .update(update_data)\
+            .eq('id', discount_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if result.data:
+            return jsonify({
+                'success': True,
+                'message': 'Discount updated successfully',
+                'discount': result.data[0]
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to update discount'}), 500
+            
+    except Exception as e:
+        print(f"Error updating discount: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@collect_bp.route('/api/discounts/<discount_id>/toggle', methods=['POST'])
+@login_required
+def toggle_discount(discount_id):
+    """Toggle discount active status"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        data = request.get_json()
+        is_active = data.get('is_active', True)
+        
+        # Get existing discount
+        existing_response = supabase.table('discounts')\
+            .select('*')\
+            .eq('id', discount_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if not existing_response.data:
+            return jsonify({'success': False, 'message': 'Discount not found'}), 404
+        
+        existing = existing_response.data[0]
+        invoice_id = existing.get('invoice_id')
+        discount_amount = float(existing.get('discount_amount', 0))
+        
+        # If invoice exists, update its balance
+        if invoice_id and discount_amount > 0:
+            # Get current invoice
+            invoice_response = supabase.table('invoices')\
+                .select('total_amount, balance, paid_amount')\
+                .eq('id', invoice_id)\
+                .eq('institute_id', institute_id)\
+                .execute()
+            
+            if invoice_response.data:
+                invoice = invoice_response.data[0]
+                invoice_total = float(invoice.get('total_amount', 0))
+                current_balance = float(invoice.get('balance', 0))
+                
+                # Get all discounts for this invoice
+                discounts_response = supabase.table('discounts')\
+                    .select('discount_amount')\
+                    .eq('invoice_id', invoice_id)\
+                    .eq('institute_id', institute_id)\
+                    .neq('id', discount_id)\
+                    .execute()
+                
+                total_other_discounts = sum(float(d.get('discount_amount', 0)) for d in (discounts_response.data or []))
+                
+                # Get all payments for this invoice
+                payments_response = supabase.table('payments')\
+                    .select('amount')\
+                    .eq('invoice_id', invoice_id)\
+                    .eq('institute_id', institute_id)\
+                    .execute()
+                
+                total_paid = sum(float(p.get('amount', 0)) for p in (payments_response.data or []))
+                
+                if is_active:
+                    # Activating - add discount back to balance calculation
+                    total_discounts = total_other_discounts + discount_amount
+                else:
+                    # Deactivating - remove discount from balance calculation
+                    total_discounts = total_other_discounts
+                
+                new_balance = invoice_total - total_paid - total_discounts
+                if new_balance < 0:
+                    new_balance = 0
+                
+                # Update status
+                if new_balance == 0:
+                    new_status = 'paid'
+                elif new_balance < invoice_total:
+                    new_status = 'partial'
+                else:
+                    new_status = 'pending'
+                
+                # Update invoice
+                supabase.table('invoices')\
+                    .update({
+                        'balance': new_balance,
+                        'status': new_status,
+                        'updated_at': datetime.now().isoformat()
+                    })\
+                    .eq('id', invoice_id)\
+                    .eq('institute_id', institute_id)\
+                    .execute()
+        
+        # Update discount status
+        result = supabase.table('discounts')\
+            .update({
+                'is_active': is_active,
+                'updated_at': datetime.now().isoformat()
+            })\
+            .eq('id', discount_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        if result.data:
+            return jsonify({
+                'success': True,
+                'message': f'Discount {"activated" if is_active else "deactivated"} successfully'
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to update status'}), 500
+            
+    except Exception as e:
+        print(f"Error toggling discount: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500

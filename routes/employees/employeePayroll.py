@@ -1,4 +1,4 @@
-# employeePayroll.py - Updated with PDF receipt-style payslip and Advance Deductions
+# employeePayroll.py - OPTIMIZED with Batch Processing
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
 import os
@@ -23,6 +23,9 @@ from PIL import Image as PILImage
 import tempfile
 from routes.accounts.accounts import get_institute_id
 from routes.permissions.permissions import role_required
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
+
 load_dotenv()
 
 # Initialize Supabase client
@@ -31,6 +34,10 @@ SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 payroll_bp = Blueprint('payroll', __name__, url_prefix='/payroll')
+
+# Cache for performance
+_institute_cache = {}
+_advance_cache = {}
 
 def login_required(f):
     """Decorator to require login for routes"""
@@ -42,98 +49,115 @@ def login_required(f):
     return decorated_function
 
 
-# ==================== ADVANCE HELPER FUNCTIONS ====================
+# ==================== OPTIMIZED HELPER FUNCTIONS ====================
 
-def get_advance_deduction_for_employee(institute_id, employee_id, payroll_month):
-    """Get the advance deduction amount for an employee for a specific month"""
+def get_advance_deductions_batch(institute_id, employee_ids, payroll_month):
+    """Get advance deductions for multiple employees in ONE query"""
+    if not employee_ids:
+        return {}
+    
     try:
-        # Check if employee_advances table exists
-        try:
-            advance_response = supabase.table('employee_advances')\
-                .select('monthly_deduction, remaining_amount, advance_amount, repaid_amount')\
-                .eq('institute_id', institute_id)\
-                .eq('employee_id', employee_id)\
-                .eq('status', 'active')\
-                .lte('repayment_start_month', payroll_month)\
-                .gte('repayment_end_month', payroll_month)\
-                .execute()
-            
-            if not advance_response.data:
-                return 0, None
-            
-            advance = advance_response.data[0]
-            # Don't deduct more than remaining balance
-            deduction = min(float(advance['monthly_deduction']), float(advance['remaining_amount']))
-            return deduction, advance
-            
-        except Exception as e:
-            # Table might not exist yet
-            print(f"Advance table not ready: {e}")
-            return 0, None
-        
-    except Exception as e:
-        print(f"Error getting advance deduction: {e}")
-        return 0, None
-
-
-def update_advance_on_salary_payment(institute_id, employee_id, payment_month, advance_deduction, advance_id):
-    """Update advance balance when salary payment includes deduction"""
-    try:
-        if not advance_id or advance_deduction <= 0:
-            return False
-        
-        # Get current advance
+        # Get ALL active advances for these employees in one query
         advance_response = supabase.table('employee_advances')\
-            .select('*')\
-            .eq('id', advance_id)\
+            .select('employee_id, id, monthly_deduction, remaining_amount, advance_amount, repaid_amount')\
             .eq('institute_id', institute_id)\
+            .in_('employee_id', employee_ids)\
+            .eq('status', 'active')\
+            .lte('repayment_start_month', payroll_month)\
+            .gte('repayment_end_month', payroll_month)\
             .execute()
         
-        if not advance_response.data:
-            return False
+        result = {}
+        if advance_response.data:
+            for advance in advance_response.data:
+                emp_id = advance['employee_id']
+                monthly_ded = float(advance['monthly_deduction'])
+                remaining = float(advance['remaining_amount'])
+                # Don't deduct more than remaining
+                deduction = min(monthly_ded, remaining)
+                result[emp_id] = {
+                    'deduction': deduction,
+                    'advance_id': advance['id'],
+                    'advance_data': advance
+                }
         
-        advance = advance_response.data[0]
+        return result
         
-        # Update repaid amount and remaining amount
-        new_repaid = float(advance['repaid_amount']) + advance_deduction
-        new_remaining = float(advance['advance_amount']) - new_repaid
-        new_status = 'completed' if new_remaining <= 0 else 'active'
+    except Exception as e:
+        print(f"Error getting batch advances: {e}")
+        return {}
+
+
+def update_advances_batch(institute_id, updates):
+    """Update multiple advances in BATCH mode"""
+    if not updates:
+        return True
+    
+    try:
+        # Prepare batch updates
+        advance_updates = []
+        payment_records = []
         
-        supabase.table('employee_advances')\
-            .update({
+        for emp_id, data in updates.items():
+            advance_id = data['advance_id']
+            deduction = data['deduction']
+            current_advance = data['advance_data']
+            
+            new_repaid = float(current_advance['repaid_amount']) + deduction
+            new_remaining = float(current_advance['advance_amount']) - new_repaid
+            new_status = 'completed' if new_remaining <= 0 else 'active'
+            
+            advance_updates.append({
+                'id': advance_id,
                 'repaid_amount': new_repaid,
                 'remaining_amount': new_remaining,
                 'status': new_status,
                 'updated_at': datetime.now().isoformat()
-            })\
-            .eq('id', advance_id)\
-            .execute()
+            })
+            
+            payment_records.append({
+                'id': str(uuid.uuid4()),
+                'institute_id': institute_id,
+                'advance_id': advance_id,
+                'employee_id': emp_id,
+                'amount': deduction,
+                'payment_month': data.get('payment_month'),
+                'payment_date': datetime.now().strftime('%Y-%m-%d'),
+                'is_repayment': True,
+                'notes': f'Auto-deduction from salary for {data.get("payment_month")}',
+                'created_at': datetime.now().isoformat()
+            })
         
-        # Record the automatic repayment
-        payment_data = {
-            'id': str(uuid.uuid4()),
-            'institute_id': institute_id,
-            'advance_id': advance_id,
-            'employee_id': employee_id,
-            'amount': advance_deduction,
-            'payment_month': payment_month,
-            'payment_date': datetime.now().strftime('%Y-%m-%d'),
-            'is_repayment': True,
-            'notes': f'Auto-deduction from salary for {payment_month}',
-            'created_at': datetime.now().isoformat()
-        }
+        # Batch update advances
+        if advance_updates:
+            for update in advance_updates:
+                supabase.table('employee_advances')\
+                    .update({
+                        'repaid_amount': update['repaid_amount'],
+                        'remaining_amount': update['remaining_amount'],
+                        'status': update['status'],
+                        'updated_at': update['updated_at']
+                    })\
+                    .eq('id', update['id'])\
+                    .execute()
         
-        supabase.table('advance_payments').insert(payment_data).execute()
+        # Batch insert advance payments
+        if payment_records:
+            supabase.table('advance_payments').insert(payment_records).execute()
         
         return True
         
     except Exception as e:
-        print(f"Error updating advance on salary payment: {e}")
+        print(f"Error batch updating advances: {e}")
         return False
 
 
 def get_salary_expense_account(institute_id):
-    """Get or create salary expense account"""
+    """Get or create salary expense account (cached)"""
+    cache_key = f"salary_account_{institute_id}"
+    if cache_key in _advance_cache:
+        return _advance_cache[cache_key]
+    
     try:
         response = supabase.table('chart_of_accounts')\
             .select('*')\
@@ -143,8 +167,10 @@ def get_salary_expense_account(institute_id):
             .execute()
         
         if response.data:
+            _advance_cache[cache_key] = response.data[0]
             return response.data[0]
         
+        # Create new account
         count_response = supabase.table('chart_of_accounts')\
             .select('id', count='exact')\
             .eq('institute_id', institute_id)\
@@ -169,6 +195,7 @@ def get_salary_expense_account(institute_id):
         result = supabase.table('chart_of_accounts').insert(account_data).execute()
         
         if result.data:
+            _advance_cache[cache_key] = result.data[0]
             return result.data[0]
         return None
         
@@ -176,6 +203,8 @@ def get_salary_expense_account(institute_id):
         print(f"Error getting salary account: {e}")
         return None
 
+
+# ==================== ROUTES ====================
 
 @payroll_bp.route('/')
 @role_required(['owner', 'teacher', 'accountant'])
@@ -187,7 +216,7 @@ def index():
     if not institute_id:
         return render_template('payroll/index.html', institute=None, now=datetime.now())
     
-    # Get institute details for the template
+    # Get institute details
     institute_response = supabase.table('institutes')\
         .select('*')\
         .eq('id', institute_id)\
@@ -228,7 +257,7 @@ def get_employees():
 @payroll_bp.route('/api/salary-summary', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def get_salary_summary():
-    """Get salary summary for selected month with advance deductions"""
+    """OPTIMIZED: Get salary summary with batch advance deductions"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -241,6 +270,7 @@ def get_salary_summary():
         if not month:
             return jsonify({'success': False, 'message': 'Month required'}), 400
         
+        # Get all employees
         employees_response = supabase.table('employees')\
             .select('*')\
             .eq('institute_id', institute_id)\
@@ -249,6 +279,10 @@ def get_salary_summary():
         
         employees = employees_response.data if employees_response.data else []
         
+        if not employees:
+            return jsonify({'success': True, 'employees': [], 'month': month})
+        
+        # Get paid employees for this month
         paid_response = supabase.table('salary_payments')\
             .select('employee_id')\
             .eq('institute_id', institute_id)\
@@ -257,13 +291,16 @@ def get_salary_summary():
         
         paid_employee_ids = set(p['employee_id'] for p in paid_response.data) if paid_response.data else set()
         
-        employees_data = []
+        # BATCH: Get all advance deductions in ONE query
+        employee_ids = [emp['id'] for emp in employees]
+        advance_lookup = get_advance_deductions_batch(institute_id, employee_ids, month)
         
+        # Build employee data
+        employees_data = []
         for emp in employees:
             salary = float(emp.get('monthly_salary', 0))
-            
-            # Get advance deduction for this employee for this month
-            advance_deduction, advance_info = get_advance_deduction_for_employee(institute_id, emp['id'], month)
+            advance_info = advance_lookup.get(emp['id'], {})
+            advance_deduction = advance_info.get('deduction', 0)
             
             employees_data.append({
                 'id': emp['id'],
@@ -275,8 +312,9 @@ def get_salary_summary():
                 'deductions': 0,
                 'bonuses': 0,
                 'advance_deduction': advance_deduction,
-                'advance_info': advance_info,
-                'net_pay': salary - advance_deduction  # Initial net pay without manual deductions
+                'advance_id': advance_info.get('advance_id'),
+                'advance_info': advance_info.get('advance_data'),
+                'net_pay': salary - advance_deduction
             })
         
         return jsonify({
@@ -293,7 +331,7 @@ def get_salary_summary():
 @payroll_bp.route('/api/process-payment', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def process_payment():
-    """Process salary payment for employees with deductions, bonuses, and advance deductions"""
+    """OPTIMIZED: Process salary payments in BATCH mode"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -317,6 +355,22 @@ def process_payment():
         if not salary_account:
             return jsonify({'success': False, 'message': 'Salary expense account not found. Please create a SALARIES expense account in Chart of Accounts first.'}), 400
         
+        # BATCH CHECK: Get all existing payments for these employees in ONE query
+        employee_ids = [p.get('employee_id') for p in payments_data if p.get('employee_id')]
+        
+        existing_payments = supabase.table('salary_payments')\
+            .select('employee_id')\
+            .eq('institute_id', institute_id)\
+            .eq('payment_month', payment_month)\
+            .in_('employee_id', employee_ids)\
+            .execute()
+        
+        paid_employee_ids = set(p['employee_id'] for p in existing_payments.data) if existing_payments.data else set()
+        
+        # Prepare batch data
+        salary_payments = []
+        expense_transactions = []
+        advance_updates = {}
         processed_count = 0
         total_amount = 0
         payments = []
@@ -325,41 +379,39 @@ def process_payment():
         for payment_item in payments_data:
             try:
                 employee_id = payment_item.get('employee_id')
+                employee_name = payment_item.get('name', 'Unknown')
+                
+                # Skip if already paid
+                if employee_id in paid_employee_ids:
+                    errors.append(f"{employee_name} already paid for {payment_month}")
+                    continue
+                
                 salary_amount = float(payment_item.get('monthly_salary', 0))
                 deductions = float(payment_item.get('deductions', 0))
                 bonuses = float(payment_item.get('bonuses', 0))
                 advance_deduction = float(payment_item.get('advance_deduction', 0))
                 advance_id = payment_item.get('advance_id')
                 
-                # Calculate net pay including advance deduction
+                # Calculate net pay
                 net_pay = salary_amount - deductions + bonuses - advance_deduction
                 
                 if net_pay <= 0:
-                    errors.append(f"Net pay for {payment_item.get('name', 'Unknown')} is zero or negative")
-                    continue
-                
-                existing = supabase.table('salary_payments')\
-                    .select('id')\
-                    .eq('employee_id', employee_id)\
-                    .eq('payment_month', payment_month)\
-                    .execute()
-                
-                if existing.data:
-                    errors.append(f"{payment_item.get('name')} already paid for {payment_month}")
+                    errors.append(f"Net pay for {employee_name} is zero or negative")
                     continue
                 
                 payment_id = str(uuid.uuid4())
                 receipt_number = generate_salary_receipt_number(institute_id)
                 
-                payment_data = {
+                # Prepare salary payment record
+                salary_payments.append({
                     'id': payment_id,
                     'institute_id': institute_id,
                     'employee_id': employee_id,
-                    'amount': net_pay,
-                    'gross_salary': salary_amount,
-                    'deductions': deductions,
-                    'bonuses': bonuses,
-                    'advance_deduction': advance_deduction,
+                    'amount': float(net_pay),
+                    'gross_salary': float(salary_amount),
+                    'deductions': float(deductions),
+                    'bonuses': float(bonuses),
+                    'advance_deduction': float(advance_deduction),
                     'payment_month': payment_month,
                     'payment_date': payment_date,
                     'payment_method': payment_item.get('payment_method', 'cash'),
@@ -367,34 +419,36 @@ def process_payment():
                     'notes': payment_item.get('notes', ''),
                     'status': 'paid',
                     'created_at': datetime.now().isoformat()
-                }
+                })
                 
-                supabase.table('salary_payments').insert(payment_data).execute()
-                
-                # Update advance balance if there was a deduction
-                if advance_deduction > 0 and advance_id:
-                    update_advance_on_salary_payment(institute_id, employee_id, payment_month, advance_deduction, advance_id)
-                
-                expense_data = {
+                # Prepare expense transaction
+                expense_transactions.append({
                     'id': str(uuid.uuid4()),
                     'institute_id': institute_id,
                     'account_id': salary_account['id'],
-                    'amount': net_pay,
+                    'amount': float(net_pay),
                     'transaction_date': payment_date,
                     'payment_method': payment_item.get('payment_method', 'cash'),
                     'reference_number': receipt_number,
-                    'description': f"Salary payment for {payment_item.get('name')} - {payment_month}" + (f" (Advance deduction: UGX {advance_deduction:,.0f})" if advance_deduction > 0 else ""),
+                    'description': f"Salary payment for {employee_name} - {payment_month}" + (f" (Advance deduction: UGX {advance_deduction:,.0f})" if advance_deduction > 0 else ""),
                     'employee_id': employee_id,
                     'created_at': datetime.now().isoformat(),
                     'updated_at': datetime.now().isoformat()
-                }
+                })
                 
-                supabase.table('expense_transactions').insert(expense_data).execute()
+                # Track advance updates for batch processing
+                if advance_deduction > 0 and advance_id:
+                    advance_updates[employee_id] = {
+                        'advance_id': advance_id,
+                        'deduction': advance_deduction,
+                        'advance_data': payment_item.get('advance_info'),
+                        'payment_month': payment_month
+                    }
                 
                 processed_count += 1
                 total_amount += net_pay
                 payments.append({
-                    'employee_name': payment_item.get('name'),
+                    'employee_name': employee_name,
                     'employee_id': payment_item.get('employee_id_code'),
                     'gross_salary': salary_amount,
                     'deductions': deductions,
@@ -406,6 +460,21 @@ def process_payment():
                 
             except Exception as e:
                 errors.append(f"Error processing {payment_item.get('name', 'Unknown')}: {str(e)}")
+        
+        # BATCH INSERT: Insert all salary payments at once
+        if salary_payments:
+            supabase.table('salary_payments').insert(salary_payments).execute()
+            print(f"✅ Batch inserted {len(salary_payments)} salary payments")
+        
+        # BATCH INSERT: Insert all expense transactions at once
+        if expense_transactions:
+            supabase.table('expense_transactions').insert(expense_transactions).execute()
+            print(f"✅ Batch inserted {len(expense_transactions)} expense transactions")
+        
+        # BATCH UPDATE: Update all advances at once
+        if advance_updates:
+            update_advances_batch(institute_id, advance_updates)
+            print(f"✅ Batch updated {len(advance_updates)} advances")
         
         if processed_count > 0:
             return jsonify({
