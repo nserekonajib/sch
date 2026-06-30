@@ -1,0 +1,1407 @@
+<!-- templates/salary/index.html - Complete Unified Salary & Advance Management -->
+{% extends "base.html" %}
+
+{% block title %}Salary & Advance Management - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== BASE STYLES ===== */
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .btn-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+    .btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    
+    /* ===== TABS ===== */
+    .tab-btn {
+        padding: 10px 24px;
+        border-radius: 10px 10px 0 0;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        color: #6b7280;
+    }
+    .tab-btn.active {
+        background: white;
+        color: #ffa500;
+        box-shadow: 0 -2px 6px rgba(0,0,0,0.05);
+    }
+    .tab-btn:hover:not(.active) {
+        background: #f9fafb;
+        color: #374151;
+    }
+    .tab-content {
+        display: none;
+        background: white;
+        border-radius: 0 12px 12px 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .tab-content.active {
+        display: block;
+    }
+    
+    /* ===== EMPLOYEE CARDS ===== */
+    .employee-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.2s;
+        border: 2px solid transparent;
+    }
+    .employee-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    .employee-card.selected {
+        border-color: #ffa500;
+        background-color: #fffaf0;
+    }
+    .employee-card .status-badge {
+        display: inline-block;
+        padding: 3px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .status-active {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .status-completed {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .status-paid {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .status-pending {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .progress-bar {
+        background: #f3f4f6;
+        border-radius: 10px;
+        overflow: hidden;
+        height: 6px;
+    }
+    .progress-fill {
+        background: linear-gradient(90deg, #ffa500, #ff8c00);
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    
+    /* ===== TABLE STYLES ===== */
+    .salary-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .salary-table th, .salary-table td {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 13px;
+    }
+    .salary-table th {
+        background: #f9fafb;
+        font-weight: 600;
+        color: #374151;
+    }
+    .salary-table td {
+        vertical-align: middle;
+    }
+    .salary-table tr:hover td {
+        background: #fafafa;
+    }
+    
+    /* ===== ADVANCE HISTORY ===== */
+    .advance-item {
+        border-left: 3px solid #ffa500;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        background: #fafafa;
+        border-radius: 0 8px 8px 0;
+        transition: all 0.2s;
+    }
+    .advance-item:hover {
+        background: #f3f4f6;
+    }
+    
+    /* ===== MODAL ===== */
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.3s ease-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+        .tab-btn {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+        .tab-content {
+            padding: 16px;
+            border-radius: 0 0 12px 12px;
+        }
+        .salary-table {
+            font-size: 12px;
+        }
+        .salary-table th, .salary-table td {
+            padding: 6px 8px;
+        }
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .employee-card {
+            padding: 12px;
+        }
+    }
+    
+    /* ===== SELECTION BAR ===== */
+    .selection-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        padding: 12px 16px;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        z-index: 40;
+    }
+    .selection-bar.show {
+        transform: translateY(0);
+    }
+    
+    /* ===== FAB ===== */
+    .fab {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        cursor: pointer;
+        transition: all 0.2s;
+        z-index: 45;
+        border: none;
+        color: white;
+    }
+    .fab:hover {
+        transform: scale(1.05);
+    }
+    .fab-primary {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .fab-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Salary & Advance Management</h1>
+        <p class="text-sm text-gray-500">Unified management of employee salaries and advances with automatic deductions</p>
+    </div>
+
+    <!-- Month Selector -->
+    <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+        <div class="flex flex-wrap items-end gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Month</label>
+                <input type="month" id="salaryMonth" value="{{ now.strftime('%Y-%m') }}"
+                       class="px-3 py-2 border rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <button onclick="loadAllData()" class="btn-gradient px-5 py-2 rounded-lg text-white text-sm">
+                <i class="fas fa-sync-alt"></i> Load Data
+            </button>
+            <button onclick="downloadSalaryPDF()" id="downloadPdfBtn" disabled
+                    class="px-5 py-2 bg-gray-300 text-gray-500 rounded-lg text-sm cursor-not-allowed">
+                <i class="fas fa-download"></i> Download PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div id="statsContainer" class="stats-grid grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" style="display:none;">
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-sm text-gray-500">Total Salary Expense</p>
+            <p class="text-xl font-bold text-orange-600" id="totalExpense">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-sm text-gray-500">Advance Deductions</p>
+            <p class="text-xl font-bold text-purple-600" id="totalAdvanceDeductions">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-sm text-gray-500">Net Payable</p>
+            <p class="text-xl font-bold text-green-600" id="totalNetPay">UGX 0</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <p class="text-sm text-gray-500">Employees</p>
+            <p class="text-xl font-bold text-gray-800" id="employeeCount">0</p>
+            <p class="text-xs text-gray-500" id="paidCount">0 paid</p>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-4">
+        <div class="flex border-b border-gray-200">
+            <button class="tab-btn active" onclick="switchTab('salary')">
+                <i class="fas fa-money-bill-wave"></i> Salary Processing
+            </button>
+            <button class="tab-btn" onclick="switchTab('advance')">
+                <i class="fas fa-hand-holding-usd"></i> Advance Management
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== TAB 1: SALARY PROCESSING ===== -->
+    <div id="tab-salary" class="tab-content active">
+        <!-- Loading -->
+        <div id="salaryLoading" class="text-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-orange-200 border-t-orange-500 mx-auto"></div>
+            <p class="text-gray-600 mt-3">Loading employees...</p>
+        </div>
+
+        <!-- Empty -->
+        <div id="salaryEmpty" class="text-center py-12" style="display:none;">
+            <div class="h-20 w-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-users text-3xl text-orange-500"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800">No Employees Found</h3>
+            <p class="text-sm text-gray-500">Add employees first to process payroll</p>
+        </div>
+
+        <!-- Desktop Table -->
+        <div id="salaryDesktop" class="bg-white rounded-xl shadow-md overflow-hidden" style="display:none;">
+            <div class="overflow-x-auto">
+                <table class="salary-table">
+                    <thead>
+                        <tr>
+                            <th class="w-10">
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                            </th>
+                            <th>Employee</th>
+                            <th class="text-right">Gross Salary</th>
+                            <th class="text-right">Advance Deduction</th>
+                            <th class="text-right">Net Pay</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salaryTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Mobile Cards -->
+        <div id="salaryMobile" class="mobile-view" style="display:none;">
+            <div id="salaryMobileContainer"></div>
+            <div style="height: 80px;"></div>
+        </div>
+
+        <!-- Selection Bar -->
+        <div id="selectionBar" class="selection-bar">
+            <div class="flex justify-between items-center">
+                <span class="text-sm font-medium" id="selectedCountDisplay">0 selected</span>
+                <button onclick="processSalaryPayments()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm">
+                    <i class="fas fa-money-bill-wave"></i> Pay Selected
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TAB 2: ADVANCE MANAGEMENT ===== -->
+    <div id="tab-advance" class="tab-content">
+        <!-- Advance Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-md p-4">
+                <p class="text-sm text-gray-500">Outstanding Balance</p>
+                <p class="text-xl font-bold text-orange-600" id="advOutstanding">UGX 0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4">
+                <p class="text-sm text-gray-500">Active Advances</p>
+                <p class="text-xl font-bold text-gray-800" id="advActiveCount">0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4">
+                <p class="text-sm text-gray-500">Total Advanced</p>
+                <p class="text-xl font-bold text-gray-800" id="advTotalAdvanced">UGX 0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4">
+                <p class="text-sm text-gray-500">Total Repaid</p>
+                <p class="text-xl font-bold text-green-600" id="advTotalRepaid">UGX 0</p>
+            </div>
+        </div>
+
+        <!-- Search & Create -->
+        <div class="bg-white rounded-xl shadow-md p-5 mb-6">
+            <div class="flex flex-wrap gap-3 items-center">
+                <div class="flex-1 min-w-[200px]">
+                    <div class="relative">
+                        <input type="text" id="advanceSearch" placeholder="Search employees..."
+                               class="w-full px-4 py-2 pl-10 border rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                </div>
+                <button onclick="openCreateAdvanceModal()" class="btn-success px-4 py-2 rounded-lg text-sm">
+                    <i class="fas fa-plus"></i> New Advance
+                </button>
+            </div>
+            <div id="advanceSearchResults" class="mt-4 max-h-96 overflow-y-auto"></div>
+        </div>
+
+        <!-- Employee Details -->
+        <div id="advanceEmployeeDetails" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-md p-5">
+                    <h3 class="font-semibold text-gray-800 mb-3">Employee Info</h3>
+                    <div id="advanceEmployeeInfo"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-md p-5">
+                    <h3 class="font-semibold text-gray-800 mb-3">Quick Create Advance</h3>
+                    <form id="quickAdvanceForm" onsubmit="createQuickAdvance(event)">
+                        <input type="hidden" id="quickAdvanceEmployeeId">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-gray-500">Amount (UGX)</label>
+                                <input type="number" id="quickAdvanceAmount" required step="1000"
+                                       class="w-full px-2 py-1 border rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">Month</label>
+                                <input type="month" id="quickAdvanceMonth" required
+                                       value="{{ now.strftime('%Y-%m') }}"
+                                       class="w-full px-2 py-1 border rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">Repayment (Months)</label>
+                                <select id="quickRepaymentMonths" class="w-full px-2 py-1 border rounded text-sm">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3" selected>3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                    <option value="6">6</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">Monthly Deduction</label>
+                                <div class="text-sm font-bold text-orange-600" id="quickDeductionPreview">UGX 0</div>
+                            </div>
+                            <div class="col-span-2">
+                                <input type="text" id="quickAdvancePurpose" placeholder="Purpose"
+                                       class="w-full px-2 py-1 border rounded text-sm">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-success px-4 py-1.5 rounded text-sm mt-2 w-full">
+                            Create Advance
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-5">
+                <h3 class="font-semibold text-gray-800 mb-3">Advance History</h3>
+                <div id="advanceHistory"></div>
+            </div>
+        </div>
+
+        <!-- Active Advances Table -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <h3 class="font-semibold text-gray-800 p-4 border-b">All Active Advances</h3>
+            <div class="overflow-x-auto">
+                <table class="salary-table" id="activeAdvancesTable">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th class="text-right">Amount</th>
+                            <th class="text-right">Remaining</th>
+                            <th class="text-right">Monthly Deduction</th>
+                            <th>Progress</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activeAdvancesBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== CREATE ADVANCE MODAL ===== -->
+<div id="createAdvanceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 modal-container max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+            <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-hand-holding-usd text-green-500 mr-2"></i>New Advance</h2>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="p-6">
+            <form id="modalAdvanceForm" onsubmit="createModalAdvance(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Employee *</label>
+                    <input type="text" id="modalEmployeeSearch" placeholder="Search employee..."
+                           class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <div id="modalSearchResults" class="hidden bg-white border rounded-lg mt-1 max-h-40 overflow-y-auto shadow-lg"></div>
+                    <input type="hidden" id="modalEmployeeId">
+                    <div id="modalSelectedEmployee" class="hidden mt-2 bg-green-50 p-2 rounded text-sm">
+                        <i class="fas fa-check-circle text-green-500"></i>
+                        <span id="modalSelectedName"></span>
+                        <span class="text-gray-500 text-xs" id="modalSelectedSalary"></span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Amount (UGX) *</label>
+                        <input type="number" id="modalAdvanceAmount" required step="1000"
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Month *</label>
+                        <input type="month" id="modalAdvanceMonth" required value="{{ now.strftime('%Y-%m') }}"
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Repayment (Months)</label>
+                        <select id="modalRepaymentMonths" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                            <option value="1">1</option><option value="2">2</option>
+                            <option value="3" selected>3</option><option value="4">4</option>
+                            <option value="5">5</option><option value="6">6</option>
+                            <option value="12">12</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Monthly Deduction</label>
+                        <div class="text-lg font-bold text-orange-600" id="modalDeductionPreview">UGX 0</div>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                        <input type="text" id="modalAdvancePurpose" placeholder="e.g., School fees, Medical"
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea id="modalAdvanceNotes" rows="2"
+                                  class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-4">
+                    <button type="submit" class="btn-success px-6 py-2 rounded-lg text-white font-medium flex-1">
+                        <i class="fas fa-save"></i> Create
+                    </button>
+                    <button type="button" onclick="closeModal()" class="px-6 py-2 border rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SUCCESS MODAL ===== -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 modal-container">
+        <div class="p-6 text-center">
+            <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check-circle text-3xl text-green-500"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2" id="successTitle">Success!</h3>
+            <div class="text-gray-600 mb-4" id="successMessage"></div>
+            <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium w-full">
+                Continue
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== LOADING OVERLAY ===== -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
+        <p class="text-gray-700">Processing...</p>
+    </div>
+</div>
+
+<!-- ===== FLOATING ACTION BUTTON (Mobile) ===== -->
+<button id="fabProcess" class="fab fab-success" style="display:none;" onclick="processSalaryPayments()">
+    <i class="fas fa-money-bill-wave text-xl"></i>
+</button>
+
+<script>
+// ============================================================
+// GLOBALS
+// ============================================================
+let currentEmployees = [];
+let selectedEmployeeIds = new Set();
+let currentMonth = '';
+let selectedAdvanceEmployee = null;
+let isMobile = window.innerWidth < 768;
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    currentMonth = document.getElementById('salaryMonth').value;
+    loadAllData();
+    setupAdvanceSearch();
+    setupModalSearch();
+    
+    // Auto-load on month change
+    document.getElementById('salaryMonth').addEventListener('change', () => {
+        currentMonth = document.getElementById('salaryMonth').value;
+        loadAllData();
+    });
+    
+    // Mobile detection
+    window.addEventListener('resize', () => {
+        isMobile = window.innerWidth < 768;
+        if (currentEmployees.length > 0) displaySalaryEmployees(currentEmployees);
+    });
+});
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    if (tab === 'salary') {
+        document.querySelector('.tab-btn:first-child').classList.add('active');
+        document.getElementById('tab-salary').classList.add('active');
+    } else {
+        document.querySelector('.tab-btn:last-child').classList.add('active');
+        document.getElementById('tab-advance').classList.add('active');
+        loadAdvanceSummary();
+    }
+}
+
+// ============================================================
+// LOAD ALL DATA
+// ============================================================
+async function loadAllData() {
+    await loadSalaryEmployees();
+    await loadAdvanceSummary();
+    updateSalaryUI();
+}
+
+// ============================================================
+// SALARY EMPLOYEES
+// ============================================================
+async function loadSalaryEmployees() {
+    const loading = document.getElementById('salaryLoading');
+    const empty = document.getElementById('salaryEmpty');
+    const desktop = document.getElementById('salaryDesktop');
+    const mobile = document.getElementById('salaryMobile');
+    
+    loading.style.display = 'block';
+    empty.style.display = 'none';
+    desktop.style.display = 'none';
+    mobile.style.display = 'none';
+    
+    try {
+        const response = await fetch(`/salary/api/salary/employees?month=${currentMonth}`);
+        const result = await response.json();
+        
+        loading.style.display = 'none';
+        
+        if (result.success) {
+            currentEmployees = result.employees || [];
+            
+            if (currentEmployees.length === 0) {
+                empty.style.display = 'block';
+                return;
+            }
+            
+            // Update stats
+            document.getElementById('statsContainer').style.display = 'grid';
+            document.getElementById('totalExpense').textContent = `UGX ${formatCurrency(result.summary.total_gross_expense)}`;
+            document.getElementById('totalAdvanceDeductions').textContent = `UGX ${formatCurrency(result.summary.total_advance_deductions)}`;
+            document.getElementById('totalNetPay').textContent = `UGX ${formatCurrency(result.summary.total_net_pay)}`;
+            document.getElementById('employeeCount').textContent = result.summary.employee_count;
+            document.getElementById('paidCount').textContent = `${result.summary.paid_count} paid`;
+            
+            displaySalaryEmployees(currentEmployees);
+            
+            if (isMobile) {
+                mobile.style.display = 'block';
+            } else {
+                desktop.style.display = 'block';
+            }
+            
+            // Enable download
+            const pdfBtn = document.getElementById('downloadPdfBtn');
+            pdfBtn.disabled = false;
+            pdfBtn.className = 'btn-gradient px-5 py-2 rounded-lg text-white text-sm';
+            
+            selectedEmployeeIds.clear();
+            updateSalaryUI();
+        } else {
+            showToast(result.message || 'Failed to load employees', 'error');
+            empty.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error loading salary:', error);
+        loading.style.display = 'none';
+        empty.style.display = 'block';
+        showToast('Failed to load salary data', 'error');
+    }
+}
+
+function displaySalaryEmployees(employees) {
+    // Desktop table
+    const tbody = document.getElementById('salaryTableBody');
+    tbody.innerHTML = employees.map(emp => {
+        const netPay = emp.monthly_salary - emp.advance_deduction;
+        const isSelected = selectedEmployeeIds.has(emp.id);
+        
+        return `
+            <tr>
+                <td>
+                    <input type="checkbox" class="emp-checkbox" data-id="${emp.id}"
+                           ${emp.is_paid ? 'disabled' : ''}
+                           ${isSelected ? 'checked' : ''}
+                           onchange="toggleEmployee('${emp.id}', this.checked)">
+                </td>
+                <td>
+                    <div class="font-medium text-gray-800">${escapeHtml(emp.name)}</div>
+                    <div class="text-xs text-gray-500">${emp.employee_id || 'N/A'} • ${formatRole(emp.role)}</div>
+                    ${emp.advance_info ? `<div class="text-xs text-orange-500">Advance: UGX ${formatCurrency(emp.advance_info.advance_amount)} (${formatCurrency(emp.advance_info.remaining_amount)} left)</div>` : ''}
+                </td>
+                <td class="text-right font-medium">UGX ${formatCurrency(emp.monthly_salary)}</td>
+                <td class="text-right text-orange-600 font-medium">${emp.advance_deduction > 0 ? 'UGX ' + formatCurrency(emp.advance_deduction) : 'UGX 0'}</td>
+                <td class="text-right font-bold text-green-600">UGX ${formatCurrency(netPay)}</td>
+                <td>
+                    <span class="status-badge ${emp.is_paid ? 'status-paid' : 'status-pending'}">
+                        ${emp.is_paid ? 'Paid' : 'Pending'}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Mobile cards
+    const container = document.getElementById('salaryMobileContainer');
+    container.innerHTML = employees.map(emp => {
+        const netPay = emp.monthly_salary - emp.advance_deduction;
+        const isSelected = selectedEmployeeIds.has(emp.id);
+        
+        return `
+            <div class="employee-card ${isSelected ? 'selected' : ''}" onclick="document.querySelector('.mobile-checkbox[data-id=\\'${emp.id}\\']')?.click()">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-semibold text-gray-800">${escapeHtml(emp.name)}</h4>
+                        <p class="text-xs text-gray-500">${emp.employee_id || 'N/A'} • ${formatRole(emp.role)}</p>
+                    </div>
+                    <input type="checkbox" class="mobile-checkbox" data-id="${emp.id}"
+                           ${emp.is_paid ? 'disabled' : ''}
+                           ${isSelected ? 'checked' : ''}
+                           onchange="toggleEmployee('${emp.id}', this.checked)">
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-2 text-sm">
+                    <div><span class="text-gray-500">Gross:</span> UGX ${formatCurrency(emp.monthly_salary)}</div>
+                    <div><span class="text-gray-500">Advance:</span> <span class="text-orange-600">UGX ${formatCurrency(emp.advance_deduction)}</span></div>
+                    <div><span class="text-gray-500">Net:</span> <span class="text-green-600 font-bold">UGX ${formatCurrency(netPay)}</span></div>
+                </div>
+                <div class="mt-2">
+                    <span class="status-badge ${emp.is_paid ? 'status-paid' : 'status-pending'}">${emp.is_paid ? 'Paid' : 'Pending'}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleEmployee(id, checked) {
+    if (checked) {
+        selectedEmployeeIds.add(id);
+    } else {
+        selectedEmployeeIds.delete(id);
+    }
+    
+    // Sync checkboxes
+    document.querySelectorAll(`.emp-checkbox[data-id="${id}"]`).forEach(cb => cb.checked = checked);
+    document.querySelectorAll(`.mobile-checkbox[data-id="${id}"]`).forEach(cb => cb.checked = checked);
+    
+    updateSalaryUI();
+}
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.emp-checkbox:not(:disabled)');
+    
+    checkboxes.forEach(cb => {
+        cb.checked = selectAll.checked;
+        const id = cb.dataset.id;
+        if (selectAll.checked) {
+            selectedEmployeeIds.add(id);
+        } else {
+            selectedEmployeeIds.delete(id);
+        }
+        document.querySelectorAll(`.mobile-checkbox[data-id="${id}"]`).forEach(mc => mc.checked = selectAll.checked);
+    });
+    
+    updateSalaryUI();
+}
+
+function updateSalaryUI() {
+    const count = selectedEmployeeIds.size;
+    const selectionBar = document.getElementById('selectionBar');
+    const fab = document.getElementById('fabProcess');
+    const selectedCount = document.getElementById('selectedCountDisplay');
+    
+    if (count > 0) {
+        selectionBar.classList.add('show');
+        fab.style.display = 'flex';
+        selectedCount.textContent = `${count} selected`;
+    } else {
+        selectionBar.classList.remove('show');
+        fab.style.display = 'none';
+    }
+    
+    // Update select all
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.emp-checkbox:not(:disabled)');
+    if (selectAll && checkboxes.length > 0) {
+        selectAll.checked = selectedEmployeeIds.size === checkboxes.length;
+        selectAll.indeterminate = selectedEmployeeIds.size > 0 && selectedEmployeeIds.size < checkboxes.length;
+    }
+}
+
+// ============================================================
+// PROCESS SALARY PAYMENTS
+// ============================================================
+async function processSalaryPayments() {
+    if (selectedEmployeeIds.size === 0) {
+        showToast('Please select employees to pay', 'error');
+        return;
+    }
+    
+    const payments = [];
+    for (const id of selectedEmployeeIds) {
+        const emp = currentEmployees.find(e => e.id === id);
+        if (emp && !emp.is_paid) {
+            payments.push({
+                employee_id: emp.id,
+                name: emp.name,
+                employee_id_code: emp.employee_id,
+                monthly_salary: emp.monthly_salary,
+                advance_deduction: emp.advance_deduction,
+                advance_id: emp.advance_id,
+                advance_info: emp.advance_info,
+                deductions: 0,
+                bonuses: 0,
+                payment_method: 'bank_transfer',
+                notes: `Salary for ${currentMonth}`
+            });
+        }
+    }
+    
+    if (payments.length === 0) {
+        showToast('No unpaid employees selected', 'error');
+        return;
+    }
+    
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'flex';
+    
+    try {
+        const response = await fetch('/salary/api/salary/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                payments: payments,
+                payment_month: currentMonth,
+                payment_date: new Date().toISOString().split('T')[0]
+            })
+        });
+        
+        const result = await response.json();
+        overlay.style.display = 'none';
+        
+        if (result.success) {
+            let html = result.message;
+            html += `<div class="mt-3 text-left bg-gray-50 p-3 rounded-lg max-h-40 overflow-y-auto text-sm">`;
+            result.payments.forEach(p => {
+                html += `<div class="py-1 border-b">${p.employee_name}: UGX ${formatCurrency(p.net_pay)} (Adv: UGX ${formatCurrency(p.advance_deduction)})</div>`;
+            });
+            html += `</div>`;
+            html += `<div class="mt-2 font-bold">Total Net: UGX ${formatCurrency(result.total_net_pay)}</div>`;
+            html += `<div class="text-xs text-gray-500">Total Advance Deductions: UGX ${formatCurrency(result.total_advance_deductions)}</div>`;
+            
+            document.getElementById('successTitle').textContent = '✅ Salary Payments Processed!';
+            document.getElementById('successMessage').innerHTML = html;
+            document.getElementById('successModal').classList.remove('hidden');
+            document.getElementById('successModal').classList.add('flex');
+            
+            setTimeout(() => loadAllData(), 2000);
+        } else {
+            showToast(result.message || 'Failed to process payments', 'error');
+        }
+    } catch (error) {
+        console.error('Error processing payments:', error);
+        overlay.style.display = 'none';
+        showToast('Failed to process payments: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// DOWNLOAD PDF
+// ============================================================
+async function downloadSalaryPDF() {
+    if (currentEmployees.length === 0) return;
+    
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'flex';
+    
+    try {
+        const response = await fetch('/salary/api/salary/download-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                employees: currentEmployees,
+                month: currentMonth
+            })
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `payroll_${currentMonth}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            showToast('Payroll PDF downloaded successfully', 'success');
+        } else {
+            const error = await response.json();
+            showToast(error.message || 'Failed to download PDF', 'error');
+        }
+    } catch (error) {
+        console.error('Error downloading PDF:', error);
+        showToast('Failed to download PDF', 'error');
+    } finally {
+        overlay.style.display = 'none';
+    }
+}
+
+// ============================================================
+// ADVANCE MANAGEMENT
+// ============================================================
+function setupAdvanceSearch() {
+    const searchInput = document.getElementById('advanceSearch');
+    let timeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(timeout);
+        const query = this.value.trim();
+        if (query.length < 2) {
+            document.getElementById('advanceSearchResults').innerHTML = '';
+            return;
+        }
+        timeout = setTimeout(() => searchAdvanceEmployees(query), 500);
+    });
+}
+
+async function searchAdvanceEmployees(query) {
+    const resultsDiv = document.getElementById('advanceSearchResults');
+    resultsDiv.innerHTML = '<div class="text-center py-4"><div class="animate-spin h-6 w-6 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"></div></div>';
+    
+    try {
+        const response = await fetch(`/salary/api/advance/live-search?q=${encodeURIComponent(query)}`);
+        const result = await response.json();
+        
+        if (result.success && result.employees.length > 0) {
+            resultsDiv.innerHTML = result.employees.map(emp => `
+                <div class="employee-card" onclick="selectAdvanceEmployee('${emp.id}')">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="font-semibold text-gray-800">${escapeHtml(emp.name)}</h4>
+                            <p class="text-xs text-gray-500">${emp.employee_id || 'N/A'} • ${formatRole(emp.role)}</p>
+                            <p class="text-sm">Salary: UGX ${formatCurrency(emp.monthly_salary)}</p>
+                        </div>
+                        <div class="text-right">
+                            ${emp.current_balance > 0 ? 
+                                `<span class="text-orange-600 font-medium">Balance: UGX ${formatCurrency(emp.current_balance)}</span>` :
+                                `<span class="text-green-600 text-sm"><i class="fas fa-check-circle"></i> No advances</span>`
+                            }
+                        </div>
+                    </div>
+                    ${emp.current_balance > 0 ? `
+                        <div class="mt-2">
+                            <div class="progress-bar"><div class="progress-fill" style="width: ${(emp.total_repaid / emp.total_advances * 100)}%"></div></div>
+                            <div class="text-xs text-gray-500 mt-1">${formatCurrency(emp.total_repaid)} repaid of ${formatCurrency(emp.total_advances)}</div>
+                        </div>
+                    ` : ''}
+                    <div class="mt-2">
+                        <button onclick="event.stopPropagation(); openCreateAdvanceForEmployee('${emp.id}', '${escapeHtml(emp.name)}', ${emp.monthly_salary})" 
+                                class="text-green-600 text-sm hover:text-green-700">
+                            <i class="fas fa-hand-holding-usd"></i> Create Advance
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            resultsDiv.innerHTML = `<div class="text-center text-gray-500 py-4">No employees found</div>`;
+        }
+    } catch (error) {
+        console.error('Search error:', error);
+        resultsDiv.innerHTML = `<div class="text-center text-red-500 py-4">Error searching</div>`;
+    }
+}
+
+async function selectAdvanceEmployee(employeeId) {
+    try {
+        const response = await fetch(`/salary/api/advance/employee/${employeeId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            selectedAdvanceEmployee = result.employee;
+            document.getElementById('advanceEmployeeDetails').classList.remove('hidden');
+            
+            // Display employee info
+            const emp = result.employee;
+            document.getElementById('advanceEmployeeInfo').innerHTML = `
+                <div class="flex items-start gap-4">
+                    <div class="h-14 w-14 bg-orange-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
+                        ${emp.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-800">${escapeHtml(emp.name)}</h4>
+                        <p class="text-sm text-gray-500">${emp.employee_id || 'N/A'} • ${formatRole(emp.role)}</p>
+                        <p class="text-sm font-semibold mt-1">Salary: UGX ${formatCurrency(emp.monthly_salary)}</p>
+                    </div>
+                </div>
+            `;
+            
+            // Setup quick form
+            document.getElementById('quickAdvanceEmployeeId').value = emp.id;
+            setupQuickAdvanceForm(emp.monthly_salary);
+            
+            // Display history
+            displayAdvanceHistory(result.advances);
+            
+            // Scroll to details
+            document.getElementById('advanceEmployeeDetails').scrollIntoView({ behavior: 'smooth' });
+        }
+    } catch (error) {
+        console.error('Error loading employee details:', error);
+        showToast('Failed to load employee details', 'error');
+    }
+}
+
+function setupQuickAdvanceForm(salary) {
+    const amountInput = document.getElementById('quickAdvanceAmount');
+    const monthsSelect = document.getElementById('quickRepaymentMonths');
+    
+    const updatePreview = () => {
+        const amount = parseFloat(amountInput.value) || 0;
+        const months = parseInt(monthsSelect.value) || 1;
+        const deduction = amount / months;
+        document.getElementById('quickDeductionPreview').textContent = `UGX ${formatCurrency(deduction)}`;
+        
+        // Show warning if exceeds 50%
+        const maxAllowed = salary * 0.5;
+        const preview = document.getElementById('quickDeductionPreview');
+        if (deduction > maxAllowed && amount > 0) {
+            preview.style.color = '#ef4444';
+        } else {
+            preview.style.color = '#d97706';
+        }
+    };
+    
+    amountInput.addEventListener('input', updatePreview);
+    monthsSelect.addEventListener('change', updatePreview);
+    updatePreview();
+}
+
+function displayAdvanceHistory(advances) {
+    const container = document.getElementById('advanceHistory');
+    
+    if (!advances || advances.length === 0) {
+        container.innerHTML = `<div class="text-center text-gray-500 py-4">No advance history</div>`;
+        return;
+    }
+    
+    container.innerHTML = advances.map(adv => `
+        <div class="advance-item">
+            <div class="flex justify-between items-start">
+                <div>
+                    <span class="font-bold">UGX ${formatCurrency(adv.advance_amount)}</span>
+                    <span class="text-xs text-gray-500 ml-2">${adv.advance_month}</span>
+                </div>
+                <span class="status-badge ${adv.status === 'active' ? 'status-active' : 'status-completed'}">
+                    ${adv.status === 'active' ? 'Active' : 'Completed'}
+                </span>
+            </div>
+            ${adv.purpose ? `<p class="text-sm text-gray-600">${escapeHtml(adv.purpose)}</p>` : ''}
+            <div class="mt-2">
+                <div class="flex justify-between text-xs text-gray-500">
+                    <span>Repaid: UGX ${formatCurrency(adv.repaid_amount)}</span>
+                    <span>Remaining: UGX ${formatCurrency(adv.remaining_amount)}</span>
+                </div>
+                <div class="progress-bar mt-1"><div class="progress-fill" style="width: ${(adv.repaid_amount / adv.advance_amount * 100)}%"></div></div>
+            </div>
+            <div class="text-xs text-gray-500 mt-1">
+                Monthly: UGX ${formatCurrency(adv.monthly_deduction)} • ${adv.repayment_start_month} to ${adv.repayment_end_month}
+            </div>
+            ${adv.payments && adv.payments.length > 0 ? `
+                <details class="mt-2">
+                    <summary class="text-xs text-orange-500 cursor-pointer">Payment History (${adv.payments.length})</summary>
+                    ${adv.payments.map(p => `
+                        <div class="text-xs flex justify-between py-0.5 border-b border-gray-100">
+                            <span>${p.payment_month}</span>
+                            <span class="font-medium">UGX ${formatCurrency(p.amount)}</span>
+                        </div>
+                    `).join('')}
+                </details>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+// ============================================================
+// CREATE ADVANCE
+// ============================================================
+function openCreateAdvanceModal() {
+    document.getElementById('createAdvanceModal').classList.remove('hidden');
+    document.getElementById('createAdvanceModal').classList.add('flex');
+    document.body.style.overflow = 'hidden';
+    
+    // Reset form
+    document.getElementById('modalAdvanceAmount').value = '';
+    document.getElementById('modalAdvanceMonth').value = document.getElementById('salaryMonth').value;
+    document.getElementById('modalRepaymentMonths').value = '3';
+    document.getElementById('modalAdvancePurpose').value = '';
+    document.getElementById('modalAdvanceNotes').value = '';
+    document.getElementById('modalEmployeeId').value = '';
+    document.getElementById('modalSelectedEmployee').classList.add('hidden');
+    document.getElementById('modalEmployeeSearch').value = '';
+    document.getElementById('modalSearchResults').classList.add('hidden');
+    document.getElementById('modalDeductionPreview').textContent = 'UGX 0';
+}
+
+function openCreateAdvanceForEmployee(id, name, salary) {
+    openCreateAdvanceModal();
+    document.getElementById('modalEmployeeId').value = id;
+    document.getElementById('modalEmployeeSearch').value = name;
+    document.getElementById('modalSelectedName').textContent = name;
+    document.getElementById('modalSelectedSalary').textContent = `• Salary: UGX ${formatCurrency(salary)}`;
+    document.getElementById('modalSelectedEmployee').classList.remove('hidden');
+    updateModalDeduction(salary);
+}
+
+function setupModalSearch() {
+    const searchInput = document.getElementById('modalEmployeeSearch');
+    let timeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(timeout);
+        const query = this.value.trim();
+        if (query.length < 2) {
+            document.getElementById('modalSearchResults').classList.add('hidden');
+            return;
+        }
+        timeout = setTimeout(() => searchModalEmployees(query), 500);
+    });
+}
+
+async function searchModalEmployees(query) {
+    const resultsDiv = document.getElementById('modalSearchResults');
+    resultsDiv.innerHTML = '<div class="p-2 text-center text-gray-500 text-sm">Searching...</div>';
+    resultsDiv.classList.remove('hidden');
+    
+    try {
+        const response = await fetch(`/salary/api/advance/live-search?q=${encodeURIComponent(query)}&limit=10`);
+        const result = await response.json();
+        
+        if (result.success && result.employees.length > 0) {
+            resultsDiv.innerHTML = result.employees.map(emp => `
+                <div onclick="selectModalEmployee('${emp.id}', '${escapeHtml(emp.name)}', ${emp.monthly_salary})" 
+                     class="p-2 hover:bg-orange-50 cursor-pointer border-b">
+                    <div class="font-medium">${escapeHtml(emp.name)}</div>
+                    <div class="text-xs text-gray-500">${emp.employee_id || 'N/A'} • Salary: UGX ${formatCurrency(emp.monthly_salary)}</div>
+                </div>
+            `).join('');
+        } else {
+            resultsDiv.innerHTML = '<div class="p-2 text-gray-500 text-sm">No employees found</div>';
+        }
+    } catch (error) {
+        resultsDiv.innerHTML = '<div class="p-2 text-red-500 text-sm">Error searching</div>';
+    }
+}
+
+function selectModalEmployee(id, name, salary) {
+    document.getElementById('modalEmployeeId').value = id;
+    document.getElementById('modalEmployeeSearch').value = name;
+    document.getElementById('modalSelectedName').textContent = name;
+    document.getElementById('modalSelectedSalary').textContent = `• Salary: UGX ${formatCurrency(salary)}`;
+    document.getElementById('modalSelectedEmployee').classList.remove('hidden');
+    document.getElementById('modalSearchResults').classList.add('hidden');
+    updateModalDeduction(salary);
+}
+
+function updateModalDeduction(salary) {
+    const amount = parseFloat(document.getElementById('modalAdvanceAmount').value) || 0;
+    const months = parseInt(document.getElementById('modalRepaymentMonths').value) || 1;
+    const deduction = amount / months;
+    document.getElementById('modalDeductionPreview').textContent = `UGX ${formatCurrency(deduction)}`;
+    
+    const maxAllowed = salary * 0.5;
+    const preview = document.getElementById('modalDeductionPreview');
+    if (deduction > maxAllowed && amount > 0) {
+        preview.style.color = '#ef4444';
+    } else {
+        preview.style.color = '#d97706';
+    }
+}
+
+async function createModalAdvance(event) {
+    event.preventDefault();
+    await createAdvance(
+        document.getElementById('modalEmployeeId').value,
+        document.getElementById('modalAdvanceAmount').value,
+        document.getElementById('modalAdvanceMonth').value,
+        document.getElementById('modalRepaymentMonths').value,
+        document.getElementById('modalAdvancePurpose').value,
+        document.getElementById('modalAdvanceNotes').value
+    );
+    closeModal();
+}
+
+async function createQuickAdvance(event) {
+    event.preventDefault();
+    await createAdvance(
+        document.getElementById('quickAdvanceEmployeeId').value,
+        document.getElementById('quickAdvanceAmount').value,
+        document.getElementById('quickAdvanceMonth').value,
+        document.getElementById('quickRepaymentMonths').value,
+        document.getElementById('quickAdvancePurpose').value,
+        ''
+    );
+}
+
+async function createAdvance(employeeId, amount, month, months, purpose, notes) {
+    if (!employeeId) {
+        showToast('Please select an employee', 'error');
+        return;
+    }
+    
+    const amountNum = parseFloat(amount);
+    if (!amountNum || amountNum <= 0) {
+        showToast('Please enter a valid amount', 'error');
+        return;
+    }
+    
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'flex';
+    
+    try {
+        const response = await fetch('/salary/api/advance/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                employee_id: employeeId,
+                advance_amount: amountNum,
+                advance_month: month,
+                repayment_months: parseInt(months) || 3,
+                purpose: purpose || '',
+                notes: notes || ''
+            })
+        });
+        
+        const result = await response.json();
+        overlay.style.display = 'none';
+        
+        if (result.success) {
+            document.getElementById('successTitle').textContent = '✅ Advance Created!';
+            document.getElementById('successMessage').innerHTML = `
+                ${result.message}
+                <div class="mt-2 text-sm bg-gray-50 p-3 rounded-lg">
+                    Monthly Deduction: <strong>UGX ${formatCurrency(result.monthly_deduction)}</strong>
+                </div>
+            `;
+            document.getElementById('successModal').classList.remove('hidden');
+            document.getElementById('successModal').classList.add('flex');
+            
+            // Refresh data
+            loadAdvanceSummary();
+            if (selectedAdvanceEmployee) {
+                selectAdvanceEmployee(selectedAdvanceEmployee.id);
+            }
+        } else {
+            showToast(result.message || 'Failed to create advance', 'error');
+        }
+    } catch (error) {
+        console.error('Error creating advance:', error);
+        overlay.style.display = 'none';
+        showToast('Failed to create advance: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// ADVANCE SUMMARY
+// ============================================================
+async function loadAdvanceSummary() {
+    try {
+        const response = await fetch('/salary/api/advance/summary');
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('advOutstanding').textContent = `UGX ${formatCurrency(result.summary.total_outstanding)}`;
+            document.getElementById('advActiveCount').textContent = result.summary.active_advances_count;
+            document.getElementById('advTotalAdvanced').textContent = `UGX ${formatCurrency(result.summary.total_advanced)}`;
+            document.getElementById('advTotalRepaid').textContent = `UGX ${formatCurrency(result.summary.total_repaid)}`;
+            
+            displayActiveAdvances(result.active_advances);
+        }
+    } catch (error) {
+        console.error('Error loading advance summary:', error);
+    }
+}
+
+function displayActiveAdvances(advances) {
+    const tbody = document.getElementById('activeAdvancesBody');
+    
+    if (!advances || advances.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-gray-500 py-4">No active advances</td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = advances.map(adv => {
+        const progress = (adv.repaid_amount / adv.advance_amount * 100);
+        const emp = adv.employees || {};
+        
+        return `
+            <tr>
+                <td>
+                    <div class="font-medium">${escapeHtml(emp.name || 'N/A')}</div>
+                    <div class="text-xs text-gray-500">${emp.employee_id || 'N/A'}</div>
+                </td>
+                <td class="text-right">UGX ${formatCurrency(adv.advance_amount)}</td>
+                <td class="text-right text-orange-600 font-medium">UGX ${formatCurrency(adv.remaining_amount)}</td>
+                <td class="text-right">UGX ${formatCurrency(adv.monthly_deduction)}</td>
+                <td>
+                    <div class="w-32">
+                        <div class="progress-bar"><div class="progress-fill" style="width: ${progress}%"></div></div>
+                        <div class="text-xs text-gray-500 mt-1">${progress.toFixed(0)}%</div>
+                    </div>
+                </td>
+                <td><span class="status-badge status-active">Active</span></td>
+                <td>
+                    <button onclick="selectAdvanceEmployee('${adv.employee_id}')" class="text-orange-500 text-sm hover:text-orange-600">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ============================================================
+// MODAL HELPERS
+// ============================================================
+function closeModal() {
+    document.getElementById('createAdvanceModal').classList.add('hidden');
+    document.getElementById('createAdvanceModal').classList.remove('flex');
+    document.body.style.overflow = '';
+}
+
+function closeSuccessModal() {
+    document.getElementById('successModal').classList.add('hidden');
+    document.getElementById('successModal').classList.remove('flex');
+    document.body.style.overflow = '';
+}
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+function formatCurrency(amount) {
+    return (amount || 0).toLocaleString();
+}
+
+function formatRole(role) {
+    if (!role) return 'Staff';
+    return role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    const bg = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+    toast.className = `fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:bottom-4 ${bg} text-white px-4 py-3 rounded-lg shadow-lg z-50 animate-fade-in`;
+    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
+// ============================================================
+// CLOSE MODALS ON OUTSIDE CLICK
+// ============================================================
+window.onclick = function(event) {
+    const createModal = document.getElementById('createAdvanceModal');
+    if (event.target === createModal) closeModal();
+    
+    const successModal = document.getElementById('successModal');
+    if (event.target === successModal) closeSuccessModal();
+};
+
+// Add animation style
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fade-in {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+        animation: fade-in 0.3s ease-out;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

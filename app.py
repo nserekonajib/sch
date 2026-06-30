@@ -88,7 +88,7 @@ from routes.entertainment.entertainment import entertainment_bp
 from routes.resources.studyresources import studyresource_bp as resources_bp
 from routes.resultsCard.report_templates import templates_bp
 from routes.fees.listEnDelete import payments_bp as list_delete_bp
-from routes.employees.advance import advance_bp
+from routes.employees.advance import salary_bp as advance_bp
 from routes.houses.house import houses_bp
 from routes.reports.reports import reports_bp
 from routes.students.studentDetails import student_detail_bp
@@ -140,7 +140,7 @@ app.register_blueprint(entertainment_bp, url_prefix='/entertainment')
 app.register_blueprint(resources_bp, url_prefix='/study-resources')
 app.register_blueprint(templates_bp, url_prefix='/report-templates')
 app.register_blueprint(list_delete_bp)
-app.register_blueprint(advance_bp, url_prefix='/advance')
+app.register_blueprint(advance_bp)
 app.register_blueprint(houses_bp) 
 app.register_blueprint(reports_bp)
 app.register_blueprint(student_detail_bp)

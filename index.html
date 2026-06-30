@@ -1,421 +1,828 @@
+Secure Flag Passive Scan Request&Response
+
+< GET /login HTTP/1.1
+< Host: shule-reports.artytechcreators.com
+< User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36
+< 
+
+> HTTP/1.1 200 OK
+> Server: nginx/1.18.0 (Ubuntu)
+> Content-Type: text/html; charset=UTF-8
+> Transfer-Encoding: chunked
+> Connection: keep-alive
+> Cache-Control: no-cache, private
+> Date: Sun, 28 Jun 2026 18:28:04 GMT
+> Set-Cookie: XSRF-TOKEN=eyJpdiI6IjhRRWRsak4rTXdIdEhaQUFwV2lieUE9PSIsInZhbHVlIjoiQ3VGdGcvOTN1dnROa0NWYWJzeTgyTUVNdUMxWlBnc0drZ2FLUTdxekU2VTRsNFRtaGgvU0lSbzA2T2tkczBmVnRDRVZ3YVVKY3VsdjM4K3pWTDFxSlNnUitEbXQ2bTJObGtMMWZOdkpobzFwWHNxL3lpdmZpT0xjYWZNY2JtNG4iLCJtYWMiOiJhYThhMjQwOTZiODM1YzBlODdkZjExMzg2ZmM5NTI3OGE1M2YzOGY1MjFlNzg3YTA5YjIwOTg1ZTQyMWYyMzI4IiwidGFnIjoiIn0%3D; expires=Sun, 28 Jun 2026 20:28:04 GMT; Max-Age=7200; path=/; samesite=lax
+> Set-Cookie: laravel_session=eyJpdiI6ImJ5eHQxWmVsZ1FOeVRMT3oxUFFMQ1E9PSIsInZhbHVlIjoiVm53ODlxWnBqZGxOYTVZTHo2Sm1TVGFnVXZHM2dubTJQUjhYMzR2UU1EaFFTaVR6N2hjU0NKL21QZXJ3TXNFUXJHdXlKLzZnZm81Ti84d3VwTmdxM0tBUFZlUkxra1JtZm9GTWF2TlNFMkp0VE56dWJ6RU5Edk5XUHFaZlJlWSsiLCJtYWMiOiIyZjY0ODk3OTU0ZjAxNmI1ZTM4NTQ1NjFiMDQ2ZDMzOTQwNmViZDFkYWVhYzYyMjllMjAzZGYxZjdiN2YxN2VjIiwidGFnIjoiIn0%3D; expires=Sun, 28 Jun 2026 20:28:04 GMT; Max-Age=7200; path=/; httponly; samesite=lax  // [!code highlight]
+> 
 <!DOCTYPE html>
-<html lang="en">
+
+<html lang="en" class="light-style     customizer-hide" dir="ltr" data-theme="theme-semi-dark" data-assets-path="https://shule-reports.artytechcreators.com/assets/" data-base-url="https://shule-reports.artytechcreators.com" data-framework="laravel" data-template="blank-menu-theme-semi-dark-light">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Student Academic Report | Term 1 2026</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
 
-    body {
-      background: linear-gradient(145deg, #cbd5e1 0%, #94a3b8 100%);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 2rem 1rem;
-      font-family: 'Segoe UI', 'Roboto', 'Courier New', 'Courier', monospace;
-    }
+  <title>Sign In — ShuleReport |
+    Shule Reports -
+    School System</title>
+  <meta name="description" content="Start your development with a Dashboard for Bootstrap 5" />
+  <meta name="keywords" content="dashboard, bootstrap 5 dashboard, bootstrap 5 design, bootstrap 5">
+  <!-- laravel CRUD token -->
+  <meta name="csrf-token" content="8hY0Md6cEG0cifWEZfUmrJLiuOJ7DqdTCP4siTsB">
+  <!-- Canonical SEO -->
+  <link rel="canonical" href="https://1.envato.market/frest_admin">
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="https://shule-reports.artytechcreators.com/assets/img/favicon/favicon.svg" />
+  <link rel="alternate icon" type="image/x-icon" href="https://shule-reports.artytechcreators.com/assets/img/favicon/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://shule-reports.artytechcreators.com/assets/img/shuleapp-logo.svg" />
 
-    /* main report card container */
-    .report-card {
-      max-width: 1100px;
-      width: 100%;
-      background: #fef9e8;
-      background: linear-gradient(135deg, #fffcf0 0%, #fff7e8 100%);
-      border-radius: 2rem;
-      box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-      transition: all 0.2s;
-      border: 1px solid rgba(255, 245, 200, 0.9);
-    }
+  <!-- Include Styles -->
+  <!-- BEGIN: Theme CSS-->
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
 
-    /* inner content with some padding */
-    .card-inner {
-      padding: 1.8rem 2rem 2rem 2rem;
-    }
+<!-- ShuleReport Design System fonts (Newsreader + Roboto) -->
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600;1,700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 
-    /* header with student details */
-    .student-header {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: baseline;
-      border-bottom: 3px double #c0a86a;
-      margin-bottom: 1.8rem;
-      padding-bottom: 0.75rem;
-    }
-    .student-name-box {
-      font-size: 1.1rem;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      background: #f3e9ce;
-      padding: 0.25rem 0.9rem;
-      border-radius: 40px;
-      font-family: 'Courier New', monospace;
-    }
-    .student-name-box span {
-      font-weight: 800;
-      color: #2c3e2f;
-    }
-    .student-meta {
-      display: flex;
-      gap: 1.8rem;
-      flex-wrap: wrap;
-      font-family: 'Courier New', monospace;
-      font-weight: 600;
-      background: #fef5e2;
-      padding: 0.2rem 1rem;
-      border-radius: 32px;
-    }
-    .student-meta p {
-      font-size: 0.9rem;
-    }
-    .id-line {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      background: #f8f0de;
-      padding: 0.7rem 1rem;
-      margin-bottom: 1.5rem;
-      border-radius: 20px;
-      font-family: 'Segoe UI', 'Courier New', monospace;
-      font-weight: 500;
-      border-left: 8px solid #b48c48;
-    }
-    .id-line div {
-      font-size: 0.9rem;
-    }
+<!-- ShuleReport Design System tokens (loaded first — defines CSS custom properties only) -->
+<link rel="stylesheet" href="https://shule-reports.artytechcreators.com/assets/css/sr-theme.css" />
 
-    /* table styling — academic performance */
-    .grades-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: 'Segoe UI', 'Courier New', monospace;
-      font-size: 0.9rem;
-      margin: 1.4rem 0 1.2rem 0;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-    .grades-table th, .grades-table td {
-      border: 1px solid #d6c29d;
-      padding: 12px 8px;
-      text-align: center;
-      vertical-align: middle;
-    }
-    .grades-table th {
-      background-color: #e7dbbc;
-      color: #2d2b1f;
-      font-weight: 700;
-      font-size: 0.85rem;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-    .grades-table td {
-      background-color: #fffef7;
-      font-weight: 500;
-    }
-    .subject-cell {
-      font-weight: 700;
-      background-color: #fef6e8;
-      text-align: left;
-      padding-left: 12px;
-    }
-    .remarks-cell {
-      font-style: italic;
-      color: #3a4a2e;
-    }
-    .initials-cell {
-      font-family: monospace;
-      font-weight: bold;
-    }
+<link rel="stylesheet" href="https://shule-reports.artytechcreators.com/assets/vendor/fonts/boxicons.css?id=60be79aeaa99e0e058debd0078eb4b3e" />
+<link rel="stylesheet" href="https://shule-reports.artytechcreators.com/assets/vendor/fonts/fontawesome.css?id=8e3da7267853fa4f5fcde06cbc1e7182" />
+<link rel="stylesheet" href="https://shule-reports.artytechcreators.com/assets/vendor/fonts/flag-icons.css?id=5f5039c94adc9a2fdb2eb6f481e66d8a" />
 
-    /* overall summary row (styled as extra row or separate) */
-    .overall-row {
-      background: #f2e5cf !important;
-      font-weight: 800;
-      border-top: 2px solid #bb9e6b;
-    }
-    .overall-label {
-      text-align: left;
-      font-weight: 800;
-    }
+<!-- Core CSS -->
+<link rel="stylesheet" href="https://shule-reports.artytechcreators.com/assets/vendor/css/rtl/core.css?id=16a5a044ee347937f4f14fba94bc229c" class="template-customizer-core-css" />
+<link rel="stylesheet" href="https://shule-reports.artytechcreators.com/assets/vendor/css/rtl/theme-semi-dark.css?id=731b8128f9700fb7e218609524bfe7f6" class="template-customizer-theme-css" />
+<link rel="stylesheet" href="https://shule-reports.artytechcreators.com/assets/css/demo.css?id=fa92e1f35fd0c2ee9023698859eee5ed" />
 
-    /* grading system reference */
-    .grading-system {
-      margin: 1.2rem 0 1.2rem 0;
-      background: #f7efdf;
-      padding: 0.7rem 1.2rem;
-      border-radius: 28px;
-      font-size: 0.75rem;
-      font-family: 'Courier New', monospace;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      justify-content: space-between;
-      border: 1px solid #e2d0ae;
-    }
-    .grading-columns {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1.5rem;
-      justify-content: space-between;
-      width: 100%;
-    }
-    .grade-bucket {
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-    }
-    .grade-bucket span {
-      font-size: 0.7rem;
-      white-space: nowrap;
-    }
-    .grade-key {
-      font-weight: 800;
-      color: #694e2e;
-    }
+<link rel="stylesheet" href="https://shule-reports.artytechcreators.com/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css?id=ca62d8ab470cf06f1e01a7f2393d13fd" />
+<link rel="stylesheet" href="https://shule-reports.artytechcreators.com/assets/vendor/libs/typeahead-js/typeahead.css?id=844f35fce7b70fecc1a7f7b707f7eef2" />
 
-    /* comment sections */
-    .comments-section {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1.8rem;
-      margin: 1.8rem 0 1.5rem 0;
-      justify-content: space-between;
-    }
-    .comment-box {
-      flex: 1;
-      min-width: 200px;
-      border-bottom: 2px dashed #cfb87c;
-      padding-bottom: 0.5rem;
-    }
-    .comment-box .label {
-      font-weight: 800;
-      font-family: monospace;
-      font-size: 0.8rem;
-      letter-spacing: 1px;
-      background: #e9ddc1;
-      display: inline-block;
-      padding: 0.2rem 1rem;
-      border-radius: 20px;
-      margin-bottom: 0.6rem;
-    }
-    .comment-box .comment-text {
-      font-family: 'Segoe UI', 'Courier New', monospace;
-      font-size: 0.9rem;
-      min-height: 3rem;
-      color: #2b2b1f;
-      padding: 0.2rem 0;
-      font-style: normal;
-    }
-    .empty-dash {
-      color: #988b6e;
-      letter-spacing: 1px;
-    }
+<!-- Vendor Styles -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600;1,700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 
-    /* next term begins */
-    .next-term {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 1rem;
-      margin-bottom: 0.8rem;
-      font-family: monospace;
-      font-weight: 600;
-      font-size: 0.85rem;
-      border-top: 1px solid #e0cfaa;
-      padding-top: 1rem;
-    }
-    .signature-line {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 0.6rem;
-      font-size: 0.7rem;
-      font-family: monospace;
-      color: #5a4a2e;
-      border-top: 1px solid #e2cfaa;
-      padding-top: 0.8rem;
-    }
-    .footer-note {
-      text-align: center;
-      margin-top: 1rem;
-      font-size: 0.7rem;
-      font-weight: 500;
-      letter-spacing: 1px;
-      color: #9e7f53;
-      font-family: monospace;
-      text-transform: uppercase;
-    }
+<!-- Page Styles -->
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* responsive touches */
-    @media (max-width: 700px) {
-      .card-inner {
-        padding: 1rem;
-      }
-      .grades-table th, .grades-table td {
-        padding: 8px 4px;
-        font-size: 0.75rem;
-      }
-      .student-meta {
-        gap: 0.8rem;
-        margin-top: 6px;
-      }
-      .grading-columns {
-        gap: 0.8rem;
-      }
-    }
-    @media print {
-      body {
-        background: white;
-        padding: 0;
-      }
-      .report-card {
-        box-shadow: none;
-        border: 1px solid #ccc;
-      }
-    }
+  :root {
+    --black:      #09090B;
+    --white:      #FFFFFF;
+    --gray-50:    #FAFAFA;
+    --gray-100:   #F4F4F5;
+    --gray-200:   #E4E4E7;
+    --gray-400:   #A1A1AA;
+    --gray-600:   #52525B;
+    --gray-800:   #27272A;
+    --red:        #DC2626;
+    --red-light:  #FEF2F2;
+    --sr-blue:    #1E9BE9;
+    --sr-orange:  #D98A32;
+  }
 
-    /* additional remark initials style */
-    .strong-text {
-      font-weight: 700;
-    }
-    .initials {
-      font-weight: 700;
-      letter-spacing: 1px;
-    }
-  </style>
+  body {
+    font-family: 'Roboto', sans-serif;
+    background: var(--white);
+  }
+
+  /* ── Wrapper ── */
+  .sr-login {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ════════════════════════════════════════
+     LEFT PANEL — black
+  ════════════════════════════════════════ */
+  .sr-left {
+    flex: 1;
+    background: var(--black);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 52px 60px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Top wordmark */
+  .sr-wordmark {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .sr-wordmark img {
+    height: 54px;
+    width: auto;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+  .sr-wordmark-label {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .sr-wordmark-name {
+    font-family: 'Newsreader', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -.01em;
+    line-height: 1.2;
+  }
+  .sr-wordmark-name em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--sr-orange);
+  }
+  .sr-wordmark-sub {
+    font-size: 10px;
+    font-weight: 500;
+    color: #71717A;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  /* Giant headline block */
+  .sr-hero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px 0;
+  }
+
+  .sr-eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gray-400);
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sr-eyebrow::before {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 1px;
+    background: var(--gray-600);
+  }
+
+  .sr-headline {
+    font-family: 'Newsreader', serif;
+    font-size: clamp(48px, 5.5vw, 80px);
+    font-weight: 700;
+    line-height: 1.0;
+    color: var(--white);
+    letter-spacing: -.03em;
+    margin-bottom: 36px;
+  }
+  .sr-headline em {
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  .sr-tagline {
+    font-size: 15px;
+    font-weight: 300;
+    color: var(--gray-400);
+    line-height: 1.7;
+    max-width: 380px;
+    margin-bottom: 48px;
+  }
+
+  /* Features */
+  .sr-features { display: flex; flex-direction: column; gap: 14px; }
+  .sr-feature {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--gray-400);
+    font-weight: 300;
+  }
+  .sr-feature-tick {
+    width: 18px; height: 18px;
+    border: 1.5px solid rgba(30,155,233,.4);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Bottom stats */
+  .sr-stats {
+    border-top: 1px solid var(--gray-800);
+    padding-top: 32px;
+    display: flex;
+    gap: 0;
+  }
+  .sr-stat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sr-stat + .sr-stat {
+    border-left: 1px solid var(--gray-800);
+    padding-left: 28px;
+  }
+  .sr-stat-val {
+    font-family: 'Newsreader', serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--white);
+    line-height: 1;
+    letter-spacing: -.02em;
+  }
+  .sr-stat-lbl {
+    font-size: 11px;
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    font-weight: 400;
+  }
+
+  /* Decorative vertical text */
+  .sr-side-text {
+    position: absolute;
+    right: 28px;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--gray-800);
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transform-origin: center center;
+  }
+
+  /* ════════════════════════════════════════
+     RIGHT PANEL — white
+  ════════════════════════════════════════ */
+  .sr-right {
+    width: 480px;
+    min-width: 480px;
+    background: var(--white);
+    border-left: 1px solid var(--gray-200);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 52px;
+    position: relative;
+  }
+
+  /* Form header */
+  .sr-form-header { margin-bottom: 40px; }
+  .sr-form-title {
+    font-family: 'Newsreader', serif;
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--black);
+    letter-spacing: -.025em;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+  .sr-form-sub {
+    font-size: 14px;
+    color: var(--gray-400);
+    font-weight: 300;
+    line-height: 1.5;
+  }
+
+  /* ── Fields ── */
+  .sr-field { margin-bottom: 20px; }
+
+  .sr-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-600);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .sr-input-wrap { position: relative; }
+
+  .sr-input {
+    display: block;
+    width: 100%;
+    background: var(--white);
+    border: 1.5px solid var(--gray-200);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
+    color: var(--black);
+    outline: none;
+    transition: border-color 160ms ease;
+    -webkit-appearance: none;
+  }
+  .sr-input::placeholder { color: var(--gray-400); }
+  .sr-input:hover { border-color: var(--gray-400); }
+  .sr-input:focus {
+    border-color: var(--sr-blue);
+    box-shadow: 0 0 0 3px rgba(30,155,233,.12);
+  }
+
+  /* Error */
+  .sr-input.is-invalid {
+    border-color: var(--red);
+    animation: shake .36s ease;
+  }
+  .sr-input.is-invalid:focus {
+    box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%      { transform: translateX(-5px); }
+    40%      { transform: translateX(5px); }
+    60%      { transform: translateX(-3px); }
+    80%      { transform: translateX(3px); }
+  }
+  .sr-error {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--red);
+  }
+
+  /* Password trailing toggle */
+  .pw-wrap .sr-input { padding-right: 46px; }
+  .pw-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--gray-400);
+    display: flex;
+    align-items: center;
+    border-radius: 4px;
+    transition: color 150ms ease;
+  }
+  .pw-toggle:hover { color: var(--black); }
+  .pw-toggle:focus-visible {
+    outline: 2px solid var(--sr-blue);
+    outline-offset: 1px;
+  }
+
+  /* ── Extras ── */
+  .sr-extras {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    margin-top: 4px;
+  }
+
+  .sr-remember {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .sr-remember input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    background: var(--white);
+    border: 1.5px solid var(--gray-300, #D4D4D8);
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 140ms ease, border-color 140ms ease;
+  }
+  .sr-remember input[type="checkbox"]:checked {
+    background: var(--sr-blue);
+    border-color: var(--sr-blue);
+  }
+  .sr-remember input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 3.5px; top: 1px;
+    width: 5px; height: 9px;
+    border: 2px solid var(--white);
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+  }
+  .sr-remember input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--sr-blue);
+    outline-offset: 2px;
+  }
+  .sr-remember-lbl {
+    font-size: 13.5px;
+    color: var(--gray-600);
+    font-weight: 400;
+  }
+
+  .sr-forgot {
+    font-size: 13px;
+    color: var(--gray-400);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: transparent;
+    font-weight: 400;
+    transition: color 150ms ease, text-decoration-color 150ms ease;
+    cursor: pointer;
+  }
+  .sr-forgot:hover {
+    color: var(--sr-blue);
+    text-decoration-color: var(--sr-blue);
+    text-decoration: underline;
+  }
+
+  /* ── Submit button ── */
+  .sr-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    background: var(--sr-blue);
+    color: var(--white);
+    border: 1.5px solid var(--sr-blue);
+    border-radius: 6px;
+    padding: 13px 24px;
+    font-family: 'Roboto', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: .01em;
+    cursor: pointer;
+    transition: background 180ms ease, color 180ms ease;
+  }
+  .sr-btn:hover:not(:disabled) {
+    background: var(--white);
+    color: var(--sr-blue);
+  }
+  .sr-btn:focus-visible {
+    outline: 2px solid var(--sr-blue);
+    outline-offset: 3px;
+  }
+  .sr-btn:active:not(:disabled) { opacity: .85; }
+  .sr-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+  }
+
+  /* Spinner */
+  .sr-spinner {
+    display: none;
+    width: 15px; height: 15px;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: var(--white);
+    border-radius: 50%;
+    animation: spin .65s linear infinite;
+    flex-shrink: 0;
+  }
+  .sr-btn.loading .sr-spinner { display: block; }
+  .sr-btn.loading .sr-btn-arrow { display: none; }
+  .sr-btn.loading:hover .sr-spinner { border-top-color: var(--sr-blue); border-color: rgba(30,155,233,.2); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Bottom divider + footer ── */
+  .sr-form-footer {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sr-footer-copy {
+    font-size: 12px;
+    color: var(--gray-400);
+    font-weight: 300;
+  }
+  .sr-footer-year {
+    font-size: 12px;
+    color: var(--gray-400);
+    font-weight: 300;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 960px) {
+    .sr-left     { display: none; }
+    .sr-right    { width: 100%; min-width: 0; padding: 48px 32px; border-left: none; }
+  }
+  @media (max-width: 480px) {
+    .sr-right    { padding: 40px 24px; }
+    .sr-form-title { font-size: 26px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sr-btn, .sr-input, .sr-forgot { transition: none; }
+    .sr-input.is-invalid            { animation: none; }
+    .sr-spinner                     { animation: none; }
+  }
+</style>
+
+<!-- ShuleReport Dashboard overrides — MUST load last so !important beats the template -->
+<link rel="stylesheet" href="https://shule-reports.artytechcreators.com/assets/css/sr-dashboard.css" />
+
+  <!-- Include Scripts for customizer, helper, analytics, config -->
+  <!-- laravel style -->
+<script src="https://shule-reports.artytechcreators.com/assets/vendor/js/helpers.js"></script>
+<!-- beautify ignore:start -->
+  <!--! Template customizer & Theme config files MUST be included after core stylesheets and helpers.js in the <head> section -->
+  <!--? Template customizer: To hide customizer set displayCustomizer value false in config.js.  -->
+  <script src="https://shule-reports.artytechcreators.com/assets/vendor/js/template-customizer.js"></script>
+
+  <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
+  <script src="https://shule-reports.artytechcreators.com/assets/js/config.js"></script>
+
+  <script>
+    window.templateCustomizer = new TemplateCustomizer({
+      cssPath: '',
+      themesPath: '',
+      defaultShowDropdownOnHover: true, // true/false (for horizontal layout only)
+      displayCustomizer: true,
+      lang: 'en',
+      pathResolver: function(path) {
+        var resolvedPaths = {
+          // Core stylesheets
+                      'core.css': 'https://shule-reports.artytechcreators.com/assets/vendor/css/rtl/core.css?id=16a5a044ee347937f4f14fba94bc229c',
+            'core-dark.css': 'https://shule-reports.artytechcreators.com/assets/vendor/css/rtl/core-dark.css?id=82f3934cf520d36ee947e6250c28116c',
+          
+          // Themes
+                      'theme-default.css': 'https://shule-reports.artytechcreators.com/assets/vendor/css/rtl/theme-default.css?id=9e10bdeadd20b2de1b7b086fc777dcfa',
+            'theme-default-dark.css':
+            'https://shule-reports.artytechcreators.com/assets/vendor/css/rtl/theme-default-dark.css?id=12f3a8d4d93a33511e66ed3e191b5af9',
+                      'theme-bordered.css': 'https://shule-reports.artytechcreators.com/assets/vendor/css/rtl/theme-bordered.css?id=3d00c0a236ce62e34893f7e69ac81d38',
+            'theme-bordered-dark.css':
+            'https://shule-reports.artytechcreators.com/assets/vendor/css/rtl/theme-bordered-dark.css?id=07595110795d8080091650eeedd26667',
+                      'theme-semi-dark.css': 'https://shule-reports.artytechcreators.com/assets/vendor/css/rtl/theme-semi-dark.css?id=731b8128f9700fb7e218609524bfe7f6',
+            'theme-semi-dark-dark.css':
+            'https://shule-reports.artytechcreators.com/assets/vendor/css/rtl/theme-semi-dark-dark.css?id=fa2bf02706fe133979bb2a3922a0808b',
+                  }
+        return resolvedPaths[path] || path;
+      },
+      'controls': ["rtl","style","layoutType","showDropdownOnHover","layoutNavbarFixed","layoutFooterFixed","themes"],
+    });
+  </script>
+  <!-- beautify ignore:end -->
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async="async" src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag('js', new Date());
+  gtag('config', 'GA_MEASUREMENT_ID');
+
+</script>
 </head>
+
 <body>
-<div class="report-card">
-  <div class="card-inner">
-    <!-- header with name, class, position -->
-    <div class="student-header">
-      <div class="student-name-box">
-        <span>📄 NAME:</span> STUDENT1 &nbsp;|&nbsp; <span>CLASS:</span> P1 &nbsp;|&nbsp; <span>POSITION:</span> 1ST OUT 200
-      </div>
-      <div class="student-meta">
-        <p>🏷️ STUDENT ID: P3123468</p>
-        <p>📅 TERM/YEAR: TERM 1 / 2026</p>
-        <p>⚧ GENDER: MALE</p>
-      </div>
-    </div>
+  <!-- Layout Content -->
+  
+<!-- Content -->
+<div class="sr-login">
 
-    <!-- additional student id line (already above but for coherence) -->
-    <div class="id-line">
-      <div>🎓 REGISTRATION: P3123468</div>
-      <div>📆 ASSESSMENT PERIOD: TERM 1 (2026)</div>
-      <div>🏆 RANK: 1st / 200</div>
-    </div>
+  
+  <div class="sr-left" aria-hidden="true">
 
-    <!-- main performance table -->
-    <table class="grades-table">
-      <thead>
-      <tr>
-        <th>SUBJECT</th>
-        <th>EOT</th>
-        <th>MID</th>
-        <th>AVG(%)</th>
-        <th>GRADE</th>
-        <th>REMARKS</th>
-        <th>INITIALS</th>
-      </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="subject-cell">MATHEMATICS</td>
-          <td>44</td>
-          <td>55</td>
-          <td>49.5</td>
-          <td>C5</td>
-          <td class="remarks-cell">FAIR</td>
-          <td class="initials-cell">G.H</td>
-        </tr>
-        <tr>
-          <td class="subject-cell">ENGLISH</td>
-          <td>55</td>
-          <td>77</td>
-          <td>60.5</td>
-          <td>C4</td>
-          <td class="remarks-cell">PROMISING</td>
-          <td class="initials-cell">TT</td>
-        </tr>
-        <tr>
-          <td class="subject-cell">SST</td>
-          <td>55</td>
-          <td>33</td>
-          <td>44.0</td>
-          <td>P7</td>
-          <td class="remarks-cell">PASS</td>
-          <td class="initials-cell">F.K</td>
-        </tr>
-        <tr>
-          <td class="subject-cell">SCIENCE</td>
-          <td>88</td>
-          <td>45</td>
-          <td>66.5</td>
-          <td>C3</td>
-          <td class="remarks-cell">GOOD</td>
-          <td class="initials-cell">TF</td>
-        </tr>
-        <!-- overall summary row, according to original: OVERALL SUMMARY row -->
-        <tr class="overall-row">
-          <td class="subject-cell overall-label" style="font-weight:800;">OVERALL SUMMARY</td>
-          <td colspan="2">—</td>
-          <td><strong>55.9</strong></td>
-          <td><strong>C4</strong></td>
-          <td class="remarks-cell"><strong>PROMISSING</strong></td>
-          <td class="initials-cell">—</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <!-- grading system exactly as in spec -->
-    <div class="grading-system">
-      <div class="grading-columns">
-        <div class="grade-bucket"><span class="grade-key">📊 GRADING SYSTEM:</span></div>
-        <div class="grade-bucket"><span>80+ → D1</span><span>75–79 → D2</span><span>65–73 → C3</span></div>
-        <div class="grade-bucket"><span>60–64 → C4</span><span>55–59 → C5</span><span>50–54 → C6</span></div>
-        <div class="grade-bucket"><span>40–49 → P7</span><span>30–39 → P8</span><span>0–29 → F9</span></div>
+    <div class="sr-wordmark">
+      <img src="https://shule-reports.artytechcreators.com/assets/img/shuleapp-logo.png"
+           onerror="this.src='https://shule-reports.artytechcreators.com/assets/img/shuleapp-logo.svg'"
+           alt="Shule App School System">
+      <div class="sr-wordmark-label">
+        <span class="sr-wordmark-name">Shule<em>App</em></span>
+        <span class="sr-wordmark-sub">School System</span>
       </div>
     </div>
 
-    <!-- Teachers & Head teachers comments (exactly as required) -->
-    <div class="comments-section">
-      <div class="comment-box">
-        <div class="label">📝 CLASS TEACHER'S COMMENT</div>
-        <div class="comment-text empty-dash">_________________________</div>
-        <div class="comment-text" style="font-size:0.75rem; color:#a18352;">(Awaiting signature / feedback)</div>
+    <div class="sr-hero">
+      <p class="sr-eyebrow">School Management Platform</p>
+
+      <h1 class="sr-headline">
+        Every<br>
+        <em>Report.</em><br>
+        Accounted<br>
+        For.
+      </h1>
+
+      <p class="sr-tagline">
+        Streamline academic reporting, track student performance, and give every educator the data they need.
+      </p>
+
+      <div class="sr-features">
+        <div class="sr-feature">
+          <div class="sr-feature-tick">
+            <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="#1E9BE9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="2 6 5 9 10 3"/>
+            </svg>
+          </div>
+          Real-time student performance reports
+        </div>
+        <div class="sr-feature">
+          <div class="sr-feature-tick">
+            <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="#1E9BE9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="2 6 5 9 10 3"/>
+            </svg>
+          </div>
+          Multi-school administration in one place
+        </div>
+        <div class="sr-feature">
+          <div class="sr-feature-tick">
+            <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="#1E9BE9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="2 6 5 9 10 3"/>
+            </svg>
+          </div>
+          Secure role-based access for all staff
+        </div>
       </div>
-      <div class="comment-box">
-        <div class="label">🏫 HEAD TEACHER'S COMMENT</div>
-        <div class="comment-text empty-dash">_________________________</div>
-        <div class="comment-text" style="font-size:0.75rem; color:#a18352;">(Official stamp & remarks)</div>
+    </div>
+
+    <div class="sr-stats">
+      <div class="sr-stat">
+        <span class="sr-stat-val">500+</span>
+        <span class="sr-stat-lbl">Schools</span>
+      </div>
+      <div class="sr-stat">
+        <span class="sr-stat-val">98%</span>
+        <span class="sr-stat-lbl">Uptime</span>
+      </div>
+      <div class="sr-stat">
+        <span class="sr-stat-val">50K+</span>
+        <span class="sr-stat-lbl">Students</span>
       </div>
     </div>
 
-    <!-- next term begins (exactly as per original placeholders) -->
-    <div class="next-term">
-      <span>📌 NEXT TERM BEGINS: ____________________</span>
+    <span class="sr-side-text" aria-hidden="true">ShuleReport &mdash; v2.0</span>
+  </div>
+
+  
+  <div class="sr-right">
+
+    <div class="sr-form-header">
+      <h2 class="sr-form-title">Welcome back.</h2>
+      <p class="sr-form-sub">Sign in to access your school dashboard.</p>
     </div>
 
-    <!-- signature area with LUNSERK and foundation motto -->
-    <div class="signature-line">
-      <div>🏅 Registrar’s Initials: ___________</div>
-      <div>📅 Date: ___/___/2026</div>
-    </div>
-    <div class="footer-note">
-      LUNSERK — Foundation for your digital ambitions
+    <form id="sr-form" method="POST" action="https://shule-reports.artytechcreators.com/login">
+      <input type="hidden" name="_token" value="8hY0Md6cEG0cifWEZfUmrJLiuOJ7DqdTCP4siTsB">
+      
+      <div class="sr-field">
+        <label for="email" class="sr-label">Email address</label>
+        <div class="sr-input-wrap">
+          <input
+            id="email"
+            type="email"
+            name="email"
+            class="sr-input "
+            value=""
+            placeholder="you@school.edu"
+            required
+            autocomplete="email"
+            autofocus
+            aria-describedby=""
+          >
+        </div>
+              </div>
+
+      
+      <div class="sr-field">
+        <label for="password" class="sr-label">Password</label>
+        <div class="sr-input-wrap pw-wrap">
+          <input
+            id="password"
+            type="password"
+            name="password"
+            class="sr-input "
+            placeholder="••••••••••••"
+            required
+            autocomplete="current-password"
+            aria-describedby=""
+          >
+          <button
+            type="button"
+            id="pw-toggle"
+            class="pw-toggle"
+            aria-label="Show password"
+          >
+            <svg class="icon-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+            <svg class="icon-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+              </div>
+
+      
+      <div class="sr-extras">
+        <label class="sr-remember">
+          <input type="checkbox" name="remember" id="remember" >
+          <span class="sr-remember-lbl">Remember me</span>
+        </label>
+                  <a href="https://shule-reports.artytechcreators.com/password/reset" class="sr-forgot">Forgot password?</a>
+              </div>
+
+      
+      <button type="submit" id="sr-submit" class="sr-btn">
+        <span class="sr-spinner" aria-hidden="true"></span>
+        <span class="sr-btn-text">Sign In</span>
+        <svg class="sr-btn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </button>
+
+    </form>
+
+    <div class="sr-form-footer">
+      <span class="sr-footer-copy">&copy; 2026 ShuleReport</span>
+      <span class="sr-footer-year">All rights reserved</span>
     </div>
 
-    <!-- small reprint of the original bottom text: LUNSERK + tagline (already above) but also extract from original image includes "LUNSERK Foundation for your digital ambitions" -->
-    <!-- to stay authentic, we show it again but not double, just ensure it's present -->
-    <div style="text-align:center; margin-top: 0.5rem; font-size: 0.7rem; border-top: 1px dashed #e2cfaa; padding-top: 0.5rem; color:#aa8f5a; font-family: monospace;">
-      ⚡ TERM 1 · 2026 | DIGITAL REPORT CARD
-    </div>
   </div>
 </div>
+<!--/ Content -->
+
+  <!--/ Layout Content -->
+
+  
+
+  <!-- Include Scripts -->
+  <!-- BEGIN: Vendor JS-->
+<script src="https://shule-reports.artytechcreators.com/assets/vendor/libs/jquery/jquery.js?id=8b6746ea2135f9eeacb52566cd12e5b1"></script>
+<script src="https://shule-reports.artytechcreators.com/assets/vendor/libs/popper/popper.js?id=35424486ad5d7c8562130f8498d99e46"></script>
+<script src="https://shule-reports.artytechcreators.com/assets/vendor/js/bootstrap.js?id=0a41dc1f660bb59b7ed6875d187f7517"></script>
+<script src="https://shule-reports.artytechcreators.com/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js?id=0ee3fe5098aa06a941fe524ac7ec9fd1"></script>
+<script src="https://shule-reports.artytechcreators.com/assets/vendor/libs/hammer/hammer.js?id=a8ced3a16785baff0fbe93e0febef7ae"></script>
+<script src="https://shule-reports.artytechcreators.com/assets/vendor/libs/i18n/i18n.js?id=f79c4549c4b4382540af4c6ca3f3d5b2"></script>
+<script src="https://shule-reports.artytechcreators.com/assets/vendor/libs/typeahead-js/typeahead.js?id=e742fcba81c2298c29fea710634a04ae"></script>
+<script src="https://shule-reports.artytechcreators.com/assets/vendor/js/menu.js?id=3f3c7a1a7ec6022f69eb24f0a41586b2"></script>
+<!-- END: Page Vendor JS-->
+<!-- BEGIN: Theme JS-->
+<script src="https://shule-reports.artytechcreators.com/assets/js/main.js?id=0d61303964b7db7eb6b3437d4798493a"></script>
+
+<!-- END: Theme JS-->
+<!-- Pricing Modal JS-->
+<!-- END: Pricing Modal JS-->
+<!-- BEGIN: Page JS-->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  /* Password toggle */
+  const toggle = document.getElementById('pw-toggle');
+  const pw     = document.getElementById('password');
+  if (toggle && pw) {
+    toggle.addEventListener('click', function () {
+      const show = pw.type === 'password';
+      pw.type = show ? 'text' : 'password';
+      toggle.querySelector('.icon-hide').style.display = show ? 'none' : '';
+      toggle.querySelector('.icon-show').style.display = show ? ''     : 'none';
+      toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+  }
+
+  /* Loading state */
+  const form = document.getElementById('sr-form');
+  const btn  = document.getElementById('sr-submit');
+  if (form && btn) {
+    form.addEventListener('submit', function () {
+      btn.disabled = true;
+      btn.classList.add('loading');
+      btn.querySelector('.sr-btn-text').textContent = 'Signing in';
+    });
+  }
+
+});
+</script>
+<!-- END: Page JS-->
+
 </body>
+
 </html>
+
+
