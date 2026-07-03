@@ -1,4 +1,6 @@
-// whatsapp-server.js - Fixed with better timeout handling and no auth clearing on shutdown
+// whatsapp-academic-server.js - Consolidated WhatsApp + Academic Report Server
+// Fixed with better timeout handling and no auth clearing on shutdown
+
 const { default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode');
 const express = require('express');
@@ -9,6 +11,8 @@ const { createClient } = require('@supabase/supabase-js');
 const P = require('pino');
 const fs = require('fs');
 const path = require('path');
+const { buildReportCardsPdf } = require('./lib/pdfBuilder');
+const { buildCompetencyReportCardsPdf } = require('./lib/competencyPdfBuilder');
 require('dotenv').config();
 
 // ==================== CONFIGURATION ====================
@@ -21,6 +25,7 @@ const io = socketIO(server, {
   transports: ['websocket', 'polling']
 });
 
+// Allow generously sized JSON bodies (many students + remote image URLs)
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -51,7 +56,6 @@ try {
 
 // Determine which Supabase client to use
 function getSupabaseClient() {
-  // If primary is available, use it; otherwise use secondary
   if (supabase) return supabase;
   if (supabase2) return supabase2;
   return null;
@@ -65,7 +69,7 @@ if (!fs.existsSync(BASE_AUTH_FOLDER)) {
 
 // ==================== CLIENT STORE ====================
 const clients = new Map();
-const qrRequests = new Map(); // Track which institutes have requested QR
+const qrRequests = new Map();
 
 // ==================== HELPERS ====================
 function getInstituteAuthFolder(instituteId) {
@@ -190,7 +194,6 @@ async function storeMessage(instituteId, phoneNumber, message, messageType = 'te
 async function connectToWhatsApp(instituteId, forceQR = false) {
   console.log(`🔄 Connecting to WhatsApp for institute ${instituteId}...`);
   
-  // Remove existing client if any
   if (clients.has(instituteId)) {
     const existing = clients.get(instituteId);
     if (existing.sock) {
@@ -230,7 +233,6 @@ async function connectToWhatsApp(instituteId, forceQR = false) {
     sock.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
       
-      // Only generate and emit QR if requested or if forced
       if (qr && (client.qrRequested || forceQR)) {
         console.log(`📱 QR Code generated for institute ${instituteId}`);
         client.qr = qr;
@@ -245,7 +247,6 @@ async function connectToWhatsApp(instituteId, forceQR = false) {
         }
         client.reconnectAttempts = 0;
       } else if (qr && !client.qrRequested) {
-        // Store QR but don't emit unless requested
         client.qr = qr;
         console.log(`📱 QR Code generated for institute ${instituteId} (stored, waiting for request)`);
       }
@@ -290,7 +291,103 @@ async function connectToWhatsApp(instituteId, forceQR = false) {
   }
 }
 
-// ==================== API ROUTES ====================
+// ==================== REPORT CARD HELPERS ====================
+
+/**
+ * Detect report type based on payload structure
+ * - If 'assessments' exists → competency-based
+ * - If 'exams' exists → standard
+ * - Default to standard
+ */
+function detectReportType(body) {
+  if (body.assessments && Array.isArray(body.assessments) && body.assessments.length > 0) {
+    return 'competency';
+  }
+  return 'standard';
+}
+
+/**
+ * Shared handler for standard exam-based report cards
+ */
+async function handleGenerateStandard(req, res, students) {
+  try {
+    const { school, term, exams } = req.body;
+
+    if (!school || !school.name) {
+      return res.status(400).json({ error: 'Missing required field: school.name' });
+    }
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ error: 'No student data provided' });
+    }
+
+    const pdfBuffer = await buildReportCardsPdf({
+      school,
+      term: term || {},
+      exams: Array.isArray(exams) && exams.length ? exams : ['EXAM'],
+      students,
+    });
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="report-cards-${Date.now()}.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.status(200).send(pdfBuffer);
+  } catch (err) {
+    console.error('Failed to generate standard report card PDF:', err);
+    res.status(500).json({ error: 'Failed to generate report card PDF', detail: err.message });
+  }
+}
+
+/**
+ * Shared handler for competency-based (CBC) report cards
+ */
+async function handleGenerateCompetency(req, res, students) {
+  try {
+    const { 
+      school, 
+      term, 
+      assessments, 
+      weightedColumns, 
+      gradeScale, 
+      keyTerms, 
+      resultDefinitions 
+    } = req.body;
+
+    if (!school || !school.name) {
+      return res.status(400).json({ error: 'Missing required field: school.name' });
+    }
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ error: 'No student data provided' });
+    }
+    if (!Array.isArray(assessments) || assessments.length === 0) {
+      return res.status(400).json({ error: 'Missing required field: assessments' });
+    }
+
+    const pdfBuffer = await buildCompetencyReportCardsPdf({
+      school,
+      term: term || {},
+      assessments,
+      weightedColumns: weightedColumns || [],
+      gradeScale: gradeScale || [],
+      keyTerms: keyTerms || [],
+      resultDefinitions: resultDefinitions || [],
+      students,
+    });
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="competency-report-cards-${Date.now()}.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.status(200).send(pdfBuffer);
+  } catch (err) {
+    console.error('Failed to generate competency report card PDF:', err);
+    res.status(500).json({ error: 'Failed to generate competency report card PDF', detail: err.message });
+  }
+}
+
+// ==================== API ROUTES - WHATSAPP ====================
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -342,7 +439,7 @@ app.get('/api/status/:instituteId', async (req, res) => {
   });
 });
 
-// Request QR code - only generates QR when this endpoint is called
+// Request QR code
 app.post('/api/request-qr/:instituteId', async (req, res) => {
   const { instituteId } = req.params;
   const supabaseClient = getSupabaseClient();
@@ -364,10 +461,7 @@ app.post('/api/request-qr/:instituteId', async (req, res) => {
     } catch(e) {}
   }
   
-  // Clear existing auth data to force new QR
   await clearAuthData(instituteId);
-  
-  // Set QR requested flag and connect
   setTimeout(() => connectToWhatsApp(instituteId, true), 1000);
   
   res.json({ success: true, message: 'QR code requested. QR will be generated and sent via socket.' });
@@ -381,7 +475,7 @@ app.post('/api/logout/:instituteId', async (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// Send text message with increased timeout
+// Send text message
 app.post('/api/send', async (req, res) => {
   const { number, message, instituteId } = req.body;
   
@@ -397,7 +491,6 @@ app.post('/api/send', async (req, res) => {
   try {
     const formattedNumber = number.includes('@') ? number : `${number}@s.whatsapp.net`;
     
-    // Use a timeout promise to handle long sends
     const sendPromise = client.sock.sendMessage(formattedNumber, { text: message });
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Send timeout')), 30000)
@@ -414,7 +507,7 @@ app.post('/api/send', async (req, res) => {
   }
 });
 
-// Send PDF file with increased timeout
+// Send PDF file
 app.post('/api/send-pdf', async (req, res) => {
   const { number, pdfBuffer, filename, instituteId } = req.body;
   
@@ -431,7 +524,6 @@ app.post('/api/send-pdf', async (req, res) => {
     const formattedNumber = number.includes('@') ? number : `${number}@s.whatsapp.net`;
     const buffer = Buffer.from(pdfBuffer, 'base64');
     
-    // Use a timeout promise to handle long sends
     const sendPromise = client.sock.sendMessage(formattedNumber, {
       document: buffer,
       mimetype: 'application/pdf',
@@ -478,6 +570,84 @@ app.get('/api/messages/:instituteId', async (req, res) => {
   }
 });
 
+// ==================== API ROUTES - ACADEMIC REPORTS ====================
+
+// ---------------------------------------------------------------------------
+// STANDARD EXAM-BASED ENDPOINTS
+// ---------------------------------------------------------------------------
+
+// Bulk: { school, term, exams, students: [...] }
+app.post('/generate-report-cards', (req, res) => {
+  handleGenerateStandard(req, res, req.body.students);
+});
+
+// Single: { school, term, exams, student: {...} }
+app.post('/generate-report-card', (req, res) => {
+  const student = req.body.student;
+  handleGenerateStandard(req, res, student ? [student] : []);
+});
+
+// ---------------------------------------------------------------------------
+// COMPETENCY-BASED (CBC) ENDPOINTS
+// ---------------------------------------------------------------------------
+
+// Bulk: { school, term, assessments, weightedColumns, gradeScale, keyTerms, resultDefinitions, students: [...] }
+app.post('/generate-competency-report-cards', (req, res) => {
+  handleGenerateCompetency(req, res, req.body.students);
+});
+
+// Single: { school, term, assessments, weightedColumns, gradeScale, keyTerms, resultDefinitions, student: {...} }
+app.post('/generate-competency-report-card', (req, res) => {
+  const student = req.body.student;
+  handleGenerateCompetency(req, res, student ? [student] : []);
+});
+
+// ---------------------------------------------------------------------------
+// AUTO-DETECT ENDPOINTS (Smart Routing)
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /generate
+ * Automatically detects report type based on payload structure.
+ * 
+ * For standard reports: include 'exams' field
+ * For competency reports: include 'assessments' field
+ * 
+ * Example standard: { school, term, exams: ["BOT","MID","END"], students: [...] }
+ * Example competency: { school, term, assessments: ["A1","A2","A3"], weightedColumns: [...], students: [...] }
+ */
+app.post('/generate', (req, res) => {
+  const reportType = detectReportType(req.body);
+  
+  if (reportType === 'competency') {
+    handleGenerateCompetency(req, res, req.body.students || []);
+  } else {
+    handleGenerateStandard(req, res, req.body.students || []);
+  }
+});
+
+/**
+ * POST /generate-single
+ * Auto-detects report type for single student.
+ * 
+ * Example standard: { school, term, exams: ["BOT","MID","END"], student: {...} }
+ * Example competency: { school, term, assessments: ["A1","A2","A3"], student: {...} }
+ */
+app.post('/generate-single', (req, res) => {
+  const reportType = detectReportType(req.body);
+  const student = req.body.student;
+  
+  if (!student) {
+    return res.status(400).json({ error: 'Missing required field: student' });
+  }
+  
+  if (reportType === 'competency') {
+    handleGenerateCompetency(req, res, [student]);
+  } else {
+    handleGenerateStandard(req, res, [student]);
+  }
+});
+
 // ==================== SOCKET.IO ====================
 io.on('connection', (socket) => {
   console.log('🟢 Client connected:', socket.id);
@@ -492,7 +662,6 @@ io.on('connection', (socket) => {
         socket.emit('ready', 'WhatsApp client is ready!');
         console.log(`✅ Sent ready to ${socket.id}`);
       } else if (client.qr && client.qrRequested) {
-        // Only send QR if it was requested
         qrcode.toDataURL(client.qr, { scale: 8 }).then(qrImage => {
           socket.emit('qr', qrImage);
           console.log(`✅ Sent QR to ${socket.id}`);
@@ -508,7 +677,6 @@ io.on('connection', (socket) => {
   
   socket.on('request_qr', async (instituteId) => {
     console.log(`📱 QR requested via socket for institute ${instituteId}`);
-    // Call the request QR endpoint logic
     const supabaseClient = getSupabaseClient();
     
     if (supabaseClient) {
@@ -537,7 +705,7 @@ io.on('connection', (socket) => {
 });
 
 // ==================== START SERVER ====================
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 async function startInstitutes() {
   const supabaseClient = getSupabaseClient();
@@ -557,7 +725,6 @@ async function startInstitutes() {
     if (data && data.length > 0) {
       console.log(`📱 Starting WhatsApp for ${data.length} institute(s)...`);
       for (const setting of data) {
-        // Don't force QR on initial connection - wait for request
         await connectToWhatsApp(setting.institute_id, false);
       }
     } else {
@@ -569,8 +736,16 @@ async function startInstitutes() {
 }
 
 server.listen(PORT, async () => {
-  console.log(`\n🚀 WhatsApp API Server: http://localhost:${PORT}`);
+  console.log(`\n🚀 WhatsApp + Academic Reports Server: http://localhost:${PORT}`);
   console.log(`💾 Auth: ${getSupabaseClient() ? 'Supabase' : 'Local'}`);
+  console.log(`📱 WhatsApp API ready`);
+  console.log(`📄 Report Card API ready`);
+  console.log(`   - POST /generate-report-cards (bulk standard)`);
+  console.log(`   - POST /generate-report-card (single standard)`);
+  console.log(`   - POST /generate-competency-report-cards (bulk CBC)`);
+  console.log(`   - POST /generate-competency-report-card (single CBC)`);
+  console.log(`   - POST /generate (auto-detect bulk)`);
+  console.log(`   - POST /generate-single (auto-detect single)`);
   console.log(`📱 Server ready\n`);
   
   await startInstitutes();
@@ -579,11 +754,9 @@ server.listen(PORT, async () => {
 // Graceful shutdown - DON'T clear auth data on shutdown
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down gracefully...');
-  // Just close connections without clearing auth
   for (const [instituteId, client] of clients) {
     if (client.sock) {
       try {
-        // Just end the connection without logout to preserve session
         client.sock.end();
       } catch(e) {
         console.log(`Error closing connection for ${instituteId}:`, e.message);

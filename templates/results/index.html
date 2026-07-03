@@ -1,4 +1,4 @@
-<!-- templates/results/index.html - Updated with Class-wise Generation -->
+<!-- templates/results/index.html - Updated with Term and Year Filters -->
 {% extends "base.html" %}
 
 {% block title %}Generate Report Card - Lunserk ERP{% endblock %}
@@ -12,6 +12,15 @@
         background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
         transform: translateY(-2px);
     }
+    .btn-outline {
+        background: transparent;
+        border: 2px solid #ffa500;
+        color: #ffa500;
+    }
+    .btn-outline:hover {
+        background: #ffa500;
+        color: white;
+    }
     .tab-active {
         background-color: #ffa500;
         color: white;
@@ -19,6 +28,9 @@
     .tab-inactive {
         background-color: #f3f4f6;
         color: #6b7280;
+    }
+    .tab-inactive:hover {
+        background-color: #e5e7eb;
     }
     .exam-checkbox {
         transition: all 0.2s;
@@ -106,6 +118,36 @@
         text-align: center;
         color: #6b7280;
     }
+    .api-status {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .api-status.online {
+        background: #10b981;
+        color: white;
+    }
+    .api-status.offline {
+        background: #ef4444;
+        color: white;
+    }
+    .api-status.checking {
+        background: #f59e0b;
+        color: white;
+    }
+    .filter-section {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
 </style>
 {% endblock %}
 
@@ -113,7 +155,12 @@
 <div class="max-w-7xl mx-auto px-4 py-6">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800 mb-1">Generate Report Card</h1>
-        <p class="text-sm text-gray-600">Generate individual or class-wise report cards</p>
+        <p class="text-sm text-gray-600">Generate individual or class-wise report cards from marksheets</p>
+    </div>
+
+    <!-- API Status -->
+    <div id="apiStatus" class="api-status checking">
+        <i class="fas fa-circle-notch fa-spin"></i> Checking API...
     </div>
 
     <!-- Tabs -->
@@ -154,12 +201,16 @@
                     <input type="hidden" id="selectedStudentId" value="">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
-                    <input type="text" id="termInput" placeholder="e.g., TERM 1" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Term *</label>
+                    <select id="termSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">-- Select Term --</option>
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Year</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Year *</label>
                     <select id="yearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                         <option value="2023">2023</option>
                         <option value="2024">2024</option>
@@ -190,12 +241,16 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
-                    <input type="text" id="classTermInput" placeholder="e.g., TERM 1" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Term *</label>
+                    <select id="classTermSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="">-- Select Term --</option>
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Year</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Year *</label>
                     <select id="classYearSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                         <option value="2023">2023</option>
                         <option value="2024">2024</option>
@@ -213,8 +268,9 @@
     <div class="bg-white rounded-xl shadow-md p-6 mb-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <i class="fas fa-calendar-alt text-orange-500"></i>
-            Select Exams to Include
+            Select Exams to Include *
         </h3>
+        <p class="text-sm text-gray-500 mb-3">Only exams that have marks entered for the selected term will show data</p>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3" id="examsList">
             {% for exam in exams %}
             <label class="exam-checkbox flex items-center gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-orange-50 transition-all">
@@ -228,7 +284,7 @@
     </div>
 
     <!-- Generate Buttons -->
-    <div class="flex justify-center gap-4">
+    <div class="flex flex-wrap justify-center gap-4">
         <button onclick="generateReportCard()" id="generateBtn" 
                 class="btn-gradient px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-lg">
             <i class="fas fa-file-pdf"></i>
@@ -239,6 +295,21 @@
             <i class="fas fa-file-pdf"></i>
             Generate Class Report Cards
         </button>
+    </div>
+
+    <!-- Info Box -->
+    <div class="mt-4 bg-blue-50 rounded-lg p-4 border border-blue-200">
+        <div class="flex items-start gap-3">
+            <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+            <div>
+                <p class="text-sm text-blue-700 font-medium">About Report Card Generation</p>
+                <p class="text-xs text-blue-600 mt-1">
+                    Report cards are generated from <strong>marksheets</strong> that are created when you save marks for a specific term.
+                    Only marks entered for the selected term and year will appear in the report card.
+                    If no marks are found, you will be prompted to enter marks first.
+                </p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -276,6 +347,26 @@
     let searchTimeout;
     let currentSearchTerm = '';
     
+    // Check API health on page load
+    async function checkApiHealth() {
+        const statusEl = document.getElementById('apiStatus');
+        try {
+            const response = await fetch('/results/health');
+            const data = await response.json();
+            if (data.success && data.api_status === 'healthy') {
+                statusEl.className = 'api-status online';
+                statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Report API Online';
+            } else {
+                statusEl.className = 'api-status offline';
+                statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Report API Offline';
+                statusEl.title = data.error || 'API not available';
+            }
+        } catch (error) {
+            statusEl.className = 'api-status offline';
+            statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Report API Offline';
+        }
+    }
+    
     // Initialize searchable select
     const studentSearchable = {
         trigger: document.getElementById('studentSelectTrigger'),
@@ -289,14 +380,12 @@
             this.trigger.addEventListener('click', () => this.toggle());
             this.searchInput.addEventListener('input', (e) => this.search(e.target.value));
             
-            // Close dropdown when clicking outside
             document.addEventListener('click', (e) => {
                 if (!this.trigger.contains(e.target) && !this.dropdown.contains(e.target)) {
                     this.close();
                 }
             });
             
-            // Handle escape key
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && this.dropdown.classList.contains('show')) {
                     this.close();
@@ -357,7 +446,6 @@
             
             this.optionsContainer.innerHTML = optionsHtml;
             
-            // Add click handlers to options
             this.optionsContainer.querySelectorAll('.searchable-select-option').forEach(option => {
                 option.addEventListener('click', () => {
                     const id = option.dataset.id;
@@ -404,15 +492,19 @@
         }
     }
     
+    function getSelectedExams() {
+        const selected = [];
+        document.querySelectorAll('.exam-cb:checked').forEach(cb => {
+            selected.push(cb.value);
+        });
+        return selected;
+    }
+    
     async function generateReportCard() {
         const studentId = document.getElementById('selectedStudentId').value;
-        const term = document.getElementById('termInput').value.trim();
+        const term = document.getElementById('termSelect').value;
         const year = document.getElementById('yearSelect').value;
-        
-        const selectedExams = [];
-        document.querySelectorAll('.exam-cb:checked').forEach(cb => {
-            selectedExams.push(cb.value);
-        });
+        const selectedExams = getSelectedExams();
         
         if (!studentId) {
             showError('Please search and select a student');
@@ -425,11 +517,12 @@
         }
         
         if (!term) {
-            showError('Please enter the term');
+            showError('Please select the term');
             return;
         }
         
-        showProgress('Generating Report Card', 'Processing student data...');
+        showProgress('Generating Report Card', 'Fetching marks from marksheets...');
+        updateProgress(10, 'Fetching marks...', `Term: ${term}, Year: ${year}`);
         
         try {
             const response = await fetch('/results/generate', {
@@ -469,13 +562,9 @@
     
     async function generateClassReportCard() {
         const classId = document.getElementById('classSelect').value;
-        const term = document.getElementById('classTermInput').value.trim();
+        const term = document.getElementById('classTermSelect').value;
         const year = document.getElementById('classYearSelect').value;
-        
-        const selectedExams = [];
-        document.querySelectorAll('.exam-cb:checked').forEach(cb => {
-            selectedExams.push(cb.value);
-        });
+        const selectedExams = getSelectedExams();
         
         if (!classId) {
             showError('Please select a class');
@@ -488,11 +577,12 @@
         }
         
         if (!term) {
-            showError('Please enter the term');
+            showError('Please select the term');
             return;
         }
         
-        showProgress('Generating Class Report Cards', 'Processing class data...');
+        showProgress('Generating Class Report Cards', 'Fetching marks from marksheets...');
+        updateProgress(10, 'Fetching marks...', `Term: ${term}, Year: ${year}`);
         
         try {
             const response = await fetch('/results/generate-class', {
@@ -537,24 +627,25 @@
         document.getElementById('progressTitle').textContent = title;
         document.getElementById('progressMessage').textContent = message;
         document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('progressDetail').textContent = 'Starting...';
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         document.body.style.overflow = 'hidden';
         
         let progress = 0;
         progressInterval = setInterval(() => {
-            progress += 10;
+            progress += 5;
             if (progress <= 90) {
                 document.getElementById('progressBar').style.width = progress + '%';
             }
-        }, 500);
+        }, 300);
     }
     
     function updateProgress(percent, message, detail) {
         if (progressInterval) clearInterval(progressInterval);
         document.getElementById('progressBar').style.width = percent + '%';
         document.getElementById('progressMessage').textContent = message;
-        document.getElementById('progressDetail').textContent = detail;
+        document.getElementById('progressDetail').textContent = detail || '';
     }
     
     function closeProgress() {
@@ -585,9 +676,17 @@
         if (event.target === progressModal) closeProgress();
     };
     
-    // Initialize searchable select when page loads
+    // Initialize
     document.addEventListener('DOMContentLoaded', () => {
         studentSearchable.init();
+        checkApiHealth();
+        setInterval(checkApiHealth, 30000);
+        
+        // Auto-select first exam if available
+        const firstExam = document.querySelector('.exam-cb');
+        if (firstExam) {
+            firstExam.checked = true;
+        }
     });
 </script>
 {% endblock %}

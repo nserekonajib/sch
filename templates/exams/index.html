@@ -1,4 +1,4 @@
-<!-- templates/exams/index.html - Updated with only Exam Date -->
+<!-- templates/exams/index.html - Updated with Term and Year -->
 {% extends "base.html" %}
 
 {% block title %}Exams - Lunserk ERP{% endblock %}
@@ -56,7 +56,7 @@
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-800 mb-1">Exams</h1>
-            <p class="text-sm text-gray-600">Create and manage examinations</p>
+            <p class="text-sm text-gray-600">Create and manage examinations by term and year</p>
         </div>
         <button onclick="openCreateModal()" class="btn-gradient px-5 py-2.5 rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
             <i class="fas fa-plus-circle"></i>
@@ -64,22 +64,34 @@
         </button>
     </div>
 
-    <!-- Date Filter Bar -->
+    <!-- Filter Bar -->
     <div class="filter-bar">
-        <div class="flex flex-wrap items-center gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-                <input type="date" id="startDateFilter" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                <select id="yearFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">All Years</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                </select>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-                <input type="date" id="endDateFilter" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Term</label>
+                <select id="termFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">All Terms</option>
+                    <option value="Term 1">Term 1</option>
+                    <option value="Term 2">Term 2</option>
+                    <option value="Term 3">Term 3</option>
+                </select>
             </div>
             <div class="flex items-end gap-2">
-                <button onclick="applyDateFilter()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
+                <button onclick="applyFilters()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
                     <i class="fas fa-filter"></i> Apply Filter
                 </button>
-                <button onclick="clearDateFilter()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50">
+                <button onclick="clearFilters()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50">
                     <i class="fas fa-undo"></i> Clear
                 </button>
             </div>
@@ -93,14 +105,17 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Marks</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Term</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam Date</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Publish</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="examsTableBody" class="bg-white divide-y divide-gray-200">
-                    <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">Loading exams...</td></tr>
+                    <tr><td colspan="8" class="px-6 py-8 text-center text-gray-400">Loading exams...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -122,15 +137,46 @@
                 <input type="text" name="exam_name" required placeholder="e.g., BEGINNING OF TERM (BOT)" 
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
             </div>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Total Marks <span class="text-red-500">*</span></label>
-                <input type="number" name="total_marks" required step="0.01" placeholder="e.g., 100" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year <span class="text-red-500">*</span></label>
+                    <select name="academic_year" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Term <span class="text-red-500">*</span></label>
+                    <select name="term" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
+                </div>
             </div>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Exam Date <span class="text-red-500">*</span></label>
-                <input type="date" name="exam_date" required 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Class <span class="text-red-500">*</span></label>
+                <select name="class_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                    <option value="">-- Select Class --</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Total Marks <span class="text-red-500">*</span></label>
+                    <input type="number" name="total_marks" required step="0.01" placeholder="e.g., 100" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Exam Date <span class="text-red-500">*</span></label>
+                    <input type="date" name="exam_date" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
             </div>
             <div class="flex gap-3 pt-4">
                 <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm">
@@ -170,17 +216,17 @@
     let allExams = [];
 
     async function loadExams() {
-        const startDate = document.getElementById('startDateFilter').value;
-        const endDate = document.getElementById('endDateFilter').value;
+        const year = document.getElementById('yearFilter').value;
+        const term = document.getElementById('termFilter').value;
         
         let url = '/exams/api/exams';
         let params = [];
-        if (startDate) params.push(`start_date=${startDate}`);
-        if (endDate) params.push(`end_date=${endDate}`);
+        if (year) params.push(`academic_year=${year}`);
+        if (term) params.push(`term=${encodeURIComponent(term)}`);
         if (params.length) url += '?' + params.join('&');
         
         const tbody = document.getElementById('examsTableBody');
-        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center"><div class="loader mx-auto"></div><p class="mt-2">Loading exams...</p></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-8 text-center"><div class="loader mx-auto"></div><p class="mt-2">Loading exams...</p></td></tr>';
         
         try {
             const response = await fetch(url);
@@ -190,11 +236,11 @@
                 allExams = data.exams;
                 renderExams(allExams);
             } else {
-                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-red-500">Failed to load exams</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-8 text-center text-red-500">Failed to load exams</td></tr>';
             }
         } catch (error) {
             console.error('Error:', error);
-            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-red-500">Error loading exams</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-8 text-center text-red-500">Error loading exams</td></tr>';
         }
     }
 
@@ -204,9 +250,9 @@
         if (exams.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                    <td colspan="8" class="px-6 py-8 text-center text-gray-400">
                         <i class="fas fa-calendar-alt text-3xl mb-2 block"></i>
-                        No exams found
+                        No exams found for the selected filters
                     </td>
                 </tr>
             `;
@@ -216,7 +262,10 @@
         tbody.innerHTML = exams.map(exam => `
             <tr>
                 <td class="px-6 py-4 text-sm font-medium text-gray-900">${escapeHtml(exam.exam_name)}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${exam.classes ? exam.classes.name : 'N/A'}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${exam.total_marks || 'N/A'}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${exam.term || 'N/A'}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${exam.academic_year || 'N/A'}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${formatDate(exam.exam_date)}</td>
                 <td class="px-6 py-4 text-center">
                     <button onclick="togglePublish('${exam.id}', ${exam.is_published})" 
@@ -251,13 +300,13 @@
         return div.innerHTML;
     }
 
-    function applyDateFilter() {
+    function applyFilters() {
         loadExams();
     }
 
-    function clearDateFilter() {
-        document.getElementById('startDateFilter').value = '';
-        document.getElementById('endDateFilter').value = '';
+    function clearFilters() {
+        document.getElementById('yearFilter').value = '';
+        document.getElementById('termFilter').value = '';
         loadExams();
     }
 
@@ -265,7 +314,6 @@
         document.getElementById('createModal').classList.remove('hidden');
         document.getElementById('createModal').classList.add('flex');
         document.body.style.overflow = 'hidden';
-        // Set default date to today
         const today = new Date().toISOString().split('T')[0];
         document.querySelector('input[name="exam_date"]').value = today;
     }
@@ -305,7 +353,7 @@
                 document.getElementById('successModal').classList.remove('hidden');
                 document.getElementById('successModal').classList.add('flex');
                 document.body.style.overflow = 'hidden';
-                loadExams(); // Refresh the list
+                loadExams();
                 setTimeout(() => closeSuccessModal(), 2000);
             } else {
                 showMessage(result.message, 'error');
@@ -335,7 +383,7 @@
             
             if (result.success) {
                 showMessage(result.message, 'success');
-                loadExams(); // Refresh the list
+                loadExams();
             } else {
                 showMessage(result.message, 'error');
             }
@@ -361,7 +409,7 @@
                 
                 if (result.success) {
                     showMessage(result.message, 'success');
-                    loadExams(); // Refresh the list
+                    loadExams();
                 } else {
                     showMessage(result.message, 'error');
                 }
@@ -401,7 +449,12 @@
         if (event.target === successModal) closeSuccessModal();
     };
     
-    // Load exams on page load
-    loadExams();
+    // Load exams on page load with default year
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default year to current year
+        const currentYear = new Date().getFullYear();
+        document.getElementById('yearFilter').value = currentYear;
+        loadExams();
+    });
 </script>
 {% endblock %}

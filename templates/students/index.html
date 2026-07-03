@@ -1,249 +1,285 @@
-<!-- templates/students/index.html - Enhanced Student Management with Full Responsiveness -->
+<!-- templates/students/index.html - Fully Responsive List View with Dynamic Numbering -->
 {% extends "base.html" %}
 
 {% block title %}Student Management - Lunserk ERP{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* ===== Base Styles ===== */
+    /* ===== Base Reset ===== */
     * {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
     }
     
-    /* ===== Card Styles ===== */
-    .student-card {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
-        position: relative;
-        overflow: hidden;
-        border: 2px solid transparent;
+    /* ===== Container ===== */
+    .students-wrapper {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+    
+    /* ===== Stat Cards ===== */
+    .stat-card {
+        transition: all 0.2s ease;
+        border-radius: 12px;
+        padding: 12px 14px;
         background: white;
-        border-radius: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        height: 100%;
-        display: flex;
-        flex-direction: column;
+        border-left: 4px solid;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        cursor: default;
     }
     
-    .student-card:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.12), 0 8px 20px -6px rgba(0, 0, 0, 0.05);
-        border-color: #ffa500;
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
     }
     
-    .student-card:active {
-        transform: translateY(-2px) scale(0.99);
-    }
-    
-    .student-card .card-cover {
-        height: 120px;
-        background: linear-gradient(135deg, #ffa500 0%, #f97316 100%);
-        position: relative;
-        flex-shrink: 0;
-    }
-    
-    .student-card .card-cover .avatar {
-        width: 70px;
-        height: 70px;
-        border-radius: 50%;
-        border: 3px solid white;
-        position: absolute;
-        bottom: -35px;
-        left: 16px;
-        object-fit: cover;
-        background: white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    
-    .student-card .card-body {
-        padding: 20px 16px 12px 16px;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .student-card .card-body .student-name {
-        font-size: 16px;
+    .stat-card .stat-value {
+        font-size: 20px;
         font-weight: 700;
         color: #1a1a2e;
-        margin-bottom: 2px;
         line-height: 1.2;
     }
     
-    .student-card .card-body .student-id {
-        font-size: 11px;
-        color: #ffa500;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-        margin-bottom: 8px;
-    }
-    
-    .student-card .card-body .student-details {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-top: 4px;
-    }
-    
-    .student-card .card-body .detail-tag {
+    .stat-card .stat-label {
         font-size: 10px;
-        padding: 3px 10px;
-        border-radius: 20px;
-        background: #f1f5f9;
-        color: #475569;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-weight: 500;
-    }
-    
-    .student-card .card-body .detail-tag i {
-        font-size: 9px;
-        color: #ffa500;
-    }
-    
-    .student-card .card-actions {
-        padding: 10px 16px 16px 16px;
-        display: flex;
-        gap: 8px;
-        border-top: 1px solid #f1f5f9;
-        flex-shrink: 0;
-    }
-    
-    .student-card .card-actions .btn-action {
-        flex: 1;
-        padding: 6px 10px;
-        border-radius: 8px;
-        font-size: 11px;
+        color: #94a3b8;
         font-weight: 600;
-        border: none;
-        cursor: pointer;
-        transition: all 0.2s;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .stat-card .stat-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 4px;
+        font-size: 14px;
     }
     
-    .student-card .card-actions .btn-edit {
-        background: #eff6ff;
-        color: #3b82f6;
-    }
-    .student-card .card-actions .btn-edit:hover {
-        background: #dbeafe;
-        transform: scale(1.02);
-    }
-    
-    .student-card .card-actions .btn-status {
-        background: #fef2f2;
-        color: #ef4444;
-    }
-    .student-card .card-actions .btn-status.active {
-        background: #ecfdf5;
-        color: #10b981;
-    }
-    .student-card .card-actions .btn-status:hover {
-        transform: scale(1.02);
-    }
-    
-    .student-card .card-click-hint {
-        position: absolute;
-        bottom: 10px;
-        right: 14px;
-        opacity: 0;
-        transition: opacity 0.3s;
-        font-size: 10px;
-        color: #94a3b8;
-        font-weight: 500;
-    }
-    .student-card:hover .card-click-hint {
-        opacity: 1;
-    }
-    
-    /* ===== List View Styles ===== */
-    .student-list-item {
-        transition: all 0.2s ease;
-        cursor: pointer;
+    /* ===== Table Container ===== */
+    .table-container {
         background: white;
-        border-radius: 12px;
+        border-radius: 16px;
         border: 1px solid #e2e8f0;
-        padding: 12px 16px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    
+    .table-container .table-header {
+        padding: 14px 16px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: 10px;
     }
     
-    .student-list-item:hover {
+    .table-container .table-header .title-section {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .table-container .table-header .title-section h3 {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1a1a2e;
+    }
+    
+    .table-container .table-header .title-section .count-badge {
+        background: #fef3c7;
+        color: #d97706;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 20px;
+    }
+    
+    /* ===== Table ===== */
+    .student-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    
+    .student-table thead {
+        background: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .student-table thead th {
+        padding: 10px 14px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 11px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        background: #f8fafc;
+        z-index: 5;
+    }
+    
+    .student-table tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.15s ease;
+        cursor: pointer;
+    }
+    
+    .student-table tbody tr:hover {
         background: #fffbeb;
-        border-color: #ffa500;
-        transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(255, 165, 0, 0.08);
     }
     
-    .student-list-item .list-avatar {
-        width: 44px;
-        height: 44px;
+    .student-table tbody tr:last-child {
+        border-bottom: none;
+    }
+    
+    .student-table tbody td {
+        padding: 10px 14px;
+        vertical-align: middle;
+        color: #1e293b;
+    }
+    
+    /* ===== Row Number ===== */
+    .row-number {
+        font-weight: 600;
+        color: #94a3b8;
+        font-size: 12px;
+        text-align: center;
+        width: 40px;
+    }
+    
+    /* ===== Student Info ===== */
+    .student-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 150px;
+    }
+    
+    .student-info .avatar {
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
-        object-fit: cover;
         flex-shrink: 0;
+        object-fit: cover;
         background: linear-gradient(135deg, #fef3c7, #fde68a);
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 18px;
+        font-size: 15px;
         color: #92400e;
     }
     
-    .student-list-item .list-info {
-        flex: 1;
+    .student-info .name-id {
         min-width: 0;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px 16px;
     }
     
-    .student-list-item .list-info .name {
+    .student-info .name-id .name {
         font-weight: 600;
         color: #1a1a2e;
-        font-size: 14px;
+        font-size: 13px;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
-    .student-list-item .list-info .id {
+    .student-info .name-id .student-id {
         font-size: 11px;
-        color: #ffa500;
+        color: #94a3b8;
         font-weight: 500;
     }
     
-    .student-list-item .list-info .class-tag {
+    /* ===== Class Tag ===== */
+    .class-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        background: #f1f5f9;
+        border-radius: 12px;
         font-size: 11px;
         color: #475569;
-        background: #f1f5f9;
-        padding: 2px 10px;
-        border-radius: 12px;
-        white-space: nowrap;
-    }
-    
-    .student-list-item .list-info .category-tag {
-        font-size: 10px;
-        padding: 2px 10px;
-        border-radius: 12px;
         font-weight: 500;
         white-space: nowrap;
     }
     
-    .student-list-item .list-actions {
-        display: flex;
-        gap: 6px;
-        flex-shrink: 0;
+    .class-tag i {
+        font-size: 10px;
+        color: #94a3b8;
     }
     
-    .student-list-item .list-actions button {
+    /* ===== Category Badge ===== */
+    .category-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+    
+    .category-badge.boarding {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    
+    .category-badge.day {
+        background: #d1fae5;
+        color: #059669;
+    }
+    
+    .category-badge i {
+        font-size: 9px;
+    }
+    
+    /* ===== Status Badge ===== */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+    
+    .status-badge.active {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    
+    .status-badge.inactive {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    
+    .status-badge i {
+        font-size: 8px;
+    }
+    
+    /* ===== Action Buttons ===== */
+    .action-buttons {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+    
+    .action-btn {
         padding: 4px 10px;
         border-radius: 6px;
         border: none;
@@ -251,48 +287,136 @@
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
     }
     
-    /* ===== View Toggle Buttons ===== */
-    .view-toggle-btn {
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        padding: 8px 18px;
-        border: none;
+    .action-btn:hover {
+        transform: scale(1.04);
+    }
+    
+    .action-btn.edit {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
+    .action-btn.edit:hover {
+        background: #dbeafe;
+    }
+    
+    .action-btn.status {
+        background: #fef2f2;
+        color: #ef4444;
+    }
+    .action-btn.status.active {
+        background: #ecfdf5;
+        color: #10b981;
+    }
+    .action-btn.status:hover {
+        transform: scale(1.04);
+    }
+    
+    .action-btn.view {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .action-btn.view:hover {
+        background: #fde68a;
+    }
+    
+    /* ===== Search & Filters ===== */
+    .filter-bar {
         background: white;
-        color: #64748b;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        padding: 12px 16px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    
+    .filter-bar .search-wrap {
+        flex: 1;
+        min-width: 160px;
+        position: relative;
+    }
+    
+    .filter-bar .search-wrap input {
+        width: 100%;
+        padding: 7px 12px 7px 34px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
         font-size: 13px;
-        font-weight: 500;
+        transition: all 0.2s;
+        background: white;
+    }
+    
+    .filter-bar .search-wrap input:focus {
+        outline: none;
+        border-color: #ffa500;
+        box-shadow: 0 0 0 3px rgba(255, 165, 0, 0.1);
+    }
+    
+    .filter-bar .search-wrap i {
+        position: absolute;
+        left: 11px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 13px;
+    }
+    
+    .filter-bar select {
+        padding: 7px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 13px;
+        background: white;
         cursor: pointer;
-        border-radius: 8px;
+        min-width: 120px;
     }
     
-    .view-toggle-btn:hover {
-        background: #f1f5f9;
-        color: #1a1a2e;
+    .filter-bar select:focus {
+        outline: none;
+        border-color: #ffa500;
+        box-shadow: 0 0 0 3px rgba(255, 165, 0, 0.1);
     }
     
-    .view-toggle-btn.active {
-        background: #ffa500;
+    .filter-bar .add-btn {
+        padding: 7px 16px;
+        background: linear-gradient(135deg, #ffa500 0%, #f97316 100%);
         color: white;
-        box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+        border: none;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
     }
     
-    .view-toggle-btn.active i {
-        color: white;
+    .filter-bar .add-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(255, 165, 0, 0.3);
     }
     
-    .view-toggle-btn i {
-        margin-right: 6px;
+    .filter-bar .add-btn i {
         font-size: 14px;
     }
     
-    /* ===== Gradient Buttons ===== */
+    /* ===== Buttons ===== */
     .btn-gradient {
         background: linear-gradient(135deg, #ffa500 0%, #f97316 100%);
         color: white;
         border: none;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 14px rgba(255, 165, 0, 0.25);
+        transition: all 0.3s;
+        box-shadow: 0 4px 14px rgba(255, 165, 0, 0.2);
     }
     
     .btn-gradient:hover {
@@ -300,8 +424,70 @@
         box-shadow: 0 8px 25px rgba(255, 165, 0, 0.35);
     }
     
-    .btn-gradient:active {
-        transform: translateY(0) scale(0.98);
+    /* ===== Pagination / Load More ===== */
+    #loadMoreBtn {
+        transition: all 0.3s;
+        padding: 8px 24px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 13px;
+        border: 2px solid #ffa500;
+        background: transparent;
+        color: #ffa500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    #loadMoreBtn:hover:not(:disabled) {
+        background: #ffa500;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(255, 165, 0, 0.2);
+    }
+    
+    #loadMoreBtn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+    
+    /* ===== No Results ===== */
+    .no-results {
+        text-align: center;
+        padding: 40px 20px;
+    }
+    
+    .no-results i {
+        font-size: 48px;
+        color: #d1d5db;
+        margin-bottom: 12px;
+    }
+    
+    .no-results h4 {
+        font-size: 16px;
+        color: #6b7280;
+        margin-bottom: 4px;
+    }
+    
+    .no-results p {
+        font-size: 13px;
+        color: #9ca3af;
+    }
+    
+    /* ===== Loading Shimmer ===== */
+    .shimmer-row {
+        animation: shimmerPulse 1.5s ease-in-out infinite;
+        background: #f1f5f9;
+        border-radius: 8px;
+        height: 48px;
+        margin-bottom: 6px;
+    }
+    
+    @keyframes shimmerPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
     
     /* ===== Modals ===== */
@@ -313,6 +499,8 @@
     
     .modal-container {
         animation: slideUp 0.35s cubic-bezier(0.34, 1.3, 0.64, 1);
+        max-height: 95vh;
+        overflow-y: auto;
     }
     
     @keyframes fadeIn {
@@ -331,252 +519,12 @@
         }
     }
     
-    @keyframes scaleIn {
-        from { transform: scale(0.6); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
-    }
-    
-    /* ===== Stat Cards ===== */
-    .stat-card {
-        transition: all 0.25s ease;
-        cursor: pointer;
-        border-radius: 14px;
-        padding: 14px 16px;
-        background: white;
-        border-left: 4px solid;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
-    }
-    
-    .stat-card .stat-value {
-        font-size: 22px;
-        font-weight: 700;
-        color: #1a1a2e;
-        line-height: 1.2;
-    }
-    
-    .stat-card .stat-label {
-        font-size: 11px;
-        color: #94a3b8;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    /* ===== Status Badges ===== */
-    .status-badge {
-        padding: 3px 10px;
-        border-radius: 20px;
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .status-badge.active {
-        background: #dcfce7;
-        color: #16a34a;
-    }
-    .status-badge.inactive {
-        background: #fee2e2;
-        color: #dc2626;
-    }
-    .status-badge.active i,
-    .status-badge.inactive i {
-        font-size: 8px;
-    }
-    
-    /* ===== Category Badges ===== */
-    .category-badge {
-        display: inline-block;
-        padding: 2px 10px;
-        border-radius: 12px;
-        font-size: 9px;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-        text-transform: uppercase;
-    }
-    .category-boarding {
-        background: #fef3c7;
-        color: #d97706;
-    }
-    .category-day {
-        background: #d1fae5;
-        color: #059669;
-    }
-    
-    /* ===== File Upload ===== */
-    .file-upload-area {
-        border: 2px dashed #e2e8f0;
-        transition: all 0.3s;
-        border-radius: 12px;
-        padding: 20px;
-        text-align: center;
-        cursor: pointer;
-    }
-    .file-upload-area:hover {
-        border-color: #ffa500;
-        background: #fffbeb;
-    }
-    
-    /* ===== Shimmer ===== */
-    .shimmer {
-        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
-        background-size: 200% 200%;
-        animation: shimmer 1.4s ease-in-out infinite;
-        border-radius: 14px;
-        height: 280px;
-    }
-    
-    @keyframes shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-    }
-    
-    /* ===== Grid ===== */
-    .students-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 20px;
-    }
-    
-    .students-list-view {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    /* ===== Balance Colors ===== */
-    .balance-positive { color: #dc2626; font-weight: 600; }
-    .balance-zero { color: #10b981; font-weight: 600; }
-    .balance-negative { color: #f59e0b; font-weight: 600; }
-    
-    /* ===== Scrollable Modal Body ===== */
-    .modal-body-scroll {
-        max-height: calc(100vh - 180px);
-        overflow-y: auto;
-        padding: 20px;
-    }
-    
-    .modal-body-scroll::-webkit-scrollbar {
-        width: 4px;
-    }
-    .modal-body-scroll::-webkit-scrollbar-thumb {
-        background: #ffa500;
-        border-radius: 10px;
-    }
-    .modal-body-scroll::-webkit-scrollbar-track {
-        background: #f1f5f9;
-    }
-    
-    /* ===== Responsive ===== */
-    @media (max-width: 640px) {
-        .students-grid {
-            grid-template-columns: 1fr;
-            gap: 14px;
-        }
-        
-        .student-list-item {
-            flex-wrap: wrap;
-            padding: 10px 12px;
-        }
-        
-        .student-list-item .list-info {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 4px;
-        }
-        
-        .student-list-item .list-info .name {
-            font-size: 13px;
-        }
-        
-        .stat-card .stat-value {
-            font-size: 18px;
-        }
-        
-        .modal-container {
-            margin: 10px;
-            max-height: 95vh;
-        }
-        
-        .view-toggle-btn {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-        
-        .view-toggle-btn i {
-            margin-right: 4px;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        .student-card .card-cover {
-            height: 100px;
-        }
-        
-        .student-card .card-cover .avatar {
-            width: 56px;
-            height: 56px;
-            bottom: -28px;
-            left: 12px;
-        }
-        
-        .student-card .card-body {
-            padding: 16px 12px 8px 12px;
-        }
-        
-        .student-card .card-body .student-name {
-            font-size: 14px;
-        }
-        
-        .student-card .card-actions .btn-action {
-            font-size: 10px;
-            padding: 4px 8px;
-        }
-    }
-    
-    /* ===== Success Checkmark ===== */
-    .success-checkmark {
-        animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    
-    /* ===== Load More Button ===== */
-    #loadMoreBtn {
-        transition: all 0.3s;
-        padding: 10px 28px;
-        border-radius: 12px;
-        font-weight: 600;
-        border: 2px solid #ffa500;
-        background: transparent;
-        color: #ffa500;
-        cursor: pointer;
-    }
-    
-    #loadMoreBtn:hover {
-        background: #ffa500;
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(255, 165, 0, 0.2);
-    }
-    
-    #loadMoreBtn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none !important;
-    }
-    
-    /* ===== Form Inputs ===== */
+    /* ===== Form ===== */
     .form-input {
         width: 100%;
-        padding: 8px 12px;
+        padding: 7px 12px;
         border: 1px solid #e2e8f0;
-        border-radius: 10px;
+        border-radius: 8px;
         font-size: 13px;
         transition: all 0.2s;
         background: white;
@@ -593,168 +541,349 @@
         font-size: 11px;
         font-weight: 600;
         color: #475569;
-        margin-bottom: 4px;
+        margin-bottom: 3px;
         letter-spacing: 0.3px;
+    }
+    
+    .file-upload-area {
+        border: 2px dashed #e2e8f0;
+        transition: all 0.3s;
+        border-radius: 10px;
+        padding: 16px;
+        text-align: center;
+        cursor: pointer;
+    }
+    .file-upload-area:hover {
+        border-color: #ffa500;
+        background: #fffbeb;
+    }
+    
+    /* ===== Responsive ===== */
+    @media (max-width: 992px) {
+        .student-table thead th:nth-child(4),
+        .student-table tbody td:nth-child(4) {
+            display: none;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .stat-card .stat-value {
+            font-size: 17px;
+        }
+        .stat-card .stat-label {
+            font-size: 9px;
+        }
+        .stat-card .stat-icon {
+            width: 28px;
+            height: 28px;
+            font-size: 12px;
+        }
+        
+        .filter-bar {
+            padding: 10px 12px;
+            gap: 8px;
+        }
+        .filter-bar .search-wrap {
+            min-width: 120px;
+            flex-basis: 100%;
+        }
+        .filter-bar select {
+            min-width: 90px;
+            font-size: 12px;
+            padding: 6px 10px;
+        }
+        .filter-bar .add-btn {
+            font-size: 12px;
+            padding: 6px 12px;
+        }
+        
+        .student-table thead th {
+            font-size: 10px;
+            padding: 8px 10px;
+        }
+        .student-table tbody td {
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+        
+        .student-table thead th:nth-child(3),
+        .student-table tbody td:nth-child(3) {
+            display: none;
+        }
+        
+        .student-info .avatar {
+            width: 30px;
+            height: 30px;
+            font-size: 12px;
+        }
+        .student-info .name-id .name {
+            font-size: 12px;
+        }
+        .student-info .name-id .student-id {
+            font-size: 10px;
+        }
+        
+        .action-btn {
+            font-size: 10px;
+            padding: 3px 8px;
+        }
+        .action-btn span {
+            display: none;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .stat-card {
+            padding: 8px 10px;
+        }
+        .stat-card .stat-value {
+            font-size: 15px;
+        }
+        .stat-card .stat-icon {
+            width: 24px;
+            height: 24px;
+            font-size: 10px;
+        }
+        
+        .student-table thead th {
+            padding: 6px 8px;
+            font-size: 9px;
+        }
+        .student-table tbody td {
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+        
+        .student-table thead th:nth-child(5),
+        .student-table tbody td:nth-child(5) {
+            display: none;
+        }
+        
+        .row-number {
+            width: 28px;
+            font-size: 10px;
+        }
+        
+        .class-tag {
+            font-size: 9px;
+            padding: 2px 8px;
+        }
+        
+        .status-badge {
+            font-size: 9px;
+            padding: 2px 8px;
+        }
+        
+        .category-badge {
+            font-size: 9px;
+            padding: 1px 8px;
+        }
+        
+        .action-btn {
+            font-size: 9px;
+            padding: 2px 6px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4">
+<div class="students-wrapper max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4">
+    
     <!-- ===== HEADER ===== -->
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+            <h1 class="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2">
                 <i class="fas fa-user-graduate text-orange-500"></i>
                 Student Management
             </h1>
-            <p class="text-sm text-gray-500">Manage all students, enrollments, and student information</p>
+            <p class="text-xs sm:text-sm text-gray-500">Manage all students, enrollments, and student information</p>
         </div>
         <div class="flex flex-wrap gap-2">
-            <!-- View Toggle -->
-            <div class="flex rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
-                <button id="cardViewToggle" onclick="setViewType('card')" 
-                        class="view-toggle-btn active">
-                    <i class="fas fa-th-large"></i> Cards
-                </button>
-                <button id="listViewToggle" onclick="setViewType('list')" 
-                        class="view-toggle-btn">
-                    <i class="fas fa-list"></i> List
-                </button>
-            </div>
-            
-            <!-- Import Buttons -->
             <button onclick="openImportModal()" 
-                    class="px-4 py-2 bg-white border-2 border-orange-500 text-orange-500 rounded-xl text-sm font-semibold hover:bg-orange-50 transition-all flex items-center gap-2 shadow-sm">
-                <i class="fas fa-upload text-sm"></i>
-                Import
+                    class="px-3 py-1.5 sm:px-4 sm:py-2 bg-white border-2 border-orange-500 text-orange-500 rounded-xl text-xs sm:text-sm font-semibold hover:bg-orange-50 transition-all flex items-center gap-1.5">
+                <i class="fas fa-upload"></i>
+                <span class="hidden xs:inline">Import</span>
             </button>
             
             <button onclick="openSchoolPayImportModal()" 
-                    class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold hover:from-green-600 hover:to-emerald-700 transition-all flex items-center gap-2 shadow-md">
-                <i class="fas fa-file-invoice-dollar text-sm"></i>
-                School Pay
+                    class="px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-xs sm:text-sm font-semibold hover:from-green-600 hover:to-emerald-700 transition-all flex items-center gap-1.5 shadow-md">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span class="hidden xs:inline">School Pay</span>
             </button>
             
-            <!-- Add Student -->
             <button onclick="openAddModal()" 
-                    class="btn-gradient px-5 py-2 rounded-xl text-white text-sm font-semibold shadow-lg flex items-center gap-2">
-                <i class="fas fa-plus-circle text-sm"></i>
-                Add Student
+                    class="px-3 py-1.5 sm:px-5 sm:py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-1.5">
+                <i class="fas fa-plus-circle"></i>
+                <span>Add</span>
             </button>
         </div>
     </div>
     
     <!-- ===== STATS ===== -->
-    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-6" id="statsContainer">
+    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3 mb-4" id="statsContainer">
         <div class="stat-card border-l-orange-500">
-            <p class="stat-label">Total</p>
-            <p class="stat-value" id="statTotal">-</p>
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="stat-label">Total</p>
+                    <p class="stat-value" id="statTotal">-</p>
+                </div>
+                <div class="stat-icon bg-orange-100 text-orange-500"><i class="fas fa-users"></i></div>
+            </div>
         </div>
         <div class="stat-card border-l-green-500">
-            <p class="stat-label">Active</p>
-            <p class="stat-value" id="statActive">-</p>
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="stat-label">Active</p>
+                    <p class="stat-value" id="statActive">-</p>
+                </div>
+                <div class="stat-icon bg-green-100 text-green-500"><i class="fas fa-check-circle"></i></div>
+            </div>
         </div>
         <div class="stat-card border-l-red-500">
-            <p class="stat-label">Inactive</p>
-            <p class="stat-value" id="statInactive">-</p>
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="stat-label">Inactive</p>
+                    <p class="stat-value" id="statInactive">-</p>
+                </div>
+                <div class="stat-icon bg-red-100 text-red-500"><i class="fas fa-ban"></i></div>
+            </div>
+        </div>
+        <div class="stat-card border-l-amber-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="stat-label">Boarding</p>
+                    <p class="stat-value" id="statBoarding">-</p>
+                </div>
+                <div class="stat-icon bg-amber-100 text-amber-500"><i class="fas fa-home"></i></div>
+            </div>
         </div>
         <div class="stat-card border-l-blue-500">
-            <p class="stat-label">Boarding</p>
-            <p class="stat-value" id="statBoarding">-</p>
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="stat-label">Day</p>
+                    <p class="stat-value" id="statDay">-</p>
+                </div>
+                <div class="stat-icon bg-blue-100 text-blue-500"><i class="fas fa-sun"></i></div>
+            </div>
         </div>
         <div class="stat-card border-l-purple-500">
-            <p class="stat-label">Day</p>
-            <p class="stat-value" id="statDay">-</p>
-        </div>
-        <div class="stat-card border-l-yellow-500">
-            <p class="stat-label">Classes</p>
-            <p class="stat-value" id="statClasses">-</p>
-        </div>
-    </div>
-    
-    <!-- ===== SEARCH & FILTERS ===== -->
-    <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 mb-5 border border-gray-100">
-        <div class="flex flex-wrap gap-2">
-            <div class="flex-1 min-w-[160px]">
-                <div class="relative">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
-                    <input type="text" id="searchInput" placeholder="Search by name, ID..." 
-                           class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="stat-label">Classes</p>
+                    <p class="stat-value" id="statClasses">-</p>
                 </div>
+                <div class="stat-icon bg-purple-100 text-purple-500"><i class="fas fa-chalkboard"></i></div>
             </div>
-            <select id="classFilter" class="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 bg-white">
-                <option value="">All Classes</option>
-                {% for class in classes %}
-                <option value="{{ class.name }}">{{ class.name }}</option>
-                {% endfor %}
-            </select>
-            <select id="categoryFilter" class="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 bg-white">
-                <option value="">All Categories</option>
-                <option value="Boarding">Boarding</option>
-                <option value="Day">Day Scholar</option>
-            </select>
-            <select id="statusFilter" class="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 bg-white">
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-            </select>
         </div>
     </div>
     
-    <!-- ===== STUDENTS CONTAINER ===== -->
-    <div id="studentsContainer">
-        <div id="cardView" class="students-grid"></div>
-        <div id="listView" class="students-list-view" style="display: none;"></div>
+    <!-- ===== FILTER BAR ===== -->
+    <div class="filter-bar">
+        <div class="search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Search by name, ID...">
+        </div>
+        <select id="classFilter">
+            <option value="">All Classes</option>
+            {% for class in classes %}
+            <option value="{{ class.name }}">{{ class.name }}</option>
+            {% endfor %}
+        </select>
+        <select id="categoryFilter">
+            <option value="">All Categories</option>
+            <option value="Boarding">Boarding</option>
+            <option value="Day">Day Scholar</option>
+        </select>
+        <select id="statusFilter">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+        </select>
+        <button onclick="openAddModal()" class="add-btn">
+            <i class="fas fa-plus-circle"></i> Add Student
+        </button>
+    </div>
+    
+    <!-- ===== TABLE ===== -->
+    <div class="table-container">
+        <div class="table-header">
+            <div class="title-section">
+                <h3><i class="fas fa-list-ul text-orange-500 mr-2"></i>Student List</h3>
+                <span class="count-badge" id="studentCount">0 students</span>
+            </div>
+            <div class="text-xs text-gray-400">
+                <i class="fas fa-arrows-alt-h mr-1"></i> Scroll for more
+            </div>
+        </div>
+        
+        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+            <table class="student-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px; text-align:center;">#</th>
+                        <th>Student</th>
+                        <th>Class</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th style="text-align:center; min-width:140px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="studentsTableBody">
+                    <!-- Rows rendered by JS -->
+                </tbody>
+            </table>
+        </div>
         
         <!-- Loading -->
-        <div id="loadingState" class="students-grid">
-            <div class="shimmer"></div>
-            <div class="shimmer"></div>
-            <div class="shimmer"></div>
-            <div class="shimmer"></div>
-            <div class="shimmer"></div>
-            <div class="shimmer"></div>
+        <div id="loadingState" style="display:none; padding:20px;">
+            <div class="shimmer-row"></div>
+            <div class="shimmer-row"></div>
+            <div class="shimmer-row"></div>
+            <div class="shimmer-row"></div>
+            <div class="shimmer-row"></div>
         </div>
         
         <!-- No Results -->
-        <div id="noResults" class="text-center py-16 bg-white rounded-xl border border-gray-100" style="display: none;">
-            <i class="fas fa-user-graduate text-6xl text-gray-300 mb-4"></i>
-            <h3 class="text-lg font-semibold text-gray-600 mb-2">No students found</h3>
-            <p class="text-sm text-gray-400 mb-4">Try adjusting your search or filter criteria</p>
-            <button onclick="openAddModal()" class="btn-gradient px-6 py-2.5 rounded-xl text-white text-sm font-semibold">
-                <i class="fas fa-plus-circle mr-2"></i> Add Student
-            </button>
+        <div id="noResults" style="display:none;">
+            <div class="no-results">
+                <i class="fas fa-user-graduate"></i>
+                <h4>No students found</h4>
+                <p>Try adjusting your search or filter criteria</p>
+                <button onclick="openAddModal()" class="btn-gradient px-5 py-2 rounded-xl text-white text-sm font-semibold mt-3">
+                    <i class="fas fa-plus-circle mr-2"></i> Add Student
+                </button>
+            </div>
         </div>
     </div>
     
     <!-- ===== LOAD MORE ===== -->
-    <div id="loadMoreContainer" class="text-center mt-6 mb-8 hidden">
+    <div id="loadMoreContainer" class="text-center mt-4 hidden">
         <button id="loadMoreBtn">
             <i class="fas fa-spinner fa-spin hidden"></i>
             <i class="fas fa-arrow-down"></i>
-            Load More Students
+            Load More
             <span id="loadMoreCount" class="text-xs opacity-70 ml-1"></span>
         </button>
     </div>
 </div>
 
 <!-- ===== ADD/EDIT STUDENT MODAL ===== -->
-<div id="studentModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-3 my-8 transform transition-all modal-container">
-        <div class="sticky top-0 bg-white rounded-t-2xl border-b border-gray-200 px-5 py-4 flex items-center justify-between z-10">
-            <h3 class="text-lg font-bold text-gray-800" id="modalTitle">Add New Student</h3>
+<div id="studentModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay" style="padding: 16px;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-auto transform transition-all modal-container">
+        <div class="sticky top-0 bg-white rounded-t-2xl border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between z-10">
+            <h3 class="text-base sm:text-lg font-bold text-gray-800" id="modalTitle">Add New Student</h3>
             <button onclick="closeStudentModal()" class="text-gray-400 hover:text-gray-600 hover:rotate-90 transition-all duration-200">
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>
         
-        <form id="studentForm" class="modal-body-scroll">
+        <form id="studentForm" class="p-4 sm:p-6" style="max-height: calc(95vh - 80px); overflow-y: auto;">
             <input type="hidden" name="student_id" id="studentId">
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 <div class="md:col-span-2">
-                    <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <h4 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                         <i class="fas fa-user text-orange-500"></i> Student Information
                     </h4>
                 </div>
@@ -796,8 +925,8 @@
                     <input type="email" name="email" id="studentEmail" class="form-input" placeholder="john@example.com">
                 </div>
                 
-                <div class="md:col-span-2 mt-2">
-                    <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                <div class="md:col-span-2 mt-1">
+                    <h4 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                         <i class="fas fa-address-card text-orange-500"></i> Additional Information
                     </h4>
                 </div>
@@ -871,16 +1000,16 @@
                     <label class="form-label">Student Photo</label>
                     <div class="file-upload-area rounded-xl p-3 text-center cursor-pointer" onclick="document.getElementById('photoInput').click()">
                         <i class="fas fa-camera text-2xl text-orange-400"></i>
-                        <p class="text-xs text-gray-500 mt-1">Click to upload photo</p>
+                        <p class="text-xs text-gray-500 mt-1">Click to upload</p>
                         <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="previewPhoto(this)">
                     </div>
-                    <div id="photoPreview" class="mt-2 hidden">
+                    <div id="photoPreview" class="mt-2 hidden text-center">
                         <img id="previewImg" class="w-14 h-14 rounded-full object-cover mx-auto border-2 border-orange-200">
                     </div>
                 </div>
             </div>
             
-            <div class="flex gap-3 pt-5 mt-4 border-t border-gray-200">
+            <div class="flex gap-3 pt-4 mt-4 border-t border-gray-200">
                 <button type="button" onclick="closeStudentModal()" class="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-xl text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-all">
                     Cancel
                 </button>
@@ -894,10 +1023,10 @@
 </div>
 
 <!-- ===== IMPORT MODAL ===== -->
-<div id="importModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-3 transform transition-all modal-container">
-        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+<div id="importModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay" style="padding: 16px;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto transform transition-all modal-container">
+        <div class="px-4 sm:px-6 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2">
                 <i class="fas fa-upload text-orange-500"></i> Import Students
             </h3>
             <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600 hover:rotate-90 transition-all duration-200">
@@ -905,7 +1034,7 @@
             </button>
         </div>
         
-        <form id="importForm" enctype="multipart/form-data" class="p-5">
+        <form id="importForm" enctype="multipart/form-data" class="p-4 sm:p-6">
             <div class="mb-4">
                 <label class="form-label">Select Class <span class="text-red-500">*</span></label>
                 <select name="class_id" id="importClassSelect" required class="form-input">
@@ -918,8 +1047,8 @@
             
             <div class="mb-4">
                 <label class="form-label">Upload File (Excel/CSV)</label>
-                <div class="file-upload-area rounded-xl p-6 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()">
-                    <i class="fas fa-file-excel text-4xl text-orange-500 mb-2"></i>
+                <div class="file-upload-area rounded-xl p-5 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-file-excel text-3xl text-orange-500 mb-2"></i>
                     <p class="text-sm text-gray-600 font-medium">Click to upload</p>
                     <p class="text-xs text-gray-400 mt-1">Accepts .xlsx, .csv</p>
                     <input type="file" id="fileInput" name="file" accept=".xlsx,.csv" class="hidden" onchange="showFileName(this)">
@@ -927,7 +1056,7 @@
                 <p id="fileName" class="text-xs text-gray-500 mt-2 hidden"></p>
             </div>
             
-            <div class="bg-blue-50 rounded-xl p-4 mb-4">
+            <div class="bg-blue-50 rounded-xl p-3 mb-4">
                 <p class="text-xs text-blue-800 font-semibold mb-1">📋 File Format:</p>
                 <p class="text-xs text-blue-700">Single column <strong>"Name"</strong> with student names</p>
                 <a href="{{ url_for('student.download_template') }}" class="text-xs text-blue-600 hover:underline mt-2 inline-block font-medium">
@@ -949,10 +1078,10 @@
 </div>
 
 <!-- ===== SCHOOL PAY IMPORT MODAL ===== -->
-<div id="schoolPayImportModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-3 transform transition-all modal-container">
-        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+<div id="schoolPayImportModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay" style="padding: 16px;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto transform transition-all modal-container">
+        <div class="px-4 sm:px-6 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2">
                 <i class="fas fa-file-invoice-dollar text-green-500"></i> School Pay Import
             </h3>
             <button onclick="closeSchoolPayImportModal()" class="text-gray-400 hover:text-gray-600 hover:rotate-90 transition-all duration-200">
@@ -960,7 +1089,7 @@
             </button>
         </div>
         
-        <form id="schoolPayImportForm" enctype="multipart/form-data" class="p-5">
+        <form id="schoolPayImportForm" enctype="multipart/form-data" class="p-4 sm:p-6">
             <div class="mb-4">
                 <label class="form-label">Select Class <span class="text-red-500">*</span></label>
                 <select name="class_id" id="schoolPayClassSelect" required class="form-input">
@@ -973,8 +1102,8 @@
             
             <div class="mb-4">
                 <label class="form-label">Upload School Pay File</label>
-                <div class="file-upload-area rounded-xl p-6 text-center cursor-pointer" onclick="document.getElementById('schoolPayFileInput').click()">
-                    <i class="fas fa-file-invoice-dollar text-4xl text-green-500 mb-2"></i>
+                <div class="file-upload-area rounded-xl p-5 text-center cursor-pointer" onclick="document.getElementById('schoolPayFileInput').click()">
+                    <i class="fas fa-file-invoice-dollar text-3xl text-green-500 mb-2"></i>
                     <p class="text-sm text-gray-600 font-medium">Click to upload</p>
                     <p class="text-xs text-gray-400 mt-1">Accepts .xls, .xlsx, .csv</p>
                     <input type="file" id="schoolPayFileInput" name="file" accept=".xls,.xlsx,.csv" class="hidden" onchange="showSchoolPayFileName(this)">
@@ -982,7 +1111,7 @@
                 <p id="schoolPayFileName" class="text-xs text-gray-500 mt-2 hidden"></p>
             </div>
             
-            <div class="bg-green-50 rounded-xl p-4 mb-4">
+            <div class="bg-green-50 rounded-xl p-3 mb-4">
                 <p class="text-xs text-green-800 font-semibold mb-1">📋 Required Columns:</p>
                 <ul class="text-xs text-green-700 space-y-1">
                     <li>• <strong>Payment Code</strong> → Student ID</li>
@@ -1006,16 +1135,14 @@
 </div>
 
 <!-- ===== SUCCESS MODAL ===== -->
-<div id="successModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-3 p-6 text-center transform transition-all modal-container">
-        <div class="success-checkmark">
-            <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-check-circle text-4xl text-green-500"></i>
-            </div>
+<div id="successModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay" style="padding: 16px;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-auto p-5 sm:p-6 text-center transform transition-all modal-container">
+        <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="fas fa-check-circle text-3xl text-green-500"></i>
         </div>
-        <h3 class="text-xl font-bold text-gray-800 mb-1" id="successTitle">Success!</h3>
-        <p class="text-sm text-gray-500 mb-4" id="successMessage">Student added successfully</p>
-        <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2.5 rounded-xl text-white text-sm font-semibold">
+        <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-1" id="successTitle">Success!</h3>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage">Operation completed successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-xl text-white text-sm font-semibold">
             Continue
         </button>
     </div>
@@ -1023,7 +1150,7 @@
 
 <!-- ===== LOADING OVERLAY ===== -->
 <div id="loadingOverlay" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-2xl p-6 flex flex-col items-center shadow-2xl">
+    <div class="bg-white rounded-2xl p-5 flex flex-col items-center shadow-2xl">
         <div class="animate-spin rounded-full h-10 w-10 border-4 border-orange-500 border-t-transparent mb-3"></div>
         <p class="text-sm text-gray-600 font-medium">Processing...</p>
     </div>
@@ -1037,7 +1164,6 @@
     let currentPhotoUrl = null;
     let classesData = {{ classes|tojson }};
     let editingStudentId = null;
-    let currentViewType = 'card';
     
     let allStudents = [];
     let currentPage = 1;
@@ -1045,6 +1171,7 @@
     let isLoading = false;
     let hasMore = true;
     let totalStudents = 0;
+    let startRowNumber = 0;
     
     let filtersApplied = {
         search: '',
@@ -1096,25 +1223,6 @@
     }
     
     // ============================================================
-    // VIEW TOGGLE
-    // ============================================================
-    
-    function setViewType(type) {
-        currentViewType = type;
-        const cardBtn = document.getElementById('cardViewToggle');
-        const listBtn = document.getElementById('listViewToggle');
-        
-        cardBtn.classList.toggle('active', type === 'card');
-        listBtn.classList.toggle('active', type === 'list');
-        
-        document.getElementById('cardView').style.display = type === 'card' ? 'grid' : 'none';
-        document.getElementById('listView').style.display = type === 'list' ? 'flex' : 'none';
-        
-        localStorage.setItem('studentViewType', type);
-        renderStudents();
-    }
-    
-    // ============================================================
     // API CALLS
     // ============================================================
     
@@ -1163,133 +1271,96 @@
     // RENDER FUNCTIONS
     // ============================================================
     
-    function createStudentCard(student) {
-        const div = document.createElement('div');
-        div.className = 'student-card';
-        div.onclick = () => goToStudentDetails(student.id);
-        
-        const initial = student.name ? student.name.charAt(0).toUpperCase() : 'S';
-        const photoHtml = student.photo_url 
-            ? `<img src="${student.photo_url}" alt="${escapeHtml(student.name)}" class="avatar">`
-            : `<div class="avatar" style="background: linear-gradient(135deg, #fef3c7, #fde68a); font-size: 24px; display: flex; align-items: center; justify-content: center; color: #92400e; font-weight: 700;">${initial}</div>`;
-        
-        const statusClass = student.status === 'active' ? 'active' : 'inactive';
-        const statusIcon = student.status === 'active' ? 'fa-circle-check' : 'fa-circle-xmark';
-        const statusText = student.status === 'active' ? 'Active' : 'Inactive';
-        
-        const categoryDisplay = student.category ? 
-            `<span class="category-badge ${student.category === 'Boarding' ? 'category-boarding' : 'category-day'}">
-                ${student.category}
-            </span>` : '';
-        
-        const className = student.classes?.name || 'N/A';
-        
-        div.innerHTML = `
-            <div class="card-cover">
-                ${photoHtml}
-            </div>
-            <div class="card-body">
-                <div class="student-name">${escapeHtml(student.name || 'Unnamed')}</div>
-                <div class="student-id">#${escapeHtml(student.student_id || 'N/A')}</div>
-                <div class="student-details">
-                    <span class="detail-tag"><i class="fas fa-chalkboard"></i> ${escapeHtml(className)}</span>
-                    ${categoryDisplay}
-                    <span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${statusText}</span>
-                </div>
-            </div>
-            <div class="card-actions">
-                <button class="btn-action btn-edit" onclick="event.stopPropagation(); editStudent('${student.id}')">
-                    <i class="fas fa-pen"></i> Edit
-                </button>
-                <button class="btn-action btn-status ${student.status === 'active' ? '' : 'active'}" 
-                        onclick="event.stopPropagation(); toggleStatus('${student.id}', '${student.status}')">
-                    <i class="fas ${student.status === 'active' ? 'fa-ban' : 'fa-check-circle'}"></i>
-                    ${student.status === 'active' ? 'Deactivate' : 'Activate'}
-                </button>
-            </div>
-            <div class="card-click-hint">
-                <i class="fas fa-arrow-right"></i> View Details
-            </div>
-        `;
-        
-        return div;
-    }
-    
-    function createStudentListRow(student) {
-        const row = document.createElement('div');
-        row.className = 'student-list-item';
-        row.onclick = () => goToStudentDetails(student.id);
-        
-        const initial = student.name ? student.name.charAt(0).toUpperCase() : 'S';
-        const avatarHtml = student.photo_url 
-            ? `<img src="${student.photo_url}" alt="" class="list-avatar">`
-            : `<div class="list-avatar">${initial}</div>`;
-        
-        const statusClass = student.status === 'active' ? 'active' : 'inactive';
-        const statusIcon = student.status === 'active' ? 'fa-circle-check' : 'fa-circle-xmark';
-        const statusText = student.status === 'active' ? 'Active' : 'Inactive';
-        
-        const categoryClass = student.category === 'Boarding' ? 'category-boarding' : 'category-day';
-        
-        row.innerHTML = `
-            ${avatarHtml}
-            <div class="list-info">
-                <span class="name">${escapeHtml(student.name || 'Unnamed')}</span>
-                <span class="id">#${escapeHtml(student.student_id || 'N/A')}</span>
-                <span class="class-tag">${escapeHtml(student.classes?.name || 'N/A')}</span>
-                ${student.category ? `<span class="category-tag ${categoryClass}">${student.category}</span>` : ''}
-                <span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${statusText}</span>
-            </div>
-            <div class="list-actions" onclick="event.stopPropagation()">
-                <button onclick="editStudent('${student.id}')" style="background: #eff6ff; color: #3b82f6;">
-                    <i class="fas fa-pen"></i>
-                </button>
-                <button onclick="toggleStatus('${student.id}', '${student.status}')" 
-                        style="background: ${student.status === 'active' ? '#fef2f2' : '#ecfdf5'}; color: ${student.status === 'active' ? '#ef4444' : '#10b981'};">
-                    <i class="fas ${student.status === 'active' ? 'fa-ban' : 'fa-check-circle'}"></i>
-                </button>
-            </div>
-        `;
-        
-        return row;
-    }
-    
     function renderStudents() {
-        if (!allStudents || allStudents.length === 0) return;
+        const tbody = document.getElementById('studentsTableBody');
+        if (!tbody) return;
         
-        const cardContainer = document.getElementById('cardView');
-        const listContainer = document.getElementById('listView');
-        
-        cardContainer.innerHTML = '';
-        listContainer.innerHTML = '';
-        
-        if (currentViewType === 'card') {
-            allStudents.forEach(s => cardContainer.appendChild(createStudentCard(s)));
-        } else {
-            allStudents.forEach(s => listContainer.appendChild(createStudentListRow(s)));
+        if (!allStudents || allStudents.length === 0) {
+            tbody.innerHTML = '';
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('noResults').style.display = 'block';
+            document.getElementById('studentCount').textContent = '0 students';
+            return;
         }
+        
+        document.getElementById('noResults').style.display = 'none';
+        document.getElementById('studentCount').textContent = `${totalStudents} student${totalStudents !== 1 ? 's' : ''}`;
+        
+        let html = '';
+        allStudents.forEach((student, index) => {
+            const rowNum = startRowNumber + index + 1;
+            const initial = student.name ? student.name.charAt(0).toUpperCase() : 'S';
+            const avatarHtml = student.photo_url 
+                ? `<img src="${student.photo_url}" alt="" class="avatar">`
+                : `<div class="avatar">${initial}</div>`;
+            
+            const statusClass = student.status === 'active' ? 'active' : 'inactive';
+            const statusIcon = student.status === 'active' ? 'fa-check-circle' : 'fa-ban';
+            const statusText = student.status === 'active' ? 'Active' : 'Inactive';
+            
+            const categoryClass = student.category === 'Boarding' ? 'boarding' : 'day';
+            const categoryIcon = student.category === 'Boarding' ? 'fa-home' : 'fa-sun';
+            const categoryDisplay = student.category ? 
+                `<span class="category-badge ${categoryClass}"><i class="fas ${categoryIcon}"></i> ${student.category}</span>` : 
+                '<span class="text-gray-400 text-xs">N/A</span>';
+            
+            const className = student.classes?.name || 'N/A';
+            
+            html += `
+                <tr onclick="goToStudentDetails('${student.id}')">
+                    <td class="row-number">${rowNum}</td>
+                    <td>
+                        <div class="student-info">
+                            ${avatarHtml}
+                            <div class="name-id">
+                                <div class="name">${escapeHtml(student.name || 'Unnamed')}</div>
+                                <div class="student-id">#${escapeHtml(student.student_id || 'N/A')}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="class-tag"><i class="fas fa-chalkboard"></i> ${escapeHtml(className)}</span>
+                    </td>
+                    <td>${categoryDisplay}</td>
+                    <td>
+                        <span class="status-badge ${statusClass}">
+                            <i class="fas ${statusIcon}"></i> ${statusText}
+                        </span>
+                    </td>
+                    <td style="text-align:center;">
+                        <div class="action-buttons" onclick="event.stopPropagation();">
+                            <button class="action-btn edit" onclick="editStudent('${student.id}')">
+                                <i class="fas fa-pen"></i> <span>Edit</span>
+                            </button>
+                            <button class="action-btn status ${student.status === 'active' ? '' : 'active'}" 
+                                    onclick="toggleStatus('${student.id}', '${student.status}')">
+                                <i class="fas ${student.status === 'active' ? 'fa-ban' : 'fa-check-circle'}"></i>
+                                <span>${student.status === 'active' ? 'Deactivate' : 'Activate'}</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+        document.getElementById('loadingState').style.display = 'none';
     }
     
     function showLoading(show) {
         const loading = document.getElementById('loadingState');
-        const cardView = document.getElementById('cardView');
-        const listView = document.getElementById('listView');
+        const tbody = document.getElementById('studentsTableBody');
         const noResults = document.getElementById('noResults');
         
         if (show) {
-            loading.style.display = 'grid';
-            cardView.style.display = 'none';
-            listView.style.display = 'none';
+            loading.style.display = 'block';
+            if (tbody) tbody.innerHTML = '';
             noResults.style.display = 'none';
         } else {
             loading.style.display = 'none';
             if (allStudents.length === 0) {
-                cardView.style.display = 'none';
-                listView.style.display = 'none';
                 noResults.style.display = 'block';
             } else {
-                cardView.style.display = currentViewType === 'card' ? 'grid' : 'none';
-                listView.style.display = currentViewType === 'list' ? 'flex' : 'none';
                 noResults.style.display = 'none';
             }
         }
@@ -1304,9 +1375,11 @@
         allStudents = [];
         currentPage = 1;
         hasMore = true;
+        startRowNumber = 0;
         
         const students = await fetchStudents(1, PAGE_SIZE);
         allStudents = students;
+        startRowNumber = 0;
         renderStudents();
         showLoading(false);
         updateLoadMoreButton();
@@ -1336,6 +1409,7 @@
         }
         
         if (newStudents.length > 0) {
+            startRowNumber = allStudents.length;
             allStudents = [...allStudents, ...newStudents];
             renderStudents();
         }
@@ -1365,6 +1439,7 @@
         currentPage = 1;
         allStudents = [];
         hasMore = true;
+        startRowNumber = 0;
         await loadInitialStudents();
     }
     
@@ -1675,9 +1750,6 @@
     // ============================================================
     // INITIALIZE
     // ============================================================
-    
-    const savedView = localStorage.getItem('studentViewType');
-    if (savedView) setViewType(savedView);
     
     loadStats();
     loadInitialStudents();

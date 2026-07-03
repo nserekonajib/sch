@@ -1,0 +1,1036 @@
+<!-- templates/cdc_settings/index.html -->
+{% extends "base.html" %}
+
+{% block title %}CDC Report Settings - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-card {
+        transition: all 0.3s ease;
+    }
+    .settings-card:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    .grade-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 8px;
+    }
+    .grade-item:hover {
+        background-color: #f9fafb;
+    }
+    .grade-badge {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 18px;
+        color: white;
+        flex-shrink: 0;
+    }
+    .grade-A { background: #10b981; }
+    .grade-B { background: #3b82f6; }
+    .grade-C { background: #f59e0b; }
+    .grade-D { background: #f97316; }
+    .grade-E { background: #ef4444; }
+    
+    .term-item {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 600;
+        margin: 2px 4px;
+    }
+    .term-code {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .term-label {
+        background: #f3f4f6;
+        color: #374151;
+    }
+    
+    .result-item {
+        padding: 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 8px;
+    }
+    .result-item:hover {
+        background: #f9fafb;
+    }
+    
+    .achievement-bar {
+        height: 8px;
+        border-radius: 4px;
+        margin-top: 4px;
+    }
+    
+    .btn-save {
+        background: linear-gradient(135deg, #059669, #047857);
+    }
+    .btn-save:hover {
+        background: linear-gradient(135deg, #047857, #065f46);
+    }
+    .btn-reset {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+    }
+    .btn-reset:hover {
+        background: linear-gradient(135deg, #b91c1c, #991b1b);
+    }
+    
+    .tab-active {
+        background: #059669;
+        color: white;
+    }
+    .tab-inactive {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+    .tab-inactive:hover {
+        background: #e5e7eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="mb-6">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 mb-1">CDC Report Settings</h1>
+                <p class="text-sm text-gray-600">Configure competency-based report card grading and display settings</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="resetToDefaults()" class="btn-reset px-4 py-2 rounded-lg text-white font-medium transition-all flex items-center gap-2">
+                    <i class="fas fa-undo"></i> Reset to Defaults
+                </button>
+                <button onclick="saveAllSettings()" class="btn-save px-4 py-2 rounded-lg text-white font-medium transition-all flex items-center gap-2">
+                    <i class="fas fa-save"></i> Save All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Institute Info -->
+    <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center text-white text-xl font-bold">
+                {{ institute.institute_name[0] if institute.institute_name else 'S' }}
+            </div>
+            <div>
+                <h2 class="font-semibold text-gray-800">{{ institute.institute_name or 'School Name' }}</h2>
+                <p class="text-sm text-gray-500">{{ institute.address or 'Address not set' }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Tabs -->
+    <div class="flex flex-wrap gap-2 mb-6">
+        <button onclick="switchTab('grading')" id="tabGrading" class="tab-active px-4 py-2 rounded-lg font-medium transition-all">
+            <i class="fas fa-chart-bar mr-2"></i> Grading Scale
+        </button>
+        <button onclick="switchTab('achievement')" id="tabAchievement" class="tab-inactive px-4 py-2 rounded-lg font-medium transition-all">
+            <i class="fas fa-trophy mr-2"></i> Achievement Levels
+        </button>
+        <button onclick="switchTab('results')" id="tabResults" class="tab-inactive px-4 py-2 rounded-lg font-medium transition-all">
+            <i class="fas fa-list-ol mr-2"></i> Result Definitions
+        </button>
+        <button onclick="switchTab('terms')" id="tabTerms" class="tab-inactive px-4 py-2 rounded-lg font-medium transition-all">
+            <i class="fas fa-tags mr-2"></i> Key Terms
+        </button>
+        <button onclick="switchTab('display')" id="tabDisplay" class="tab-inactive px-4 py-2 rounded-lg font-medium transition-all">
+            <i class="fas fa-eye mr-2"></i> Display Options
+        </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div id="tabContent" class="bg-white rounded-xl shadow-md p-6">
+        <!-- Will be populated by JavaScript -->
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center min-w-[200px]">
+        <div class="loader border-4 border-emerald-500 border-t-transparent rounded-full w-10 h-10 animate-spin"></div>
+        <p class="text-gray-700 mt-4 font-medium" id="loadingMessage">Saving...</p>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed top-20 right-4 z-50 hidden">
+    <div class="bg-white rounded-lg shadow-lg px-6 py-4 flex items-center gap-3 border-l-4">
+        <i id="toastIcon" class="fas fa-check-circle text-emerald-500"></i>
+        <span id="toastMessage" class="text-gray-700"></span>
+    </div>
+</div>
+
+<script>
+let settings = null;
+let currentTab = 'grading';
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+async function loadSettings() {
+    try {
+        const response = await fetch('/cdc-settings/api/settings');
+        const data = await response.json();
+        if (data.success) {
+            settings = data.settings;
+            renderTab(currentTab);
+        } else {
+            showToast('Failed to load settings', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        showToast('Error loading settings', 'error');
+    }
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    
+    // Update tab buttons
+    document.querySelectorAll('[id^="tab"]').forEach(el => {
+        el.className = 'tab-inactive px-4 py-2 rounded-lg font-medium transition-all';
+    });
+    document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).className = 'tab-active px-4 py-2 rounded-lg font-medium transition-all';
+    
+    renderTab(tab);
+}
+
+function renderTab(tab) {
+    const container = document.getElementById('tabContent');
+    switch(tab) {
+        case 'grading':
+            container.innerHTML = renderGradingTab();
+            break;
+        case 'achievement':
+            container.innerHTML = renderAchievementTab();
+            break;
+        case 'results':
+            container.innerHTML = renderResultsTab();
+            break;
+        case 'terms':
+            container.innerHTML = renderTermsTab();
+            break;
+        case 'display':
+            container.innerHTML = renderDisplayTab();
+            break;
+    }
+}
+
+// ============================================================================
+// RENDER FUNCTIONS
+// ============================================================================
+
+function renderGradingTab() {
+    if (!settings || !settings.grading_scale) return '<p class="text-gray-500">No grading scale configured</p>';
+    
+    const grades = settings.grading_scale;
+    let html = `
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-chart-bar text-emerald-500 mr-2"></i>
+            Grading Scale Configuration
+        </h3>
+        <p class="text-sm text-gray-500 mb-4">Define the grade boundaries for competency-based assessments</p>
+        
+        <div class="space-y-3" id="gradingScaleContainer">
+    `;
+    
+    grades.forEach((grade, index) => {
+        const gradeClass = `grade-${grade.grade}`;
+        html += `
+            <div class="grade-item" data-index="${index}">
+                <div class="grade-badge ${gradeClass}">${grade.grade}</div>
+                <div class="flex-1 grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500">Min %</label>
+                        <input type="number" class="grade-min w-full px-2 py-1 border border-gray-300 rounded text-sm" 
+                               value="${grade.min}" min="0" max="100">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500">Max %</label>
+                        <input type="number" class="grade-max w-full px-2 py-1 border border-gray-300 rounded text-sm" 
+                               value="${grade.max}" min="0" max="100">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500">Label</label>
+                        <input type="text" class="grade-label w-full px-2 py-1 border border-gray-300 rounded text-sm" 
+                               value="${grade.label || ''}" placeholder="e.g., Exceptional">
+                    </div>
+                </div>
+                <div class="flex gap-1">
+                    <button onclick="removeGrade(${index})" class="text-red-500 hover:text-red-700 p-1">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+        </div>
+        <button onclick="addGrade()" class="mt-3 text-emerald-600 hover:text-emerald-700 text-sm font-medium">
+            <i class="fas fa-plus mr-1"></i> Add Grade
+        </button>
+        <div class="mt-4 flex gap-3">
+            <button onclick="saveGradingScale()" class="btn-save px-4 py-2 rounded-lg text-white font-medium">
+                <i class="fas fa-save mr-1"></i> Save Grading Scale
+            </button>
+        </div>
+    `;
+    
+    return html;
+}
+
+function renderAchievementTab() {
+    if (!settings || !settings.achievement_levels) return '<p class="text-gray-500">No achievement levels configured</p>';
+    
+    const levels = settings.achievement_levels;
+    let html = `
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-trophy text-emerald-500 mr-2"></i>
+            Achievement Levels
+        </h3>
+        <p class="text-sm text-gray-500 mb-4">Define the achievement level labels and their ranges</p>
+        
+        <div class="space-y-3" id="achievementContainer">
+    `;
+    
+    levels.forEach((level, index) => {
+        html += `
+            <div class="grade-item" data-index="${index}">
+                <div class="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-sm" 
+                     style="background-color: ${level.color || '#6b7280'}">
+                    ${level.level.substring(0, 2)}
+                </div>
+                <div class="flex-1 grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500">Min %</label>
+                        <input type="number" class="ach-min w-full px-2 py-1 border border-gray-300 rounded text-sm" 
+                               value="${level.min}" min="0" max="100">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500">Max %</label>
+                        <input type="number" class="ach-max w-full px-2 py-1 border border-gray-300 rounded text-sm" 
+                               value="${level.max}" min="0" max="100">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500">Level Name</label>
+                        <input type="text" class="ach-level w-full px-2 py-1 border border-gray-300 rounded text-sm" 
+                               value="${level.level}" placeholder="e.g., Excellent">
+                    </div>
+                </div>
+                <div>
+                    <input type="color" class="ach-color w-10 h-10 p-1 border border-gray-300 rounded" 
+                           value="${level.color || '#6b7280'}">
+                </div>
+                <div class="flex gap-1">
+                    <button onclick="removeAchievement(${index})" class="text-red-500 hover:text-red-700 p-1">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+        </div>
+        <button onclick="addAchievement()" class="mt-3 text-emerald-600 hover:text-emerald-700 text-sm font-medium">
+            <i class="fas fa-plus mr-1"></i> Add Achievement Level
+        </button>
+        <div class="mt-4 flex gap-3">
+            <button onclick="saveAchievementLevels()" class="btn-save px-4 py-2 rounded-lg text-white font-medium">
+                <i class="fas fa-save mr-1"></i> Save Achievement Levels
+            </button>
+        </div>
+    `;
+    
+    return html;
+}
+
+function renderResultsTab() {
+    if (!settings || !settings.result_definitions) return '<p class="text-gray-500">No result definitions configured</p>';
+    
+    const results = settings.result_definitions;
+    let html = `
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-list-ol text-emerald-500 mr-2"></i>
+            Result Definitions
+        </h3>
+        <p class="text-sm text-gray-500 mb-4">Define what each result means for the competency report</p>
+        
+        <div class="space-y-3" id="resultContainer">
+    `;
+    
+    results.forEach((result, index) => {
+        html += `
+            <div class="result-item" data-index="${index}">
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500">Result ID</label>
+                        <input type="text" class="result-id w-full px-2 py-1 border border-gray-300 rounded text-sm" 
+                               value="${result.id || ''}" placeholder="e.g., result_1">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500">Label</label>
+                        <input type="text" class="result-label w-full px-2 py-1 border border-gray-300 rounded text-sm" 
+                               value="${result.label || ''}" placeholder="e.g., Result 1">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500">Description</label>
+                        <input type="text" class="result-text w-full px-2 py-1 border border-gray-300 rounded text-sm" 
+                               value="${result.text || ''}" placeholder="Description of this result">
+                    </div>
+                </div>
+                <div class="mt-2 flex justify-end">
+                    <button onclick="removeResult(${index})" class="text-red-500 hover:text-red-700 text-sm">
+                        <i class="fas fa-times mr-1"></i> Remove
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+        </div>
+        <button onclick="addResult()" class="mt-3 text-emerald-600 hover:text-emerald-700 text-sm font-medium">
+            <i class="fas fa-plus mr-1"></i> Add Result Definition
+        </button>
+        <div class="mt-4 flex gap-3">
+            <button onclick="saveResultDefinitions()" class="btn-save px-4 py-2 rounded-lg text-white font-medium">
+                <i class="fas fa-save mr-1"></i> Save Result Definitions
+            </button>
+        </div>
+    `;
+    
+    return html;
+}
+
+function renderTermsTab() {
+    if (!settings || !settings.key_terms) return '<p class="text-gray-500">No key terms configured</p>';
+    
+    const terms = settings.key_terms;
+    let html = `
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-tags text-emerald-500 mr-2"></i>
+            Key Terms
+        </h3>
+        <p class="text-sm text-gray-500 mb-4">Define the key terms used in the competency report</p>
+        
+        <div class="space-y-3" id="termContainer">
+    `;
+    
+    terms.forEach((term, index) => {
+        html += `
+            <div class="grade-item" data-index="${index}">
+                <span class="term-item term-code">${term.code}</span>
+                <div class="flex-1">
+                    <input type="text" class="term-label-input w-full px-2 py-1 border border-gray-300 rounded text-sm" 
+                           value="${term.label}" placeholder="Term description">
+                </div>
+                <button onclick="removeTerm(${index})" class="text-red-500 hover:text-red-700 p-1">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    });
+    
+    html += `
+        </div>
+        <button onclick="addTerm()" class="mt-3 text-emerald-600 hover:text-emerald-700 text-sm font-medium">
+            <i class="fas fa-plus mr-1"></i> Add Key Term
+        </button>
+        <div class="mt-4 flex gap-3">
+            <button onclick="saveKeyTerms()" class="btn-save px-4 py-2 rounded-lg text-white font-medium">
+                <i class="fas fa-save mr-1"></i> Save Key Terms
+            </button>
+        </div>
+    `;
+    
+    return html;
+}
+
+function renderDisplayTab() {
+    if (!settings) return '<p class="text-gray-500">No settings loaded</p>';
+    
+    return `
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="fas fa-eye text-emerald-500 mr-2"></i>
+            Display Options
+        </h3>
+        <p class="text-sm text-gray-500 mb-4">Configure what appears on the competency report</p>
+        
+        <div class="space-y-4">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" id="showPhoto" ${settings.show_photo ? 'checked' : ''} 
+                       class="w-4 h-4 text-emerald-600 rounded">
+                <label for="showPhoto" class="text-sm text-gray-700">Show Student Photo</label>
+            </div>
+            <div class="flex items-center gap-3">
+                <input type="checkbox" id="showLogo" ${settings.show_logo ? 'checked' : ''} 
+                       class="w-4 h-4 text-emerald-600 rounded">
+                <label for="showLogo" class="text-sm text-gray-700">Show School Logo</label>
+            </div>
+            <div class="flex items-center gap-3">
+                <input type="checkbox" id="showAggregates" ${settings.show_aggregates ? 'checked' : ''} 
+                       class="w-4 h-4 text-emerald-600 rounded">
+                <label for="showAggregates" class="text-sm text-gray-700">Show Aggregate Scores</label>
+            </div>
+            
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Report Title</label>
+                <input type="text" id="reportTitle" value="${settings.report_title || 'COMPETENCY BASED ASSESSMENT REPORT'}" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+            </div>
+            
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Footer Fields</label>
+                <p class="text-xs text-gray-500 mb-2">Define the fields shown in the report footer</p>
+                <div id="footerFieldsContainer" class="space-y-2">
+                    ${(settings.footer_fields || []).map((field, index) => `
+                        <div class="flex items-center gap-2">
+                            <input type="text" class="footer-label flex-1 px-2 py-1 border border-gray-300 rounded text-sm" 
+                                   value="${field.label}" placeholder="Label">
+                            <input type="text" class="footer-key flex-1 px-2 py-1 border border-gray-300 rounded text-sm" 
+                                   value="${field.key}" placeholder="Key">
+                            <button onclick="removeFooterField(${index})" class="text-red-500 hover:text-red-700">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+                <button onclick="addFooterField()" class="mt-2 text-emerald-600 hover:text-emerald-700 text-sm font-medium">
+                    <i class="fas fa-plus mr-1"></i> Add Footer Field
+                </button>
+            </div>
+            
+            <div class="mt-4 flex gap-3">
+                <button onclick="saveDisplayOptions()" class="btn-save px-4 py-2 rounded-lg text-white font-medium">
+                    <i class="fas fa-save mr-1"></i> Save Display Options
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================================
+// CRUD OPERATIONS - Grading Scale
+// ============================================================================
+
+function addGrade() {
+    const container = document.getElementById('gradingScaleContainer');
+    const index = container.children.length;
+    const grades = ['A', 'B', 'C', 'D', 'E', 'F'];
+    const nextGrade = grades[index] || `G${index+1}`;
+    
+    const div = document.createElement('div');
+    div.className = 'grade-item';
+    div.dataset.index = index;
+    div.innerHTML = `
+        <div class="grade-badge grade-${nextGrade}" style="background:#6b7280;">${nextGrade}</div>
+        <div class="flex-1 grid grid-cols-3 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-500">Min %</label>
+                <input type="number" class="grade-min w-full px-2 py-1 border border-gray-300 rounded text-sm" value="0" min="0" max="100">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500">Max %</label>
+                <input type="number" class="grade-max w-full px-2 py-1 border border-gray-300 rounded text-sm" value="100" min="0" max="100">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500">Label</label>
+                <input type="text" class="grade-label w-full px-2 py-1 border border-gray-300 rounded text-sm" placeholder="e.g., Exceptional">
+            </div>
+        </div>
+        <div class="flex gap-1">
+            <button onclick="removeGrade(${index})" class="text-red-500 hover:text-red-700 p-1">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(div);
+}
+
+function removeGrade(index) {
+    const container = document.getElementById('gradingScaleContainer');
+    const items = container.querySelectorAll('.grade-item');
+    if (items.length <= 1) {
+        showToast('Cannot remove the last grade', 'error');
+        return;
+    }
+    items[index].remove();
+}
+
+async function saveGradingScale() {
+    showLoading('Saving grading scale...');
+    
+    const container = document.getElementById('gradingScaleContainer');
+    const items = container.querySelectorAll('.grade-item');
+    const grading_scale = [];
+    
+    items.forEach(item => {
+        const gradeText = item.querySelector('.grade-badge')?.textContent?.trim() || 'A';
+        const min = parseInt(item.querySelector('.grade-min').value) || 0;
+        const max = parseInt(item.querySelector('.grade-max').value) || 100;
+        const label = item.querySelector('.grade-label').value || '';
+        
+        grading_scale.push({
+            grade: gradeText,
+            range: `${max} - ${min}`,
+            min: min,
+            max: max,
+            label: label
+        });
+    });
+    
+    try {
+        const response = await fetch('/cdc-settings/api/grading-scale', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ grading_scale })
+        });
+        const data = await response.json();
+        hideLoading();
+        if (data.success) {
+            settings.grading_scale = data.grading_scale;
+            showToast('Grading scale saved successfully!', 'success');
+        } else {
+            showToast(data.message || 'Failed to save grading scale', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('Error saving grading scale', 'error');
+    }
+}
+
+// ============================================================================
+// CRUD OPERATIONS - Achievement Levels
+// ============================================================================
+
+function addAchievement() {
+    const container = document.getElementById('achievementContainer');
+    const index = container.children.length;
+    
+    const div = document.createElement('div');
+    div.className = 'grade-item';
+    div.dataset.index = index;
+    div.innerHTML = `
+        <div class="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-sm" style="background-color: #6b7280">
+            LV
+        </div>
+        <div class="flex-1 grid grid-cols-3 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-500">Min %</label>
+                <input type="number" class="ach-min w-full px-2 py-1 border border-gray-300 rounded text-sm" value="0" min="0" max="100">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500">Max %</label>
+                <input type="number" class="ach-max w-full px-2 py-1 border border-gray-300 rounded text-sm" value="100" min="0" max="100">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500">Level Name</label>
+                <input type="text" class="ach-level w-full px-2 py-1 border border-gray-300 rounded text-sm" placeholder="e.g., Excellent">
+            </div>
+        </div>
+        <div>
+            <input type="color" class="ach-color w-10 h-10 p-1 border border-gray-300 rounded" value="#6b7280">
+        </div>
+        <div class="flex gap-1">
+            <button onclick="removeAchievement(${index})" class="text-red-500 hover:text-red-700 p-1">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(div);
+}
+
+function removeAchievement(index) {
+    const container = document.getElementById('achievementContainer');
+    const items = container.querySelectorAll('.grade-item');
+    if (items.length <= 1) {
+        showToast('Cannot remove the last achievement level', 'error');
+        return;
+    }
+    items[index].remove();
+}
+
+async function saveAchievementLevels() {
+    showLoading('Saving achievement levels...');
+    
+    const container = document.getElementById('achievementContainer');
+    const items = container.querySelectorAll('.grade-item');
+    const achievement_levels = [];
+    
+    items.forEach(item => {
+        const min = parseInt(item.querySelector('.ach-min').value) || 0;
+        const max = parseInt(item.querySelector('.ach-max').value) || 100;
+        const level = item.querySelector('.ach-level').value || 'Level';
+        const color = item.querySelector('.ach-color').value || '#6b7280';
+        
+        achievement_levels.push({ min, max, level, color });
+    });
+    
+    try {
+        const response = await fetch('/cdc-settings/api/achievement-levels', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ achievement_levels })
+        });
+        const data = await response.json();
+        hideLoading();
+        if (data.success) {
+            settings.achievement_levels = data.achievement_levels;
+            showToast('Achievement levels saved successfully!', 'success');
+        } else {
+            showToast(data.message || 'Failed to save achievement levels', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('Error saving achievement levels', 'error');
+    }
+}
+
+// ============================================================================
+// CRUD OPERATIONS - Result Definitions
+// ============================================================================
+
+function addResult() {
+    const container = document.getElementById('resultContainer');
+    const index = container.children.length;
+    
+    const div = document.createElement('div');
+    div.className = 'result-item';
+    div.dataset.index = index;
+    div.innerHTML = `
+        <div class="grid grid-cols-3 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-500">Result ID</label>
+                <input type="text" class="result-id w-full px-2 py-1 border border-gray-300 rounded text-sm" value="result_${index+1}" placeholder="e.g., result_1">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500">Label</label>
+                <input type="text" class="result-label w-full px-2 py-1 border border-gray-300 rounded text-sm" placeholder="e.g., Result 1">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500">Description</label>
+                <input type="text" class="result-text w-full px-2 py-1 border border-gray-300 rounded text-sm" placeholder="Description of this result">
+            </div>
+        </div>
+        <div class="mt-2 flex justify-end">
+            <button onclick="removeResult(${index})" class="text-red-500 hover:text-red-700 text-sm">
+                <i class="fas fa-times mr-1"></i> Remove
+            </button>
+        </div>
+    `;
+    container.appendChild(div);
+}
+
+function removeResult(index) {
+    const container = document.getElementById('resultContainer');
+    const items = container.querySelectorAll('.result-item');
+    if (items.length <= 1) {
+        showToast('Cannot remove the last result definition', 'error');
+        return;
+    }
+    items[index].remove();
+}
+
+async function saveResultDefinitions() {
+    showLoading('Saving result definitions...');
+    
+    const container = document.getElementById('resultContainer');
+    const items = container.querySelectorAll('.result-item');
+    const result_definitions = [];
+    
+    items.forEach(item => {
+        const id = item.querySelector('.result-id').value || `result_${result_definitions.length+1}`;
+        const label = item.querySelector('.result-label').value || `Result ${result_definitions.length+1}`;
+        const text = item.querySelector('.result-text').value || '';
+        
+        result_definitions.push({ id, label, text });
+    });
+    
+    try {
+        const response = await fetch('/cdc-settings/api/result-definitions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ result_definitions })
+        });
+        const data = await response.json();
+        hideLoading();
+        if (data.success) {
+            settings.result_definitions = data.result_definitions;
+            showToast('Result definitions saved successfully!', 'success');
+        } else {
+            showToast(data.message || 'Failed to save result definitions', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('Error saving result definitions', 'error');
+    }
+}
+
+// ============================================================================
+// CRUD OPERATIONS - Key Terms
+// ============================================================================
+
+function addTerm() {
+    const container = document.getElementById('termContainer');
+    const index = container.children.length;
+    
+    const div = document.createElement('div');
+    div.className = 'grade-item';
+    div.dataset.index = index;
+    div.innerHTML = `
+        <span class="term-item term-code">TERM${index+1}</span>
+        <div class="flex-1">
+            <input type="text" class="term-label-input w-full px-2 py-1 border border-gray-300 rounded text-sm" placeholder="Term description">
+        </div>
+        <button onclick="removeTerm(${index})" class="text-red-500 hover:text-red-700 p-1">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+function removeTerm(index) {
+    const container = document.getElementById('termContainer');
+    const items = container.querySelectorAll('.grade-item');
+    if (items.length <= 1) {
+        showToast('Cannot remove the last key term', 'error');
+        return;
+    }
+    items[index].remove();
+}
+
+async function saveKeyTerms() {
+    showLoading('Saving key terms...');
+    
+    const container = document.getElementById('termContainer');
+    const items = container.querySelectorAll('.grade-item');
+    const key_terms = [];
+    
+    items.forEach(item => {
+        const code = item.querySelector('.term-code')?.textContent?.trim() || `TERM${key_terms.length+1}`;
+        const label = item.querySelector('.term-label-input').value || '';
+        
+        key_terms.push({ code, label });
+    });
+    
+    try {
+        const response = await fetch('/cdc-settings/api/key-terms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key_terms })
+        });
+        const data = await response.json();
+        hideLoading();
+        if (data.success) {
+            settings.key_terms = data.key_terms;
+            showToast('Key terms saved successfully!', 'success');
+        } else {
+            showToast(data.message || 'Failed to save key terms', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('Error saving key terms', 'error');
+    }
+}
+
+// ============================================================================
+// CRUD OPERATIONS - Display Options
+// ============================================================================
+
+function addFooterField() {
+    const container = document.getElementById('footerFieldsContainer');
+    const index = container.children.length;
+    
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2';
+    div.innerHTML = `
+        <input type="text" class="footer-label flex-1 px-2 py-1 border border-gray-300 rounded text-sm" placeholder="Label">
+        <input type="text" class="footer-key flex-1 px-2 py-1 border border-gray-300 rounded text-sm" placeholder="Key">
+        <button onclick="removeFooterField(${index})" class="text-red-500 hover:text-red-700">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+function removeFooterField(index) {
+    const container = document.getElementById('footerFieldsContainer');
+    const items = container.querySelectorAll('.flex.items-center.gap-2');
+    if (items.length <= 1) {
+        showToast('Cannot remove the last footer field', 'error');
+        return;
+    }
+    items[index].remove();
+}
+
+async function saveDisplayOptions() {
+    showLoading('Saving display options...');
+    
+    const showPhoto = document.getElementById('showPhoto').checked;
+    const showLogo = document.getElementById('showLogo').checked;
+    const showAggregates = document.getElementById('showAggregates').checked;
+    const reportTitle = document.getElementById('reportTitle').value;
+    
+    // Get footer fields
+    const container = document.getElementById('footerFieldsContainer');
+    const items = container.querySelectorAll('.flex.items-center.gap-2');
+    const footer_fields = [];
+    
+    items.forEach(item => {
+        const label = item.querySelector('.footer-label').value || '';
+        const key = item.querySelector('.footer-key').value || '';
+        if (label || key) {
+            footer_fields.push({ label, key });
+        }
+    });
+    
+    const displayData = {
+        show_photo: showPhoto,
+        show_logo: showLogo,
+        show_aggregates: showAggregates,
+        report_title: reportTitle,
+        footer_fields: footer_fields
+    };
+    
+    try {
+        const response = await fetch('/cdc-settings/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(displayData)
+        });
+        const data = await response.json();
+        hideLoading();
+        if (data.success) {
+            settings = data.settings;
+            showToast('Display options saved successfully!', 'success');
+        } else {
+            showToast(data.message || 'Failed to save display options', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('Error saving display options', 'error');
+    }
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+async function saveAllSettings() {
+    showToast('Saving all settings...', 'info');
+    // Save each section
+    await saveGradingScale();
+    await saveAchievementLevels();
+    await saveResultDefinitions();
+    await saveKeyTerms();
+    await saveDisplayOptions();
+    showToast('All settings saved successfully!', 'success');
+}
+
+async function resetToDefaults() {
+    if (!confirm('Are you sure you want to reset all settings to defaults?')) return;
+    
+    showLoading('Resetting to defaults...');
+    try {
+        const response = await fetch('/cdc-settings/api/settings/reset', {
+            method: 'POST'
+        });
+        const data = await response.json();
+        hideLoading();
+        if (data.success) {
+            settings = data.settings;
+            renderTab(currentTab);
+            showToast('Settings reset to defaults successfully!', 'success');
+        } else {
+            showToast(data.message || 'Failed to reset settings', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('Error resetting settings', 'error');
+    }
+}
+
+function showLoading(message) {
+    const overlay = document.getElementById('loadingOverlay');
+    document.getElementById('loadingMessage').textContent = message || 'Saving...';
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.add('hidden');
+    overlay.classList.remove('flex');
+}
+
+function showToast(message, type) {
+    const toast = document.getElementById('toast');
+    const icon = document.getElementById('toastIcon');
+    const msg = document.getElementById('toastMessage');
+    
+    // Set styles based on type
+    const borderColors = {
+        success: 'border-emerald-500',
+        error: 'border-red-500',
+        info: 'border-blue-500',
+        warning: 'border-yellow-500'
+    };
+    const icons = {
+        success: 'fa-check-circle text-emerald-500',
+        error: 'fa-exclamation-circle text-red-500',
+        info: 'fa-info-circle text-blue-500',
+        warning: 'fa-exclamation-triangle text-yellow-500'
+    };
+    
+    toast.className = `fixed top-20 right-4 z-50 ${borderColors[type] || borderColors.success}`;
+    icon.className = `fas ${icons[type] || icons.success}`;
+    msg.textContent = message;
+    
+    toast.classList.remove('hidden');
+    
+    setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 5000);
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadSettings();
+});
+</script>
+
+<style>
+    .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #059669;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}

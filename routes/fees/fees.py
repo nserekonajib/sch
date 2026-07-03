@@ -783,7 +783,7 @@ def get_invoiced_students():
         
         # First, get students with category filter if needed
         student_query = supabase.table('students')\
-            .select('id')\
+            .select('id, name, student_id, category, contact_number, class_id, classes(name)')\
             .eq('institute_id', institute_id)\
             .eq('status', 'active')
         
@@ -791,7 +791,9 @@ def get_invoiced_students():
             student_query = student_query.eq('category', category)
         
         student_response = student_query.execute()
-        student_ids = [s['id'] for s in (student_response.data or [])]
+        all_students = student_response.data or []
+        student_ids = [s['id'] for s in all_students]
+        student_map = {s['id']: s for s in all_students}
         
         if not student_ids and category != 'all':
             return jsonify({
@@ -819,15 +821,7 @@ def get_invoiced_students():
                 due_date,
                 created_at,
                 student_id,
-                fee_particulars(fee_items),
-                students!inner(
-                    id,
-                    name,
-                    student_id,
-                    category,
-                    class_id,
-                    classes!inner(name)
-                )
+                fee_particulars(fee_items)
             ''')\
             .eq('institute_id', institute_id)
         
@@ -865,11 +859,12 @@ def get_invoiced_students():
         invoice_map = {}
         
         for invoice in invoices:
-            student = invoice.get('students', {})
-            student_id = student.get('id')
+            student_id = invoice.get('student_id')
             
-            if not student_id:
+            if not student_id or student_id not in student_map:
                 continue
+            
+            student = student_map[student_id]
             
             # Parse fee items
             fee_items = []
@@ -887,6 +882,7 @@ def get_invoiced_students():
                         'name': student.get('name', 'N/A'),
                         'student_id': student.get('student_id', 'N/A'),
                         'category': student.get('category', 'N/A'),
+                        'contact_number': student.get('contact_number', 'N/A'),
                         'class_name': student.get('classes', {}).get('name', 'N/A') if student.get('classes') else 'N/A'
                     },
                     'invoices': []

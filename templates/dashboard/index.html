@@ -620,18 +620,21 @@
     }
 
     // Set default dates (current month)
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    // Set default dates (three months ago to today)
+const today = new Date();
+// Get date three months ago
+const threeMonthsAgo = new Date(today);
+threeMonthsAgo.setMonth(today.getMonth() - 3);
+
+document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
     
-    document.addEventListener('DOMContentLoaded', function() {
-        const startDateInput = document.getElementById('startDate');
-        const endDateInput = document.getElementById('endDate');
-        
-        if (startDateInput) startDateInput.value = firstDay.toISOString().split('T')[0];
-        if (endDateInput) endDateInput.value = today.toISOString().split('T')[0];
-        
-        refreshDashboard();
-    });
+    if (startDateInput) startDateInput.value = threeMonthsAgo.toISOString().split('T')[0];
+    if (endDateInput) endDateInput.value = today.toISOString().split('T')[0];
+    
+    refreshDashboard();
+});
 
     async function refreshDashboard() {
         console.log('Refreshing dashboard...');
@@ -1107,12 +1110,14 @@ function showFeeError(message) {
         return div.innerHTML;
     }
 
-    function resetDates() {
-        const today = new Date();
-        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-        document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
-        document.getElementById('endDate').value = today.toISOString().split('T')[0];
-        refreshDashboard();
-    }
+ function resetDates() {
+    const today = new Date();
+    const threeMonthsAgo = new Date(today);
+    threeMonthsAgo.setMonth(today.getMonth() - 3);
+    
+    document.getElementById('startDate').value = threeMonthsAgo.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    refreshDashboard();
+}
 </script>
 {% endblock %}
