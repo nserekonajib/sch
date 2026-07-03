@@ -19,7 +19,7 @@ SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Fixed configuration - not editable by institutes
-FIXED_NODEJS_API_URL = "http://localhost:4000"  # Replace with your actual Node.js API URL
+FIXED_NODEJS_API_URL = "https://whatsappconnection-2h64.onrender.com"  # Replace with your actual Node.js API URL
 FIXED_API_KEY = "2343243"
 
 whatsapp_bp = Blueprint('whatsapp', __name__, url_prefix='/whatsapp-integration')
