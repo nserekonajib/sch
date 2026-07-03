@@ -7,7 +7,7 @@
     <meta name="description" content="Lunserk School Management ERP - Complete Education Management System">
     <meta name="keywords" content="school management, erp, education, lurnserk, lunker">
     <meta name="author" content="Lunserk Inc.">
-    <title>Lunserk ERP – School Management</title>
+    <title>Lunserk ERP - {% block title %}School Management System{% endblock %}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='n.png') }}">
     <!-- Tailwind CSS CDN + Font Awesome + Google Fonts -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -23,8 +23,6 @@
                         colors: {
                             primary: '#ffa500',
                             primaryDark: '#ff8c00',
-                            brand: { light: '#fff7ed', DEFAULT: '#ffa500', dark: '#ff8c00' },
-                            surface: { base: '#faf9f8', card: '#ffffff', glass: 'rgba(255,255,255,0.6)' }
                         }
                     }
                 }
@@ -32,520 +30,637 @@
         }
     });
     </script>
-    
+
     <call-us-selector phonesystem-url="https://1403.3cx.cloud" party="nserekonajib"></call-us-selector>
     <script defer src="https://downloads-global.3cx.com/downloads/livechatandtalk/v1/callus.js" id="tcx-callus-js" charset="utf-8"></script>
-    
+
     <style>
-        * { font-family: 'Inter', sans-serif; }
-        
-        /* ----- premium design system ----- */
-        :root {
-            --orange: #ffa500;
-            --orange-dark: #ff8c00;
-            --orange-glow: rgba(255, 165, 0, 0.25);
-            --glass-bg: rgba(255, 255, 255, 0.55);
-            --shadow-soft: 0 12px 30px -10px rgba(0, 0, 0, 0.08);
-            --shadow-elevated: 0 20px 40px -15px rgba(0, 0, 0, 0.12);
-            --radius-xl: 20px;
-            --radius-lg: 16px;
-            --radius-md: 12px;
+        :root{
+            --color-primary:#ffa500;
+            --color-primary-dark:#ff8c00;
+            --color-blue:#3b82f6;
+            --color-blue-dark:#2563eb;
+            --color-emerald:#10b981;
+            --color-emerald-dark:#059669;
+            --color-violet:#8b5cf6;
+            --color-violet-dark:#7c3aed;
+            --color-rose:#f43f5e;
+
+            --bg-app-from:#faf8f5;
+            --bg-app-via:#f4f1ec;
+            --bg-app-to:#eef1f6;
+            --bg-sidebar:#ffffff;
+            --border-soft:#ece7de;
+            --border-soft-2:#e7e2d8;
+
+            --shadow-xs:0 1px 2px rgba(31,27,20,0.05);
+            --shadow-soft:0 6px 20px -6px rgba(31,27,20,0.10);
+            --shadow-elevated:0 20px 45px -12px rgba(31,27,20,0.18);
+            --shadow-glow-orange:0 8px 24px -6px rgba(255,140,0,0.35);
+
+            --radius-sm:10px;
+            --radius-md:14px;
+            --radius-lg:18px;
+            --radius-xl:24px;
         }
-        
-        body {
-            background: #f5f3f0;
-            background-image: radial-gradient(circle at 10% 20%, rgba(255, 165, 0, 0.03) 0%, transparent 60%);
+
+        * {
+            font-family: 'Inter', sans-serif;
         }
-        
-        /* glassmorphism */
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.5);
+
+        html, body { height: 100%; }
+
+        body{
+            background-color: var(--bg-app-via);
+            background-image:
+                radial-gradient(circle at 1px 1px, rgba(255,165,0,0.10) 1px, transparent 0),
+                linear-gradient(135deg, var(--bg-app-from) 0%, var(--bg-app-via) 45%, var(--bg-app-to) 100%);
+            background-size: 22px 22px, 100% 100%;
+            background-attachment: fixed;
         }
-        
-        .sidebar-scroll::-webkit-scrollbar { width: 4px; }
-        .sidebar-scroll::-webkit-scrollbar-track { background: #f1efe9; border-radius: 10px; }
-        .sidebar-scroll::-webkit-scrollbar-thumb { background: #d4cbb8; border-radius: 10px; }
-        .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: #b8ab92; }
-        
-        .mobile-sidebar { transition: transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1); transform: translateX(-100%); }
-        .mobile-sidebar.sidebar-visible { transform: translateX(0); }
-        @media (min-width: 1024px) { 
-            .mobile-sidebar { transform: translateX(0) !important; position: relative !important; width: 288px; flex-shrink: 0; }
-            .main-content-wrapper { width: calc(100% - 288px); flex: 1; }
+
+        /* Custom scrollbar */
+        .sidebar-scroll::-webkit-scrollbar {
+            width: 5px;
         }
-        
-        /* nav items – alive & premium */
-        .nav-item {
-            transition: all 0.2s ease;
-            border-radius: var(--radius-md);
+        .sidebar-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #ffd08a, #ffb347);
+            border-radius: 10px;
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #ffb347, var(--color-primary-dark));
+        }
+
+        /* Mobile sidebar transition */
+        .mobile-sidebar {
+            transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+            transform: translateX(-100%);
+        }
+        .mobile-sidebar.sidebar-visible {
+            transform: translateX(0);
+        }
+
+        /* Desktop sidebar always visible - FIXED LAYOUT */
+        @media (min-width: 1024px) {
+            .mobile-sidebar {
+                transform: translateX(0) !important;
+                position: relative !important;
+                width: 288px;
+                flex-shrink: 0;
+            }
+            .mobile-sidebar.sidebar-visible {
+                transform: translateX(0) !important;
+            }
+            /* Main content wrapper for desktop */
+            .main-content-wrapper {
+                width: calc(100% - 288px);
+                flex: 1;
+            }
+        }
+
+        /* Sidebar surface */
+        #sidebar{
+            background: linear-gradient(180deg, #ffffff 0%, #fffdfa 55%, #fffaf3 100%);
+            box-shadow: var(--shadow-elevated);
+            border-right: 1px solid var(--border-soft);
+        }
+
+        /* Navigation item styles */
+        .nav-item{
+            transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
             position: relative;
         }
-        .nav-item:hover {
-            background: #fff7ed;
-            color: #ff8c00;
-            transform: translateX(4px);
+        .nav-item:hover{
+            transform: translateX(2px);
         }
-        .nav-item-active {
-            background: #fff7ed !important;
-            color: #ff8c00 !important;
-            border-left: 4px solid #ffa500;
-            box-shadow: inset 0 1px 2px rgba(255,165,0,0.1);
-            font-weight: 600;
+
+        .nav-item-active{
+            background: linear-gradient(90deg, rgba(255,165,0,0.14) 0%, rgba(255,165,0,0.04) 100%);
+            color: var(--color-primary-dark);
+            box-shadow: inset 0 0 0 1px rgba(255,165,0,0.16);
         }
-        .nav-item i { transition: all 0.2s; }
-        .nav-item:hover i { transform: scale(1.05); }
-        
-        /* cards */
-        .stat-card {
-            background: white;
+        .nav-item-active::before{
+            content:"";
+            position:absolute;
+            left:-12px; top:8px; bottom:8px;
+            width:4px;
+            border-radius: 6px;
+            background: linear-gradient(180deg, var(--color-primary), var(--color-primary-dark));
+            box-shadow: 0 0 10px rgba(255,140,0,0.55);
+        }
+
+        /* Colored icon chips for nav groups */
+        .nav-icon-chip{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+        .chip-orange{ background: linear-gradient(135deg, rgba(255,165,0,0.16), rgba(255,140,0,0.08)); color:#c2660a; }
+        .chip-blue{ background: linear-gradient(135deg, rgba(59,130,246,0.16), rgba(37,99,235,0.08)); color:#1d4ed8; }
+        .chip-emerald{ background: linear-gradient(135deg, rgba(16,185,129,0.16), rgba(5,150,105,0.08)); color:#047857; }
+        .chip-violet{ background: linear-gradient(135deg, rgba(139,92,246,0.16), rgba(124,58,237,0.08)); color:#6d28d9; }
+        .chip-rose{ background: linear-gradient(135deg, rgba(244,63,94,0.16), rgba(225,29,72,0.08)); color:#be123c; }
+
+        .nav-item:hover .nav-icon-chip{ transform: scale(1.08); }
+        .nav-item-active .chip-orange{ background: linear-gradient(135deg,var(--color-primary),var(--color-primary-dark)); color:#fff; box-shadow: var(--shadow-glow-orange); }
+        .nav-item-active .chip-blue{ background: linear-gradient(135deg,var(--color-blue),var(--color-blue-dark)); color:#fff; box-shadow: 0 8px 20px -6px rgba(37,99,235,0.45); }
+        .nav-item-active .chip-emerald{ background: linear-gradient(135deg,var(--color-emerald),var(--color-emerald-dark)); color:#fff; box-shadow: 0 8px 20px -6px rgba(5,150,105,0.45); }
+        .nav-item-active .chip-violet{ background: linear-gradient(135deg,var(--color-violet),var(--color-violet-dark)); color:#fff; box-shadow: 0 8px 20px -6px rgba(124,58,237,0.45); }
+
+        .nav-group-btn:hover{ background: #fafafa; }
+
+        /* Alpine.js cloak */
+        [x-cloak] {
+            display: none !important;
+        }
+
+        /* Smooth transitions */
+        .transition-smooth {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Flash message animations */
+        .flash-message {
+            animation: slideInRight 0.35s cubic-bezier(0.34,1.2,0.64,1);
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(110%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Flash messages container */
+        .flash-messages-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 380px;
+        }
+
+        .flash-message {
+            padding: 14px 20px;
+            margin-bottom: 10px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: var(--shadow-elevated);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.18);
+        }
+
+        .flash-message.success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .flash-message.error { background: linear-gradient(135deg, #f43f5e, #e11d48); color: white; }
+        .flash-message.warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+        .flash-message.info { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+
+        /* Mobile overlay backdrop */
+        .sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(20, 16, 10, 0.55);
+            backdrop-filter: blur(2px);
+            z-index: 25;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .sidebar-backdrop.active { opacity: 1; visibility: visible; }
+
+        @media (min-width: 1024px) { .sidebar-backdrop { display: none; } }
+
+        .overflow-safe { overflow-x: auto; overflow-y: auto; }
+        .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        /* Glass topbar */
+        .topbar-glass{
+            background: rgba(255,255,255,0.82);
+            backdrop-filter: blur(14px) saturate(160%);
+            -webkit-backdrop-filter: blur(14px) saturate(160%);
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        /* Search dropdown styles */
+        .search-container { position: relative; display: inline-block; }
+
+        .search-results-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-elevated);
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .search-results-dropdown.active { display: block; animation: fadeInDown 0.2s ease-out; }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .search-result-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid #f3f0ea;
+        }
+        .search-result-item:hover { background: linear-gradient(90deg, rgba(255,165,0,0.08), rgba(255,165,0,0.02)); }
+
+        .search-result-name { font-weight: 600; color: #1f2937; margin-bottom: 4px; }
+
+        .search-result-details { font-size: 12px; color: #6b7280; display: flex; gap: 16px; }
+        .search-result-details i { margin-right: 4px; font-size: 10px; }
+
+        .search-loading { padding: 20px; text-align: center; color: #6b7280; }
+        .search-loading i { animation: spin 1s linear infinite; }
+
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .search-no-results { padding: 20px; text-align: center; color: #6b7280; }
+
+        .search-highlight { background-color: #fef3c7; color: #b45309; font-weight: 600; border-radius: 3px; padding: 0 2px; }
+
+        /* Buttons */
+        .btn-gradient{
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            box-shadow: var(--shadow-glow-orange);
+            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+        .btn-gradient:hover{ transform: translateY(-2px); box-shadow: 0 14px 30px -8px rgba(255,140,0,0.5); }
+
+        /* Card surface helper (available for content blocks) */
+        .surface-card{
+            background: rgba(255,255,255,0.92);
+            border: 1px solid var(--border-soft);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-soft);
-            border: 1px solid rgba(255,255,255,0.6);
-            transition: all 0.25s ease;
         }
-        .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-elevated);
-        }
-        .stat-card .icon-wrap {
-            border-radius: var(--radius-md);
+
+        /* Inactivity popup */
+        #inactive-popup{
+            position: fixed;
+            inset: 0;
+            background: rgba(20,16,10,0.55);
+            backdrop-filter: blur(4px);
+            z-index: 10001;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 48px;
-            height: 48px;
         }
-        
-        /* gradient accent */
-        .gradient-orange {
-            background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-        }
-        .gradient-orange-soft {
-            background: linear-gradient(135deg, #ffedd5 0%, #fff7ed 100%);
-        }
-        .gradient-header {
-            background: linear-gradient(145deg, #ffffff 0%, #faf6f0 100%);
-        }
-        
-        .btn-premium {
-            background: linear-gradient(135deg, #ffa500, #e07c00);
-            border: none;
-            color: white;
-            font-weight: 600;
-            padding: 0.6rem 1.4rem;
-            border-radius: var(--radius-md);
-            box-shadow: 0 4px 12px rgba(255,165,0,0.3);
-            transition: all 0.2s;
-        }
-        .btn-premium:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(255,165,0,0.35);
-            background: linear-gradient(135deg, #ff8c00, #d96e00);
-        }
-        .btn-outline-premium {
-            border: 1.5px solid #ffa500;
-            color: #ff8c00;
-            background: transparent;
-            font-weight: 600;
-            border-radius: var(--radius-md);
-            padding: 0.6rem 1.4rem;
-            transition: all 0.2s;
-        }
-        .btn-outline-premium:hover {
-            background: #ffa50010;
-            border-color: #e07c00;
-            transform: translateY(-2px);
-        }
-        
-        .badge-premium {
-            background: linear-gradient(135deg, #ffedd5, #fff7ed);
-            color: #b45309;
-            font-weight: 600;
-            padding: 0.25rem 0.8rem;
-            border-radius: 999px;
-            font-size: 0.7rem;
-            border: 1px solid rgba(255,165,0,0.15);
-        }
-        .badge-emerald {
-            background: #ecfdf5;
-            color: #065f46;
-            border: 1px solid #a7f3d0;
-        }
-        .badge-violet {
-            background: #f5f3ff;
-            color: #5b21b6;
-            border: 1px solid #ddd6fe;
-        }
-        
-        /* search */
-        .search-input-premium {
-            background: white;
-            border: 1px solid #f0ece6;
-            border-radius: 40px;
-            padding: 0.7rem 1.2rem 0.7rem 2.8rem;
-            transition: all 0.2s;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-            width: 100%;
-            max-width: 300px;
-        }
-        .search-input-premium:focus {
-            border-color: #ffa500;
-            box-shadow: 0 0 0 4px rgba(255,165,0,0.12);
-            outline: none;
-        }
-        
-        /* table */
-        .table-premium {
-            border-collapse: separate;
-            border-spacing: 0 8px;
-        }
-        .table-premium thead th {
-            background: #f8f5f0;
-            color: #4b3f33;
-            font-weight: 600;
-            font-size: 0.7rem;
-            letter-spacing: 0.03em;
-            text-transform: uppercase;
-            padding: 0.8rem 1rem;
-            border: none;
-        }
-        .table-premium tbody tr {
-            background: white;
-            border-radius: var(--radius-md);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-            transition: all 0.15s;
-        }
-        .table-premium tbody tr:hover {
-            box-shadow: 0 8px 20px rgba(0,0,0,0.04);
-            transform: scale(1.002);
-        }
-        .table-premium td {
-            padding: 0.9rem 1rem;
-            border: none;
-            border-top: 1px solid #f5f0e9;
-        }
-        
-        /* flash */
-        .flash-message {
-            backdrop-filter: blur(12px);
-            border-radius: var(--radius-md);
-            padding: 1rem 1.5rem;
-            box-shadow: var(--shadow-elevated);
-            border-left: 4px solid white;
-        }
-        .flash-message.success { background: linear-gradient(135deg, #10b981, #047857); color: white; border-left-color: #a7f3d0; }
-        .flash-message.error { background: linear-gradient(135deg, #ef4444, #b91c1c); color: white; border-left-color: #fca5a5; }
-        .flash-message.warning { background: linear-gradient(135deg, #f59e0b, #b45309); color: white; border-left-color: #fcd34d; }
-        .flash-message.info { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border-left-color: #93c5fd; }
-        
-        /* search dropdown */
-        .search-results-dropdown {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(12px);
+        .inactive-popup-content{
+            background: #fff;
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-elevated);
-            border: 1px solid rgba(255,255,255,0.5);
+            padding: 28px 26px;
+            max-width: 360px;
+            width: 90%;
+            text-align: center;
+            border-top: 4px solid var(--color-primary);
         }
-        .search-result-item:hover { background: #fff7ed; }
-        .search-highlight { background: #fde68a; color: #92400e; font-weight: 600; }
-        
-        /* micro */
-        .hover-lift { transition: all 0.2s; }
-        .hover-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-elevated); }
-        
-        .sidebar-backdrop {
-            background: rgba(15, 12, 8, 0.5);
-            backdrop-filter: blur(4px);
-            transition: all 0.3s;
+        .inactive-popup-content h3{ font-weight: 700; font-size: 18px; color:#1f2937; margin-bottom: 8px; }
+        .inactive-popup-content p{ font-size: 14px; color:#6b7280; margin-bottom: 18px; }
+        .inactive-popup-content #countdown{ font-weight:700; color: var(--color-primary-dark); }
+        #stay-active-btn{
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            color:#fff;
+            font-weight: 600;
+            padding: 10px 22px;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-glow-orange);
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
-        
-        /* misc */
-        .border-soft { border-color: #ede8e0; }
-        .text-soft { color: #4b3f33; }
-        .bg-soft-warm { background: #faf7f2; }
+        #stay-active-btn:hover{ transform: translateY(-2px); }
     </style>
+
     {% block extra_css %}{% endblock %}
 </head>
 
-<body class="bg-[#f5f3f0] antialiased overflow-hidden h-screen font-sans">
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 antialiased overflow-hidden h-screen">
 
-<!-- Flash Messages -->
-<div class="flash-messages-container fixed top-5 right-5 z-[9999] max-w-sm space-y-3">
+<!-- Flash Messages Container -->
+<div class="flash-messages-container" id="flashMessages">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="flash-message {{ category }} flex items-center gap-3 animate-[slideInRight_0.3s_ease-out]">
-                    <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' if category == 'error' else 'exclamation-triangle' if category == 'warning' else 'info-circle' }}"></i>
-                    <span>{{ message }}</span>
+                <div class="flash-message {{ category }}">
+                    <div class="flex items-center gap-2">
+                        {% if category == 'success' %}
+                            <i class="fas fa-check-circle"></i>
+                        {% elif category == 'error' %}
+                            <i class="fas fa-exclamation-circle"></i>
+                        {% elif category == 'warning' %}
+                            <i class="fas fa-exclamation-triangle"></i>
+                        {% else %}
+                            <i class="fas fa-info-circle"></i>
+                        {% endif %}
+                        <span>{{ message }}</span>
+                    </div>
                 </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 </div>
 
-<!-- Main Layout -->
+<!-- Main Layout Container -->
 <div class="flex h-screen overflow-hidden">
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
-    <!-- Mobile Backdrop -->
-    <div id="sidebarBackdrop" class="sidebar-backdrop fixed inset-0 z-20 opacity-0 invisible transition-opacity duration-300"></div>
-
-    <!-- ========== SIDEBAR ========== -->
-    <aside id="sidebar" class="mobile-sidebar fixed lg:relative inset-y-0 left-0 z-30 w-72 bg-white/90 backdrop-blur-lg border-r border-[#ede8e0] shadow-2xl sidebar-scroll overflow-y-auto flex-shrink-0">
+    <!-- ==================== SIDEBAR ==================== -->
+    <aside id="sidebar" class="mobile-sidebar fixed lg:relative inset-y-0 left-0 z-30 w-72 sidebar-scroll overflow-y-auto flex-shrink-0">
         <div class="flex flex-col h-full">
-            <!-- Logo -->
-            <div class="flex items-center justify-between px-6 py-5 border-b border-[#ede8e0] bg-gradient-to-r from-white to-[#fcf9f5]">
+            <!-- Logo Header -->
+            <div class="flex items-center justify-between px-6 py-6 border-b border-gray-100 bg-gradient-to-r from-orange-50/70 via-white to-white">
                 <div class="flex items-center space-x-3">
-                    <div class="h-11 w-11 rounded-2xl gradient-orange flex items-center justify-center shadow-lg shadow-orange-200/50">
+                    <div class="h-11 w-11 rounded-xl bg-gradient-to-br from-[#ffa500] to-[#ff8c00] flex items-center justify-center shadow-lg ring-4 ring-orange-100">
                         <i class="fas fa-graduation-cap text-white text-xl"></i>
                     </div>
                     <div>
-                        <span class="font-extrabold text-xl tracking-tight text-gray-800">Lunserk<span class="text-[#ffa500]">ERP</span></span>
-                        <p class="text-[0.6rem] font-medium text-gray-400 tracking-wider uppercase">School Management</p>
+                        <span class="font-extrabold text-xl text-gray-800 tracking-tight">Lunserk<span class="text-transparent bg-clip-text bg-gradient-to-r from-[#ffa500] to-[#ff8c00]">ERP</span></span>
+                        <p class="text-xs text-gray-500 mt-0.5 font-medium">School Management System</p>
                     </div>
                 </div>
-                <button id="closeSidebarBtn" class="lg:hidden text-gray-400 hover:text-gray-700 transition-colors">
+                <button id="closeSidebarBtn" class="lg:hidden text-gray-400 hover:text-gray-600 transition-colors">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
 
-            <!-- Navigation -->
-            <nav class="flex-1 px-3 py-5 space-y-1 overflow-y-auto" x-data="{ 
+            <!-- Navigation Menu -->
+            <nav class="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto" x-data="{
                 activeMenu: '{{ request.endpoint.split(".")[-1] if request.endpoint else "dashboard" }}',
                 openMenus: {},
-                toggleMenu(menu) { this.openMenus[menu] = !this.openMenus[menu]; }
+                toggleMenu(menu) {
+                    this.openMenus[menu] = !this.openMenus[menu];
+                }
             }">
                 <!-- Dashboard -->
-                <a href="{{ url_for('dashboard.index') }}" 
-                    :class="{'nav-item-active': activeMenu === 'dashboard'}" 
-                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
-                    <i class="fas fa-chart-line text-lg w-5 group-hover:text-[#ffa500]"></i>
+                <a href="{{ url_for('dashboard.index') }}"
+                    :class="{'nav-item-active': activeMenu === 'dashboard'}"
+                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-orange-50/70 hover:text-[#c2660a] transition-all group">
+                    <span class="nav-icon-chip chip-orange"><i class="fas fa-chart-line text-base"></i></span>
                     <span class="font-medium">Dashboard</span>
-                    <span class="ml-auto bg-orange-100 text-orange-600 text-[0.6rem] px-2 py-0.5 rounded-full font-bold">Live</span>
                 </a>
 
                 <!-- Study Resources -->
-                <a href="{{ url_for('studyresource.index') }}" 
-                    :class="{'nav-item-active': activeMenu === 'resources'}" 
-                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
-                    <i class="fas fa-book-open text-lg w-5 group-hover:text-[#ffa500]"></i>
+                <a href="{{ url_for('studyresource.index') }}"
+                    :class="{'nav-item-active': activeMenu === 'resources'}"
+                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50/70 hover:text-blue-700 transition-all group">
+                    <span class="nav-icon-chip chip-blue"><i class="fas fa-book-open text-base"></i></span>
                     <span class="font-medium">Study Resources</span>
                 </a>
 
                 <!-- General Settings -->
                 <div>
-                    <button @click="toggleMenu('settings')" class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
+                    <button @click="toggleMenu('settings')"
+                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-violet-50/70 hover:text-violet-700 transition-all group">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-sliders-h text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="nav-icon-chip chip-violet"><i class="fas fa-sliders-h text-base"></i></span>
                             <span class="font-medium">General Settings</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.settings ? 'rotate-180' : ''"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.settings ? 'rotate-180 text-violet-600' : 'text-gray-400'"></i>
                     </button>
-                    <div x-show="openMenus.settings" x-cloak class="pl-11 mt-1 space-y-1">
-                        <a href="{{ url_for('instituteProfile.profile') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Institute Profile</a>
-                        <a href="{{ url_for('auth.profile') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Profile</a>
-                        <a href="{{url_for('sms_settings.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">SMS Settings</a>
-                        <a href="{{url_for('schoolpay.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">SchoolPay</a>
-                        <a href="{{url_for('permissions.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Permissions</a>
-                        <a href="{{ url_for('grading.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Marks Grading</a>
-                        <a href="{{ url_for('whatsapp.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">WhatsApp</a>
-                        <a href="{{ url_for('cdc_settings.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">CB Settings</a>
+                    <div x-show="openMenus.settings" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-violet-100 ml-6">
+                        <a href="{{ url_for('instituteProfile.profile') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Institute Profile</a>
+                        <a href="{{ url_for('auth.profile') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Profile</a>
+                        <a href="{{url_for('sms_settings.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">SMS Settings</a>
+                        <a href="{{url_for('schoolpay.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">SchoolPay Settings</a>
+                        <a href="{{url_for('permissions.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Permissions</a>
+                        <a href="{{ url_for('grading.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Marks Grading</a>
+                        <a href="{{ url_for('whatsapp.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">WhatsApp Settings</a>
+                        <a href="{{ url_for('cdc_settings.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">CB Settings</a>
                     </div>
                 </div>
 
                 <!-- Classes -->
                 <div>
-                    <button @click="toggleMenu('classes')" class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
+                    <button @click="toggleMenu('classes')"
+                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-emerald-50/70 hover:text-emerald-700 transition-all group">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-chalkboard text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="nav-icon-chip chip-emerald"><i class="fas fa-chalkboard text-base"></i></span>
                             <span class="font-medium">Classes</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.classes ? 'rotate-180' : ''"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.classes ? 'rotate-180 text-emerald-600' : 'text-gray-400'"></i>
                     </button>
-                    <div x-show="openMenus.classes" x-cloak class="pl-11 mt-1 space-y-1">
-                        <a href="{{ url_for('class.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">All Classes</a>
-                        <a href="{{ url_for('class.create') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">New Class</a>
+                    <div x-show="openMenus.classes" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-emerald-100 ml-6">
+                        <a href="{{ url_for('class.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">All Classes</a>
+                        <a href="{{ url_for('class.create') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">New Class</a>
                     </div>
                 </div>
 
-                <!-- Subjects -->
+               <!--Subjects -->
                 <div>
-                    <button @click="toggleMenu('subjects')" class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
+                    <button @click="toggleMenu('subjects')"
+                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50/70 hover:text-blue-700 transition-all group">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-book-open text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="nav-icon-chip chip-blue"><i class="fas fa-book-open text-base"></i></span>
                             <span class="font-medium">Subjects</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.subjects ? 'rotate-180' : ''"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.subjects ? 'rotate-180 text-blue-600' : 'text-gray-400'"></i>
                     </button>
-                    <div x-show="openMenus.subjects" x-cloak class="pl-11 mt-1 space-y-1">
-                        <a href="{{ url_for('subjects.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Classes With Subjects</a>
-                        <a href="#" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Assign Subjects</a>
+                    <div x-show="openMenus.subjects" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-blue-100 ml-6">
+                        <a href="{{ url_for('subjects.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50/60 rounded-lg transition-all">Classes With Subjects</a>
+                        <a href="#" @click.prevent="activeMenu = 'assign-subjects'" class="block py-2 px-3 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50/60 rounded-lg transition-all">Assign Subjects</a>
                     </div>
                 </div>
 
                 <!-- Students -->
                 <div>
-                    <button @click="toggleMenu('students')" class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
+                    <button @click="toggleMenu('students')"
+                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-orange-50/70 hover:text-[#c2660a] transition-all group">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-user-graduate text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="nav-icon-chip chip-orange"><i class="fas fa-user-graduate text-base"></i></span>
                             <span class="font-medium">Students</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.students ? 'rotate-180' : ''"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.students ? 'rotate-180 text-[#ff8c00]' : 'text-gray-400'"></i>
                     </button>
-                    <div x-show="openMenus.students" x-cloak class="pl-11 mt-1 space-y-1">
-                        <a href="{{url_for('student.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Student Management</a>
-                        <a href="{{url_for('houses.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Student Houses</a>
-                        <a href="{{url_for('id.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">ID Cards</a>
-                        <a href="{{url_for('student_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Print Basic List</a>
-                        <a href="{{url_for('promote.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Promote Students</a>
+                    <div x-show="openMenus.students" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-orange-100 ml-6">
+                        <a href="{{url_for('student.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Student Management</a>
+                        <a href="{{url_for('houses.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Student Houses</a>
+                        <a href="{{url_for('id.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Student ID Cards</a>
+                        <a href="{{url_for('student_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Print Basic List</a>
+                        <!--<a href="#" @click.prevent="activeMenu = 'manage-login'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Login</a>-->
+                        <a href="{{url_for('promote.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Promote Students</a>
                     </div>
                 </div>
 
                 <!-- Employees -->
                 <div>
-                    <button @click="toggleMenu('employees')" class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
+                    <button @click="toggleMenu('employees')"
+                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-violet-50/70 hover:text-violet-700 transition-all group">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-chalkboard-user text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="nav-icon-chip chip-violet"><i class="fas fa-chalkboard-user text-base"></i></span>
                             <span class="font-medium">Employees</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.employees ? 'rotate-180' : ''"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.employees ? 'rotate-180 text-violet-600' : 'text-gray-400'"></i>
                     </button>
-                    <div x-show="openMenus.employees" x-cloak class="pl-11 mt-1 space-y-1">
-                        <a href="{{ url_for('employees.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Employees Management</a>
+                    <div x-show="openMenus.employees" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-violet-100 ml-6">
+                        <a href="{{ url_for('employees.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Employees Management</a>
                     </div>
                 </div>
 
                 <!-- Accounts -->
                 <div>
-                    <button @click="toggleMenu('accounts')" class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
+                    <button @click="toggleMenu('accounts')"
+                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-emerald-50/70 hover:text-emerald-700 transition-all group">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-wallet text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="nav-icon-chip chip-emerald"><i class="fas fa-wallet text-base"></i></span>
                             <span class="font-medium">Accounts</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.accounts ? 'rotate-180' : ''"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.accounts ? 'rotate-180 text-emerald-600' : 'text-gray-400'"></i>
                     </button>
-                    <div x-show="openMenus.accounts" x-cloak class="pl-11 mt-1 space-y-1">
-                        <a href="{{url_for('accounts.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Accounts Management</a>
-                        <a href="{{url_for('statements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Student Statements</a>
-                        <a href="{{url_for('accounts.expenses')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Expenses</a>
-                        <a href="{{url_for('accounts.income')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Income</a>
+                    <div x-show="openMenus.accounts" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-emerald-100 ml-6">
+                        <a href="{{url_for('accounts.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Accounts Management</a>
+                        <a href="{{url_for('statements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Student Statements</a>
+                        <a href="{{url_for('accounts.expenses')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Expenses</a>
+                        <a href="{{url_for('accounts.income')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Income</a>
                     </div>
                 </div>
 
                 <!-- Fees -->
                 <div>
-                    <button @click="toggleMenu('fees')" class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
+                    <button @click="toggleMenu('fees')"
+                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-orange-50/70 hover:text-[#c2660a] transition-all group">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-money-bill-wave text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="nav-icon-chip chip-orange"><i class="fas fa-money-bill-wave text-base"></i></span>
                             <span class="font-medium">Fees</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.fees ? 'rotate-180' : ''"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.fees ? 'rotate-180 text-[#ff8c00]' : 'text-gray-400'"></i>
                     </button>
-                    <div x-show="openMenus.fees" x-cloak class="pl-11 mt-1 space-y-1">
-                        <a href="{{ url_for('fees.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Fees Management</a>
-                        <a href="{{url_for('fees.students_without_invoices_page')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Non Invoiced</a>
-                        <a href="{{url_for('collect.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Collect Fees</a>
-                        <a href="{{url_for('requirements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Requirements</a>
-                        <a href="{{url_for('sync.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">School Pay</a>
-                        <a href="{{url_for('payments_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Transaction List</a>
-                        <a href="{{ url_for('edit_invoice.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Edit Invoice</a>
-                        <a href="{{ url_for('collect.discounts_page') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Discounts</a>
+                    <div x-show="openMenus.fees" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-orange-100 ml-6">
+                        <a href="{{ url_for('fees.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Fees Management</a>
+
+                         <a href="{{url_for('fees.students_without_invoices_page')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Non Invoiced Students</a>
+
+                        <a href="{{url_for('collect.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Collect Fees</a>
+
+                        <a href="{{url_for('requirements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Requirements</a>
+
+                        <a href="{{url_for('sync.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a]
+                         hover:bg-orange-50/60 rounded-lg transition-all">School Pay</a>
+
+                        <a href="{{url_for('payments_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Transaction List</a>
+
+                        <a href="{{ url_for('edit_invoice.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Edit Invoice</a>
+
+                       <a href="{{ url_for('collect.discounts_page') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Discounts</a>
+
                     </div>
                 </div>
 
                 <!-- Salary -->
                 <div>
-                    <button @click="toggleMenu('salary')" class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
+                    <button @click="toggleMenu('salary')"
+                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50/70 hover:text-blue-700 transition-all group">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-credit-card text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="nav-icon-chip chip-blue"><i class="fas fa-credit-card text-base"></i></span>
                             <span class="font-medium">Salary</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.salary ? 'rotate-180' : ''"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.salary ? 'rotate-180 text-blue-600' : 'text-gray-400'"></i>
                     </button>
-                    <div x-show="openMenus.salary" x-cloak class="pl-11 mt-1 space-y-1">
-                        <a href="{{ url_for('salary.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Pay Salary</a>
+                    <div x-show="openMenus.salary" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-blue-100 ml-6">
+                        <a href="{{ url_for('salary.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50/60 rounded-lg transition-all">Pay Salary</a>
                     </div>
                 </div>
 
-                <!-- Reporting -->
+                <!-- Reporting Center -->
                 <div>
-                    <button @click="toggleMenu('attendance')" class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
+                    <button @click="toggleMenu('attendance')"
+                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-violet-50/70 hover:text-violet-700 transition-all group">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-fingerprint text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="nav-icon-chip chip-violet"><i class="fas fa-fingerprint text-base"></i></span>
                             <span class="font-medium">Reporting</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.attendance ? 'rotate-180' : ''"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.attendance ? 'rotate-180 text-violet-600' : 'text-gray-400'"></i>
                     </button>
-                    <div x-show="openMenus.attendance" x-cloak class="pl-11 mt-1 space-y-1">
-                        <a href="{{ url_for('center.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Fees Reports</a>
+                    <div x-show="openMenus.attendance" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-violet-100 ml-6">
+                        <a href="{{ url_for('center.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Fees Reports</a>
+
+                        <!--<a href="{{ url_for('financial_reports.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Profit & Loss</a>-->
+
                     </div>
                 </div>
 
-                <!-- Attendance -->
-                <div>
-                    <button @click="toggleMenu('attendance2')" class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
+
+                    <div>
+                    <button @click="toggleMenu('attendance')"
+                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-emerald-50/70 hover:text-emerald-700 transition-all group">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-clock text-lg w-5 group-hover:text-[#ffa500]"></i>
+                            <span class="nav-icon-chip chip-emerald"><i class="fas fa-fingerprint text-base"></i></span>
                             <span class="font-medium">Attendance</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.attendance2 ? 'rotate-180' : ''"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.attendance ? 'rotate-180 text-emerald-600' : 'text-gray-400'"></i>
                     </button>
-                    <div x-show="openMenus.attendance2" x-cloak class="pl-11 mt-1 space-y-1">
-                        <a href="{{ url_for('attendance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Students</a>
-                        <a href="{{ url_for('staff_attendance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Employees</a>
-                        <a href="{{ url_for('attendance_report.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Student Report</a>
-                        <a href="{{ url_for('staff_attendance_report.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Employee Report</a>
+                    <div x-show="openMenus.attendance" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-emerald-100 ml-6">
+                        <a href="{{ url_for('attendance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Students Attendance</a>
+                        <a href="{{ url_for('staff_attendance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Employees Attendance</a>
+                        <a href="{{ url_for('attendance_report.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Students Attendance Report</a>
+                        <a href="{{ url_for('staff_attendance_report.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Employees Attendance Report</a>
                     </div>
-                </div>
 
-                <!-- Exams & Report Cards -->
-                <div>
-                    <button @click="toggleMenu('exams')" class="nav-item w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
+                    <button @click="toggleMenu('attendance')"
+                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-orange-50/70 hover:text-[#c2660a] transition-all group">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-pencil-alt text-lg w-5 group-hover:text-[#ffa500]"></i>
-                            <span class="font-medium">Exams & Reports</span>
+                            <span class="nav-icon-chip chip-orange"><i class="fas fa-fingerprint text-base"></i></span>
+                            <span class="font-medium">Exams&ReportCards</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.exams ? 'rotate-180' : ''"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.attendance ? 'rotate-180 text-[#ff8c00]' : 'text-gray-400'"></i>
                     </button>
-                    <div x-show="openMenus.exams" x-cloak class="pl-11 mt-1 space-y-1">
-                        <a href="{{ url_for('exams.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Exams</a>
-                        <a href="{{ url_for('exams.marks') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Exam Marks</a>
-                        <a href="{{ url_for('results.r') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ff8c00] hover:bg-orange-50 rounded-lg transition-all">Report Cards</a>
+                    <div x-show="openMenus.attendance" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-orange-100 ml-6">
+                        <a href="{{ url_for('exams.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Exams</a>
+                        <a href="{{ url_for('exams.marks') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Exam Marks</a>
+                        <a href="{{ url_for('results.r') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Report Cards</a>
+
                     </div>
                 </div>
 
                 <!-- Messaging -->
-                <a href="{{ url_for('message.index') }}" 
-                    :class="{'nav-item-active': activeMenu === 'messaging'}" 
-                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
-                    <i class="fas fa-comment-dots text-lg w-5 group-hover:text-[#ffa500]"></i>
+                <a href="{{ url_for('message.index') }}"
+                    :class="{'nav-item-active': activeMenu === 'messaging'}"
+                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50/70 hover:text-blue-700 transition-all group">
+                    <span class="nav-icon-chip chip-blue"><i class="fas fa-comment-dots text-base"></i></span>
                     <span class="font-medium">Messaging</span>
                 </a>
 
                 <!-- Billing -->
-                <a href="{{ url_for('billing.index') }}" 
-                    :class="{'nav-item-active': activeMenu === 'billing'}" 
-                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
-                    <i class="fas fa-credit-card text-lg w-5 group-hover:text-[#ffa500]"></i>
+                <a href="{{ url_for('billing.index') }}"
+                    :class="{'nav-item-active': activeMenu === 'billing'}"
+                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-violet-50/70 hover:text-violet-700 transition-all group">
+                    <span class="nav-icon-chip chip-violet"><i class="fas fa-credit-card text-base"></i></span>
                     <span class="font-medium">Billing</span>
-                    <span class="ml-auto bg-emerald-100 text-emerald-700 text-[0.6rem] px-2 py-0.5 rounded-full font-bold">New</span>
                 </a>
 
-                <!-- Library -->
-                <a href="{{ url_for('library.index') }}" 
-                    :class="{'nav-item-active': activeMenu === 'library'}" 
-                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-orange-50 hover:text-[#ff8c00] transition-all group">
-                    <i class="fas fa-globe-americas text-lg w-5 group-hover:text-[#ffa500]"></i>
+                <!-- International Library -->
+                <a href="{{ url_for('library.index') }}"
+                    :class="{'nav-item-active': activeMenu === 'library'}"
+                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-emerald-50/70 hover:text-emerald-700 transition-all group">
+                    <span class="nav-icon-chip chip-emerald"><i class="fas fa-globe-americas text-base"></i></span>
                     <span class="font-medium">International Library</span>
                 </a>
             </nav>
 
-            <!-- User Footer -->
-            <div class="border-t border-[#ede8e0] p-4 bg-[#fcf9f5]">
+            <!-- Footer / User Info - Fixed to use session.user data correctly -->
+            <div class="border-t border-gray-100 p-4 bg-gradient-to-r from-orange-50/50 to-white">
                 <div class="flex items-center gap-3">
-                    <div class="h-10 w-10 rounded-full gradient-orange flex items-center justify-center text-white font-bold shadow-md shadow-orange-200/40">
+                    <div class="h-10 w-10 rounded-full bg-gradient-to-br from-[#ffa500] to-[#ff8c00] flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white">
                         {{ session.user.email[0].upper() if session and session.user and session.user.email else 'U' }}
                     </div>
                     <div class="flex-1 min-w-0">
@@ -556,65 +671,71 @@
                             {{ session.user.email if session and session.user and session.user.email else 'user@example.com' }}
                         </p>
                     </div>
-                    <a href="{{ url_for('auth.logout') }}" class="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-lg">
-                        <i class="fas fa-sign-out-alt"></i>
+                    <a href="{{ url_for('auth.logout') }}" class="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-rose-500 transition-all" title="Logout">
+                        <i class="fas fa-sign-out-alt text-sm"></i>
                     </a>
                 </div>
             </div>
         </div>
     </aside>
 
-    <!-- ========== MAIN CONTENT ========== -->
+    <!-- ==================== MAIN CONTENT ==================== -->
     <div class="flex-1 flex flex-col overflow-hidden w-full">
         <!-- Top Navbar -->
-        <header class="bg-white/80 backdrop-blur-md border-b border-[#ede8e0] sticky top-0 z-20 shadow-sm flex-shrink-0">
-            <div class="flex items-center justify-between px-6 py-3">
+        <header class="topbar-glass sticky top-0 z-20 flex-shrink-0">
+            <div class="flex items-center justify-between px-6 py-4">
                 <div class="flex items-center gap-4">
                     <button id="openSidebarBtn" class="lg:hidden text-gray-600 hover:text-[#ffa500] text-2xl transition-colors">
                         <i class="fas fa-bars"></i>
                     </button>
                     <div class="relative hidden md:block">
-                        <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
-                        <input id="studentSearchInput" type="text" placeholder="Search student, employee..." 
-                               class="search-input-premium pl-10 pr-4 py-2.5 text-sm">
+                        <i class="fas fa-search absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <input type="text" placeholder="Search student, employee..."
+                               class="pl-10 pr-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl w-80 text-sm focus:outline-none focus:ring-2 focus:ring-[#ffa500]/50 focus:border-[#ffa500] focus:bg-white transition-all">
                     </div>
                 </div>
                 <div class="flex items-center gap-5">
-                    <button class="relative text-gray-500 hover:text-[#ffa500] transition-colors p-2 hover:bg-orange-50 rounded-full">
-                        <i class="fas fa-bell text-xl"></i>
-                        <span class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[0.6rem] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md shadow-red-200">3</span>
+                    <div class="hidden md:flex gap-2">
+                    </div>
+                    <button class="relative h-10 w-10 flex items-center justify-center rounded-xl text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 transition-all">
+                        <i class="fas fa-bell text-lg"></i>
+                        <span class="absolute top-1 right-1 bg-gradient-to-br from-rose-500 to-rose-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse shadow-sm">3</span>
                     </button>
-                    <div class="flex items-center gap-2 cursor-pointer group">
-                        <div class="h-9 w-9 rounded-full gradient-orange flex items-center justify-center text-white font-semibold shadow-md shadow-orange-200/40">
+                    <div class="flex items-center gap-2 cursor-pointer group pl-3 border-l border-gray-200">
+                        <div class="h-9 w-9 rounded-full bg-gradient-to-br from-[#ffa500] to-[#ff8c00] flex items-center justify-center text-white font-semibold shadow-md ring-2 ring-orange-100">
                             {{ session.user.email[0].upper() if session and session.user and session.user.email else 'U' }}
                         </div>
                         <div class="hidden md:block">
-                            <p class="text-sm font-medium text-gray-700 group-hover:text-[#ff8c00] transition-colors">
+                            <p class="text-sm font-semibold text-gray-800 group-hover:text-[#ffa500] transition-colors">
                                 {{ session.user.email.split('@')[0] if session and session.user and session.user.email else 'User' }}
                             </p>
-                            <p class="text-[0.6rem] text-gray-400 font-medium uppercase tracking-wider">
-                                {% if session.user.is_employee %}{{ session.user.role|capitalize if session.user.role else 'Employee' }}{% else %}Administrator{% endif %}
+                            <p class="text-xs text-gray-500">
+                                {% if session.user.is_employee %}
+                                    {{ session.user.role|capitalize if session.user.role else 'Employee' }}
+                                {% else %}
+                                    Administrator
+                                {% endif %}
                             </p>
                         </div>
-                        <i class="fas fa-chevron-down text-xs text-gray-400 group-hover:text-[#ffa500] transition-colors"></i>
+                        <i class="fas fa-chevron-down text-xs text-gray-500 group-hover:text-[#ffa500] transition-colors"></i>
                     </div>
                 </div>
             </div>
         </header>
 
-        <!-- Content -->
-        <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 bg-[#f5f3f0]">
+        <!-- Dynamic Content Area -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
             <div class="w-full mx-auto">
                 {% block content %}
-                <!-- Default placeholder -->
+                <!-- Default content if no block is provided -->
                 <div class="flex items-center justify-center min-h-[calc(100vh-200px)]">
                     <div class="text-center">
-                        <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md mx-auto border border-white/50">
-                            <div class="h-20 w-20 gradient-orange rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-orange-200/40">
+                        <div class="surface-card rounded-2xl shadow-xl p-10 max-w-md mx-auto">
+                            <div class="h-20 w-20 bg-gradient-to-br from-[#ffa500] to-[#ff8c00] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                                 <i class="fas fa-school text-white text-4xl"></i>
                             </div>
-                            <h1 class="text-2xl font-extrabold text-gray-800 mb-2">Welcome to Lunserk ERP</h1>
-                            <p class="text-gray-500">Select a module from the sidebar to get started</p>
+                            <h1 class="text-2xl font-bold text-gray-800 mb-2">Welcome to Lunserk ERP</h1>
+                            <p class="text-gray-600">Select a module from the sidebar to get started</p>
                         </div>
                     </div>
                 </div>
@@ -624,234 +745,668 @@
     </div>
 </div>
 
-<!-- Alpine & Scripts -->
+<!-- Scripts -->
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
-    (function() {
-        // Sidebar
-        const sidebar = document.getElementById('sidebar');
-        const openBtn = document.getElementById('openSidebarBtn');
-        const closeBtn = document.getElementById('closeSidebarBtn');
-        const backdrop = document.getElementById('sidebarBackdrop');
-        
-        function openSidebar() { if (window.innerWidth < 1024) { sidebar.classList.add('sidebar-visible'); backdrop.classList.add('active'); document.body.style.overflow = 'hidden'; } }
-        function closeSidebar() { if (window.innerWidth < 1024) { sidebar.classList.remove('sidebar-visible'); backdrop.classList.remove('active'); document.body.style.overflow = ''; } }
-        
-        if (openBtn) openBtn.addEventListener('click', openSidebar);
-        if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
-        if (backdrop) backdrop.addEventListener('click', closeSidebar);
-        
-        // Close on outside click
-        document.addEventListener('click', function(e) {
-            if (window.innerWidth < 1024 && sidebar && !sidebar.contains(e.target) && !openBtn?.contains(e.target) && sidebar.classList.contains('sidebar-visible')) {
+    // FIXED: Sidebar toggle functionality for mobile
+    const sidebar = document.getElementById('sidebar');
+    const openBtn = document.getElementById('openSidebarBtn');
+    const closeBtn = document.getElementById('closeSidebarBtn');
+    const backdrop = document.getElementById('sidebarBackdrop');
+
+    function openSidebar() {
+        if (window.innerWidth < 1024) {
+            sidebar.classList.add('sidebar-visible');
+            if (backdrop) backdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeSidebar() {
+        if (window.innerWidth < 1024) {
+            sidebar.classList.remove('sidebar-visible');
+            if (backdrop) backdrop.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+
+    if (openBtn) {
+        openBtn.addEventListener('click', openSidebar);
+    }
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeSidebar);
+    }
+    if (backdrop) {
+        backdrop.addEventListener('click', closeSidebar);
+    }
+
+    // Close sidebar when clicking outside on mobile (improved)
+    document.addEventListener('click', function(event) {
+        const isMobile = window.innerWidth < 1024;
+        if (isMobile && sidebar && !sidebar.contains(event.target) && !openBtn?.contains(event.target)) {
+            if (sidebar.classList.contains('sidebar-visible')) {
                 closeSidebar();
             }
+        }
+    });
+
+    // Handle window resize - ensure sidebar state is correct
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            if (window.innerWidth >= 1024) {
+                // On desktop, remove mobile classes and ensure body scroll is normal
+                sidebar.classList.remove('sidebar-visible');
+                if (backdrop) backdrop.classList.remove('active');
+                document.body.style.overflow = '';
+            } else {
+                // On mobile, make sure sidebar is closed by default
+                sidebar.classList.remove('sidebar-visible');
+                if (backdrop) backdrop.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }, 150);
+    });
+
+    // Ensure sidebar starts hidden on mobile
+    if (window.innerWidth < 1024) {
+        sidebar.classList.remove('sidebar-visible');
+        if (backdrop) backdrop.classList.remove('active');
+    }
+
+    // Auto-hide flash messages after 5 seconds
+    setTimeout(() => {
+        document.querySelectorAll('.flash-message').forEach(msg => {
+            setTimeout(() => {
+                msg.style.opacity = '0';
+                msg.style.transform = 'translateX(100%)';
+                setTimeout(() => msg.remove(), 300);
+            }, 5000);
         });
-        
-        // Flash auto dismiss
+    }, 100);
+
+    // Manual flash message removal
+    const flashMessages = document.querySelectorAll('.flash-message');
+    flashMessages.forEach(msg => {
         setTimeout(() => {
-            document.querySelectorAll('.flash-message').forEach(msg => {
-                setTimeout(() => { msg.style.opacity = '0'; msg.style.transform = 'translateX(100%)'; setTimeout(() => msg.remove(), 300); }, 4000);
-            });
-        }, 500);
-        
-        // Student search (enhanced)
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('studentSearchInput');
-            if (!searchInput) return;
-            
-            const wrapper = document.createElement('div');
-            wrapper.className = 'search-container relative inline-block w-full max-w-xs';
-            searchInput.parentNode.insertBefore(wrapper, searchInput);
-            wrapper.appendChild(searchInput);
-            
-            const dropdown = document.createElement('div');
-            dropdown.className = 'search-results-dropdown absolute left-0 right-0 mt-2 hidden z-50';
-            wrapper.appendChild(dropdown);
-            
-            let timeout = null;
-            searchInput.addEventListener('input', function(e) {
-                const val = e.target.value.trim();
-                clearTimeout(timeout);
-                if (!val) { dropdown.classList.add('hidden'); return; }
-                timeout = setTimeout(() => {
-                    dropdown.classList.remove('hidden');
-                    dropdown.innerHTML = `<div class="p-4 text-center text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i>Searching...</div>`;
-                    // Simulate results
-                    setTimeout(() => {
-                        dropdown.innerHTML = `
-                            <div class="p-2 space-y-1">
-                                <div class="search-result-item p-3 hover:bg-orange-50 rounded-lg cursor-pointer"><div class="font-semibold">James Mwangi</div><div class="text-xs text-gray-500"><i class="fas fa-id-card"></i> STU-001 · Form 3</div></div>
-                                <div class="search-result-item p-3 hover:bg-orange-50 rounded-lg cursor-pointer"><div class="font-semibold">Aisha Nakato</div><div class="text-xs text-gray-500"><i class="fas fa-id-card"></i> STU-002 · Form 2</div></div>
-                                <div class="search-result-item p-3 hover:bg-orange-50 rounded-lg cursor-pointer"><div class="font-semibold">David Ochieng</div><div class="text-xs text-gray-500"><i class="fas fa-id-card"></i> STU-003 · Form 4</div></div>
-                            </div>
-                        `;
-                    }, 400);
-                }, 250);
-            });
-            document.addEventListener('click', function(e) { if (!wrapper.contains(e.target)) dropdown.classList.add('hidden'); });
-        });
-        
-        // subscription overlay (placeholder logic)
-        // keep original behavior but not interfering
+            msg.style.opacity = '0';
+            msg.style.transform = 'translateX(100%)';
+            setTimeout(() => msg.remove(), 300);
+        }, 5000);
+    });
 
-        // Subscription Check and Overlay
-let subscriptionCheckInterval = null;
-let subscriptionOverlay = null;
+    // Subscription Check and Overlay
+    let subscriptionCheckInterval = null;
+    let subscriptionOverlay = null;
 
-// List of paths where overlay should NOT appear
-const excludedPaths = ['/billing', '/billing/', '/billing/index', '/billing/payment-callback'];
+    // List of paths where overlay should NOT appear
+    const excludedPaths = ['/billing', '/billing/', '/billing/index', '/billing/payment-callback'];
 
-function isExcludedPath() {
-    const currentPath = window.location.pathname;
-    return excludedPaths.some(path => currentPath === path || currentPath.startsWith('/billing'));
-}
-
-function checkSubscriptionStatus() {
-    // Don't check on billing pages
-    if (isExcludedPath()) {
-        return;
+    function isExcludedPath() {
+        const currentPath = window.location.pathname;
+        return excludedPaths.some(path => currentPath === path || currentPath.startsWith('/billing'));
     }
-    
-    fetch('/billing/check-subscription')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && !data.is_active) {
-                showSubscriptionOverlay();
-            } else if (data.success && data.is_active && subscriptionOverlay) {
-                hideSubscriptionOverlay();
-            }
-        })
-        .catch(error => console.error('Error checking subscription:', error));
-}
 
-function showSubscriptionOverlay() {
-    // Don't show on billing pages
-    if (isExcludedPath()) {
-        return;
+    function checkSubscriptionStatus() {
+        // Don't check on billing pages
+        if (isExcludedPath()) {
+            return;
+        }
+
+        fetch('/billing/check-subscription')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && !data.is_active) {
+                    showSubscriptionOverlay();
+                } else if (data.success && data.is_active && subscriptionOverlay) {
+                    hideSubscriptionOverlay();
+                }
+            })
+            .catch(error => console.error('Error checking subscription:', error));
     }
-    
-    if (subscriptionOverlay) return;
-    
-    subscriptionOverlay = document.createElement('div');
-    subscriptionOverlay.id = 'subscriptionOverlay';
-    subscriptionOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.95);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        backdrop-filter: blur(5px);
-    `;
-    
-    subscriptionOverlay.innerHTML = `
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 text-center" style="animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);">
-            <div class="h-20 w-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-800 mb-2">Subscription Expired</h3>
-            <p class="text-gray-600 mb-4">
-                Your subscription has expired. Please renew to continue accessing the system.
-            </p>
-            <div class="bg-orange-50 rounded-lg p-3 mb-4">
-                <p class="text-sm text-orange-600">
-                    <i class="fas fa-info-circle"></i> 
-                    Renew now for only UGX 50,000 per month
+
+    function showSubscriptionOverlay() {
+        // Don't show on billing pages
+        if (isExcludedPath()) {
+            return;
+        }
+
+        if (subscriptionOverlay) return;
+
+        subscriptionOverlay = document.createElement('div');
+        subscriptionOverlay.id = 'subscriptionOverlay';
+        subscriptionOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        `;
+
+        subscriptionOverlay.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 text-center" style="animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);">
+                <div class="h-20 w-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Subscription Expired</h3>
+                <p class="text-gray-600 mb-4">
+                    Your subscription has expired. Please renew to continue accessing the system.
                 </p>
+                <div class="bg-orange-50 rounded-lg p-3 mb-4">
+                    <p class="text-sm text-orange-600">
+                        <i class="fas fa-info-circle"></i>
+                        Renew now for only UGX 50,000 per month
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="/billing" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium text-center">
+                        <i class="fas fa-credit-card"></i> Renew Now
+                    </a>
+                </div>
             </div>
-            <div class="flex gap-3">
-                <a href="/billing" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium text-center">
-                    <i class="fas fa-credit-card"></i> Renew Now
-                </a>
-            </div>
-        </div>
-    `;
-    
-    // Add animation styles if not already present
-    if (!document.querySelector('#subscriptionStyles')) {
-        const style = document.createElement('style');
-        style.id = 'subscriptionStyles';
-        style.textContent = `
-            @keyframes slideUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(50px) scale(0.95);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0) scale(1);
-                }
-            }
         `;
-        document.head.appendChild(style);
+
+        // Add animation styles if not already present
+        if (!document.querySelector('#subscriptionStyles')) {
+            const style = document.createElement('style');
+            style.id = 'subscriptionStyles';
+            style.textContent = `
+                @keyframes slideUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(50px) scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Add btn-gradient styles if not present
+        if (!document.querySelector('#btnGradientStyles')) {
+            const btnStyle = document.createElement('style');
+            btnStyle.id = 'btnGradientStyles';
+            btnStyle.textContent = `
+                .btn-gradient {
+                    background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+                    transition: all 0.3s ease;
+                }
+                .btn-gradient:hover {
+                    background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+                    transform: translateY(-2px);
+                }
+            `;
+            document.head.appendChild(btnStyle);
+        }
+
+        document.body.appendChild(subscriptionOverlay);
+        document.body.style.overflow = 'hidden';
     }
-    
-    // Add btn-gradient styles if not present
-    if (!document.querySelector('#btnGradientStyles')) {
-        const btnStyle = document.createElement('style');
-        btnStyle.id = 'btnGradientStyles';
-        btnStyle.textContent = `
-            .btn-gradient {
-                background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-                transition: all 0.3s ease;
+
+    function hideSubscriptionOverlay() {
+        if (subscriptionOverlay) {
+            subscriptionOverlay.remove();
+            subscriptionOverlay = null;
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Check subscription on page load and every 5 minutes (but not on billing pages)
+    document.addEventListener('DOMContentLoaded', function() {
+        // Only check if not on billing page
+        if (!isExcludedPath()) {
+            checkSubscriptionStatus();
+            subscriptionCheckInterval = setInterval(checkSubscriptionStatus, 5 * 60 * 1000);
+        }
+    });
+
+    // Also check when the page becomes visible again (user returns from billing)
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && !isExcludedPath()) {
+            checkSubscriptionStatus();
+        }
+    });
+
+    // Clean up interval on page unload
+    window.addEventListener('beforeunload', function() {
+        if (subscriptionCheckInterval) {
+            clearInterval(subscriptionCheckInterval);
+        }
+    });
+
+    // Optional: Also check when returning from billing page via navigation
+    window.addEventListener('pageshow', function() {
+        if (!isExcludedPath()) {
+            checkSubscriptionStatus();
+        }
+    });
+
+    (() => {
+        const WARNING_TIME = 1 * 60 * 1000;  // Show warning after 1 minute
+        const LOGOUT_TIME = 3 * 60 * 1000;   // Logout after 3 minutes
+
+        let warningTimer;
+        let logoutTimer;
+        let countdownInterval;
+        let popup;
+
+        function createPopup() {
+            popup = document.createElement("div");
+            popup.id = "inactive-popup";
+            popup.innerHTML = `
+                <div class="inactive-popup-content">
+                    <h3>Session Expiring</h3>
+                    <p>You will be logged out in <span id="countdown">120</span> seconds due to inactivity.</p>
+                    <button id="stay-active-btn">Stay Here</button>
+                </div>
+            `;
+
+            document.body.appendChild(popup);
+
+            document.getElementById("stay-active-btn").addEventListener("click", () => {
+                resetTimers();
+                removePopup();
+            });
+        }
+
+        function removePopup() {
+            if (popup) {
+                popup.remove();
+                popup = null;
             }
-            .btn-gradient:hover {
-                background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
-                transform: translateY(-2px);
+
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
             }
-        `;
-        document.head.appendChild(btnStyle);
-    }
-    
-    document.body.appendChild(subscriptionOverlay);
-    document.body.style.overflow = 'hidden';
-}
+        }
 
-function hideSubscriptionOverlay() {
-    if (subscriptionOverlay) {
-        subscriptionOverlay.remove();
-        subscriptionOverlay = null;
-        document.body.style.overflow = '';
-    }
-}
+        function showWarning() {
+            if (!popup) {
+                createPopup();
+            }
 
-// Check subscription on page load and every 5 minutes (but not on billing pages)
-document.addEventListener('DOMContentLoaded', function() {
-    // Only check if not on billing page
-    if (!isExcludedPath()) {
-        checkSubscriptionStatus();
-        subscriptionCheckInterval = setInterval(checkSubscriptionStatus, 5 * 60 * 1000);
-    }
-});
+            let seconds = Math.floor((LOGOUT_TIME - WARNING_TIME) / 1000);
 
-// Also check when the page becomes visible again (user returns from billing)
-document.addEventListener('visibilitychange', function() {
-    if (!document.hidden && !isExcludedPath()) {
-        checkSubscriptionStatus();
-    }
-});
+            countdownInterval = setInterval(() => {
+                seconds--;
 
-// Clean up interval on page unload
-window.addEventListener('beforeunload', function() {
-    if (subscriptionCheckInterval) {
-        clearInterval(subscriptionCheckInterval);
-    }
-});
+                const countdown = document.getElementById("countdown");
+                if (countdown) {
+                    countdown.textContent = seconds;
+                }
 
-// Optional: Also check when returning from billing page via navigation
-window.addEventListener('pageshow', function() {
-    if (!isExcludedPath()) {
-        checkSubscriptionStatus();
-    }
-});
+                if (seconds <= 0) {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+        }
+
+        function logoutUser() {
+            window.location.href = "/auth/logout";
+        }
+
+        function resetTimers() {
+            clearTimeout(warningTimer);
+            clearTimeout(logoutTimer);
+            clearInterval(countdownInterval);
+            removePopup();
+
+            warningTimer = setTimeout(showWarning, WARNING_TIME);
+            logoutTimer = setTimeout(logoutUser, LOGOUT_TIME);
+        }
+
+        // Add event listeners for user activity
+        ["mousemove", "keydown", "click", "scroll", "touchstart"].forEach(event => {
+            document.addEventListener(event, resetTimers);
+        });
+
+        // Initial start
+        resetTimers();
     })();
 
-    
+
+    // Student Search Functionality
+class StudentSearch {
+    constructor() {
+        this.searchInput = document.getElementById('studentSearchInput');
+        this.dropdown = document.getElementById('searchResultsDropdown');
+        this.searchTimeout = null;
+        this.currentPage = 1;
+        this.hasMore = false;
+        this.isLoading = false;
+        this.currentSearchTerm = '';
+
+        if (this.searchInput) {
+            this.init();
+        }
+    }
+
+    init() {
+        // Add search container wrapper if not already present
+        const searchWrapper = document.createElement('div');
+        searchWrapper.className = 'search-container';
+        this.searchInput.parentNode.insertBefore(searchWrapper, this.searchInput);
+        searchWrapper.appendChild(this.searchInput);
+
+        // Create dropdown element
+        this.dropdown = document.createElement('div');
+        this.dropdown.id = 'searchResultsDropdown';
+        this.dropdown.className = 'search-results-dropdown';
+        searchWrapper.appendChild(this.dropdown);
+
+        // Add input event listener with debounce
+        this.searchInput.addEventListener('input', (e) => {
+            this.handleSearch(e.target.value);
+        });
+
+        // Handle click outside to close dropdown
+        document.addEventListener('click', (e) => {
+            if (!searchWrapper.contains(e.target)) {
+                this.closeDropdown();
+            }
+        });
+
+        // Handle keyboard navigation
+        this.searchInput.addEventListener('keydown', (e) => {
+            this.handleKeyboardNavigation(e);
+        });
+
+        // Handle focus
+        this.searchInput.addEventListener('focus', () => {
+            if (this.currentSearchTerm && this.dropdown.children.length > 0) {
+                this.dropdown.classList.add('active');
+            }
+        });
+    }
+
+    async handleSearch(searchTerm) {
+        // Clear previous timeout
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+
+        // Store current search term
+        this.currentSearchTerm = searchTerm.trim();
+
+        // If search is empty, close dropdown and return
+        if (!this.currentSearchTerm) {
+            this.closeDropdown();
+            return;
+        }
+
+        // Debounce search
+        this.searchTimeout = setTimeout(() => {
+            this.performSearch(1);
+        }, 300);
+    }
+
+    async performSearch(page = 1) {
+        if (this.isLoading) return;
+
+        this.isLoading = true;
+        this.currentPage = page;
+
+        // Show loading state
+        this.showLoading();
+
+        try {
+            // Build URL with pagination
+            const url = new URL('/students/api/students', window.location.origin);
+            url.searchParams.append('search', this.currentSearchTerm);
+            url.searchParams.append('page', page);
+            url.searchParams.append('per_page', 10);
+
+            // Make API request
+            const response = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error('Search failed');
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.hasMore = result.has_more;
+                this.displayResults(result.data);
+            } else {
+                this.showError(result.message);
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+            this.showError('Failed to search students');
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    showLoading() {
+        if (!this.dropdown) return;
+
+        this.dropdown.innerHTML = `
+            <div class="search-loading">
+                <i class="fas fa-spinner"></i> Searching...
+            </div>
+        `;
+        this.dropdown.classList.add('active');
+    }
+
+    displayResults(students) {
+        if (!this.dropdown) return;
+
+        if (!students || students.length === 0) {
+            this.dropdown.innerHTML = `
+                <div class="search-no-results">
+                    <i class="fas fa-user-graduate"></i> No students found
+                </div>
+            `;
+            this.dropdown.classList.add('active');
+            return;
+        }
+
+        // Build results HTML
+        let html = '<div class="search-results-list">';
+
+        students.forEach(student => {
+            // Highlight matching text in student name
+            const highlightedName = this.highlightText(student.name, this.currentSearchTerm);
+            const highlightedId = this.highlightText(student.student_id || 'No ID', this.currentSearchTerm);
+
+            html += `
+                <div class="search-result-item" data-student-id="${student.id}">
+                    <div class="search-result-name">${highlightedName}</div>
+                    <div class="search-result-details">
+                        <span><i class="fas fa-id-card"></i> ${highlightedId}</span>
+                        <span><i class="fas fa-chalkboard"></i> ${student.classes?.name || 'No Class'}</span>
+                        <span><i class="fas ${student.gender === 'Male' ? 'fa-mars' : 'fa-venus'}"></i> ${student.gender || 'N/A'}</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Add "Load More" button if there are more results
+        if (this.hasMore) {
+            html += `
+                <div class="search-result-item load-more" style="text-align: center; color: #ffa500;">
+                    <i class="fas fa-chevron-down"></i> Load more students...
+                </div>
+            `;
+        }
+
+        html += '</div>';
+        this.dropdown.innerHTML = html;
+        this.dropdown.classList.add('active');
+
+        // Add click handlers to result items
+        const resultItems = this.dropdown.querySelectorAll('.search-result-item');
+        resultItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+
+                // Check if it's the load more button
+                if (item.classList.contains('load-more')) {
+                    this.loadMore();
+                } else {
+                    const studentId = item.dataset.studentId;
+                    if (studentId) {
+                        this.goToStudentDetails(studentId);
+                    }
+                }
+            });
+        });
+    }
+
+    loadMore() {
+        if (this.isLoading) return;
+        this.performSearch(this.currentPage + 1);
+    }
+
+    highlightText(text, searchTerm) {
+        if (!text || !searchTerm) return text;
+
+        const regex = new RegExp(`(${this.escapeRegex(searchTerm)})`, 'gi');
+        return text.replace(regex, '<span class="search-highlight">$1</span>');
+    }
+
+    escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    handleKeyboardNavigation(e) {
+        const items = this.dropdown?.querySelectorAll('.search-result-item:not(.load-more)');
+        if (!items || items.length === 0) return;
+
+        let currentIndex = -1;
+
+        // Find currently focused item
+        items.forEach((item, index) => {
+            if (item.classList.contains('active-keyboard')) {
+                currentIndex = index;
+                item.classList.remove('active-keyboard');
+            }
+        });
+
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                currentIndex = (currentIndex + 1) % items.length;
+                this.focusItem(items[currentIndex]);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                currentIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+                this.focusItem(items[currentIndex]);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (currentIndex >= 0) {
+                    const studentId = items[currentIndex].dataset.studentId;
+                    if (studentId) {
+                        this.goToStudentDetails(studentId);
+                    }
+                }
+                break;
+            case 'Escape':
+                this.closeDropdown();
+                this.searchInput.blur();
+                break;
+        }
+    }
+
+    focusItem(item) {
+        if (!item) return;
+
+        // Remove active class from all items
+        const allItems = this.dropdown.querySelectorAll('.search-result-item');
+        allItems.forEach(i => i.classList.remove('active-keyboard'));
+
+        // Add active class to current item
+        item.classList.add('active-keyboard');
+
+        // Scroll into view
+        item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+        // Add hover style
+        item.style.backgroundColor = '#fff7ed';
+    }
+
+    showError(message) {
+        if (!this.dropdown) return;
+
+        this.dropdown.innerHTML = `
+            <div class="search-no-results" style="color: #ef4444;">
+                <i class="fas fa-exclamation-circle"></i> ${message}
+            </div>
+        `;
+        this.dropdown.classList.add('active');
+
+        // Auto close after 2 seconds
+        setTimeout(() => {
+            if (this.dropdown.classList.contains('active')) {
+                this.closeDropdown();
+            }
+        }, 2000);
+    }
+
+    closeDropdown() {
+        if (this.dropdown) {
+            this.dropdown.classList.remove('active');
+        }
+    }
+
+    goToStudentDetails(studentId) {
+        if (studentId) {
+            // Clear search input and close dropdown
+            this.searchInput.value = '';
+            this.closeDropdown();
+
+            // Navigate to student details page
+            window.location.href = `/student-details/${studentId}`;
+        }
+    }
+}
+
+// Initialize search when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Add ID to the search input in the navbar
+    const searchInputs = document.querySelectorAll('header input[placeholder*="Search"]');
+    if (searchInputs.length > 0) {
+        searchInputs[0].id = 'studentSearchInput';
+        searchInputs[0].placeholder = 'Search student by name or ID...';
+
+        // Initialize search functionality
+        window.studentSearch = new StudentSearch();
+    }
+});
+
+// Add styles for keyboard navigation
+const keyboardStyle = document.createElement('style');
+keyboardStyle.textContent = `
+    .search-result-item.active-keyboard {
+        background-color: #fff7ed !important;
+        outline: none;
+    }
+
+    .search-result-item {
+        transition: background-color 0.2s ease;
+    }
+`;
+document.head.appendChild(keyboardStyle);
 </script>
 
 {% block extra_js %}{% endblock %}
