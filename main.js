@@ -1,4 +1,4 @@
-// whatsapp-academic-server.js - Consolidated WhatsApp + Academic Report Server
+// whatsapp-academic-server.js - Consolidated WhatsApp + Academic Report + ID Card Server
 // Fixed with better timeout handling and no auth clearing on shutdown
 
 const { default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } = require('@whiskeysockets/baileys');
@@ -13,6 +13,8 @@ const fs = require('fs');
 const path = require('path');
 const { buildReportCardsPdf } = require('./lib/pdfBuilder');
 const { buildCompetencyReportCardsPdf } = require('./lib/competencyPdfBuilder');
+const { validateRequest, validateBatchRequest, ValidationError } = require('./validate');
+const { generateCardPdf, generateBatchPdf } = require('./cardGenerator');
 require('dotenv').config();
 
 // ==================== CONFIGURATION ====================
@@ -25,10 +27,10 @@ const io = socketIO(server, {
   transports: ['websocket', 'polling']
 });
 
-// Allow generously sized JSON bodies (many students + remote image URLs)
+// Allow generously sized JSON bodies (many students + remote image URLs + base64 photos)
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '80mb' }));
+app.use(express.urlencoded({ extended: true, limit: '80mb' }));
 
 // ==================== SUPABASE SETUP ====================
 let supabase = null;
@@ -648,6 +650,65 @@ app.post('/generate-single', (req, res) => {
   }
 });
 
+// ==================== API ROUTES - STUDENT ID CARDS ====================
+
+/**
+ * POST /api/id-cards
+ * Body: { branding, student, qrData, options }
+ * Response: application/pdf — a single page containing the complete card
+ * (front face only; photo, fields, and QR code are all on this one side).
+ */
+app.post('/api/id-cards', async (req, res) => {
+  try {
+    validateRequest(req.body);
+
+    const pdfBuffer = await generateCardPdf(req.body);
+
+    const studentId = req.body.student.studentId || 'card';
+    const filename = `student-id-${String(studentId).replace(/[^a-zA-Z0-9_-]/g, '')}.pdf`;
+
+    res.status(200);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.end(pdfBuffer);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error while generating the ID card PDF.' });
+  }
+});
+
+/**
+ * POST /api/id-cards/batch
+ * Body: { branding?, options?, cards: [ { student, qrData, branding?, options? }, ... ] }
+ * `branding`/`options` at the top level act as shared defaults; a per-card
+ * `branding`/`options` overrides them for just that card.
+ * Response: a single application/pdf with one page per card (each page is
+ * a complete, single-sided card), in the same order as `cards`.
+ */
+app.post('/api/id-cards/batch', async (req, res) => {
+  try {
+    const mergedCards = validateBatchRequest(req.body);
+
+    const pdfBuffer = await generateBatchPdf(mergedCards);
+
+    res.status(200);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="student-id-batch-${mergedCards.length}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.end(pdfBuffer);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error while generating the batch PDF.' });
+  }
+});
+
 // ==================== SOCKET.IO ====================
 io.on('connection', (socket) => {
   console.log('🟢 Client connected:', socket.id);
@@ -736,16 +797,19 @@ async function startInstitutes() {
 }
 
 server.listen(PORT, async () => {
-  console.log(`\n🚀 WhatsApp + Academic Reports Server: http://localhost:${PORT}`);
+  console.log(`\n🚀 WhatsApp + Academic Reports + ID Card Server: http://localhost:${PORT}`);
   console.log(`💾 Auth: ${getSupabaseClient() ? 'Supabase' : 'Local'}`);
   console.log(`📱 WhatsApp API ready`);
-  console.log(`📄 Report Card API ready`);
+  console.log(`📄 Report Card API ready:`);
   console.log(`   - POST /generate-report-cards (bulk standard)`);
   console.log(`   - POST /generate-report-card (single standard)`);
   console.log(`   - POST /generate-competency-report-cards (bulk CBC)`);
   console.log(`   - POST /generate-competency-report-card (single CBC)`);
   console.log(`   - POST /generate (auto-detect bulk)`);
   console.log(`   - POST /generate-single (auto-detect single)`);
+  console.log(`🪪 ID Card API ready:`);
+  console.log(`   - POST /api/id-cards (single)`);
+  console.log(`   - POST /api/id-cards/batch (batch)`);
   console.log(`📱 Server ready\n`);
   
   await startInstitutes();

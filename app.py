@@ -98,6 +98,7 @@ from routes.fees.createFeeNames import fee_names_bp
 from routes.whatsapp.whatsappIntegrationSettings import whatsapp_bp
 from routes.reports.profitLossAndBalanceSheet import financial_reports_bp as profit_loss_bp
 from routes.resultsCard.CDCReportSettings import settings_bp as cdc_report_settings_bp
+from routes.accounts.budget import budget_bp
 
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -150,6 +151,7 @@ app.register_blueprint(fee_names_bp)
 app.register_blueprint(whatsapp_bp)
 app.register_blueprint(profit_loss_bp)
 app.register_blueprint(cdc_report_settings_bp)
+app.register_blueprint(budget_bp)
 
 @app.route('/')
 def landing():
@@ -173,6 +175,6 @@ def serve_static(filename):
 if __name__ == '__main__':
     # The line `app.run(host="0.0.0.0", port=40000)` is starting a development server for the Flask
     # application.
-     app.run(host="0.0.0.0", port=40000)
-    # from waitress import serve
-    # serve(app, host='0.0.0.0', port=40000)  
+    #  app.run(host="0.0.0.0", port=40000)
+    from waitress import serve
+    serve(app, host='0.0.0.0', port=40000)  

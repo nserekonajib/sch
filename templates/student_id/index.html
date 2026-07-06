@@ -1,10 +1,11 @@
-<!-- templates/student_id/index.html - Updated with Print All Button -->
+<!-- templates/student_id/index.html - Updated with theme color passthrough -->
 {% extends "base.html" %}
 
 {% block title %}Student ID Cards - Lunserk ERP{% endblock %}
 
 {% block extra_css %}
 <style>
+    /* ... same styles as before ... */
     .id-card {
         transition: all 0.3s ease;
         background: linear-gradient(135deg, #fff 0%, #fef9e7 100%);
@@ -125,7 +126,7 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Theme Color</label>
                 <div class="flex gap-2 items-center">
-                    <div class="color-option" onclick="selectColor('#ffa500')">
+                    <div class="color-option selected" onclick="selectColor('#ffa500')">
                         <div class="w-8 h-8 rounded-full bg-orange-500 border-2 border-white shadow"></div>
                     </div>
                     <div class="color-option" onclick="selectColor('#3b82f6')">
@@ -245,21 +246,25 @@
         document.querySelectorAll('.color-option').forEach(opt => {
             opt.classList.remove('selected');
         });
+        // Find and mark the selected color option
         const colorDivs = document.querySelectorAll('.color-option');
         for (let div of colorDivs) {
             const childDiv = div.querySelector('div');
-            if (childDiv && childDiv.classList.contains('bg-orange-500') && color === '#ffa500') {
-                div.classList.add('selected');
-            } else if (childDiv && childDiv.classList.contains('bg-blue-500') && color === '#3b82f6') {
-                div.classList.add('selected');
-            } else if (childDiv && childDiv.classList.contains('bg-green-500') && color === '#10b981') {
-                div.classList.add('selected');
-            } else if (childDiv && childDiv.classList.contains('bg-red-500') && color === '#ef4444') {
-                div.classList.add('selected');
-            } else if (childDiv && childDiv.classList.contains('bg-purple-500') && color === '#8b5cf6') {
-                div.classList.add('selected');
-            } else if (childDiv && childDiv.classList.contains('bg-pink-500') && color === '#ec489a') {
-                div.classList.add('selected');
+            if (childDiv) {
+                const bgColor = childDiv.className.match(/bg-([a-z]+-\d+)/);
+                if (bgColor) {
+                    const colorMap = {
+                        'bg-orange-500': '#ffa500',
+                        'bg-blue-500': '#3b82f6',
+                        'bg-green-500': '#10b981',
+                        'bg-red-500': '#ef4444',
+                        'bg-purple-500': '#8b5cf6',
+                        'bg-pink-500': '#ec489a'
+                    };
+                    if (colorMap[bgColor[0]] === color) {
+                        div.classList.add('selected');
+                    }
+                }
             }
         }
         document.getElementById('customColor').value = color;
@@ -284,8 +289,7 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ 
-                    class_id: classId,
-                    theme_color: selectedColor
+                    class_id: classId
                 })
             });
             
@@ -329,7 +333,7 @@
     
     function createIDCardHTML(student) {
         const institute = student.institute;
-        const themeColor = student.theme_color || '#ffa500';
+        const themeColor = selectedColor;
         
         const photoHtml = student.photo_url 
             ? `<img src="${student.photo_url}" alt="${student.name}" class="w-20 h-20 rounded-full object-cover border-3 mx-auto" style="border-color: ${themeColor}">`
@@ -528,7 +532,7 @@
     
     function createPrintCardHTML(student) {
         const institute = student.institute;
-        const themeColor = student.theme_color || '#ffa500';
+        const themeColor = selectedColor;
         
         const photoHtml = student.photo_url 
             ? `<img src="${student.photo_url}" class="photo-print">`
@@ -595,7 +599,7 @@
         
         window.currentPreviewStudent = student;
         const institute = student.institute;
-        const themeColor = student.theme_color || '#ffa500';
+        const themeColor = selectedColor;
         
         const photoHtml = student.photo_url 
             ? `<img src="${student.photo_url}" class="w-24 h-24 rounded-full object-cover border-3 mx-auto" style="border-color: ${themeColor}">`
@@ -610,7 +614,7 @@
                         ${institute.logo_url ? `<img src="${institute.logo_url}" class="h-10 w-10 rounded-full object-cover border-2 border-white">` : '<i class="fas fa-school text-white text-xl"></i>'}
                         <div>
                             <p class="text-white text-sm font-bold">${institute.institute_name || 'School'}</p>
-                            <p class="text-white text-[10px] opacity-90">${institute.target_line || 'Education for Excellence'}</p>
+                            <p class="text-white text-[10px] opacity-90">Student ID Card</p>
                         </div>
                     </div>
                 </div>
@@ -674,7 +678,7 @@
     
     function printCard() {
         if (window.currentPreviewStudent) {
-            printAllCards(); // Reuse the print function for single card
+            printAllCards();
         }
     }
     
@@ -691,7 +695,10 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ students: generatedStudents })
+                body: JSON.stringify({ 
+                    students: generatedStudents,
+                    theme_color: selectedColor
+                })
             });
             
             if (response.ok) {
@@ -750,6 +757,7 @@
         }
     };
     
+    // Initialize with default color
     selectColor('#ffa500');
 </script>
 {% endblock %}
