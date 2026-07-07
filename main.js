@@ -1,5 +1,5 @@
 // whatsapp-academic-server.js - Consolidated WhatsApp + Academic Report + ID Card Server
-// Fixed with better timeout handling and no auth clearing on shutdown
+// QR Codes are ONLY generated when explicitly requested
 
 const { default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode');
@@ -13,9 +13,37 @@ const fs = require('fs');
 const path = require('path');
 const { buildReportCardsPdf } = require('./lib/pdfBuilder');
 const { buildCompetencyReportCardsPdf } = require('./lib/competencyPdfBuilder');
-const { validateRequest, validateBatchRequest, ValidationError } = require('./validate');
-const { generateCardPdf, generateBatchPdf } = require('./cardGenerator');
 require('dotenv').config();
+
+// ==================== ID CARD IMPORTS WITH ERROR HANDLING ====================
+let validateRequest, validateBatchRequest, ValidationError, generateCardPdf, generateBatchPdf;
+let idCardModulesAvailable = false;
+
+try {
+  const validateModule = require('./validate');
+  validateRequest = validateModule.validateRequest;
+  validateBatchRequest = validateModule.validateBatchRequest;
+  ValidationError = validateModule.ValidationError;
+  console.log('✅ ID Card validation module loaded');
+} catch (error) {
+  console.warn('⚠️ ID Card validation module not found:', error.message);
+  validateRequest = () => {};
+  validateBatchRequest = (body) => body.cards || [];
+  ValidationError = class ValidationError extends Error {};
+}
+
+try {
+  const cardGenerator = require('./cardGenerator');
+  generateCardPdf = cardGenerator.generateCardPdf;
+  generateBatchPdf = cardGenerator.generateBatchPdf;
+  idCardModulesAvailable = true;
+  console.log('✅ ID Card generator module loaded');
+} catch (error) {
+  console.warn('⚠️ ID Card generator module not found:', error.message);
+  generateCardPdf = async () => Buffer.from('PDF generation not available');
+  generateBatchPdf = async () => Buffer.from('PDF generation not available');
+  idCardModulesAvailable = false;
+}
 
 // ==================== CONFIGURATION ====================
 const app = express();
@@ -27,7 +55,6 @@ const io = socketIO(server, {
   transports: ['websocket', 'polling']
 });
 
-// Allow generously sized JSON bodies (many students + remote image URLs + base64 photos)
 app.use(cors());
 app.use(express.json({ limit: '80mb' }));
 app.use(express.urlencoded({ extended: true, limit: '80mb' }));
@@ -36,7 +63,6 @@ app.use(express.urlencoded({ extended: true, limit: '80mb' }));
 let supabase = null;
 let supabase2 = null;
 
-// Initialize first Supabase client
 try {
   if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
     supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -46,7 +72,6 @@ try {
   console.log('⚠️ Supabase Primary not configured');
 }
 
-// Initialize second Supabase client
 try {
   if (process.env.SUPABASE_URL2 && process.env.SUPABASE_KEY2) {
     supabase2 = createClient(process.env.SUPABASE_URL2, process.env.SUPABASE_KEY2);
@@ -56,7 +81,6 @@ try {
   console.log('⚠️ Supabase Secondary not configured');
 }
 
-// Determine which Supabase client to use
 function getSupabaseClient() {
   if (supabase) return supabase;
   if (supabase2) return supabase2;
@@ -71,7 +95,6 @@ if (!fs.existsSync(BASE_AUTH_FOLDER)) {
 
 // ==================== CLIENT STORE ====================
 const clients = new Map();
-const qrRequests = new Map();
 
 // ==================== HELPERS ====================
 function getInstituteAuthFolder(instituteId) {
@@ -192,10 +215,11 @@ async function storeMessage(instituteId, phoneNumber, message, messageType = 'te
   }
 }
 
-// ==================== CONNECT TO WHATSAPP ====================
+// ==================== CONNECT TO WHATSAPP (QR ONLY ON REQUEST) ====================
 async function connectToWhatsApp(instituteId, forceQR = false) {
   console.log(`🔄 Connecting to WhatsApp for institute ${instituteId}...`);
   
+  // If we already have a client for this institute, clean it up
   if (clients.has(instituteId)) {
     const existing = clients.get(instituteId);
     if (existing.sock) {
@@ -209,7 +233,8 @@ async function connectToWhatsApp(instituteId, forceQR = false) {
     qr: null,
     isReady: false,
     reconnectAttempts: 0,
-    qrRequested: forceQR || false
+    qrRequested: forceQR || false,  // Only generate QR if explicitly requested
+    isConnecting: false
   };
   clients.set(instituteId, client);
   
@@ -231,26 +256,32 @@ async function connectToWhatsApp(instituteId, forceQR = false) {
     });
     
     client.sock = sock;
+    client.isConnecting = true;
     
     sock.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
       
-      if (qr && (client.qrRequested || forceQR)) {
-        console.log(`📱 QR Code generated for institute ${instituteId}`);
+      // QR Code handling - ONLY emit if explicitly requested
+      if (qr) {
         client.qr = qr;
         
-        try {
-          const qrImage = await qrcode.toDataURL(qr, { scale: 8 });
-          io.to(`institute_${instituteId}`).emit('qr', qrImage);
-          console.log(`✅ QR sent to institute room: institute_${instituteId}`);
-        } catch(err) {
-          console.error('QR generation error:', err);
-          io.to(`institute_${instituteId}`).emit('qr', qr);
+        // Only emit QR if it was explicitly requested
+        if (client.qrRequested) {
+          console.log(`📱 QR Code generated for institute ${instituteId} (requested)`);
+          try {
+            const qrImage = await qrcode.toDataURL(qr, { scale: 8 });
+            io.to(`institute_${instituteId}`).emit('qr', qrImage);
+            console.log(`✅ QR sent to institute room: institute_${instituteId}`);
+          } catch(err) {
+            console.error('QR generation error:', err);
+            io.to(`institute_${instituteId}`).emit('qr', qr);
+          }
+          // Reset the flag so we don't keep sending QR codes
+          client.qrRequested = false;
+        } else {
+          console.log(`📱 QR Code available for institute ${instituteId} (waiting for request)`);
         }
         client.reconnectAttempts = 0;
-      } else if (qr && !client.qrRequested) {
-        client.qr = qr;
-        console.log(`📱 QR Code generated for institute ${instituteId} (stored, waiting for request)`);
       }
       
       if (connection === 'close') {
@@ -258,12 +289,13 @@ async function connectToWhatsApp(instituteId, forceQR = false) {
         const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
         console.log(`❌ Connection closed for institute ${instituteId}`);
         client.isReady = false;
+        client.isConnecting = false;
         
         if (shouldReconnect && client.reconnectAttempts < 5) {
           client.reconnectAttempts++;
           const delay = Math.min(5000 * client.reconnectAttempts, 30000);
           console.log(`🔄 Reconnecting institute ${instituteId} in ${delay/1000}s... (Attempt ${client.reconnectAttempts})`);
-          setTimeout(() => connectToWhatsApp(instituteId, forceQR), delay);
+          setTimeout(() => connectToWhatsApp(instituteId, false), delay);
         } else if (statusCode === DisconnectReason.loggedOut) {
           client.isReady = false;
           io.to(`institute_${instituteId}`).emit('disconnected', 'Logged out');
@@ -272,7 +304,9 @@ async function connectToWhatsApp(instituteId, forceQR = false) {
       } else if (connection === 'open') {
         console.log(`✅ WhatsApp connected for institute ${instituteId}!`);
         client.isReady = true;
+        client.isConnecting = false;
         client.reconnectAttempts = 0;
+        client.qr = null; // Clear QR after successful connection
         io.to(`institute_${instituteId}`).emit('ready', 'WhatsApp client is ready!');
         io.emit('ready_' + instituteId, 'WhatsApp client is ready!');
       }
@@ -289,18 +323,13 @@ async function connectToWhatsApp(instituteId, forceQR = false) {
     
   } catch (error) {
     console.error(`❌ Connection error for institute ${instituteId}:`, error.message);
+    client.isConnecting = false;
     setTimeout(() => connectToWhatsApp(instituteId, forceQR), 10000);
   }
 }
 
 // ==================== REPORT CARD HELPERS ====================
 
-/**
- * Detect report type based on payload structure
- * - If 'assessments' exists → competency-based
- * - If 'exams' exists → standard
- * - Default to standard
- */
 function detectReportType(body) {
   if (body.assessments && Array.isArray(body.assessments) && body.assessments.length > 0) {
     return 'competency';
@@ -308,9 +337,6 @@ function detectReportType(body) {
   return 'standard';
 }
 
-/**
- * Shared handler for standard exam-based report cards
- */
 async function handleGenerateStandard(req, res, students) {
   try {
     const { school, term, exams } = req.body;
@@ -341,9 +367,6 @@ async function handleGenerateStandard(req, res, students) {
   }
 }
 
-/**
- * Shared handler for competency-based (CBC) report cards
- */
 async function handleGenerateCompetency(req, res, students) {
   try {
     const { 
@@ -391,17 +414,16 @@ async function handleGenerateCompetency(req, res, students) {
 
 // ==================== API ROUTES - WHATSAPP ====================
 
-// Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     clients: clients.size,
-    supabase: !!getSupabaseClient()
+    supabase: !!getSupabaseClient(),
+    idCardModules: idCardModulesAvailable
   });
 });
 
-// Get status for an institute
 app.get('/api/status/:instituteId', async (req, res) => {
   const { instituteId } = req.params;
   const supabaseClient = getSupabaseClient();
@@ -437,11 +459,11 @@ app.get('/api/status/:instituteId', async (req, res) => {
     ready: client.isReady,
     qrCode: client.qr || null,
     reconnectAttempts: client.reconnectAttempts,
-    qrRequested: client.qrRequested
+    qrRequested: client.qrRequested,
+    isConnecting: client.isConnecting || false
   });
 });
 
-// Request QR code
 app.post('/api/request-qr/:instituteId', async (req, res) => {
   const { instituteId } = req.params;
   const supabaseClient = getSupabaseClient();
@@ -463,13 +485,15 @@ app.post('/api/request-qr/:instituteId', async (req, res) => {
     } catch(e) {}
   }
   
+  // Clear old auth data to force new QR
   await clearAuthData(instituteId);
+  
+  // Connect with forceQR=true to generate QR immediately
   setTimeout(() => connectToWhatsApp(instituteId, true), 1000);
   
   res.json({ success: true, message: 'QR code requested. QR will be generated and sent via socket.' });
 });
 
-// Logout / Disconnect
 app.post('/api/logout/:instituteId', async (req, res) => {
   const { instituteId } = req.params;
   await clearAuthData(instituteId);
@@ -477,7 +501,6 @@ app.post('/api/logout/:instituteId', async (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// Send text message
 app.post('/api/send', async (req, res) => {
   const { number, message, instituteId } = req.body;
   
@@ -509,7 +532,6 @@ app.post('/api/send', async (req, res) => {
   }
 });
 
-// Send PDF file
 app.post('/api/send-pdf', async (req, res) => {
   const { number, pdfBuffer, filename, instituteId } = req.body;
   
@@ -546,7 +568,6 @@ app.post('/api/send-pdf', async (req, res) => {
   }
 });
 
-// Get messages for an institute
 app.get('/api/messages/:instituteId', async (req, res) => {
   const { instituteId } = req.params;
   const limit = parseInt(req.query.limit) || 50;
@@ -574,50 +595,24 @@ app.get('/api/messages/:instituteId', async (req, res) => {
 
 // ==================== API ROUTES - ACADEMIC REPORTS ====================
 
-// ---------------------------------------------------------------------------
-// STANDARD EXAM-BASED ENDPOINTS
-// ---------------------------------------------------------------------------
-
-// Bulk: { school, term, exams, students: [...] }
 app.post('/generate-report-cards', (req, res) => {
   handleGenerateStandard(req, res, req.body.students);
 });
 
-// Single: { school, term, exams, student: {...} }
 app.post('/generate-report-card', (req, res) => {
   const student = req.body.student;
   handleGenerateStandard(req, res, student ? [student] : []);
 });
 
-// ---------------------------------------------------------------------------
-// COMPETENCY-BASED (CBC) ENDPOINTS
-// ---------------------------------------------------------------------------
-
-// Bulk: { school, term, assessments, weightedColumns, gradeScale, keyTerms, resultDefinitions, students: [...] }
 app.post('/generate-competency-report-cards', (req, res) => {
   handleGenerateCompetency(req, res, req.body.students);
 });
 
-// Single: { school, term, assessments, weightedColumns, gradeScale, keyTerms, resultDefinitions, student: {...} }
 app.post('/generate-competency-report-card', (req, res) => {
   const student = req.body.student;
   handleGenerateCompetency(req, res, student ? [student] : []);
 });
 
-// ---------------------------------------------------------------------------
-// AUTO-DETECT ENDPOINTS (Smart Routing)
-// ---------------------------------------------------------------------------
-
-/**
- * POST /generate
- * Automatically detects report type based on payload structure.
- * 
- * For standard reports: include 'exams' field
- * For competency reports: include 'assessments' field
- * 
- * Example standard: { school, term, exams: ["BOT","MID","END"], students: [...] }
- * Example competency: { school, term, assessments: ["A1","A2","A3"], weightedColumns: [...], students: [...] }
- */
 app.post('/generate', (req, res) => {
   const reportType = detectReportType(req.body);
   
@@ -628,13 +623,6 @@ app.post('/generate', (req, res) => {
   }
 });
 
-/**
- * POST /generate-single
- * Auto-detects report type for single student.
- * 
- * Example standard: { school, term, exams: ["BOT","MID","END"], student: {...} }
- * Example competency: { school, term, assessments: ["A1","A2","A3"], student: {...} }
- */
 app.post('/generate-single', (req, res) => {
   const reportType = detectReportType(req.body);
   const student = req.body.student;
@@ -652,19 +640,16 @@ app.post('/generate-single', (req, res) => {
 
 // ==================== API ROUTES - STUDENT ID CARDS ====================
 
-/**
- * POST /api/id-cards
- * Body: { branding, student, qrData, options }
- * Response: application/pdf — a single page containing the complete card
- * (front face only; photo, fields, and QR code are all on this one side).
- */
 app.post('/api/id-cards', async (req, res) => {
   try {
-    validateRequest(req.body);
+    if (!idCardModulesAvailable) {
+      return res.status(503).json({ error: 'ID Card generation module not available' });
+    }
 
+    validateRequest(req.body);
     const pdfBuffer = await generateCardPdf(req.body);
 
-    const studentId = req.body.student.studentId || 'card';
+    const studentId = req.body.student?.studentId || 'card';
     const filename = `student-id-${String(studentId).replace(/[^a-zA-Z0-9_-]/g, '')}.pdf`;
 
     res.status(200);
@@ -676,23 +661,18 @@ app.post('/api/id-cards', async (req, res) => {
     if (err instanceof ValidationError) {
       return res.status(400).json({ error: err.message });
     }
-    console.error(err);
+    console.error('ID Card generation error:', err);
     return res.status(500).json({ error: 'Internal server error while generating the ID card PDF.' });
   }
 });
 
-/**
- * POST /api/id-cards/batch
- * Body: { branding?, options?, cards: [ { student, qrData, branding?, options? }, ... ] }
- * `branding`/`options` at the top level act as shared defaults; a per-card
- * `branding`/`options` overrides them for just that card.
- * Response: a single application/pdf with one page per card (each page is
- * a complete, single-sided card), in the same order as `cards`.
- */
 app.post('/api/id-cards/batch', async (req, res) => {
   try {
-    const mergedCards = validateBatchRequest(req.body);
+    if (!idCardModulesAvailable) {
+      return res.status(503).json({ error: 'ID Card generation module not available' });
+    }
 
+    const mergedCards = validateBatchRequest(req.body);
     const pdfBuffer = await generateBatchPdf(mergedCards);
 
     res.status(200);
@@ -704,7 +684,7 @@ app.post('/api/id-cards/batch', async (req, res) => {
     if (err instanceof ValidationError) {
       return res.status(400).json({ error: err.message });
     }
-    console.error(err);
+    console.error('Batch ID Card generation error:', err);
     return res.status(500).json({ error: 'Internal server error while generating the batch PDF.' });
   }
 });
@@ -723,13 +703,15 @@ io.on('connection', (socket) => {
         socket.emit('ready', 'WhatsApp client is ready!');
         console.log(`✅ Sent ready to ${socket.id}`);
       } else if (client.qr && client.qrRequested) {
+        // Only send QR if it was requested
         qrcode.toDataURL(client.qr, { scale: 8 }).then(qrImage => {
           socket.emit('qr', qrImage);
           console.log(`✅ Sent QR to ${socket.id}`);
         }).catch(() => {
           socket.emit('qr', client.qr);
         });
-      } else if (client.qr && !client.qrRequested) {
+        client.qrRequested = false; // Reset after sending
+      } else if (client.qr) {
         socket.emit('qr_available', 'QR code is available. Request it via /api/request-qr');
         console.log(`ℹ️ QR available but not requested for ${instituteId}`);
       }
@@ -768,38 +750,12 @@ io.on('connection', (socket) => {
 // ==================== START SERVER ====================
 const PORT = process.env.PORT || 4000;
 
-async function startInstitutes() {
-  const supabaseClient = getSupabaseClient();
-  if (!supabaseClient) {
-    console.log('⚠️ Supabase not configured. Starting without multi-institute support.');
-    return;
-  }
-  
-  try {
-    const { data, error } = await supabaseClient
-      .from('whatsapp_settings_custom')
-      .select('institute_id')
-      .eq('is_enabled', true);
-    
-    if (error) throw error;
-    
-    if (data && data.length > 0) {
-      console.log(`📱 Starting WhatsApp for ${data.length} institute(s)...`);
-      for (const setting of data) {
-        await connectToWhatsApp(setting.institute_id, false);
-      }
-    } else {
-      console.log('ℹ️ No institutes with WhatsApp enabled found.');
-    }
-  } catch (error) {
-    console.error('Error starting institutes:', error.message);
-  }
-}
-
+// IMPORTANT: Do NOT auto-start WhatsApp connections on server startup
+// Only start the server and wait for QR requests
 server.listen(PORT, async () => {
   console.log(`\n🚀 WhatsApp + Academic Reports + ID Card Server: http://localhost:${PORT}`);
   console.log(`💾 Auth: ${getSupabaseClient() ? 'Supabase' : 'Local'}`);
-  console.log(`📱 WhatsApp API ready`);
+  console.log(`📱 WhatsApp API ready (QR codes generated ONLY on request)`);
   console.log(`📄 Report Card API ready:`);
   console.log(`   - POST /generate-report-cards (bulk standard)`);
   console.log(`   - POST /generate-report-card (single standard)`);
@@ -807,12 +763,17 @@ server.listen(PORT, async () => {
   console.log(`   - POST /generate-competency-report-card (single CBC)`);
   console.log(`   - POST /generate (auto-detect bulk)`);
   console.log(`   - POST /generate-single (auto-detect single)`);
-  console.log(`🪪 ID Card API ready:`);
-  console.log(`   - POST /api/id-cards (single)`);
-  console.log(`   - POST /api/id-cards/batch (batch)`);
-  console.log(`📱 Server ready\n`);
-  
-  await startInstitutes();
+  if (idCardModulesAvailable) {
+    console.log(`🪪 ID Card API ready:`);
+    console.log(`   - POST /api/id-cards (single)`);
+    console.log(`   - POST /api/id-cards/batch (batch)`);
+  } else {
+    console.log(`⚠️ ID Card API not available (modules missing)`);
+  }
+  console.log(`\n📱 QR codes are generated ONLY when requested via:`);
+  console.log(`   POST /api/request-qr/:instituteId`);
+  console.log(`   or socket 'request_qr' event`);
+  console.log(`\n✅ Server ready\n`);
 });
 
 // Graceful shutdown - DON'T clear auth data on shutdown
@@ -843,3 +804,5 @@ process.on('SIGTERM', async () => {
   console.log('✅ Shutdown complete. Sessions preserved.');
   process.exit(0);
 });
+
+module.exports = { app, server, io };
