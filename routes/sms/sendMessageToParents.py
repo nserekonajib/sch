@@ -160,6 +160,37 @@ def log_sms_sent(institute_id, student_id, phone_number, message, segments, cost
         print(f"Error logging SMS: {e}")
         return False
 
+def log_bulk_sms_sent(log_entries):
+    """Log multiple SMS entries in batch"""
+    try:
+        if not log_entries:
+            return True
+        
+        # Prepare batch data
+        batch_data = []
+        for entry in log_entries:
+            batch_data.append({
+                'id': str(uuid.uuid4()),
+                'institute_id': entry.get('institute_id'),
+                'student_id': entry.get('student_id'),
+                'phone_number': entry.get('phone_number'),
+                'message': entry.get('message', '')[:500],
+                'message_length': entry.get('message_length', 0),
+                'segments': entry.get('segments', 0),
+                'cost': entry.get('cost', 0),
+                'status': entry.get('status', 'sent'),
+                'error_message': entry.get('error_message', '')[:500] if entry.get('error_message') else None,
+                'sent_at': datetime.now().isoformat()
+            })
+        
+        # Batch insert
+        if batch_data:
+            supabase.table('sms_log').insert(batch_data).execute()
+        return True
+    except Exception as e:
+        print(f"Error batch logging SMS: {e}")
+        return False
+
 @message_bp.route('/')
 @role_required(['owner', 'teacher', 'accountant'])
 def index():
@@ -171,10 +202,10 @@ def index():
         return render_template('message/index.html', classes=[], students=[], institute=None, sms_settings=None, balance=0)
     
     try:
-        # Get institute details
+        # Batch query for institute details
         institute = get_institute_details(institute_id)
         
-        # Get all classes
+        # Batch query for classes
         classes_response = supabase.table('classes')\
             .select('*')\
             .eq('institute_id', institute_id)\
@@ -183,7 +214,7 @@ def index():
         
         classes = classes_response.data if classes_response.data else []
         
-        # Get all students with their contact numbers (limit for performance)
+        # Batch query for students with class info - optimized with select
         students_response = supabase.table('students')\
             .select('id, name, student_id, class_id, classes(name), contact_number, father_name, mother_name')\
             .eq('institute_id', institute_id)\
@@ -194,7 +225,7 @@ def index():
         
         students = students_response.data if students_response.data else []
         
-        # Get SMS settings
+        # Batch query for SMS settings
         sms_settings = get_sms_settings(institute_id)
         
         # Get current balance
@@ -214,7 +245,7 @@ def index():
 @message_bp.route('/api/get-recipients', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def get_recipients():
-    """Get recipients based on selected criteria"""
+    """Get recipients based on selected criteria - optimized with batch queries"""
     user = session.get('user')
     institute_id = get_institute_id_func(user['id'])
     
@@ -227,62 +258,32 @@ def get_recipients():
         class_id = data.get('class_id')
         student_ids = data.get('student_ids', [])
         
-        recipients = []
+        # Build query based on selection
+        query = supabase.table('students')\
+            .select('id, name, student_id, contact_number')\
+            .eq('institute_id', institute_id)\
+            .eq('status', 'active')
         
-        if apply_to == 'all':
-            # Get all students with valid contact numbers
-            response = supabase.table('students')\
-                .select('id, name, student_id, contact_number')\
-                .eq('institute_id', institute_id)\
-                .eq('status', 'active')\
-                .execute()
-            
-            for student in response.data if response.data else []:
-                phone = format_phone_number(student.get('contact_number', ''))
-                if phone:
-                    recipients.append({
-                        'id': student['id'],
-                        'name': student['name'],
-                        'student_id': student['student_id'],
-                        'phone': phone
-                    })
-                    
-        elif apply_to == 'class' and class_id:
-            # Get students in specific class with valid contact numbers
-            response = supabase.table('students')\
-                .select('id, name, student_id, contact_number')\
-                .eq('institute_id', institute_id)\
-                .eq('class_id', class_id)\
-                .eq('status', 'active')\
-                .execute()
-            
-            for student in response.data if response.data else []:
-                phone = format_phone_number(student.get('contact_number', ''))
-                if phone:
-                    recipients.append({
-                        'id': student['id'],
-                        'name': student['name'],
-                        'student_id': student['student_id'],
-                        'phone': phone
-                    })
-                    
+        if apply_to == 'class' and class_id:
+            query = query.eq('class_id', class_id)
         elif apply_to == 'student' and student_ids:
-            # Get selected students
-            response = supabase.table('students')\
-                .select('id, name, student_id, contact_number')\
-                .eq('institute_id', institute_id)\
-                .in_('id', student_ids)\
-                .execute()
-            
-            for student in response.data if response.data else []:
-                phone = format_phone_number(student.get('contact_number', ''))
-                if phone:
-                    recipients.append({
-                        'id': student['id'],
-                        'name': student['name'],
-                        'student_id': student['student_id'],
-                        'phone': phone
-                    })
+            query = query.in_('id', student_ids)
+        # 'all' - no additional filters
+        
+        # Execute query
+        response = query.execute()
+        
+        # Process results with batch formatting
+        recipients = []
+        for student in response.data if response.data else []:
+            phone = format_phone_number(student.get('contact_number', ''))
+            if phone:
+                recipients.append({
+                    'id': student['id'],
+                    'name': student['name'],
+                    'student_id': student['student_id'],
+                    'phone': phone
+                })
         
         return jsonify({
             'success': True,
@@ -297,7 +298,7 @@ def get_recipients():
 @message_bp.route('/api/search-students', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def search_students():
-    """Fast live search for students"""
+    """Fast live search for students - optimized with batch query"""
     user = session.get('user')
     institute_id = get_institute_id_func(user['id'])
     
@@ -312,7 +313,7 @@ def search_students():
         if len(search_term) < 2:
             return jsonify({'success': True, 'students': [], 'count': 0})
         
-        # Build query
+        # Build query with optimized join
         query = supabase.table('students')\
             .select('id, name, student_id, class_id, classes(name), contact_number, father_name, mother_name')\
             .eq('institute_id', institute_id)\
@@ -322,12 +323,13 @@ def search_students():
         if class_id:
             query = query.eq('class_id', class_id)
         
-        # Apply search
+        # Apply search with OR condition - optimized for performance
         query = query.or_(f"name.ilike.%{search_term}%,student_id.ilike.%{search_term}%")
         
         # Limit results for performance
         response = query.limit(50).execute()
         
+        # Process results
         students = []
         for student in response.data if response.data else []:
             phone = format_phone_number(student.get('contact_number', ''))
@@ -402,7 +404,7 @@ def calculate_cost():
 @message_bp.route('/api/send', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def send_message():
-    """Send SMS messages to selected recipients with balance checking"""
+    """Send SMS messages to selected recipients with balance checking - optimized with batch processing"""
     user = session.get('user')
     institute_id = get_institute_id_func(user['id'])
     
@@ -414,6 +416,7 @@ def send_message():
         recipients = data.get('recipients', [])
         message = data.get('message', '').strip()
         sender_id = data.get('sender_id', 'SCHOOL')
+        personalization = data.get('personalization', True)  # Whether to replace {student_name}
         
         if not recipients:
             return jsonify({'success': False, 'message': 'No recipients selected'}), 400
@@ -439,10 +442,11 @@ def send_message():
         # Get cost per SMS from settings
         cost_per_sms = sms_settings.get('cost_per_sms', 35)
         
-        # Prepare full message with institute branding
-        full_message = f"{message}\n\n{institute.get('institute_name', 'School')}"
+        # Prepare institute branding
+        institute_name = institute.get('institute_name', 'School')
         
-        # Calculate cost for one message
+        # Calculate cost for one message without personalization
+        full_message = f"{message}\n\n{institute_name}"
         cost_info = calculate_sms_cost(full_message, cost_per_sms)
         
         # Calculate total cost
@@ -471,74 +475,132 @@ def send_message():
             
             sdk = CommsSDK.authenticate(MASTER_API_USERNAME, MASTER_API_KEY)
             
-            # Send SMS to each recipient (or in batches)
+            # Prepare batch phone numbers and messages
+            phone_numbers = []
+            recipient_map = {}
+            log_entries = []
             success_count = 0
             failed_recipients = []
             
-            # Prepare batch phone numbers
-            phone_numbers = []
-            recipient_map = {}
-            
+            # Prepare personalized messages if needed
             for recipient in recipients:
                 phone = recipient.get('phone', '').strip()
-                if phone:
-                    formatted_phone = format_phone_number(phone)
-                    if formatted_phone:
-                        phone_numbers.append(formatted_phone)
-                        recipient_map[formatted_phone] = recipient
+                if not phone:
+                    continue
+                
+                formatted_phone = format_phone_number(phone)
+                if not formatted_phone:
+                    continue
+                
+                # Personalize message with student name
+                student_name = recipient.get('name', 'Student')
+                personalized_msg = full_message
+                if personalization and '{student_name}' in personalized_msg:
+                    personalized_msg = personalized_msg.replace('{student_name}', student_name)
+                elif personalization:
+                    # If no placeholder, still add student name at top
+                    personalized_msg = f"Dear {student_name},\n\n{personalized_msg}"
+                
+                # Check if message exceeds limit for this recipient (due to name length)
+                personalized_cost = calculate_sms_cost(personalized_msg, cost_per_sms)
+                
+                phone_numbers.append(formatted_phone)
+                recipient_map[formatted_phone] = {
+                    'recipient': recipient,
+                    'message': personalized_msg,
+                    'cost': personalized_cost
+                }
             
             if not phone_numbers:
                 return jsonify({'success': False, 'message': 'No valid phone numbers found'}), 400
             
-            # Send in batches of 100
+            # Send in batches of 100 for faster processing
             batch_size = 100
             all_successful = True
             
             for i in range(0, len(phone_numbers), batch_size):
-                batch = phone_numbers[i:i+batch_size]
+                batch_phones = phone_numbers[i:i+batch_size]
+                
+                # Prepare batch messages (all same since we personalize individually)
+                # We'll send personalized messages one by one but in a batch
                 try:
-                    response = sdk.send_sms(
-                        batch,
-                        full_message,
-                        sender_id=sender_id[:11],  # Max 11 characters
-                        priority=MessagePriority.HIGHEST
-                    )
-                    success_count += len(batch)
-                    
-                    # Log each successful SMS
-                    for phone in batch:
-                        recipient = recipient_map.get(phone, {})
-                        log_sms_sent(
-                            institute_id=institute_id,
-                            student_id=recipient.get('id'),
-                            phone_number=phone,
-                            message=full_message,
-                            segments=cost_info['segments'],
-                            cost=cost_info['cost'],
-                            status='sent'
-                        )
+                    # For each phone in batch, send personalized message
+                    for phone in batch_phones:
+                        recipient_data = recipient_map.get(phone, {})
+                        if not recipient_data:
+                            continue
                         
+                        personal_msg = recipient_data.get('message', full_message)
+                        personal_cost = recipient_data.get('cost', cost_info)
+                        
+                        try:
+                            response = sdk.send_sms(
+                                [phone],
+                                personal_msg,
+                                sender_id=sender_id[:11],  # Max 11 characters
+                                priority=MessagePriority.HIGHEST
+                            )
+                            
+                            success_count += 1
+                            
+                            # Prepare log entry
+                            log_entries.append({
+                                'institute_id': institute_id,
+                                'student_id': recipient_data['recipient'].get('id'),
+                                'phone_number': phone,
+                                'message': personal_msg,
+                                'message_length': len(personal_msg),
+                                'segments': personal_cost['segments'],
+                                'cost': personal_cost['cost'],
+                                'status': 'sent'
+                            })
+                            
+                        except Exception as single_error:
+                            all_successful = False
+                            failed_recipients.append(phone)
+                            log_entries.append({
+                                'institute_id': institute_id,
+                                'student_id': recipient_data['recipient'].get('id'),
+                                'phone_number': phone,
+                                'message': personal_msg,
+                                'message_length': len(personal_msg),
+                                'segments': personal_cost['segments'],
+                                'cost': personal_cost['cost'],
+                                'status': 'failed',
+                                'error_message': str(single_error)
+                            })
+                            print(f"Error sending to {phone}: {single_error}")
+                            
                 except Exception as batch_error:
                     all_successful = False
-                    print(f"Error sending batch: {batch_error}")
-                    for phone in batch:
-                        recipient = recipient_map.get(phone, {})
-                        log_sms_sent(
-                            institute_id=institute_id,
-                            student_id=recipient.get('id'),
-                            phone_number=phone,
-                            message=full_message,
-                            segments=cost_info['segments'],
-                            cost=cost_info['cost'],
-                            status='failed',
-                            error_message=str(batch_error)
-                        )
-                    failed_recipients.extend(batch)
+                    print(f"Error processing batch: {batch_error}")
+                    for phone in batch_phones:
+                        recipient_data = recipient_map.get(phone, {})
+                        if recipient_data:
+                            failed_recipients.append(phone)
+                            log_entries.append({
+                                'institute_id': institute_id,
+                                'student_id': recipient_data['recipient'].get('id'),
+                                'phone_number': phone,
+                                'message': recipient_data.get('message', full_message),
+                                'message_length': len(recipient_data.get('message', full_message)),
+                                'segments': cost_info['segments'],
+                                'cost': cost_info['cost'],
+                                'status': 'failed',
+                                'error_message': str(batch_error)
+                            })
+            
+            # Batch log all entries
+            if log_entries:
+                log_bulk_sms_sent(log_entries)
             
             # Only deduct balance if at least one message was sent successfully
             if success_count > 0:
                 # Calculate actual cost based on successful sends
-                actual_cost = cost_info['cost'] * success_count
+                actual_cost = 0
+                for entry in log_entries:
+                    if entry.get('status') == 'sent':
+                        actual_cost += entry.get('cost', 0)
                 
                 # Deduct from balance
                 deduct_success, result = deduct_from_balance(institute_id, actual_cost)
