@@ -1,4 +1,3 @@
-
 # auth.py - Authentication Blueprint with Supabase & Separate Employee Login
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from supabase import create_client, Client
@@ -151,11 +150,11 @@ def role_required(allowed_roles):
         return decorated_function
     return decorator
 
-# ========== OWNER LOGIN ROUTE (Email + Password) - UNTOUCHED ==========
+# ========== OWNER LOGIN ROUTE (Email + Password) ==========
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Owner login route - uses email and password (UNTOUCHED)"""
+    """Owner login route - uses email and password"""
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
@@ -172,26 +171,20 @@ def login():
             })
             
             if response.user:
-                # Get institute info
-                institute_data = None
-                try:
-                    institute_response = supabase.table('institutes')\
-                        .select('*')\
-                        .eq('user_id', response.user.id)\
-                        .execute()
-                    if institute_response.data:
-                        institute_data = institute_response.data[0]
-                except Exception as e:
-                    print(f"Institute fetch error: {e}")
+                # Get user metadata
+                user_metadata = response.user.user_metadata or {}
                 
-                # Store user info in session
+                # Store user info in session from metadata only
                 session['user'] = {
                     'id': response.user.id,
                     'email': response.user.email,
                     'is_employee': False,
-                    'role': 'owner',
-                    'institute_id': institute_data.get('id') if institute_data else None,
-                    'institute_name': institute_data.get('institute_name') if institute_data else None
+                    'role': user_metadata.get('role', 'owner'),
+                    'institute_name': user_metadata.get('display_name', user_metadata.get('institute_name', '')),
+                    'display_name': user_metadata.get('display_name', user_metadata.get('institute_name', '')),
+                    'phone': user_metadata.get('phone', ''),
+                    'institute_id': user_metadata.get('institute_id'),
+                    'institute_code': user_metadata.get('institute_code')
                 }
                 
                 flash('Login successful! Welcome back!', 'success')
@@ -241,22 +234,9 @@ def employee_login():
                 flash('Invalid Employee ID or password', 'error')
                 return redirect(url_for('auth.employee_login'))
             
-            # Get institute info
-            institute_data = None
-            try:
-                institute_response = supabase.table('institutes')\
-                    .select('*')\
-                    .eq('id', employee.get('institute_id'))\
-                    .execute()
-                if institute_response.data:
-                    institute_data = institute_response.data[0]
-            except Exception as e:
-                print(f"Institute fetch error: {e}")
-            
             # Remove password hash from session
             employee_for_session = {k: v for k, v in employee.items() if k != 'password_hash'}
             employee_for_session['is_employee'] = True
-            employee_for_session['institute_name'] = institute_data.get('institute_name') if institute_data else None
             
             session['user'] = employee_for_session
             
@@ -269,17 +249,17 @@ def employee_login():
     
     return render_template('employee_login.html')
 
-# ========== REGISTER ROUTE (Institute Owners Only) ==========
+# ========== REGISTER ROUTE - SIMPLIFIED (Only stores in user metadata) ==========
 
 @auth_bp.route('/registe', methods=['GET', 'POST'])
 def register():
-    """Registration route for institute owners only - Institute created ONLY after user auth success"""
+    """Registration route - ONLY stores data in user metadata, no institutes table"""
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password')
-        institute_name = request.form.get('institute_name')
-        phone = request.form.get('phone')
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        institute_name = request.form.get('institute_name', '').strip()
+        phone = request.form.get('phone', '').strip()
         
         # Validation
         if not email or not password or not institute_name:
@@ -295,7 +275,14 @@ def register():
             return redirect(url_for('auth.register'))
         
         try:
-            # FIRST: Create Supabase auth user
+            # Generate institute code
+            import random
+            import string
+            date_str = datetime.now().strftime("%Y%m%d")
+            random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            institute_code = f"INS{date_str}{random_suffix}"
+            
+            # Create Supabase auth user with ALL data in metadata
             response = supabase.auth.sign_up({
                 "email": email,
                 "password": password,
@@ -303,63 +290,33 @@ def register():
                     "data": {
                         "role": "owner",
                         "institute_name": institute_name,
-                        "phone": phone
+                        "display_name": institute_name,  # Display name for reports
+                        "institute_code": institute_code,
+                        "phone": phone,
+                        "email": email,
+                        "registered_at": datetime.now().isoformat()
                     }
                 }
             })
             
-            if not response.user:
-                flash('Registration failed. Could not create user account.', 'error')
-                return redirect(url_for('auth.register'))
-            
-            # User created successfully, NOW create institute record
-            import random
-            import string
-            date_str = datetime.now().strftime("%Y%m%d")
-            random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            institute_code = f"INS{date_str}{random_suffix}"
-            
-            institute_data = {
-                'user_id': response.user.id,  # Now we have the user ID
-                'institute_code': institute_code,
-                'institute_name': institute_name,
-                'phone_number': phone,
-                'email': email,
-                'created_at': datetime.now().isoformat(),
-                'subscription_status': 'trial',
-                'subscription_start': datetime.now().isoformat()
-            }
-            
-            # Insert institute record
-            try:
-                institute_result = supabase.table('institutes').insert(institute_data).execute()
+            if response.user:
+                # Store user info in session
+                user_metadata = response.user.user_metadata or {}
+                session['user'] = {
+                    'id': response.user.id,
+                    'email': response.user.email,
+                    'is_employee': False,
+                    'role': 'owner',
+                    'institute_name': user_metadata.get('display_name', institute_name),
+                    'display_name': user_metadata.get('display_name', institute_name),
+                    'phone': user_metadata.get('phone', phone),
+                    'institute_code': user_metadata.get('institute_code', institute_code)
+                }
                 
-                if institute_result.data and len(institute_result.data) > 0:
-                    # Update user metadata with institute_id
-                    supabase.auth.admin.update_user_by_id(
-                        response.user.id,
-                        {
-                            "user_metadata": {
-                                "institute_id": institute_result.data[0]['id'],
-                                "institute_code": institute_code,
-                                "role": "owner"
-                            }
-                        }
-                    )
-                    
-                    flash('Registration successful! Please login with your credentials.', 'success')
-                    return redirect(url_for('auth.login'))
-                else:
-                    # Institute creation failed, but user was created - should clean up?
-                    # Ideally delete the auth user, but that requires admin privileges
-                    flash('Registration partially failed. Please contact support.', 'error')
-                    return redirect(url_for('auth.register'))
-                    
-            except Exception as db_error:
-                print(f"Database error: {db_error}")
-                # Institute creation failed, but user was created
-                # You might want to delete the auth user here (requires admin)
-                flash('Registration failed. Please try again.', 'error')
+                flash('Registration successful! Welcome to Lunserk ERP!', 'success')
+                return redirect(url_for('dashboard.index'))
+            else:
+                flash('Registration failed. Could not create user account.', 'error')
                 return redirect(url_for('auth.register'))
                 
         except Exception as e:
@@ -376,7 +333,7 @@ def register():
 # ========== PROFILE ROUTE (Both Owner & Employee) ==========
 
 @auth_bp.route('/profile', methods=['GET', 'POST'])
-@role_required(['owner'])
+@login_required
 def profile():
     """Update user profile - handles both owner and employee"""
     user = session.get('user')
@@ -399,7 +356,6 @@ def profile():
             if is_employee:
                 # Employee email update
                 try:
-                    # Verify password
                     employee_response = supabase.table('employees')\
                         .select('password_hash')\
                         .eq('id', user['id'])\
@@ -409,7 +365,6 @@ def profile():
                         flash('Current password is incorrect', 'error')
                         return redirect(url_for('auth.profile'))
                     
-                    # Update email in employees table
                     supabase.table('employees')\
                         .update({'email': new_email, 'updated_at': datetime.now().isoformat()})\
                         .eq('id', user['id'])\
@@ -436,15 +391,6 @@ def profile():
                     update_response = supabase.auth.update_user({"email": new_email})
                     
                     if update_response and update_response.user:
-                        # Update institutes table
-                        try:
-                            supabase.table('institutes')\
-                                .update({'email': new_email})\
-                                .eq('user_id', user['id'])\
-                                .execute()
-                        except:
-                            pass
-                        
                         session['user']['email'] = new_email
                         flash('Email updated successfully!', 'success')
                     else:
@@ -526,6 +472,66 @@ def profile():
                     else:
                         flash(f'Error: {error_msg}', 'error')
         
+        elif action == 'update_display_name':
+            new_display_name = request.form.get('display_name', '').strip()
+            
+            if not new_display_name:
+                flash('Display name is required', 'error')
+                return redirect(url_for('auth.profile'))
+            
+            if is_employee:
+                # Employee - update employee record or institute display name
+                try:
+                    supabase.table('employees')\
+                        .update({'display_name': new_display_name, 'updated_at': datetime.now().isoformat()})\
+                        .eq('id', user['id'])\
+                        .execute()
+                    session['user']['display_name'] = new_display_name
+                    flash('Display name updated successfully!', 'success')
+                except Exception as e:
+                    flash(f'Error updating display name: {str(e)}', 'error')
+            else:
+                # Owner - update user metadata
+                try:
+                    supabase.auth.update_user({
+                        "data": {
+                            "display_name": new_display_name,
+                            "institute_name": new_display_name
+                        }
+                    })
+                    
+                    session['user']['display_name'] = new_display_name
+                    session['user']['institute_name'] = new_display_name
+                    flash('Display name updated successfully!', 'success')
+                except Exception as e:
+                    flash(f'Error updating display name: {str(e)}', 'error')
+        
+        elif action == 'update_phone':
+            new_phone = request.form.get('phone', '').strip()
+            
+            if is_employee:
+                try:
+                    supabase.table('employees')\
+                        .update({'phone': new_phone, 'updated_at': datetime.now().isoformat()})\
+                        .eq('id', user['id'])\
+                        .execute()
+                    session['user']['phone'] = new_phone
+                    flash('Phone number updated successfully!', 'success')
+                except Exception as e:
+                    flash(f'Error updating phone: {str(e)}', 'error')
+            else:
+                # Owner - update user metadata
+                try:
+                    supabase.auth.update_user({
+                        "data": {
+                            "phone": new_phone
+                        }
+                    })
+                    session['user']['phone'] = new_phone
+                    flash('Phone number updated successfully!', 'success')
+                except Exception as e:
+                    flash(f'Error updating phone: {str(e)}', 'error')
+        
         return redirect(url_for('auth.profile'))
     
     # GET request - show profile form
@@ -537,7 +543,6 @@ def profile():
 def logout():
     """Logout route - clears session for both user types"""
     try:
-        # Only try supabase sign out if not employee
         if not session.get('user', {}).get('is_employee', False):
             supabase.auth.sign_out()
     except:
@@ -549,7 +554,7 @@ def logout():
 # ========== HELPER ROUTES ==========
 
 @auth_bp.route('/api/current-user', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@login_required
 def get_current_user():
     """Get current logged in user info"""
     user = session.get('user', {})
@@ -557,7 +562,7 @@ def get_current_user():
     return jsonify({'success': True, 'user': safe_user})
 
 @auth_bp.route('/api/user-role', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@login_required
 def get_user_role():
     """Get current user's role"""
     user = session.get('user', {})
@@ -567,9 +572,8 @@ def get_user_role():
         'role': user.get('role', 'owner'),
         'employee_id': user.get('employee_id') if user.get('is_employee') else None
     })
-    
-    
-# Add this to your auth.py file
+
+# ========== DEMO LOGIN ==========
 
 @auth_bp.route('/demo-login')
 def demo_login():
@@ -578,33 +582,24 @@ def demo_login():
     password = "Nabirah1@"
     
     try:
-        # Attempt to sign in with Supabase
         response = supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
         })
         
         if response.user:
-            # Get institute info
-            institute_data = None
-            try:
-                institute_response = supabase.table('institutes')\
-                    .select('*')\
-                    .eq('user_id', response.user.id)\
-                    .execute()
-                if institute_response.data:
-                    institute_data = institute_response.data[0]
-            except Exception as e:
-                print(f"Institute fetch error: {e}")
+            user_metadata = response.user.user_metadata or {}
             
-            # Store user info in session
             session['user'] = {
                 'id': response.user.id,
                 'email': response.user.email,
                 'is_employee': False,
-                'role': 'owner',
-                'institute_id': institute_data.get('id') if institute_data else None,
-                'institute_name': institute_data.get('institute_name') if institute_data else None
+                'role': user_metadata.get('role', 'owner'),
+                'institute_name': user_metadata.get('display_name', user_metadata.get('institute_name', '')),
+                'display_name': user_metadata.get('display_name', user_metadata.get('institute_name', '')),
+                'phone': user_metadata.get('phone', ''),
+                'institute_id': user_metadata.get('institute_id'),
+                'institute_code': user_metadata.get('institute_code')
             }
             
             flash('Demo login successful! Welcome back!', 'success')

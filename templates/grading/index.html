@@ -1,4 +1,4 @@
-<!-- templates/grading/index.html - Exam Grading Settings (Status as Text Input) -->
+<!-- templates/grading/index.html - Updated with Comments and Division Rules -->
 {% extends "base.html" %}
 
 {% block title %}Exam Grading Settings - Lunserk ERP{% endblock %}
@@ -66,6 +66,33 @@
         background-color: #fee2e2;
         color: #991b1b;
     }
+    .grade-point {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 2px;
+    }
+    .tab-active {
+        border-bottom: 3px solid #ffa500;
+        color: #ffa500;
+    }
+    .division-card {
+        border-left: 4px solid #ffa500;
+    }
+    .division-card.division-1 {
+        border-left-color: #10b981;
+    }
+    .division-card.division-2 {
+        border-left-color: #3b82f6;
+    }
+    .division-card.division-3 {
+        border-left-color: #f59e0b;
+    }
+    .division-card.division-4 {
+        border-left-color: #ef4444;
+    }
+    .division-card.division-u {
+        border-left-color: #6b7280;
+    }
 </style>
 {% endblock %}
 
@@ -74,158 +101,405 @@
     <!-- Page Header -->
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800 mb-1">Exam Grading Settings</h1>
-        <p class="text-sm text-gray-600">Configure grade ranges and pass/fail criteria</p>
+        <p class="text-sm text-gray-600">Configure grade ranges, comments, and division rules</p>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Panel - Grading Scale -->
-        <div class="lg:col-span-2">
+    <!-- Tab Navigation -->
+    <div class="flex border-b border-gray-200 mb-6">
+        <button onclick="switchTab('grading')" id="tab-grading" class="px-4 py-2 font-medium text-sm tab-active border-b-2 border-orange-500 text-orange-600">
+            <i class="fas fa-star mr-2"></i>Marks Grading
+        </button>
+        <button onclick="switchTab('comments')" id="tab-comments" class="px-4 py-2 font-medium text-sm text-gray-600 hover:text-gray-800 border-b-2 border-transparent hover:border-gray-300">
+            <i class="fas fa-comment mr-2"></i>Comments & Requirements
+        </button>
+        <button onclick="switchTab('division')" id="tab-division" class="px-4 py-2 font-medium text-sm text-gray-600 hover:text-gray-800 border-b-2 border-transparent hover:border-gray-300">
+            <i class="fas fa-layer-group mr-2"></i>Division Rules
+        </button>
+        <button onclick="switchTab('nextterm')" id="tab-nextterm" class="px-4 py-2 font-medium text-sm text-gray-600 hover:text-gray-800 border-b-2 border-transparent hover:border-gray-300">
+            <i class="fas fa-calendar-alt mr-2"></i>Next Term
+        </button>
+    </div>
+
+    <!-- Tab: Marks Grading -->
+    <div id="panel-grading" class="tab-panel">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                            <i class="fas fa-star text-orange-500"></i>
+                            Marks Grading
+                        </h2>
+                        <p class="text-xs text-gray-500 mt-1">Each grade maps to a point value for aggregate calculation</p>
+                    </div>
+                    
+                    <div class="p-5">
+                        <form id="gradingForm">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full">
+                                    <thead>
+                                        <tr class="border-b border-gray-200">
+                                            <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
+                                            <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">% From</th>
+                                            <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">% Upto</th>
+                                            <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                            <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Points</th>
+                                            <th class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase w-10"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="gradesBody">
+                                        {% if grades %}
+                                            {% for grade in grades %}
+                                            <tr class="grade-row border-b border-gray-100">
+                                                <td class="px-2 py-1.5">
+                                                    <input type="text" name="grade_name[]" value="{{ grade.grade_name }}" 
+                                                           class="grade-input w-16 text-center font-semibold" placeholder="e.g., D1">
+                                                </td>
+                                                <td class="px-2 py-1.5">
+                                                    <input type="number" name="min_percentage[]" value="{{ grade.min_percentage|int }}" 
+                                                           class="grade-input w-20 text-center" step="1" min="0" max="100">
+                                                </td>
+                                                <td class="px-2 py-1.5">
+                                                    <input type="number" name="max_percentage[]" value="{{ grade.max_percentage|int }}" 
+                                                           class="grade-input w-20 text-center" step="1" min="0" max="100">
+                                                </td>
+                                                <td class="px-2 py-1.5">
+                                                    <input type="text" name="status[]" value="{{ grade.status }}" 
+                                                           class="grade-input w-24 text-center" placeholder="Pass/Fail">
+                                                </td>
+                                                <td class="px-2 py-1.5 text-center">
+                                                    <span class="text-xs font-bold text-gray-600">
+                                                        {{ grade_points.get(grade.grade_name, 'N/A') }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-2 py-1.5 text-center">
+                                                    <button type="button" onclick="removeGradeRow(this)" class="remove-btn text-red-400 hover:text-red-600">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr class="grade-row border-b border-gray-100">
+                                                <td class="px-2 py-1.5">
+                                                    <input type="text" name="grade_name[]" class="grade-input w-16 text-center font-semibold" placeholder="e.g., D1">
+                                                </td>
+                                                <td class="px-2 py-1.5">
+                                                    <input type="number" name="min_percentage[]" class="grade-input w-20 text-center" step="1" min="0" max="100">
+                                                </td>
+                                                <td class="px-2 py-1.5">
+                                                    <input type="number" name="max_percentage[]" class="grade-input w-20 text-center" step="1" min="0" max="100">
+                                                </td>
+                                                <td class="px-2 py-1.5">
+                                                    <input type="text" name="status[]" class="grade-input w-24 text-center" placeholder="Pass/Fail" value="Pass">
+                                                </td>
+                                                <td class="px-2 py-1.5 text-center">
+                                                    <span class="text-xs text-gray-400">Auto</span>
+                                                </td>
+                                                <td class="px-2 py-1.5 text-center">
+                                                    <button type="button" onclick="removeGradeRow(this)" class="remove-btn text-red-400 hover:text-red-600">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="flex gap-3 mt-4">
+                                <button type="button" onclick="addGradeRow()" class="px-4 py-2 border border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50 text-sm flex items-center gap-2">
+                                    <i class="fas fa-plus-circle"></i> Add More Option
+                                </button>
+                                <button type="button" onclick="removeLastGradeRow()" class="px-4 py-2 border border-red-300 text-red-500 rounded-lg hover:bg-red-50 text-sm flex items-center gap-2">
+                                    <i class="fas fa-minus-circle"></i> Remove
+                                </button>
+                            </div>
+                            
+                            <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+                                <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                                    <i class="fas fa-save"></i> Save Changes
+                                </button>
+                                <button type="button" onclick="resetToDefault()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                    Reset to Default
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Panel - Fail Criteria -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                            <i class="fas fa-exclamation-triangle text-orange-500"></i>
+                            Fail Criteria
+                        </h2>
+                    </div>
+                    
+                    <div class="p-5">
+                        <form id="failCriteriaForm">
+                            <div class="mb-6 p-4 bg-yellow-50 rounded-lg">
+                                <p class="text-sm text-gray-700 mb-2">
+                                    Student will be marked as <span class="font-bold text-red-600">FAILED</span> in the exams if:
+                                </p>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Overall Percentage ≤
+                                </label>
+                                <div class="flex items-center gap-3">
+                                    <input type="number" name="overall_percentage" id="overallPercentage" 
+                                           value="{{ fail_criteria.overall_percentage }}"
+                                           class="grade-input w-32 text-center" step="1" min="0" max="100">
+                                    <span class="text-sm text-gray-500">%</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Student fails if overall percentage is equal to or below this value</p>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    OR Subject Percentage ≤
+                                </label>
+                                <div class="flex items-center gap-3">
+                                    <input type="number" name="subject_percentage" id="subjectPercentage" 
+                                           value="{{ fail_criteria.subject_percentage }}"
+                                           class="grade-input w-32 text-center" step="1" min="0" max="100">
+                                    <span class="text-sm text-gray-500">%</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Student fails if any subject percentage is equal to or below this value</p>
+                            </div>
+                            
+                            <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+                                <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                                    <i class="fas fa-save"></i> Update
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Grade Points Reference -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden mt-4">
+                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-700">Grade Points Reference</h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="grid grid-cols-3 gap-1 text-xs">
+                            {% for grade, points in grade_points.items() %}
+                            <div class="p-1.5 bg-gray-50 rounded text-center">
+                                <span class="font-bold">{{ grade }}</span>
+                                <span class="text-gray-500"> = {{ points }}pts</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Aggregate = Sum of all subject points</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Comments & Requirements -->
+    <div id="panel-comments" class="tab-panel hidden">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-comment text-orange-500"></i>
+                    Grade Comments & Requirements
+                </h2>
+                <p class="text-xs text-gray-500 mt-1">Customize class teacher and head teacher comments for each grade</p>
+            </div>
+            
+            <div class="p-5">
+                <form id="commentsForm">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="border-b border-gray-200">
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class Teacher Comment</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Head Teacher Comment</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Requirements</th>
+                                </tr>
+                            </thead>
+                            <tbody id="commentsBody">
+                                {% if grades %}
+                                    {% for grade in grades %}
+                                    <tr class="border-b border-gray-100">
+                                        <td class="px-3 py-2">
+                                            <span class="font-bold text-orange-600">{{ grade.grade_name }}</span>
+                                            <span class="text-xs text-gray-500 block">{{ grade.min_percentage|int }}% - {{ grade.max_percentage|int }}%</span>
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <textarea name="class_comment[]" rows="2" class="grade-input w-full text-sm" placeholder="Class teacher comment...">{{ grade.class_teacher_comment or '' }}</textarea>
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <textarea name="head_comment[]" rows="2" class="grade-input w-full text-sm" placeholder="Head teacher comment...">{{ grade.head_teacher_comment or '' }}</textarea>
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <input type="text" name="requirements[]" value="{{ grade.requirements or '' }}" 
+                                                   class="grade-input w-full text-sm" placeholder="e.g., Must pass Math">
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="px-3 py-4 text-center text-gray-500">
+                                            No grades configured. Please set up grading first.
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+                        <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                            <i class="fas fa-save"></i> Save Comments
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Division Rules -->
+    <div id="panel-division" class="tab-panel hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white rounded-xl shadow-md overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
                     <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <i class="fas fa-star text-orange-500"></i>
-                        Marks Grading
+                        <i class="fas fa-layer-group text-orange-500"></i>
+                        Division Rules
                     </h2>
+                    <p class="text-xs text-gray-500 mt-1">Configure aggregate ranges and requirements for each division</p>
                 </div>
                 
                 <div class="p-5">
-                    <form id="gradingForm">
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full">
-                                <thead>
-                                    <tr class="border-b border-gray-200">
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">% From</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">% Upto</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                        <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-10"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="gradesBody">
-                                    {% if grades %}
-                                        {% for grade in grades %}
-                                        <tr class="grade-row border-b border-gray-100">
-                                            <td class="px-3 py-2">
-                                                <input type="text" name="grade_name[]" value="{{ grade.grade_name }}" 
-                                                       class="grade-input w-20 text-center font-semibold" placeholder="e.g., A">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <input type="number" name="min_percentage[]" value="{{ grade.min_percentage|int }}" 
-                                                       class="grade-input w-24 text-center" step="1" min="0" max="100">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <input type="number" name="max_percentage[]" value="{{ grade.max_percentage|int }}" 
-                                                       class="grade-input w-24 text-center" step="1" min="0" max="100">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <input type="text" name="status[]" value="{{ grade.status }}" 
-                                                       class="grade-input w-28 text-center" placeholder="Pass/Fail">
-                                            </td>
-                                            <td class="px-3 py-2 text-center">
-                                                <button type="button" onclick="removeGradeRow(this)" class="remove-btn text-red-400 hover:text-red-600">
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    {% else %}
-                                        <tr class="grade-row border-b border-gray-100">
-                                            <td class="px-3 py-2">
-                                                <input type="text" name="grade_name[]" class="grade-input w-20 text-center font-semibold" placeholder="e.g., A">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <input type="number" name="min_percentage[]" class="grade-input w-24 text-center" step="1" min="0" max="100">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <input type="number" name="max_percentage[]" class="grade-input w-24 text-center" step="1" min="0" max="100">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <input type="text" name="status[]" class="grade-input w-28 text-center" placeholder="Pass/Fail" value="Pass">
-                                            </td>
-                                            <td class="px-3 py-2 text-center">
-                                                <button type="button" onclick="removeGradeRow(this)" class="remove-btn text-red-400 hover:text-red-600">
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    {% endif %}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div class="flex gap-3 mt-4">
-                            <button type="button" onclick="addGradeRow()" class="px-4 py-2 border border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50 text-sm flex items-center gap-2">
-                                <i class="fas fa-plus-circle"></i> Add More Option
-                            </button>
-                            <button type="button" onclick="removeLastGradeRow()" class="px-4 py-2 border border-red-300 text-red-500 rounded-lg hover:bg-red-50 text-sm flex items-center gap-2">
-                                <i class="fas fa-minus-circle"></i> Remove
-                            </button>
+                    <form id="divisionRulesForm">
+                        <div class="space-y-4">
+                            {% for div, rules in division_rules.items() %}
+                            <div class="division-card division-{{ div|lower|replace(' ', '-') }} p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="font-semibold text-gray-800">{{ div }}</h3>
+                                    <span class="text-xs text-gray-500">Aggregate: {{ rules.min_aggregate }} - {{ rules.max_aggregate }}</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="text-xs font-medium text-gray-600">Min Aggregate</label>
+                                        <input type="number" name="{{ div }}_min" value="{{ rules.min_aggregate }}" 
+                                               class="grade-input text-center" min="0" max="36">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-medium text-gray-600">Max Aggregate</label>
+                                        <input type="number" name="{{ div }}_max" value="{{ rules.max_aggregate }}" 
+                                               class="grade-input text-center" min="0" max="36">
+                                    </div>
+                                </div>
+                                {% if rules.requires %}
+                                <div class="mt-2">
+                                    <label class="text-xs font-medium text-gray-600">Requires</label>
+                                    <input type="text" name="{{ div }}_requires" value="{{ rules.requires|join(', ') }}" 
+                                           class="grade-input text-sm" placeholder="e.g., English, Mathematics">
+                                </div>
+                                {% endif %}
+                                {% if rules.min_grade %}
+                                <div class="mt-2">
+                                    <label class="text-xs font-medium text-gray-600">Minimum Grade</label>
+                                    <input type="text" name="{{ div }}_min_grade" value="{{ rules.min_grade }}" 
+                                           class="grade-input text-center w-20" placeholder="e.g., C6">
+                                </div>
+                                {% endif %}
+                                {% if rules.fail_if_any_f9 is defined %}
+                                <div class="mt-2 flex items-center gap-2">
+                                    <input type="checkbox" name="{{ div }}_fail_if_any_f9" {% if rules.fail_if_any_f9 %}checked{% endif %}>
+                                    <label class="text-xs text-gray-600">Fail if any subject is F9</label>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
                         </div>
                         
                         <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200">
                             <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
-                                <i class="fas fa-save"></i> Save Changes
+                                <i class="fas fa-save"></i> Save Division Rules
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
+            
+            <div>
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                            <i class="fas fa-info-circle text-orange-500"></i>
+                            How Division Works
+                        </h2>
+                    </div>
+                    <div class="p-5 space-y-4 text-sm text-gray-700">
+                        <div class="p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+                            <h4 class="font-semibold text-green-700">Division 1 (4-12 points)</h4>
+                            <p class="text-xs">Must pass all four subjects with at least a Credit (C6) or better. A single F9 in any subject automatically drops the candidate out of Division 1.</p>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                            <h4 class="font-semibold text-blue-700">Division 2 (13-23 points)</h4>
+                            <p class="text-xs">Must pass English and Mathematics with at least a Pass (P8) or better.</p>
+                        </div>
+                        <div class="p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-500">
+                            <h4 class="font-semibold text-yellow-700">Division 3 (24-29 points)</h4>
+                            <p class="text-xs">Basic pass levels in core subjects. Even if aggregates are low, getting an F9 in multiple subjects pushes the student here.</p>
+                        </div>
+                        <div class="p-3 bg-red-50 rounded-lg border-l-4 border-red-500">
+                            <h4 class="font-semibold text-red-700">Division 4 (30-34 points)</h4>
+                            <p class="text-xs">The absolute minimum pass level to receive a certificate. Must pass at least two subjects.</p>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg border-l-4 border-gray-500">
+                            <h4 class="font-semibold text-gray-700">Ungraded (35-36 points)</h4>
+                            <p class="text-xs">Awarded if a candidate fails all subjects (F9) or does not meet the minimum requirements for Division 4. Does not qualify for secondary school.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <!-- Right Panel - Fail Criteria -->
-        <div class="lg:col-span-1">
-            <div class="bg-white rounded-xl shadow-md overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
-                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <i class="fas fa-exclamation-triangle text-orange-500"></i>
-                        Fail Criteria
-                    </h2>
-                </div>
-                
-                <div class="p-5">
-                    <form id="failCriteriaForm">
-                        <div class="mb-6 p-4 bg-yellow-50 rounded-lg">
-                            <p class="text-sm text-gray-700 mb-2">
-                                Student will be marked as <span class="font-bold text-red-600">FAILED</span> in the exams if:
-                            </p>
+    </div>
+
+    <!-- Tab: Next Term -->
+    <div id="panel-nextterm" class="tab-panel hidden">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-calendar-alt text-orange-500"></i>
+                    Next Term Settings
+                </h2>
+                <p class="text-xs text-gray-500 mt-1">Set when the next term begins for report cards</p>
+            </div>
+            
+            <div class="p-5">
+                <form id="nextTermForm">
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Next Term Begins</label>
+                        <div class="flex items-center gap-4">
+                            <input type="date" name="next_term_date" id="nextTermDate" 
+                                   value="{{ requirements.next_term_date or '' }}"
+                                   class="grade-input w-64">
+                            <input type="text" name="next_term_text" id="nextTermText" 
+                                   value="{{ requirements.next_term_text or 'To be announced' }}"
+                                   class="grade-input flex-1" placeholder="Custom text (e.g., January 2026)">
                         </div>
-                        
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Overall Percentage ≤
-                            </label>
-                            <div class="flex items-center gap-3">
-                                <input type="number" name="overall_percentage" id="overallPercentage" 
-                                       value="{{ fail_criteria.overall_percentage }}"
-                                       class="grade-input w-32 text-center" step="1" min="0" max="100">
-                                <span class="text-sm text-gray-500">%</span>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-1">Student fails if overall percentage is equal to or below this value</p>
-                        </div>
-                        
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                OR Subject Percentage ≤
-                            </label>
-                            <div class="flex items-center gap-3">
-                                <input type="number" name="subject_percentage" id="subjectPercentage" 
-                                       value="{{ fail_criteria.subject_percentage }}"
-                                       class="grade-input w-32 text-center" step="1" min="0" max="100">
-                                <span class="text-sm text-gray-500">%</span>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-1">Student fails if any subject percentage is equal to or below this value</p>
-                        </div>
-                        
-                        <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200">
-                            <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
-                                <i class="fas fa-save"></i> Update
-                            </button>
-                            <button type="button" onclick="resetToDefault()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                                Reset to Default
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                        <p class="text-xs text-gray-500 mt-1">Set a date or custom text for when the next term begins</p>
+                    </div>
+                    
+                    <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+                        <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium">
+                            <i class="fas fa-save"></i> Save Next Term Settings
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -254,24 +528,40 @@
 </div>
 
 <script>
+    // Tab switching
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+        document.querySelectorAll('[id^="tab-"]').forEach(t => {
+            t.classList.remove('tab-active', 'border-orange-500', 'text-orange-600');
+            t.classList.add('text-gray-600', 'border-transparent');
+        });
+        
+        document.getElementById(`panel-${tabName}`).classList.remove('hidden');
+        document.getElementById(`tab-${tabName}`).classList.add('tab-active', 'border-orange-500', 'text-orange-600');
+    }
+
+    // Grade row management
     function addGradeRow() {
         const tbody = document.getElementById('gradesBody');
         const newRow = document.createElement('tr');
         newRow.className = 'grade-row border-b border-gray-100';
         newRow.innerHTML = `
-            <td class="px-3 py-2">
-                <input type="text" name="grade_name[]" class="grade-input w-20 text-center font-semibold" placeholder="e.g., A">
+            <td class="px-2 py-1.5">
+                <input type="text" name="grade_name[]" class="grade-input w-16 text-center font-semibold" placeholder="e.g., D1">
             </td>
-            <td class="px-3 py-2">
-                <input type="number" name="min_percentage[]" class="grade-input w-24 text-center" step="1" min="0" max="100">
+            <td class="px-2 py-1.5">
+                <input type="number" name="min_percentage[]" class="grade-input w-20 text-center" step="1" min="0" max="100">
             </td>
-            <td class="px-3 py-2">
-                <input type="number" name="max_percentage[]" class="grade-input w-24 text-center" step="1" min="0" max="100">
+            <td class="px-2 py-1.5">
+                <input type="number" name="max_percentage[]" class="grade-input w-20 text-center" step="1" min="0" max="100">
             </td>
-            <td class="px-3 py-2">
-                <input type="text" name="status[]" class="grade-input w-28 text-center" placeholder="Pass/Fail" value="Pass">
+            <td class="px-2 py-1.5">
+                <input type="text" name="status[]" class="grade-input w-24 text-center" placeholder="Pass/Fail" value="Pass">
             </td>
-            <td class="px-3 py-2 text-center">
+            <td class="px-2 py-1.5 text-center">
+                <span class="text-xs text-gray-400">Auto</span>
+            </td>
+            <td class="px-2 py-1.5 text-center">
                 <button type="button" onclick="removeGradeRow(this)" class="remove-btn text-red-400 hover:text-red-600">
                     <i class="fas fa-trash-alt"></i>
                 </button>
@@ -297,7 +587,8 @@
             showMessage('At least one grade is required', 'error');
         }
     }
-    
+
+    // Grading form submission
     document.getElementById('gradingForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
@@ -360,7 +651,75 @@
             showMessage('Failed to save grading settings', 'error');
         }
     });
-    
+
+    // Comments form submission
+    document.getElementById('commentsForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const rows = document.querySelectorAll('#commentsBody tr');
+        const updates = [];
+        
+        rows.forEach(row => {
+            const gradeName = row.querySelector('td:first-child span')?.textContent?.trim();
+            const classComment = row.querySelector('textarea[name="class_comment[]"]')?.value || '';
+            const headComment = row.querySelector('textarea[name="head_comment[]"]')?.value || '';
+            const requirements = row.querySelector('input[name="requirements[]"]')?.value || '';
+            
+            if (gradeName) {
+                updates.push({
+                    grade_name: gradeName,
+                    class_teacher_comment: classComment,
+                    head_teacher_comment: headComment,
+                    requirements: requirements
+                });
+            }
+        });
+        
+        if (updates.length === 0) {
+            showMessage('No grades to update', 'error');
+            return;
+        }
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const update of updates) {
+            try {
+                const response = await fetch('/exam-grading/api/update-comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(update)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+            } catch (error) {
+                errorCount++;
+            }
+        }
+        
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        
+        if (errorCount === 0) {
+            document.getElementById('successMessage').textContent = `Updated ${successCount} grade comment(s) successfully`;
+            document.getElementById('successModal').classList.remove('hidden');
+            document.getElementById('successModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showMessage(`Updated ${successCount} grade(s), ${errorCount} failed`, 'error');
+        }
+    });
+
+    // Fail criteria form submission
     document.getElementById('failCriteriaForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
@@ -411,7 +770,112 @@
             showMessage('Failed to save fail criteria', 'error');
         }
     });
-    
+
+    // Division rules form submission
+    document.getElementById('divisionRulesForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const divisions = ['Division 1', 'Division 2', 'Division 3', 'Division 4', 'Ungraded'];
+        let allSuccess = true;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        for (const div of divisions) {
+            const divKey = div.replace(/[^a-zA-Z0-9]/g, '_');
+            const minInput = document.querySelector(`[name="${divKey}_min"]`);
+            const maxInput = document.querySelector(`[name="${divKey}_max"]`);
+            const requiresInput = document.querySelector(`[name="${divKey}_requires"]`);
+            const minGradeInput = document.querySelector(`[name="${divKey}_min_grade"]`);
+            const failCheckbox = document.querySelector(`[name="${divKey}_fail_if_any_f9"]`);
+            
+            if (minInput && maxInput) {
+                const rules = {
+                    min_aggregate: parseInt(minInput.value) || 0,
+                    max_aggregate: parseInt(maxInput.value) || 0,
+                    requires: requiresInput ? requiresInput.value.split(',').map(s => s.trim()).filter(Boolean) : [],
+                    min_grade: minGradeInput ? minGradeInput.value.trim() : null,
+                    fail_if_any_f9: failCheckbox ? failCheckbox.checked : false
+                };
+                
+                try {
+                    const response = await fetch('/exam-grading/api/division-rules/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            division: div,
+                            rules: rules
+                        })
+                    });
+                    const result = await response.json();
+                    if (!result.success) {
+                        allSuccess = false;
+                    }
+                } catch (error) {
+                    allSuccess = false;
+                }
+            }
+        }
+        
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        
+        if (allSuccess) {
+            document.getElementById('successMessage').textContent = 'Division rules saved successfully';
+            document.getElementById('successModal').classList.remove('hidden');
+            document.getElementById('successModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showMessage('Some division rules failed to save', 'error');
+        }
+    });
+
+    // Next term form submission
+    document.getElementById('nextTermForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const date = document.getElementById('nextTermDate').value;
+        const text = document.getElementById('nextTermText').value;
+        
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+        
+        try {
+            // Save to a settings table
+            const response = await fetch('/exam-grading/api/save-next-term', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    next_term_date: date,
+                    next_term_text: text
+                })
+            });
+            
+            const result = await response.json();
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            
+            if (result.success) {
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to save next term settings', 'error');
+        }
+    });
+
+    // Reset to default
     async function resetToDefault() {
         if (confirm('Are you sure you want to reset all grading settings to default? This will overwrite your current settings.')) {
             const loading = document.getElementById('loadingOverlay');
@@ -445,13 +909,13 @@
             }
         }
     }
-    
+
     function closeSuccessModal() {
         document.getElementById('successModal').classList.add('hidden');
         document.getElementById('successModal').classList.remove('flex');
         document.body.style.overflow = '';
     }
-    
+
     function showMessage(message, type) {
         const flashContainer = document.getElementById('flashMessages');
         if (!flashContainer) {
@@ -477,12 +941,30 @@
             setTimeout(() => flashMsg.remove(), 300);
         }, 5000);
     }
-    
+
     window.onclick = function(event) {
         const modal = document.getElementById('successModal');
         if (event.target === modal) {
             closeSuccessModal();
         }
     };
+
+    async function loadNextTermSettings() {
+    try {
+        const response = await fetch('/exam-grading/api/get-next-term');
+        const result = await response.json();
+        
+        if (result.success && result.settings) {
+            if (result.settings.next_term_date) {
+                document.getElementById('nextTermDate').value = result.settings.next_term_date;
+            }
+            if (result.settings.next_term_text) {
+                document.getElementById('nextTermText').value = result.settings.next_term_text;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading next term settings:', error);
+    }
+}
 </script>
 {% endblock %}

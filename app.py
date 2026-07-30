@@ -99,6 +99,7 @@ from routes.whatsapp.whatsappIntegrationSettings import whatsapp_bp
 from routes.reports.profitLossAndBalanceSheet import financial_reports_bp as profit_loss_bp
 from routes.resultsCard.CDCReportSettings import settings_bp as cdc_report_settings_bp
 from routes.accounts.budget import budget_bp
+from routes.admin.registeredUserDetails import registered_users_bp
 
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -152,6 +153,7 @@ app.register_blueprint(whatsapp_bp)
 app.register_blueprint(profit_loss_bp)
 app.register_blueprint(cdc_report_settings_bp)
 app.register_blueprint(budget_bp)
+app.register_blueprint(registered_users_bp)
 
 @app.route('/')
 def landing():
