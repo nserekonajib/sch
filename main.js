@@ -1,5 +1,4 @@
-// whatsapp-academic-server.js - Consolidated WhatsApp + Academic Report + ID Card Server
-// QR Codes are ONLY generated when explicitly requested
+// whatsapp-academic-server.js - QR CODE VERSION (Working)
 
 const { default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode');
@@ -15,7 +14,7 @@ const { buildReportCardsPdf } = require('./lib/pdfBuilder');
 const { buildCompetencyReportCardsPdf } = require('./lib/competencyPdfBuilder');
 require('dotenv').config();
 
-// ==================== ID CARD IMPORTS WITH ERROR HANDLING ====================
+// ==================== ID CARD IMPORTS ====================
 let validateRequest, validateBatchRequest, ValidationError, generateCardPdf, generateBatchPdf;
 let idCardModulesAvailable = false;
 
@@ -56,20 +55,27 @@ const io = socketIO(server, {
 });
 
 app.use(cors());
-app.use(express.json({ limit: '80mb' }));
-app.use(express.urlencoded({ extended: true, limit: '80mb' }));
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 
 // ==================== SUPABASE SETUP ====================
 let supabase = null;
 let supabase2 = null;
 
 try {
-  if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
-    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-    console.log('✅ Supabase Primary connected');
-  }
+    const SUPABASE_URL =
+        process.env.SUPABASE_URL ||
+        "https://qddnezmtskwclzzzfbun.supabase.co/";
+
+    const SUPABASE_KEY =
+        process.env.SUPABASE_KEY ||
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZG5lem10c2t3Y2x6enpmYnVuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTc1ODU4MywiZXhwIjoyMTAxMzM0NTgzfQ.I3wJRLCB-bL0UStwPYjePfbEIV7LveodBJvzZFaDcYQ";
+
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    console.log("✅ Supabase connected");
 } catch (error) {
-  console.log('⚠️ Supabase Primary not configured');
+    console.error("⚠️ Failed to initialize Supabase:", error.message);
 }
 
 try {
@@ -88,247 +94,362 @@ function getSupabaseClient() {
 }
 
 // ==================== AUTH FOLDER SETUP ====================
-const BASE_AUTH_FOLDER = path.join(__dirname, 'auth_info');
-if (!fs.existsSync(BASE_AUTH_FOLDER)) {
-  fs.mkdirSync(BASE_AUTH_FOLDER, { recursive: true });
+const GLOBAL_AUTH_FOLDER = path.join(__dirname, 'auth_info_global');
+if (!fs.existsSync(GLOBAL_AUTH_FOLDER)) {
+  fs.mkdirSync(GLOBAL_AUTH_FOLDER, { recursive: true });
 }
 
-// ==================== CLIENT STORE ====================
-const clients = new Map();
+// ==================== GLOBAL CLIENT ====================
+let globalClient = {
+  sock: null,
+  isReady: false,
+  reconnectAttempts: 0,
+  isConnecting: false,
+  masterConnected: false,
+  masterInstituteId: null,
+  connectionInProgress: false,
+  qrCode: null,
+  connectionStatus: 'disconnected'
+};
 
-// ==================== HELPERS ====================
-function getInstituteAuthFolder(instituteId) {
-  const folder = path.join(BASE_AUTH_FOLDER, instituteId);
-  if (!fs.existsSync(folder)) {
-    fs.mkdirSync(folder, { recursive: true });
-  }
-  return folder;
-}
+// ==================== BATCH SYNC FUNCTIONS ====================
 
-async function syncFromSupabase(instituteId) {
+async function syncFromSupabase() {
   const supabaseClient = getSupabaseClient();
   if (!supabaseClient) return false;
   
   try {
-    const authFolder = getInstituteAuthFolder(instituteId);
     const { data, error } = await supabaseClient
-      .from('whatsapp_auth_files_custom')
-      .select('filename, content')
-      .eq('institute_id', instituteId);
+      .from('whatsapp_auth_files_global')
+      .select('filename, content');
     
     if (error) throw error;
+    
     if (data && data.length > 0) {
-      for (const file of data) {
-        fs.writeFileSync(path.join(authFolder, file.filename), file.content);
-      }
-      console.log(`✅ Auth restored for institute ${instituteId}`);
+      const writePromises = data.map(file => 
+        fs.promises.writeFile(path.join(GLOBAL_AUTH_FOLDER, file.filename), file.content)
+      );
+      await Promise.all(writePromises);
+      console.log(`✅ Global auth restored (${data.length} files)`);
       return true;
     }
     return false;
   } catch (error) {
-    console.error(`Sync error for ${instituteId}:`, error.message);
+    console.error(`Global sync error:`, error.message);
     return false;
   }
 }
 
-async function syncToSupabase(instituteId) {
+async function syncToSupabase() {
   const supabaseClient = getSupabaseClient();
   if (!supabaseClient) return;
   
   try {
-    const authFolder = getInstituteAuthFolder(instituteId);
-    const files = fs.readdirSync(authFolder);
-    for (const filename of files) {
-      const filePath = path.join(authFolder, filename);
+    const files = fs.readdirSync(GLOBAL_AUTH_FOLDER);
+    if (files.length === 0) return;
+    
+    await supabaseClient.from('whatsapp_auth_files_global').delete();
+    
+    const records = files.map(filename => {
+      const filePath = path.join(GLOBAL_AUTH_FOLDER, filename);
       const content = fs.readFileSync(filePath, 'utf-8');
-      
-      const { error } = await supabaseClient
-        .from('whatsapp_auth_files_custom')
-        .upsert(
-          { 
-            institute_id: instituteId, 
-            filename, 
-            content, 
-            updated_at: new Date().toISOString() 
-          }, 
-          { onConflict: 'institute_id,filename' }
-        );
-      
-      if (error) console.error('Upsert error:', error.message);
-    }
-    console.log(`✅ Auth synced to Supabase for institute ${instituteId}`);
+      return { filename, content, updated_at: new Date().toISOString() };
+    });
+    
+    const { error } = await supabaseClient.from('whatsapp_auth_files_global').insert(records);
+    if (error) throw error;
+    console.log(`✅ Global auth synced to Supabase (${files.length} files)`);
   } catch (error) {
-    console.error(`Sync error for ${instituteId}:`, error.message);
+    console.error(`Global sync error:`, error.message);
   }
 }
 
-async function clearAuthData(instituteId) {
-  console.log(`🗑️ Clearing auth data for institute ${instituteId}...`);
+async function clearGlobalAuthData() {
+  console.log(`🗑️ Clearing global auth data...`);
   
-  if (clients.has(instituteId)) {
-    const client = clients.get(instituteId);
-    if (client.sock) {
-      try {
-        await client.sock.logout();
-        client.sock.end();
-      } catch(e) {}
-    }
-    clients.delete(instituteId);
+  if (globalClient.sock) {
+    try {
+      await globalClient.sock.logout();
+      globalClient.sock.end();
+    } catch(e) {}
   }
   
-  const authFolder = getInstituteAuthFolder(instituteId);
-  if (fs.existsSync(authFolder)) {
-    fs.rmSync(authFolder, { recursive: true, force: true });
-    fs.mkdirSync(authFolder, { recursive: true });
+  globalClient = {
+    sock: null,
+    isReady: false,
+    reconnectAttempts: 0,
+    isConnecting: false,
+    masterConnected: false,
+    masterInstituteId: null,
+    connectionInProgress: false,
+    qrCode: null,
+    connectionStatus: 'disconnected'
+  };
+  
+  if (fs.existsSync(GLOBAL_AUTH_FOLDER)) {
+    try {
+      fs.rmSync(GLOBAL_AUTH_FOLDER, { recursive: true, force: true });
+      fs.mkdirSync(GLOBAL_AUTH_FOLDER, { recursive: true });
+    } catch(e) {
+      console.error('Error clearing auth folder:', e.message);
+    }
   }
   
   const supabaseClient = getSupabaseClient();
   if (supabaseClient) {
     try {
-      await supabaseClient
-        .from('whatsapp_auth_files_custom')
-        .delete()
-        .eq('institute_id', instituteId);
+      await supabaseClient.from('whatsapp_auth_files_global').delete();
+      console.log('✅ Global auth cleared from Supabase');
     } catch(e) {
-      console.error('Error deleting auth from Supabase:', e.message);
+      console.error('Error deleting global auth:', e.message);
     }
   }
 }
 
-async function storeMessage(instituteId, phoneNumber, message, messageType = 'text', status = 'sent') {
-  const supabaseClient = getSupabaseClient();
-  if (!supabaseClient) return;
-  
-  try {
-    await supabaseClient
-      .from('whatsapp_messages_custom')
-      .insert([{
-        institute_id: instituteId,
-        phone_number: phoneNumber,
-        message: message,
-        message_type: messageType,
-        status: status,
-        sent_at: new Date().toISOString()
-      }]);
-  } catch(e) {
-    console.error('Error storing message:', e.message);
-  }
-}
-
-// ==================== CONNECT TO WHATSAPP (QR ONLY ON REQUEST) ====================
-async function connectToWhatsApp(instituteId, forceQR = false) {
-  console.log(`🔄 Connecting to WhatsApp for institute ${instituteId}...`);
-  
-  // If we already have a client for this institute, clean it up
-  if (clients.has(instituteId)) {
-    const existing = clients.get(instituteId);
-    if (existing.sock) {
-      try { await existing.sock.logout(); existing.sock.end(); } catch(e) {}
-    }
-    clients.delete(instituteId);
+// ==================== GLOBAL WHATSAPP CONNECTION WITH QR ====================
+async function connectGlobalWhatsApp(forceQR = false) {
+  if (globalClient.connectionInProgress) {
+    console.log('⏳ Connection already in progress, skipping...');
+    return;
   }
   
-  const client = {
-    sock: null,
-    qr: null,
-    isReady: false,
-    reconnectAttempts: 0,
-    qrRequested: forceQR || false,  // Only generate QR if explicitly requested
-    isConnecting: false
-  };
-  clients.set(instituteId, client);
+  console.log(`🔄 Connecting Global WhatsApp... (forceQR: ${forceQR})`);
+  globalClient.connectionInProgress = true;
+  globalClient.isConnecting = true;
+  globalClient.connectionStatus = 'connecting';
   
   try {
-    const authFolder = getInstituteAuthFolder(instituteId);
-    await syncFromSupabase(instituteId);
+    // Try to restore auth from Supabase
+    await syncFromSupabase();
     
-    const { state, saveCreds } = await useMultiFileAuthState(authFolder);
+    const { state, saveCreds } = await useMultiFileAuthState(GLOBAL_AUTH_FOLDER);
     const { version } = await fetchLatestBaileysVersion();
     
     const sock = makeWASocket({
       version,
       auth: state,
       logger: P({ level: 'silent' }),
-      browser: ['Lunserk ERP WhatsApp', 'Chrome', '1.0.0'],
+      browser: ['Lunserk ERP WhatsApp Global', 'Chrome', '1.0.0'],
       connectTimeoutMs: 60000,
       defaultQueryTimeoutMs: 60000,
-      keepAliveIntervalMs: 10000
+      keepAliveIntervalMs: 10000,
+      printQRInTerminal: false
     });
     
-    client.sock = sock;
-    client.isConnecting = true;
+    globalClient.sock = sock;
+    globalClient.qrCode = null;
     
+    // Handle connection updates
     sock.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
       
-      // QR Code handling - ONLY emit if explicitly requested
+      // Handle QR code
       if (qr) {
-        client.qr = qr;
+        globalClient.qrCode = qr;
+        console.log(`📱 QR Code generated`);
         
-        // Only emit QR if it was explicitly requested
-        if (client.qrRequested) {
-          console.log(`📱 QR Code generated for institute ${instituteId} (requested)`);
-          try {
-            const qrImage = await qrcode.toDataURL(qr, { scale: 8 });
-            io.to(`institute_${instituteId}`).emit('qr', qrImage);
-            console.log(`✅ QR sent to institute room: institute_${instituteId}`);
-          } catch(err) {
-            console.error('QR generation error:', err);
-            io.to(`institute_${instituteId}`).emit('qr', qr);
-          }
-          // Reset the flag so we don't keep sending QR codes
-          client.qrRequested = false;
-        } else {
-          console.log(`📱 QR Code available for institute ${instituteId} (waiting for request)`);
+        try {
+          const qrImage = await qrcode.toDataURL(qr, { scale: 8 });
+          io.emit('global_qr', qrImage);
+          console.log(`✅ QR sent to all connected clients`);
+        } catch(err) {
+          console.error('QR generation error:', err);
+          io.emit('global_qr', qr);
         }
-        client.reconnectAttempts = 0;
+        
+        globalClient.connectionInProgress = false;
+        globalClient.connectionStatus = 'scanning';
       }
       
+      // Connection open
+      if (connection === 'open') {
+        console.log(`✅ Global WhatsApp connected!`);
+        globalClient.isReady = true;
+        globalClient.isConnecting = false;
+        globalClient.connectionInProgress = false;
+        globalClient.reconnectAttempts = 0;
+        globalClient.qrCode = null;
+        globalClient.masterConnected = true;
+        globalClient.connectionStatus = 'connected';
+        io.emit('global_ready', 'WhatsApp is ready for all institutes!');
+        console.log('✅ WhatsApp fully connected and ready!');
+      }
+      
+      // Connection closed
       if (connection === 'close') {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
         const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-        console.log(`❌ Connection closed for institute ${instituteId}`);
-        client.isReady = false;
-        client.isConnecting = false;
+        console.log(`❌ Global connection closed (code: ${statusCode})`);
+        globalClient.isReady = false;
+        globalClient.isConnecting = false;
+        globalClient.connectionInProgress = false;
+        globalClient.connectionStatus = 'disconnected';
         
-        if (shouldReconnect && client.reconnectAttempts < 5) {
-          client.reconnectAttempts++;
-          const delay = Math.min(5000 * client.reconnectAttempts, 30000);
-          console.log(`🔄 Reconnecting institute ${instituteId} in ${delay/1000}s... (Attempt ${client.reconnectAttempts})`);
-          setTimeout(() => connectToWhatsApp(instituteId, false), delay);
+        if (statusCode === 401 || statusCode === 403) {
+          console.log('🔑 Authentication failed - clearing invalid auth...');
+          await clearGlobalAuthData();
+          io.emit('pairing_error', 'Authentication failed. Please try again.');
+        } else if (shouldReconnect && globalClient.reconnectAttempts < 10) {
+          globalClient.reconnectAttempts++;
+          const delay = Math.min(3000 * globalClient.reconnectAttempts, 30000);
+          console.log(`🔄 Reconnecting in ${delay/1000}s... (Attempt ${globalClient.reconnectAttempts})`);
+          setTimeout(() => {
+            globalClient.connectionInProgress = false;
+            connectGlobalWhatsApp(false);
+          }, delay);
         } else if (statusCode === DisconnectReason.loggedOut) {
-          client.isReady = false;
-          io.to(`institute_${instituteId}`).emit('disconnected', 'Logged out');
-          await clearAuthData(instituteId);
+          console.log(`🔴 Logged out, clearing auth...`);
+          globalClient.isReady = false;
+          globalClient.masterConnected = false;
+          io.emit('global_disconnected', 'Logged out');
+          await clearGlobalAuthData();
         }
-      } else if (connection === 'open') {
-        console.log(`✅ WhatsApp connected for institute ${instituteId}!`);
-        client.isReady = true;
-        client.isConnecting = false;
-        client.reconnectAttempts = 0;
-        client.qr = null; // Clear QR after successful connection
-        io.to(`institute_${instituteId}`).emit('ready', 'WhatsApp client is ready!');
-        io.emit('ready_' + instituteId, 'WhatsApp client is ready!');
       }
     });
     
     sock.ev.on('creds.update', async () => {
       await saveCreds();
-      await syncToSupabase(instituteId);
+      await syncToSupabase();
     });
     
     sock.ev.on('error', (err) => {
-      console.error(`Socket error for institute ${instituteId}:`, err.message);
+      console.error(`Global socket error:`, err.message);
+      globalClient.connectionInProgress = false;
     });
     
+    // If forceQR is true, we need to trigger QR generation
+    if (forceQR) {
+      console.log('📱 Force QR mode - waiting for QR to be generated...');
+      // QR will be handled in the connection.update event above
+    }
+    
   } catch (error) {
-    console.error(`❌ Connection error for institute ${instituteId}:`, error.message);
-    client.isConnecting = false;
-    setTimeout(() => connectToWhatsApp(instituteId, forceQR), 10000);
+    console.error(`❌ Global connection error:`, error.message);
+    globalClient.isConnecting = false;
+    globalClient.connectionInProgress = false;
+    globalClient.connectionStatus = 'disconnected';
+    setTimeout(() => {
+      globalClient.connectionInProgress = false;
+      connectGlobalWhatsApp(forceQR);
+    }, 10000);
   }
 }
 
-// ==================== REPORT CARD HELPERS ====================
+// ==================== WHATSAPP API ROUTES ====================
+
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    globalReady: globalClient.isReady,
+    masterConnected: globalClient.masterConnected,
+    connectionStatus: globalClient.connectionStatus,
+    supabase: !!getSupabaseClient(),
+    idCardModules: idCardModulesAvailable
+  });
+});
+
+app.get('/api/status/:instituteId', async (req, res) => {
+  res.json({
+    ready: globalClient.isReady,
+    master_connected: globalClient.masterConnected,
+    isConnecting: globalClient.isConnecting || false,
+    connectionInProgress: globalClient.connectionInProgress || false,
+    connectionStatus: globalClient.connectionStatus || 'disconnected',
+    qrCode: globalClient.qrCode || null,
+    message: globalClient.isReady ? 'WhatsApp is connected and ready' : 
+             globalClient.qrCode ? 'QR code available - scan with WhatsApp' :
+             globalClient.isConnecting ? 'Connecting to WhatsApp...' :
+             'WhatsApp is not connected'
+  });
+});
+
+app.post('/api/request-qr/:instituteId', async (req, res) => {
+  const { instituteId } = req.params;
+  console.log(`📱 QR requested for institute: ${instituteId}`);
+  
+  if (globalClient.isReady) {
+    return res.json({ success: true, message: 'WhatsApp is already connected!' });
+  }
+  
+  if (globalClient.connectionInProgress || globalClient.isConnecting) {
+    return res.json({ success: true, message: 'Connection already in progress...' });
+  }
+  
+  // Clear old auth and start fresh with QR
+  await clearGlobalAuthData();
+  
+  // Start connection with forceQR
+  setTimeout(() => connectGlobalWhatsApp(true), 1000);
+  
+  res.json({ 
+    success: true, 
+    message: 'QR code requested. Please scan with WhatsApp mobile app.' 
+  });
+});
+
+app.post('/api/mark-master-connected', async (req, res) => {
+  const { instituteId } = req.body;
+  if (!instituteId) {
+    return res.status(400).json({ success: false, message: 'Institute ID required' });
+  }
+  globalClient.masterConnected = true;
+  globalClient.masterInstituteId = instituteId;
+  res.json({ success: true, message: 'WhatsApp connection marked as permanent' });
+});
+
+app.post('/api/logout/:instituteId', async (req, res) => {
+  const { instituteId } = req.params;
+  console.log(`📱 Logout requested for institute: ${instituteId}`);
+  await clearGlobalAuthData();
+  io.emit('global_disconnected', 'WhatsApp disconnected globally');
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// ==================== SEND MESSAGES ====================
+
+app.post('/api/send', async (req, res) => {
+  const { number, message, instituteId } = req.body;
+  
+  if (!globalClient.isReady || !globalClient.sock) {
+    return res.status(400).json({ error: 'WhatsApp is not ready. Please try again later.' });
+  }
+  
+  try {
+    const formattedNumber = number.includes('@') ? number : `${number}@s.whatsapp.net`;
+    await globalClient.sock.sendMessage(formattedNumber, { text: message });
+    res.json({ success: true, message: 'Message sent successfully' });
+  } catch (error) {
+    console.error(`Send error:`, error.message);
+    res.status(500).json({ error: error.message || 'Failed to send message' });
+  }
+});
+
+app.post('/api/send-pdf', async (req, res) => {
+  const { number, pdfBuffer, filename, instituteId } = req.body;
+  
+  if (!globalClient.isReady || !globalClient.sock) {
+    return res.status(400).json({ error: 'WhatsApp is not ready. Please try again later.' });
+  }
+  
+  try {
+    const formattedNumber = number.includes('@') ? number : `${number}@s.whatsapp.net`;
+    const buffer = Buffer.from(pdfBuffer, 'base64');
+    
+    await globalClient.sock.sendMessage(formattedNumber, {
+      document: buffer,
+      mimetype: 'application/pdf',
+      fileName: filename || 'document.pdf'
+    });
+    
+    res.json({ success: true, message: 'PDF sent successfully' });
+  } catch (error) {
+    console.error(`Send PDF error:`, error.message);
+    res.status(500).json({ error: error.message || 'Failed to send PDF' });
+  }
+});
+
+// ==================== REPORT CARD ROUTES ====================
 
 function detectReportType(body) {
   if (body.assessments && Array.isArray(body.assessments) && body.assessments.length > 0) {
@@ -369,15 +490,7 @@ async function handleGenerateStandard(req, res, students) {
 
 async function handleGenerateCompetency(req, res, students) {
   try {
-    const { 
-      school, 
-      term, 
-      assessments, 
-      weightedColumns, 
-      gradeScale, 
-      keyTerms, 
-      resultDefinitions 
-    } = req.body;
+    const { school, term, assessments, weightedColumns, gradeScale, keyTerms, resultDefinitions } = req.body;
 
     if (!school || !school.name) {
       return res.status(400).json({ error: 'Missing required field: school.name' });
@@ -412,189 +525,6 @@ async function handleGenerateCompetency(req, res, students) {
   }
 }
 
-// ==================== API ROUTES - WHATSAPP ====================
-
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    clients: clients.size,
-    supabase: !!getSupabaseClient(),
-    idCardModules: idCardModulesAvailable
-  });
-});
-
-app.get('/api/status/:instituteId', async (req, res) => {
-  const { instituteId } = req.params;
-  const supabaseClient = getSupabaseClient();
-  
-  if (supabaseClient) {
-    try {
-      const { data, error } = await supabaseClient
-        .from('whatsapp_settings_custom')
-        .select('is_enabled')
-        .eq('institute_id', instituteId)
-        .single();
-      
-      if (error || !data || !data.is_enabled) {
-        return res.json({ 
-          ready: false, 
-          qrCode: null,
-          message: 'WhatsApp is disabled for this institute'
-        });
-      }
-    } catch(e) {}
-  }
-  
-  const client = clients.get(instituteId);
-  if (!client) {
-    return res.json({ 
-      ready: false, 
-      qrCode: null,
-      message: 'Not connected'
-    });
-  }
-  
-  res.json({
-    ready: client.isReady,
-    qrCode: client.qr || null,
-    reconnectAttempts: client.reconnectAttempts,
-    qrRequested: client.qrRequested,
-    isConnecting: client.isConnecting || false
-  });
-});
-
-app.post('/api/request-qr/:instituteId', async (req, res) => {
-  const { instituteId } = req.params;
-  const supabaseClient = getSupabaseClient();
-  
-  if (supabaseClient) {
-    try {
-      const { data, error } = await supabaseClient
-        .from('whatsapp_settings_custom')
-        .select('is_enabled')
-        .eq('institute_id', instituteId)
-        .single();
-      
-      if (error || !data || !data.is_enabled) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'WhatsApp is disabled for this institute' 
-        });
-      }
-    } catch(e) {}
-  }
-  
-  // Clear old auth data to force new QR
-  await clearAuthData(instituteId);
-  
-  // Connect with forceQR=true to generate QR immediately
-  setTimeout(() => connectToWhatsApp(instituteId, true), 1000);
-  
-  res.json({ success: true, message: 'QR code requested. QR will be generated and sent via socket.' });
-});
-
-app.post('/api/logout/:instituteId', async (req, res) => {
-  const { instituteId } = req.params;
-  await clearAuthData(instituteId);
-  io.to(`institute_${instituteId}`).emit('disconnected', 'Logged out');
-  res.json({ success: true, message: 'Logged out successfully' });
-});
-
-app.post('/api/send', async (req, res) => {
-  const { number, message, instituteId } = req.body;
-  
-  if (!instituteId) {
-    return res.status(400).json({ error: 'Institute ID is required' });
-  }
-  
-  const client = clients.get(instituteId);
-  if (!client || !client.isReady || !client.sock) {
-    return res.status(400).json({ error: 'WhatsApp not ready for this institute' });
-  }
-  
-  try {
-    const formattedNumber = number.includes('@') ? number : `${number}@s.whatsapp.net`;
-    
-    const sendPromise = client.sock.sendMessage(formattedNumber, { text: message });
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Send timeout')), 30000)
-    );
-    
-    await Promise.race([sendPromise, timeoutPromise]);
-    
-    await storeMessage(instituteId, number, message, 'text', 'sent');
-    res.json({ success: true, message: 'Message sent successfully' });
-  } catch (error) {
-    console.error(`Send error for institute ${instituteId}:`, error.message);
-    await storeMessage(instituteId, number, message, 'text', 'failed');
-    res.status(500).json({ error: error.message || 'Failed to send message' });
-  }
-});
-
-app.post('/api/send-pdf', async (req, res) => {
-  const { number, pdfBuffer, filename, instituteId } = req.body;
-  
-  if (!instituteId) {
-    return res.status(400).json({ error: 'Institute ID is required' });
-  }
-  
-  const client = clients.get(instituteId);
-  if (!client || !client.isReady || !client.sock) {
-    return res.status(400).json({ error: 'WhatsApp not ready for this institute' });
-  }
-  
-  try {
-    const formattedNumber = number.includes('@') ? number : `${number}@s.whatsapp.net`;
-    const buffer = Buffer.from(pdfBuffer, 'base64');
-    
-    const sendPromise = client.sock.sendMessage(formattedNumber, {
-      document: buffer,
-      mimetype: 'application/pdf',
-      fileName: filename || 'document.pdf'
-    });
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Send timeout')), 60000)
-    );
-    
-    await Promise.race([sendPromise, timeoutPromise]);
-    
-    await storeMessage(instituteId, number, filename || 'document.pdf', 'pdf', 'sent');
-    res.json({ success: true, message: 'PDF sent successfully' });
-  } catch (error) {
-    console.error(`Send PDF error for institute ${instituteId}:`, error.message);
-    await storeMessage(instituteId, number, filename || 'document.pdf', 'pdf', 'failed');
-    res.status(500).json({ error: error.message || 'Failed to send PDF' });
-  }
-});
-
-app.get('/api/messages/:instituteId', async (req, res) => {
-  const { instituteId } = req.params;
-  const limit = parseInt(req.query.limit) || 50;
-  const supabaseClient = getSupabaseClient();
-  
-  if (!supabaseClient) {
-    return res.status(500).json({ error: 'Supabase not configured' });
-  }
-  
-  try {
-    const { data, error } = await supabaseClient
-      .from('whatsapp_messages_custom')
-      .select('*')
-      .eq('institute_id', instituteId)
-      .order('sent_at', { ascending: false })
-      .limit(limit);
-    
-    if (error) throw error;
-    res.json({ success: true, messages: data });
-  } catch (error) {
-    console.error('Error fetching messages:', error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== API ROUTES - ACADEMIC REPORTS ====================
-
 app.post('/generate-report-cards', (req, res) => {
   handleGenerateStandard(req, res, req.body.students);
 });
@@ -615,7 +545,6 @@ app.post('/generate-competency-report-card', (req, res) => {
 
 app.post('/generate', (req, res) => {
   const reportType = detectReportType(req.body);
-  
   if (reportType === 'competency') {
     handleGenerateCompetency(req, res, req.body.students || []);
   } else {
@@ -626,11 +555,9 @@ app.post('/generate', (req, res) => {
 app.post('/generate-single', (req, res) => {
   const reportType = detectReportType(req.body);
   const student = req.body.student;
-  
   if (!student) {
     return res.status(400).json({ error: 'Missing required field: student' });
   }
-  
   if (reportType === 'competency') {
     handleGenerateCompetency(req, res, [student]);
   } else {
@@ -638,7 +565,7 @@ app.post('/generate-single', (req, res) => {
   }
 });
 
-// ==================== API ROUTES - STUDENT ID CARDS ====================
+// ==================== ID CARD ROUTES ====================
 
 app.post('/api/id-cards', async (req, res) => {
   try {
@@ -697,49 +624,34 @@ io.on('connection', (socket) => {
     socket.join(`institute_${instituteId}`);
     console.log(`📌 Client ${socket.id} joined institute: ${instituteId}`);
     
-    const client = clients.get(instituteId);
-    if (client) {
-      if (client.isReady) {
-        socket.emit('ready', 'WhatsApp client is ready!');
-        console.log(`✅ Sent ready to ${socket.id}`);
-      } else if (client.qr && client.qrRequested) {
-        // Only send QR if it was requested
-        qrcode.toDataURL(client.qr, { scale: 8 }).then(qrImage => {
-          socket.emit('qr', qrImage);
-          console.log(`✅ Sent QR to ${socket.id}`);
-        }).catch(() => {
-          socket.emit('qr', client.qr);
-        });
-        client.qrRequested = false; // Reset after sending
-      } else if (client.qr) {
-        socket.emit('qr_available', 'QR code is available. Request it via /api/request-qr');
-        console.log(`ℹ️ QR available but not requested for ${instituteId}`);
-      }
+    if (globalClient.isReady) {
+      socket.emit('global_ready', 'WhatsApp is ready for all institutes!');
+      console.log(`✅ Sent global ready to ${socket.id}`);
+    } else if (globalClient.qrCode) {
+      qrcode.toDataURL(globalClient.qrCode, { scale: 8 }).then(qrImage => {
+        socket.emit('global_qr', qrImage);
+        console.log(`✅ Sent QR to ${socket.id}`);
+      }).catch(() => {
+        socket.emit('global_qr', globalClient.qrCode);
+      });
+    } else if (globalClient.isConnecting || globalClient.connectionInProgress) {
+      socket.emit('connecting', 'Connecting to WhatsApp...');
+    } else {
+      socket.emit('global_disconnected', 'WhatsApp is not connected');
     }
   });
   
   socket.on('request_qr', async (instituteId) => {
     console.log(`📱 QR requested via socket for institute ${instituteId}`);
-    const supabaseClient = getSupabaseClient();
     
-    if (supabaseClient) {
-      try {
-        const { data, error } = await supabaseClient
-          .from('whatsapp_settings_custom')
-          .select('is_enabled')
-          .eq('institute_id', instituteId)
-          .single();
-        
-        if (error || !data || !data.is_enabled) {
-          socket.emit('error', 'WhatsApp is disabled for this institute');
-          return;
-        }
-      } catch(e) {}
+    if (globalClient.isReady) {
+      socket.emit('global_ready', 'WhatsApp is already connected!');
+      return;
     }
     
-    await clearAuthData(instituteId);
-    setTimeout(() => connectToWhatsApp(instituteId, true), 1000);
-    socket.emit('qr_requested', 'QR code requested. Please wait for QR generation.');
+    await clearGlobalAuthData();
+    setTimeout(() => connectGlobalWhatsApp(true), 1000);
+    socket.emit('qr_requested', 'QR code requested. Please wait.');
   });
   
   socket.on('disconnect', () => {
@@ -750,58 +662,63 @@ io.on('connection', (socket) => {
 // ==================== START SERVER ====================
 const PORT = process.env.PORT || 4000;
 
-// IMPORTANT: Do NOT auto-start WhatsApp connections on server startup
-// Only start the server and wait for QR requests
 server.listen(PORT, async () => {
   console.log(`\n🚀 WhatsApp + Academic Reports + ID Card Server: http://localhost:${PORT}`);
+  console.log(`🌍 WhatsApp Mode: GLOBAL - ONE connection for ALL institutes`);
+  console.log(`📱 Connection Mode: QR CODE SCANNING`);
   console.log(`💾 Auth: ${getSupabaseClient() ? 'Supabase' : 'Local'}`);
-  console.log(`📱 WhatsApp API ready (QR codes generated ONLY on request)`);
-  console.log(`📄 Report Card API ready:`);
-  console.log(`   - POST /generate-report-cards (bulk standard)`);
-  console.log(`   - POST /generate-report-card (single standard)`);
-  console.log(`   - POST /generate-competency-report-cards (bulk CBC)`);
-  console.log(`   - POST /generate-competency-report-card (single CBC)`);
-  console.log(`   - POST /generate (auto-detect bulk)`);
-  console.log(`   - POST /generate-single (auto-detect single)`);
+  
+  // Try to connect with existing auth
+  const hasAuth = await syncFromSupabase();
+  if (hasAuth) {
+    console.log(`📱 Found existing auth, attempting to connect...`);
+    setTimeout(() => connectGlobalWhatsApp(false), 2000);
+  } else {
+    console.log(`📱 No existing auth found. Use POST /api/request-qr/:instituteId to generate QR.`);
+  }
+  
+  console.log(`\n📄 Report Card API ready:`);
+  console.log(`   POST /generate-report-cards (bulk standard)`);
+  console.log(`   POST /generate-report-card (single standard)`);
+  console.log(`   POST /generate-competency-report-cards (bulk CBC)`);
+  console.log(`   POST /generate-competency-report-card (single CBC)`);
+  console.log(`   POST /generate (auto-detect bulk)`);
+  console.log(`   POST /generate-single (auto-detect single)`);
+  
   if (idCardModulesAvailable) {
     console.log(`🪪 ID Card API ready:`);
-    console.log(`   - POST /api/id-cards (single)`);
-    console.log(`   - POST /api/id-cards/batch (batch)`);
-  } else {
-    console.log(`⚠️ ID Card API not available (modules missing)`);
+    console.log(`   POST /api/id-cards (single)`);
+    console.log(`   POST /api/id-cards/batch (batch)`);
   }
-  console.log(`\n📱 QR codes are generated ONLY when requested via:`);
-  console.log(`   POST /api/request-qr/:instituteId`);
-  console.log(`   or socket 'request_qr' event`);
+  
+  console.log(`\n🌍 GLOBAL MODE: Once the master connects, ALL institutes can send messages!`);
+  console.log(`📱 Scan QR code with WhatsApp on your phone`);
+  console.log(`   POST /api/request-qr/:instituteId to generate QR`);
   console.log(`\n✅ Server ready\n`);
 });
 
-// Graceful shutdown - DON'T clear auth data on shutdown
+// Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down gracefully...');
-  for (const [instituteId, client] of clients) {
-    if (client.sock) {
-      try {
-        client.sock.end();
-      } catch(e) {
-        console.log(`Error closing connection for ${instituteId}:`, e.message);
-      }
-    }
+  if (globalClient.sock) {
+    try {
+      await globalClient.sock.logout();
+      globalClient.sock.end();
+    } catch(e) {}
   }
-  console.log('✅ Shutdown complete. Sessions preserved.');
+  console.log('✅ Shutdown complete.');
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('\n🛑 Shutting down gracefully...');
-  for (const [instituteId, client] of clients) {
-    if (client.sock) {
-      try {
-        client.sock.end();
-      } catch(e) {}
-    }
+  if (globalClient.sock) {
+    try {
+      await globalClient.sock.logout();
+      globalClient.sock.end();
+    } catch(e) {}
   }
-  console.log('✅ Shutdown complete. Sessions preserved.');
+  console.log('✅ Shutdown complete.');
   process.exit(0);
 });
 
