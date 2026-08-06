@@ -1,9 +1,9 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lunserk Technologies| Login & Registration</title>
+    <title>Lunserk Technologies | Login & Registration</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='n.png') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         * {
@@ -14,13 +14,41 @@
 
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            background: linear-gradient(135deg, #1e2a3a 0%, #2d3e50 100%);
+            background: linear-gradient(135deg, #0f1a2e 0%, #1a2a3e 50%, #0d1b2a 100%);
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             overflow: hidden;
             position: relative;
+        }
+
+        /* Animated Background Particles */
+        .bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 165, 0, 0.15);
+            border-radius: 50%;
+            animation: floatParticle 20s linear infinite;
+        }
+
+        @keyframes floatParticle {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
         }
 
         .main-wrapper {
@@ -30,13 +58,119 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            z-index: 1;
         }
 
+        /* Branding Header - Top Left */
+        .branding-header {
+            position: fixed;
+            top: 30px;
+            left: 40px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(15, 26, 46, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px 12px 18px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 165, 0, 0.15);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            animation: slideDown 0.8s cubic-bezier(0.34, 1.2, 0.64, 1);
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .branding-header .logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            object-fit: contain;
+            background: rgba(255, 165, 0, 0.1);
+            padding: 6px;
+        }
+
+        .branding-header .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .branding-header .brand-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+        }
+
+        .branding-header .brand-name span {
+            color: #ffa500;
+        }
+
+        .branding-header .brand-tagline {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Branding Footer - Bottom Center */
+        .branding-footer {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            text-align: center;
+            background: rgba(15, 26, 46, 0.75);
+            backdrop-filter: blur(8px);
+            padding: 10px 30px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            animation: fadeUp 1s cubic-bezier(0.34, 1.2, 0.64, 1);
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        .branding-footer .footer-text {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        .branding-footer .footer-text strong {
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 600;
+        }
+
+        .branding-footer .footer-text a {
+            color: #ffa500;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .branding-footer .footer-text a:hover {
+            color: #ffb84d;
+        }
+
+        .branding-footer .footer-divider {
+            display: inline-block;
+            margin: 0 8px;
+            color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Circle Container */
         .circle-container {
             position: absolute;
             width: 600px;
             height: 300px;
-            top: 35%;
+            top: 38%;
             left: 50%;
             transform: translate(-50%, -50%);
             pointer-events: none;
@@ -98,13 +232,14 @@
             50% { opacity: 1; transform: scale(1); }
         }
 
+        /* Flip Container */
         .flip-container {
             position: relative;
             width: 460px;
             min-height: 620px;
             z-index: 10;
             perspective: 1000px;
-            margin-top: 60px;
+            margin-top: 40px;
         }
 
         .flip-card {
@@ -132,14 +267,14 @@
         }
 
         .login-box, .register-box {
-            background: rgba(30, 42, 58, 0.96);
-            backdrop-filter: blur(12px);
-            padding: 40px;
+            background: rgba(15, 26, 46, 0.95);
+            backdrop-filter: blur(16px);
+            padding: 40px 35px;
             border-radius: 28px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
             width: 100%;
             min-height: 620px;
-            border: 1px solid rgba(255, 165, 0, 0.25);
+            border: 1px solid rgba(255, 165, 0, 0.12);
             position: relative;
             overflow-y: auto;
         }
@@ -148,7 +283,7 @@
             width: 5px;
         }
         .login-box::-webkit-scrollbar-track, .register-box::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.03);
             border-radius: 10px;
         }
         .login-box::-webkit-scrollbar-thumb, .register-box::-webkit-scrollbar-thumb {
@@ -156,11 +291,27 @@
             border-radius: 10px;
         }
 
+        /* Logo in form */
+        .form-logo {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .form-logo img {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            object-fit: contain;
+            background: rgba(255, 165, 0, 0.08);
+            padding: 8px;
+            border: 2px solid rgba(255, 165, 0, 0.1);
+        }
+
         h2 {
             text-align: center;
             color: #ffa500;
-            margin-bottom: 32px;
-            font-size: 32px;
+            margin-bottom: 28px;
+            font-size: 28px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -174,22 +325,23 @@
             bottom: -12px;
             left: 50%;
             transform: translateX(-50%);
-            width: 60px;
+            width: 50px;
             height: 3px;
             background: linear-gradient(90deg, #ffa500, #ff8c00);
             border-radius: 3px;
+            box-shadow: 0 0 20px rgba(255, 165, 0, 0.3);
         }
 
         .input-group {
             position: relative;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
         .input-group input {
             width: 100%;
-            padding: 12px 46px 12px 18px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 14px 48px 14px 20px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 40px;
             color: #fff;
             font-size: 14px;
@@ -197,48 +349,48 @@
             transition: all 0.3s ease;
         }
 
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
         .input-group input:focus {
             border-color: #ffa500;
-            box-shadow: 0 0 18px rgba(255, 165, 0, 0.4);
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .input-group input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .input-icon {
-            position: absolute;
-            right: 18px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 16px;
+            box-shadow: 0 0 20px rgba(255, 165, 0, 0.15);
+            background: rgba(255, 255, 255, 0.08);
         }
 
         .input-group input:focus + .input-icon {
             color: #ffa500;
         }
 
-        .toggle-password {
+        .input-icon {
             position: absolute;
-            right: 18px;
+            right: 20px;
             top: 50%;
             transform: translateY(-50%);
-            color: #ffa500;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 16px;
+            transition: color 0.3s ease;
+            pointer-events: none;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.4);
             font-size: 16px;
             cursor: pointer;
-            transition: color 0.3s ease, text-shadow 0.3s ease;
+            transition: all 0.3s ease;
             background: none;
             border: none;
             padding: 0;
             z-index: 10;
-            text-shadow: 0 0 8px rgba(255, 165, 0, 0.5);
         }
 
         .toggle-password:hover {
-            color: #ffb84d;
-            text-shadow: 0 0 12px rgba(255, 165, 0, 0.8);
+            color: #ffa500;
         }
 
         .password-input-group {
@@ -248,22 +400,44 @@
         .login-btn, .register-btn {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(95deg, #ffa500, #ff8c00);
+            background: linear-gradient(135deg, #ffa500, #e69500);
             border: none;
             border-radius: 40px;
             color: #fff;
             font-size: 16px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             cursor: pointer;
             transition: all 0.3s ease;
             margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-btn::after, .register-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.05), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+        }
+
+        .login-btn:hover::after, .register-btn:hover::after {
+            left: 100%;
         }
 
         .login-btn:hover, .register-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(255, 165, 0, 0.4);
+            box-shadow: 0 12px 30px rgba(255, 165, 0, 0.35);
+        }
+
+        .login-btn:active, .register-btn:active {
+            transform: translateY(0);
         }
 
         .signup-link, .login-link {
@@ -272,32 +446,55 @@
         }
 
         .signup-link a, .login-link a {
-            color: #ffa500;
+            color: rgba(255, 255, 255, 0.6);
             text-decoration: none;
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 500;
             cursor: pointer;
+            transition: color 0.3s ease;
         }
 
         .signup-link a:hover, .login-link a:hover {
-            text-decoration: underline;
+            color: #ffa500;
+            text-decoration: none;
+        }
+
+        .signup-link a i, .login-link a i {
+            margin-right: 6px;
         }
 
         .employee-link {
             text-align: center;
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px dashed rgba(255,165,0,0.3);
-        }
-        .employee-link a {
-            color: #ffaa33;
-            text-decoration: none;
-            font-size: 13px;
-        }
-        .employee-link a:hover {
-            text-decoration: underline;
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
 
+        .employee-link a {
+            color: rgba(255, 255, 255, 0.35);
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .employee-link a:hover {
+            color: #ffa500;
+        }
+
+        .employee-link a i {
+            margin-right: 6px;
+            color: #ffa500;
+        }
+
+        .password-hint {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.3);
+            margin-top: -6px;
+            margin-bottom: 14px;
+            padding-left: 16px;
+        }
+
+        /* Flash Messages */
         .flash-messages {
             position: fixed;
             top: 20px;
@@ -307,46 +504,97 @@
         }
 
         .flash-message {
-            padding: 12px 20px;
+            padding: 14px 22px;
             margin-bottom: 10px;
-            border-radius: 40px;
+            border-radius: 12px;
             font-size: 14px;
-            font-weight: 600;
-            animation: slideIn 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-weight: 500;
+            animation: slideIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .flash-message.success { background: #2e7d32; color: white; }
-        .flash-message.error { background: #c62828; color: white; }
-        .flash-message.warning { background: #ed6c02; color: white; }
+        .flash-message.success {
+            background: linear-gradient(135deg, #1a7a3a, #0d5c2a);
+            color: white;
+            border-left: 4px solid #4caf50;
+        }
+
+        .flash-message.error {
+            background: linear-gradient(135deg, #7a1a1a, #5c0d0d);
+            color: white;
+            border-left: 4px solid #ef4444;
+        }
+
+        .flash-message.warning {
+            background: linear-gradient(135deg, #7a5a0d, #5c3d0d);
+            color: white;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .flash-message.info {
+            background: linear-gradient(135deg, #1a3a7a, #0d2a5c);
+            color: white;
+            border-left: 4px solid #3b82f6;
+        }
 
         @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from { transform: translateX(100%) scale(0.9); opacity: 0; }
+            to { transform: translateX(0) scale(1); opacity: 1; }
         }
 
-        .password-hint {
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.5);
-            margin-top: -8px;
-            margin-bottom: 15px;
-            padding-left: 10px;
-        }
-
+        /* Responsive */
         @media (max-width: 580px) {
-            .flip-container { width: 95%; min-height: 600px; }
-            .login-box, .register-box { padding: 25px 20px; }
-            h2 { font-size: 26px; }
+            .flip-container { width: 95%; min-height: 580px; }
+            .login-box, .register-box { padding: 25px 18px; min-height: 580px; }
+            h2 { font-size: 22px; }
+            .branding-header { top: 15px; left: 15px; padding: 10px 16px; }
+            .branding-header .brand-name { font-size: 16px; }
+            .branding-header .logo { width: 36px; height: 36px; }
+            .branding-footer { padding: 8px 16px; bottom: 15px; }
+            .branding-footer .footer-text { font-size: 9px; }
+            .form-logo img { width: 48px; height: 48px; }
+            .circle-container { width: 400px; height: 200px; top: 40%; }
+            .orbit-particle { width: 8px; height: 8px; }
+            @keyframes orbit {
+                from { transform: rotate(0deg) translateX(120px) rotate(0deg); }
+                to { transform: rotate(360deg) translateX(120px) rotate(-360deg); }
+            }
+            @keyframes orbit-slow {
+                from { transform: rotate(0deg) translateX(150px) rotate(0deg); }
+                to { transform: rotate(360deg) translateX(150px) rotate(-360deg); }
+            }
+        }
+
+        @media (max-width: 400px) {
+            .branding-header .brand-tagline { display: none; }
+            .branding-header { padding: 8px 12px; }
+            .branding-header .brand-name { font-size: 14px; }
         }
     </style>
 </head>
 <body>
+    <!-- Background Particles -->
+    <div class="bg-particles" id="bgParticles"></div>
+
+    <!-- Branding Header -->
+    <div class="branding-header">
+        <img src="{{ url_for('static', filename='n.png') }}" alt="Lunserk Technologies" class="logo">
+        <div class="brand-text">
+            <span class="brand-name">Lunserk<span>ERP</span></span>
+            <span class="brand-tagline">School Management System</span>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
     <div class="flash-messages" id="flashMessages">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
                     <div class="flash-message {{ category }}">
-                        <i class="fas {% if category == 'success' %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+                        <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
                         {{ message }}
                     </div>
                 {% endfor %}
@@ -362,6 +610,9 @@
                 <!-- Login Form -->
                 <div class="flip-front">
                     <div class="login-box">
+                        <div class="form-logo">
+                            <img src="{{ url_for('static', filename='n.png') }}" alt="Lunserk Technologies">
+                        </div>
                         <h2>Welcome Back</h2>
                         <form action="{{ url_for('auth.login') }}" method="POST" id="loginForm">
                             <div class="input-group">
@@ -377,7 +628,7 @@
                             <button type="submit" class="login-btn">Login</button>
                         </form>
                         <div class="signup-link">
-                            <a id="showRegister">Don't have an account? Register Institute</a>
+                            <a id="showRegister"><i class="fas fa-building"></i> Don't have an account? Register Institute</a>
                         </div>
                         <div class="employee-link">
                             <a href="{{ url_for('auth.employee_login') }}">
@@ -387,53 +638,45 @@
                     </div>
                 </div>
 
-                <!-- Registration Form - FIXED with all required fields -->
+                <!-- Registration Form -->
                 <div class="flip-back">
                     <div class="register-box">
+                        <div class="form-logo">
+                            <img src="{{ url_for('static', filename='n.png') }}" alt="Lunserk Technologies">
+                        </div>
                         <h2>Register Institute</h2>
                         <form action="{{ url_for('auth.register') }}" method="POST" id="registerForm">
-                            <!-- Email field -->
                             <div class="input-group">
                                 <input type="email" name="email" id="regEmail" placeholder="Email address" required>
                                 <span class="input-icon"><i class="fa-solid fa-envelope"></i></span>
                             </div>
-
-                            <!-- Institute Name - IMPORTANT! Backend expects this -->
                             <div class="input-group">
                                 <input type="text" name="institute_name" id="regInstituteName" placeholder="Institute Name" required>
                                 <span class="input-icon"><i class="fa-solid fa-building"></i></span>
                             </div>
-
-                            <!-- Phone field - Backend expects this -->
                             <div class="input-group">
                                 <input type="tel" name="phone" id="regPhone" placeholder="Phone Number">
                                 <span class="input-icon"><i class="fa-solid fa-phone"></i></span>
                             </div>
-
-                            <!-- Password field -->
                             <div class="input-group password-input-group">
                                 <input type="password" name="password" id="regPassword" class="password-field" placeholder="Password" required>
                                 <button type="button" class="toggle-password" aria-label="Toggle password visibility">
                                     <i class="fa-solid fa-eye"></i>
                                 </button>
                             </div>
-
-                            <!-- Confirm Password field -->
                             <div class="input-group password-input-group">
                                 <input type="password" name="confirm_password" id="regConfirm" class="password-field" placeholder="Confirm Password" required>
                                 <button type="button" class="toggle-password" aria-label="Toggle password visibility">
                                     <i class="fa-solid fa-eye"></i>
                                 </button>
                             </div>
-
                             <div class="password-hint">
                                 <i class="fas fa-shield-alt"></i> Password must be at least 6 characters
                             </div>
-
                             <button type="submit" class="register-btn">Register Institute</button>
                         </form>
                         <div class="login-link">
-                            <a id="showLogin">← Back to Login</a>
+                            <a id="showLogin"><i class="fas fa-arrow-left"></i> Back to Login</a>
                         </div>
                     </div>
                 </div>
@@ -441,8 +684,34 @@
         </div>
     </div>
 
+    <!-- Branding Footer -->
+    <div class="branding-footer">
+        <span class="footer-text">
+            <strong>Lunserk Technologies</strong>
+            <span class="footer-divider">|</span>
+            <a href="tel:+256731218475"><i class="fas fa-phone"></i> +256 731 218 475</a>
+            <span class="footer-divider">|</span>
+            <a href="https://wa.me/256748675870" target="_blank"><i class="fab fa-whatsapp"></i> +256 748 675 870</a>
+            <span class="footer-divider">|</span>
+            <span>© {{ now.year if now else '2026' }} All Rights Reserved</span>
+        </span>
+    </div>
+
     <script>
-        // Create orbiting particles
+        // ==================== BACKGROUND PARTICLES ====================
+        const bgContainer = document.getElementById('bgParticles');
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'bg-particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDuration = (15 + Math.random() * 25) + 's';
+            particle.style.animationDelay = (Math.random() * 20) + 's';
+            particle.style.width = (2 + Math.random() * 6) + 'px';
+            particle.style.height = particle.style.width;
+            bgContainer.appendChild(particle);
+        }
+
+        // ==================== ORBITING PARTICLES ====================
         const circleContainer = document.getElementById("circleContainer");
         const numParticles = 24;
         const numGlowOrbs = 8;
@@ -485,8 +754,8 @@
         }
         
         setInterval(() => { if(document.hasFocus()) createSparkle(); }, 800);
-        
-        // Password visibility toggle functionality
+
+        // ==================== PASSWORD TOGGLE ====================
         document.querySelectorAll('.toggle-password').forEach(button => {
             button.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -504,8 +773,8 @@
                 }
             });
         });
-        
-        // Flip card functionality
+
+        // ==================== FLIP CARD ====================
         const flipCard = document.getElementById('flipCard');
         const showRegisterBtn = document.getElementById('showRegister');
         const showLoginBtn = document.getElementById('showLogin');
@@ -528,8 +797,8 @@
                 flipCard.classList.remove('flipped');
             });
         }
-        
-        // Form validation for registration
+
+        // ==================== FORM VALIDATION ====================
         const registerForm = document.getElementById('registerForm');
         if (registerForm) {
             registerForm.addEventListener('submit', function(e) {
@@ -559,7 +828,7 @@
                     errors.forEach(error => {
                         const errorMsg = document.createElement('div');
                         errorMsg.className = 'flash-message error';
-                        errorMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${error}`;
+                        errorMsg.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error}`;
                         flashContainer.appendChild(errorMsg);
                         setTimeout(() => errorMsg.remove(), 5000);
                     });
@@ -567,14 +836,20 @@
                 }
             });
         }
-        
-        // Auto-hide flash messages
+
+        // ==================== AUTO-HIDE FLASH MESSAGES ====================
         document.querySelectorAll('.flash-message').forEach(msg => {
-            setTimeout(() => msg.remove(), 5000);
+            setTimeout(() => {
+                msg.style.opacity = '0';
+                msg.style.transform = 'translateX(30px)';
+                msg.style.transition = 'all 0.4s ease';
+                setTimeout(() => msg.remove(), 400);
+            }, 5000);
         });
-        
+
+        // ==================== PREVENT URL PARAMETER PERSISTENCE ====================
         if (window.history.replaceState) {
-            window.history.replaceState(null, null, window.location.href);
+            window.history.replaceState(null, null, window.location.pathname);
         }
     </script>
 </body>

@@ -26,7 +26,7 @@ import requests
 
 app = Flask(__name__)
 
-NODE_API_URL = os.environ.get("NODE_API_URL", "http://localhost:4000")
+NODE_API_URL = os.environ.get("NODE_API_URL", "http://d44cgg048cgckw4kwo4osw4k.195.200.15.127.sslip.io")
 
 # ---------------------------------------------------------------------------
 # Sample data generation

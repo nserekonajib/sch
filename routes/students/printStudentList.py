@@ -1,5 +1,8 @@
 # printStudentList.py - Fixed Student List Printing Blueprint
 # FIXED: Properly calculates balances including SchoolPay payments
+# FIXED: Handles None, null, and empty values safely in PDF generation
+# FIXED: Batches Supabase queries for better performance
+
 from routes.permissions.permissions import role_required
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -72,6 +75,7 @@ def get_students():
     Get students by class with fees balance.
     FIXED: Properly calculates balance including SchoolPay payments.
     Balance = Total Invoiced - Total Paid (including SchoolPay) - Total Discounts
+    FIXED: Uses batch queries for better performance with large student lists
     """
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
@@ -116,63 +120,60 @@ def get_students():
         
         students = students_response.data if students_response.data else []
         
-        # 🔥 FIX: Get fees balance for each student using ALL transactions
+        # 🔥 BATCH: Get all invoices for all students in one query
+        invoices_response = supabase.table('invoices')\
+            .select('student_id, total_amount')\
+            .eq('institute_id', institute_id)\
+            .in_('student_id', student_ids)\
+            .execute()
+        
+        # 🔥 BATCH: Get all payments for all students in one query
+        payments_response = supabase.table('payments')\
+            .select('student_id, amount')\
+            .eq('institute_id', institute_id)\
+            .in_('student_id', student_ids)\
+            .execute()
+        
+        # 🔥 BATCH: Get all discounts for all students in one query
+        discounts_response = supabase.table('discounts')\
+            .select('student_id, discount_amount')\
+            .eq('institute_id', institute_id)\
+            .in_('student_id', student_ids)\
+            .execute()
+        
+        # Build maps for quick lookup
+        invoice_map = {}
+        for inv in (invoices_response.data or []):
+            sid = inv.get('student_id')
+            if sid:
+                invoice_map[sid] = invoice_map.get(sid, 0) + float(inv.get('total_amount', 0) or 0)
+        
+        payment_map = {}
+        for p in (payments_response.data or []):
+            sid = p.get('student_id')
+            if sid:
+                payment_map[sid] = payment_map.get(sid, 0) + float(p.get('amount', 0) or 0)
+        
+        discount_map = {}
+        for d in (discounts_response.data or []):
+            sid = d.get('student_id')
+            if sid:
+                discount_map[sid] = discount_map.get(sid, 0) + float(d.get('discount_amount', 0) or 0)
+        
+        # Build student list with balances
         students_with_balance = []
         total_fees_balance = 0
         male_count = 0
         female_count = 0
         
         for student in students:
-            # 🔥 FIX: Get ALL invoices (both paid and unpaid) for this student
-            invoices_response = supabase.table('invoices')\
-                .select('total_amount')\
-                .eq('student_id', student['id'])\
-                .eq('institute_id', institute_id)\
-                .execute()
+            sid = student['id']
             
-            # Calculate total invoiced (positive amounts only)
-            total_invoiced = 0.0
-            for inv in (invoices_response.data or []):
-                try:
-                    amount = float(inv.get('total_amount', 0))
-                    if amount > 0:
-                        total_invoiced += amount
-                except (ValueError, TypeError):
-                    continue
+            total_invoiced = invoice_map.get(sid, 0)
+            total_paid = payment_map.get(sid, 0)
+            total_discount = discount_map.get(sid, 0)
             
-            # 🔥 FIX: Get ALL payments (including SchoolPay) for this student
-            payments_response = supabase.table('payments')\
-                .select('amount')\
-                .eq('student_id', student['id'])\
-                .eq('institute_id', institute_id)\
-                .execute()
-            
-            total_paid = 0.0
-            for p in (payments_response.data or []):
-                try:
-                    amount = float(p.get('amount', 0))
-                    if amount > 0:
-                        total_paid += amount
-                except (ValueError, TypeError):
-                    continue
-            
-            # 🔥 FIX: Get ALL discounts for this student
-            discounts_response = supabase.table('discounts')\
-                .select('discount_amount')\
-                .eq('student_id', student['id'])\
-                .eq('institute_id', institute_id)\
-                .execute()
-            
-            total_discount = 0.0
-            for d in (discounts_response.data or []):
-                try:
-                    amount = float(d.get('discount_amount', 0))
-                    if amount > 0:
-                        total_discount += amount
-                except (ValueError, TypeError):
-                    continue
-            
-            # 🔥 FIX: Calculate actual balance = invoiced - paid - discount
+            # Calculate actual balance = invoiced - paid - discount
             balance = total_invoiced - total_paid - total_discount
             
             # Don't show negative balance (overpayment)
@@ -187,16 +188,16 @@ def get_students():
                 female_count += 1
             
             students_with_balance.append({
-                'id': student['id'],
-                'student_id': student['student_id'],
-                'name': student['name'],
-                'gender': student.get('gender', 'N/A'),
-                'contact_number': student.get('contact_number', 'N/A'),
-                'email': student.get('email', 'N/A'),
+                'id': sid,
+                'student_id': student.get('student_id', 'N/A') or 'N/A',
+                'name': student.get('name', 'N/A') or 'N/A',
+                'gender': student.get('gender', 'N/A') or 'N/A',
+                'contact_number': student.get('contact_number', 'N/A') or 'N/A',
+                'email': student.get('email', 'N/A') or 'N/A',
                 'photo_url': student.get('photo_url'),
-                'status': student.get('status', 'active'),
+                'status': student.get('status', 'active') or 'active',
                 'fees_balance': balance,
-                # 🔥 Optional debug info - remove for production
+                # Debug info - remove for production
                 '_debug_total_invoiced': total_invoiced,
                 '_debug_total_paid': total_paid,
                 '_debug_total_discount': total_discount
@@ -267,12 +268,8 @@ def export_pdf():
             .eq('id', institute_id)\
             .execute()
         
-        # FIX: Check if data exists and is not None
-        institute = {}
-        if institute_response.data and len(institute_response.data) > 0:
-            institute = institute_response.data[0] or {}
+        institute = institute_response.data[0] if institute_response.data else {}
         
-        # Pass None if institute is empty, the generate function will handle it
         html_content = generate_student_list_html(institute, sanitized_students, class_name, academic_year, summary)
         pdf_buffer = convert_html_to_pdf(html_content)
         
@@ -335,24 +332,19 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
                 line-height: 1.2;
                 margin: 0;
             }
-
-            /* THE FIX: Table layout fixed ensures columns respect the % width */
             table { 
                 width: 100%; 
                 border-collapse: collapse; 
                 table-layout: fixed; 
             }
-
-            /* THE FIX: Ensure every cell wraps long IDs or Names */
             td, th { 
                 padding: 6px 4px; 
                 border: 1px solid #e0e0e0;
                 vertical-align: middle;
-                word-wrap: break-word;      /* Legacy support */
-                overflow-wrap: break-word;  /* Modern support */
-                word-break: break-all;      /* Forces wrap even if no spaces exist */
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                word-break: break-all;
             }
-
             th {
                 background-color: #0d47a1;
                 color: white;
@@ -360,33 +352,25 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
                 text-transform: uppercase;
                 font-size: 7.5pt;
             }
-
-            /* Specific column widths to balance the space */
             .col-index { width: 5%; }
             .col-id { width: 18%; }
             .col-name { width: 37%; }
             .col-sex { width: 8%; }
             .col-contact { width: 15%; }
             .col-balance { width: 17%; }
-
             .text-center { text-align: center; }
             .text-right { text-align: right; }
             .bold { font-weight: bold; }
             .text-danger { color: #b71c1c; font-weight: bold; }
             .text-success { color: #1b5e20; }
-
-            /* Header and Branding */
             .header-container { border-bottom: 2px solid #0d47a1; margin-bottom: 15px; padding-bottom: 8px; }
             .institute-name { font-size: 15pt; font-weight: bold; color: #0d47a1; margin: 0; }
-            
             .summary-table { background-color: #f8f9fa; margin-bottom: 15px; border: 1px solid #dee2e6; }
             .summary-table td { border: none; padding: 10px; border-right: 1px solid #dee2e6; }
             .summary-table td:last-child { border-right: none; }
-            
             .sig-section { margin-top: 40px; }
             .sig-box { border: none; padding-top: 30px; }
             .sig-line { border-top: 1px solid #2d3436; width: 80%; margin: 0 auto; padding-top: 4px; font-size: 8pt; }
-            
             .logo-container {
                 width: 50px;
                 height: 50px;
@@ -398,6 +382,12 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
                 max-width: 50px;
                 max-height: 50px;
                 object-fit: contain;
+            }
+            .empty-row td {
+                text-align: center;
+                padding: 20px;
+                color: #999;
+                font-style: italic;
             }
         </style>
     </head>
@@ -453,18 +443,24 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
                 </tr>
             </thead>
             <tbody>
-                {% for student in students %}
-                <tr>
-                    <td class="text-center">{{ loop.index }}</td>
-                    <td class="bold">{{ student.get('student_id', 'N/A') }}</td>
-                    <td>{{ student.get('name', 'N/A') | upper }}</td>
-                    <td class="text-center">{{ (student.get('gender', 'N/A')[:1]) | upper }}</td>
-                    <td class="text-center">{{ student.get('contact_number', 'N/A') }}</td>
-                    <td class="text-right {{ 'text-danger' if student.get('fees_balance', 0)|float > 0 else 'text-success' }}">
-                        {{ "{:,.0f}".format(student.get('fees_balance', 0)|float) }}
-                    </td>
-                </tr>
-                {% endfor %}
+                {% if students and students|length > 0 %}
+                    {% for student in students %}
+                    <tr>
+                        <td class="text-center">{{ loop.index }}</td>
+                        <td class="bold">{{ student.get('student_id', 'N/A') }}</td>
+                        <td>{{ student.get('name', 'N/A') | upper }}</td>
+                        <td class="text-center">{{ (student.get('gender', 'N/A')[:1]) | upper }}</td>
+                        <td class="text-center">{{ student.get('contact_number', 'N/A') }}</td>
+                        <td class="text-right {{ 'text-danger' if student.get('fees_balance', 0)|float > 0 else 'text-success' }}">
+                            {{ "{:,.0f}".format(student.get('fees_balance', 0)|float) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr class="empty-row">
+                        <td colspan="6">No students found for this class</td>
+                    </tr>
+                {% endif %}
             </tbody>
         </table>
 
@@ -482,6 +478,10 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
                     </td>
                 </tr>
             </table>
+        </div>
+        
+        <div style="text-align: center; font-size: 7pt; color: #999; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
+            Generated on: {{ generated_at }}
         </div>
     </body>
     </html>
@@ -505,7 +505,7 @@ def generate_student_list_html(institute, students, class_name, academic_year, s
         male_count=male_count,
         female_count=female_count,
         total_fees_balance_formatted=total_fees_balance_formatted,
-        generated_at=datetime.now().strftime('%d/%m/%Y')
+        generated_at=datetime.now().strftime('%d/%m/%Y %H:%M')
     )
 
 

@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Class Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+    .btn-gradient:hover { background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); transform: translateY(-2px); }
+    .report-table { width: 100%; border-collapse: collapse; }
+    .report-table th, .report-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    .report-table th { background-color: #f9fafb; font-weight: 600; font-size: 13px; position: sticky; top: 0; z-index: 10; }
+    .report-table td { font-size: 13px; }
+    .report-table tbody tr:hover { background-color: #f3f4f6; }
+    .summary-card { background: linear-gradient(135deg, #fef9e7 0%, #fff 100%); border-left: 4px solid #f97316; }
+    .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #f97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .pagination-btn { padding: 8px 12px; margin: 0 4px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; color: #4b5563; transition: all 0.2s; cursor: pointer; }
+    .pagination-btn:hover:not(:disabled) { background: #f97316; color: white; border-color: #f97316; }
+    .pagination-btn.active { background: #f97316; color: white; border-color: #f97316; }
+    .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .export-btn { background: linear-gradient(135deg, #059669, #047857); }
+    .export-btn:hover { background: linear-gradient(135deg, #047857, #065f46); transform: translateY(-2px); }
+    .progress-bar { height: 6px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
+    .progress-bar .fill { height: 100%; border-radius: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">Class Report</h2>
+                <p class="text-gray-500 text-sm mt-1">Class-wise fee collection performance</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="loadReport()" class="btn-gradient px-5 py-2.5 rounded-lg text-white font-medium">
+                    <i class="fas fa-search mr-2"></i>Generate Report
+                </button>
+                <button onclick="exportReport()" id="export_btn" class="export-btn px-5 py-2.5 rounded-lg text-white font-medium" style="display: none;">
+                    <i class="fas fa-file-excel mr-2"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div class="flex flex-wrap gap-4 items-end">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input type="date" id="start_date" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input type="date" id="end_date" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border">
+            </div>
+            <div class="flex-1"></div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div id="summary_cards" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" style="display: none;">
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div><p class="text-sm text-gray-500 mb-1">Total Classes</p><p id="total_classes" class="text-2xl font-bold text-gray-800">0</p></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div><p class="text-sm text-gray-500 mb-1">Total Students</p><p id="total_students" class="text-2xl font-bold text-gray-800">0</p></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div><p class="text-sm text-gray-500 mb-1">Total Collected</p><p id="total_collected" class="text-2xl font-bold text-green-600">UGX 0</p></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div><p class="text-sm text-gray-500 mb-1">Total Outstanding</p><p id="total_outstanding" class="text-2xl font-bold text-red-600">UGX 0</p></div>
+        </div>
+    </div>
+
+    <!-- Report Content -->
+    <div id="report_content" class="bg-white rounded-xl shadow-sm p-6 min-h-[400px]">
+        <div class="text-center py-12">
+            <i class="fas fa-school text-gray-300 text-5xl mb-4"></i>
+            <p class="text-gray-500">Select a date range and click Generate Report</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+    let currentPage = 1;
+    let currentData = null;
+
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('start_date').value = '';
+    document.getElementById('end_date').value = '';
+
+    function loadReport() {
+        const startDate = document.getElementById('start_date').value;
+        const endDate = document.getElementById('end_date').value;
+
+        document.getElementById('report_content').innerHTML = `
+            <div class="text-center py-12">
+                <div class="loading-spinner mx-auto mb-4"></div>
+                <p class="text-gray-500">Loading report...</p>
+            </div>
+        `;
+        document.getElementById('export_btn').style.display = 'none';
+        document.getElementById('summary_cards').style.display = 'none';
+
+        $.ajax({
+            url: '/center/api/class-report',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                start_date: startDate || '',
+                end_date: endDate || '',
+                page: currentPage
+            }),
+            success: function(response) {
+                if (response.success) {
+                    currentData = response;
+                    displayReport(response);
+                    document.getElementById('export_btn').style.display = 'inline-flex';
+                    document.getElementById('summary_cards').style.display = 'grid';
+                    document.getElementById('total_classes').textContent = response.summary.total_classes;
+                    document.getElementById('total_students').textContent = response.summary.total_students;
+                    document.getElementById('total_collected').textContent = `UGX ${response.summary.total_collected.toLocaleString()}`;
+                    document.getElementById('total_outstanding').textContent = `UGX ${response.summary.total_outstanding.toLocaleString()}`;
+                } else {
+                    showError(response.message || 'Failed to load report');
+                }
+            },
+            error: function() {
+                showError('An error occurred while loading the report');
+            }
+        });
+    }
+
+    function displayReport(data) {
+        let html = '';
+        
+        if (data.data && data.data.length > 0) {
+            html += '<div class="overflow-x-auto"><table class="report-table">';
+            html += '<thead><tr><th>Class Name</th><th>Students</th><th>Total Collected</th><th>Expected Fees</th><th>Outstanding</th><th>Collection Rate</th></tr></thead><tbody>';
+            
+            data.data.forEach(cls => {
+                let collectionRate = cls.expected_fees > 0 ? (cls.total_collected / cls.expected_fees * 100) : 0;
+                let rateColor = collectionRate >= 80 ? 'text-green-600' : (collectionRate >= 50 ? 'text-yellow-600' : 'text-red-600');
+                html += `<tr>
+                    <td class="font-semibold">${cls.class_name}</td>
+                    <td>${cls.student_count}</td>
+                    <td>UGX ${cls.total_collected.toLocaleString()}</td>
+                    <td>UGX ${cls.expected_fees.toLocaleString()}</td>
+                    <td class="font-semibold text-red-600">UGX ${cls.outstanding.toLocaleString()}</td>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <div class="progress-bar w-20">
+                                <div class="fill ${collectionRate >= 80 ? 'bg-green-500' : (collectionRate >= 50 ? 'bg-yellow-500' : 'bg-red-500')}" 
+                                     style="width: ${Math.min(collectionRate, 100)}%"></div>
+                            </div>
+                            <span class="${rateColor}">${collectionRate.toFixed(1)}%</span>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+        } else {
+            html = '<div class="text-center py-12"><p class="text-gray-500">No classes found</p></div>';
+        }
+
+        if (data.pagination && data.pagination.total_pages > 1) {
+            html += '<div class="flex justify-center items-center mt-6 gap-2 flex-wrap">';
+            html += `<button onclick="goToPage(${data.pagination.current_page - 1})" class="pagination-btn" ${data.pagination.current_page === 1 ? 'disabled' : ''}>Previous</button>`;
+            
+            let startPage = Math.max(1, data.pagination.current_page - 2);
+            let endPage = Math.min(data.pagination.total_pages, startPage + 4);
+            
+            if (startPage > 1) {
+                html += `<button onclick="goToPage(1)" class="pagination-btn">1</button>`;
+                if (startPage > 2) html += '<span class="px-2">...</span>';
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button onclick="goToPage(${i})" class="pagination-btn ${i === data.pagination.current_page ? 'active' : ''}">${i}</button>`;
+            }
+            
+            if (endPage < data.pagination.total_pages) {
+                if (endPage < data.pagination.total_pages - 1) html += '<span class="px-2">...</span>';
+                html += `<button onclick="goToPage(${data.pagination.total_pages})" class="pagination-btn">${data.pagination.total_pages}</button>`;
+            }
+            
+            html += `<button onclick="goToPage(${data.pagination.current_page + 1})" class="pagination-btn" ${data.pagination.current_page === data.pagination.total_pages ? 'disabled' : ''}>Next</button>`;
+            html += `<span class="text-sm text-gray-500 ml-4">Page ${data.pagination.current_page} of ${data.pagination.total_pages}</span>`;
+            html += '</div>';
+        }
+
+        document.getElementById('report_content').innerHTML = html;
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        loadReport();
+    }
+
+    function exportReport() {
+        if (!currentData) return alert('No data to export');
+        const startDate = document.getElementById('start_date').value;
+        const endDate = document.getElementById('end_date').value;
+        
+        $.ajax({
+            url: '/center/export',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                report_type: 'class_report',
+                data: currentData.data,
+                start_date: startDate || '',
+                end_date: endDate || ''
+            }),
+            xhrFields: { responseType: 'blob' },
+            success: function(blob) {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `class_report_${new Date().toISOString().slice(0,10)}.xlsx`;
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+            error: function() {
+                alert('Failed to export report');
+            }
+        });
+    }
+
+    function showError(message) {
+        document.getElementById('report_content').innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center text-red-600">${message}</div>
+        `;
+    }
+
+    $(document).ready(function() {
+        loadReport();
+    });
+</script>
+{% endblock %}

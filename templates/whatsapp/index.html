@@ -1,4 +1,4 @@
-<!-- templates/whatsapp/index.html - WhatsApp Integration (Auto-configured) -->
+<!-- templates/whatsapp/index.html - QR Code Version -->
 {% extends "base.html" %}
 
 {% block title %}WhatsApp Integration - Lunserk ERP{% endblock %}
@@ -7,24 +7,28 @@
 <style>
     .btn-gradient {
         background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+        color: white;
     }
     .btn-gradient:hover {
         background: linear-gradient(135deg, #128C7E 0%, #075E54 100%);
         transform: translateY(-2px);
+        color: white;
     }
     .btn-danger {
         background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
     }
     .btn-danger:hover {
         background: linear-gradient(135deg, #c82333 0%, #a71d2a 100%);
         transform: translateY(-2px);
+        color: white;
     }
     .status-badge {
         display: inline-block;
-        padding: 4px 12px;
+        padding: 4px 14px;
         border-radius: 20px;
-        font-size: 12px;
-        font-weight: 500;
+        font-size: 13px;
+        font-weight: 600;
     }
     .status-connected {
         background-color: #d1fae5;
@@ -37,6 +41,16 @@
     .status-scanning {
         background-color: #fef3c7;
         color: #d97706;
+    }
+    .settings-card {
+        transition: all 0.3s ease;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .settings-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1);
     }
     .qr-container {
         display: flex;
@@ -65,13 +79,6 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
-    .settings-card {
-        transition: all 0.3s ease;
-    }
-    .settings-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-    }
     .flash-messages {
         position: fixed;
         top: 20px;
@@ -89,46 +96,29 @@
         border-left: 4px solid;
         animation: slideIn 0.3s ease;
     }
-    .flash-message.success {
-        border-color: #22c55e;
-        color: #166534;
-    }
-    .flash-message.error {
-        border-color: #ef4444;
-        color: #991b1b;
-    }
-    .flash-message.info {
-        border-color: #3b82f6;
-        color: #1e40af;
-    }
+    .flash-message.success { border-color: #22c55e; color: #166534; }
+    .flash-message.error { border-color: #ef4444; color: #991b1b; }
+    .flash-message.info { border-color: #3b82f6; color: #1e40af; }
+    .flash-message.warning { border-color: #f59e0b; color: #92400e; }
     @keyframes slideIn {
         from { transform: translateX(100%); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
     }
-    .config-info {
-        background: #f0fdf4;
-        border: 1px solid #86efac;
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 16px;
-    }
-    .config-info .label {
+    .master-badge {
+        background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+        color: white;
+        padding: 2px 14px;
+        border-radius: 20px;
         font-size: 12px;
-        color: #065f46;
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
     }
-    .config-info .value {
-        font-size: 14px;
-        color: #065f46;
-        font-family: 'Courier New', monospace;
-        word-break: break-all;
-    }
-    .config-info .checkmark {
-        color: #059669;
-        font-weight: bold;
-        margin-right: 6px;
+    .user-badge {
+        background: #e5e7eb;
+        color: #374151;
+        padding: 2px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
     }
 </style>
 {% endblock %}
@@ -137,119 +127,118 @@
 <div class="max-w-7xl mx-auto px-4 py-6">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800 mb-1">WhatsApp Integration</h1>
-        <p class="text-sm text-gray-600">Connect your institute's WhatsApp for messaging</p>
+        <p class="text-sm text-gray-600">
+            {% if is_master %}
+                <span class="master-badge"><i class="fas fa-crown"></i> Administrator</span>
+                Connect WhatsApp for all users
+            {% else %}
+                <span class="user-badge"><i class="fas fa-user"></i> User</span>
+                Send messages using the institute's WhatsApp connection
+            {% endif %}
+        </p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Panel - Configuration Info -->
+        <!-- Left Panel -->
         <div class="lg:col-span-2">
-            <div class="bg-white rounded-xl shadow-md overflow-hidden settings-card">
-                <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-white">
-                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <i class="fas fa-cog text-green-500"></i>
-                        Configuration
-                    </h2>
+            <div class="settings-card p-6">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                    <i class="fas fa-info-circle text-green-500"></i>
+                    Connection Status
+                </h2>
+                
+                <div id="connectionStatus" class="p-4 rounded-lg border bg-gray-50">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-sm font-medium text-gray-700">WhatsApp Status:</span>
+                            <span id="statusBadge" class="status-badge status-disconnected ml-2">
+                                <i class="fas fa-circle mr-1"></i> Disconnected
+                            </span>
+                        </div>
+                        <span id="statusTime" class="text-xs text-gray-400"></span>
+                    </div>
+                    <div id="statusDetail" class="text-sm text-gray-500 mt-2">
+                        Not connected. Administrator needs to connect.
+                    </div>
                 </div>
                 
-                <div class="p-6">
-                    <!-- Display fixed configuration -->
-                    <div class="config-info">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="checkmark">✓</span>
-                            <span class="label">Server URL</span>
+                <div class="mt-6">
+                    <form id="whatsappSettingsForm">
+                        <div class="mb-4">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="isEnabled" name="is_enabled" 
+                                       {% if settings and settings.is_enabled %}checked{% endif %}
+                                       class="mr-2 text-green-500 focus:ring-green-500 w-5 h-5">
+                                <span class="text-sm text-gray-700 font-medium">Enable WhatsApp Integration</span>
+                            </label>
+                            <p class="text-xs text-gray-500 mt-1 ml-7">Enable or disable WhatsApp messaging for your institute</p>
                         </div>
-                        <div class="value">{{ fixed_url }}</div>
-                    </div>
-                    
-                    <div class="config-info">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="checkmark">✓</span>
-                            <span class="label">API Key</span>
-                        </div>
-                        <div class="value">••••••••••••••••••••••••</div>
-                    </div>
-                    
-                    <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div class="flex items-start gap-3">
-                            <i class="fas fa-info-circle text-blue-500 mt-1"></i>
-                            <div>
-                                <p class="text-sm text-blue-800 font-medium">Auto-Configured</p>
-                                <p class="text-xs text-blue-600 mt-1">Your WhatsApp connection is pre-configured. You only need to scan the QR code to connect.</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Only enable/disable toggle -->
-                    <div class="mt-6">
-                        <form id="whatsappSettingsForm">
-                            <div class="mb-4">
-                                <label class="flex items-center">
-                                    <input type="checkbox" id="isEnabled" name="is_enabled" 
-                                           {% if settings and settings.is_enabled %}checked{% endif %}
-                                           class="mr-2 text-green-500 focus:ring-green-500 w-5 h-5">
-                                    <span class="text-sm text-gray-700 font-medium">Enable WhatsApp Integration</span>
-                                </label>
-                                <p class="text-xs text-gray-500 mt-1 ml-7">Enable or disable WhatsApp messaging for your institute</p>
-                            </div>
-                            
-                            <button type="submit" class="w-full px-6 py-2.5 btn-gradient text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all">
-                                <i class="fas fa-save"></i> Update Status
-                            </button>
-                        </form>
-                    </div>
+                        <button type="submit" class="w-full px-6 py-2.5 btn-gradient rounded-lg font-medium shadow-md hover:shadow-lg transition-all">
+                            <i class="fas fa-save"></i> Update Status
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
         
-        <!-- Right Panel - QR Code & Status -->
+        <!-- Right Panel -->
         <div class="lg:col-span-1">
-            <div class="bg-white rounded-xl shadow-md overflow-hidden settings-card">
-                <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-white">
-                    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <i class="fas fa-qrcode text-green-500"></i>
-                        Connect WhatsApp
-                    </h2>
+            <div class="settings-card p-6">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                    <i class="fas fa-qrcode text-green-500"></i>
+                    {% if is_master %}Connect{% else %}WhatsApp{% endif %}
+                </h2>
+                
+                <div id="qrContainer" class="qr-container mb-4">
+                    <div class="text-center text-gray-400">
+                        <i class="fas fa-qrcode text-4xl mb-2 block"></i>
+                        <p class="text-sm" id="qrStatusText">
+                            {% if master_connected %}
+                                WhatsApp is connected
+                            {% else %}
+                                Waiting for connection
+                            {% endif %}
+                        </p>
+                        <p class="text-xs text-gray-400 mt-1">
+                            {% if is_master %}
+                                Click "Generate QR" to connect
+                            {% else %}
+                                Connection managed by administrator
+                            {% endif %}
+                        </p>
+                    </div>
                 </div>
                 
-                <div class="p-6">
-                    <!-- Status -->
-                    <div class="text-center mb-4">
-                        <div id="statusBadge" class="status-badge status-disconnected">
-                            <i class="fas fa-circle mr-1"></i> Disconnected
-                        </div>
+                {% if is_master %}
+                    <button onclick="requestQR()" id="qrBtn" 
+                            class="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-qrcode"></i> Generate QR Code
+                    </button>
+                    <button onclick="logoutWhatsApp()" id="logoutBtn"
+                            class="w-full mt-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-sign-out-alt"></i> Disconnect
+                    </button>
+                {% else %}
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <p class="text-sm text-gray-600">
+                            <i class="fas fa-check-circle text-green-500"></i>
+                            WhatsApp is managed by your institute administrator
+                        </p>
+                        <p class="text-xs text-gray-400 mt-1">
+                            You can send messages using this connection
+                        </p>
                     </div>
-                    
-                    <!-- QR Code -->
-                    <div id="qrContainer" class="qr-container mb-4">
-                        <div class="text-center text-gray-400">
-                            <i class="fas fa-qrcode text-4xl mb-2 block"></i>
-                            <p class="text-sm">Scan to connect</p>
-                            <p class="text-xs text-gray-400 mt-1">Click "Generate QR" below</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Buttons -->
-                    <div class="space-y-2">
-                        <button onclick="requestQR()" id="qrBtn" 
-                                class="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all flex items-center justify-center gap-2">
-                            <i class="fas fa-qrcode"></i> Generate QR Code
-                        </button>
-                        <button onclick="logoutWhatsApp()" id="logoutBtn"
-                                class="w-full px-4 py-2 btn-danger text-white rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2">
-                            <i class="fas fa-sign-out-alt"></i> Disconnect
-                        </button>
-                        <button onclick="refreshStatus()" 
-                                class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
-                    </div>
-                </div>
+                {% endif %}
+                
+                <button onclick="refreshStatus()" 
+                        class="w-full mt-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-sync-alt"></i> Refresh Status
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Loading Overlay -->
 <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl p-6 flex flex-col items-center">
         <div class="loader"></div>
@@ -257,15 +246,28 @@
     </div>
 </div>
 
-<!-- Socket.IO Script - Load from Node.js server -->
 <script src="{{ fixed_url }}/socket.io/socket.io.js"></script>
 
 <script>
-    // ==================== SOCKET.IO CONNECTION ====================
+    // ==================== CONFIGURATION ====================
     const nodejsUrl = '{{ fixed_url }}';
-    console.log('Connecting to Node.js at:', nodejsUrl);
+    const isMaster = {{ 'true' if is_master else 'false' }};
+    const masterConnected = {{ 'true' if master_connected else 'false' }};
+    const instituteId = '{{ institute_id }}';
     
-    // Connect to Node.js Socket.IO server
+    console.log('WhatsApp Integration Config:');
+    console.log('  Is Master:', isMaster);
+    console.log('  Master Connected:', masterConnected);
+    console.log('  Institute ID:', instituteId);
+    
+    // ==================== DOM REFERENCES ====================
+    const statusBadge = document.getElementById('statusBadge');
+    const statusDetail = document.getElementById('statusDetail');
+    const statusTime = document.getElementById('statusTime');
+    const qrContainer = document.getElementById('qrContainer');
+    const qrStatusText = document.getElementById('qrStatusText');
+    
+    // ==================== SOCKET.IO ====================
     const socket = io(nodejsUrl, {
         transports: ['websocket', 'polling'],
         reconnection: true,
@@ -273,92 +275,106 @@
         reconnectionDelay: 1000
     });
     
-    // Socket event handlers
     socket.on('connect', () => {
         console.log('✅ Connected to Node.js Socket.IO server');
-        // Join the institute room
-        const instituteId = '{{ institute_id }}';
         if (instituteId) {
             socket.emit('join_institute', instituteId);
             console.log('📌 Joined institute room:', instituteId);
         }
+        refreshStatus();
     });
     
     socket.on('connect_error', (error) => {
         console.error('❌ Socket connection error:', error);
-        showMessage('Cannot connect to WhatsApp server. Please check server status.', 'error');
+        showMessage('Cannot connect to WhatsApp server.', 'error');
     });
     
-    // Listen for QR code from Node.js
-    socket.on('qr', (qrData) => {
+    socket.on('global_qr', (qrData) => {
         console.log('📱 QR received from socket');
-        const qrContainer = document.getElementById('qrContainer');
-        const statusBadge = document.getElementById('statusBadge');
-        
-        if (qrData && qrData.startsWith('data:image')) {
+        if (qrData) {
             qrContainer.innerHTML = `
                 <div class="text-center">
                     <img src="${qrData}" alt="QR Code" class="mx-auto" style="max-width: 200px; border-radius: 8px;">
                     <p class="text-xs text-gray-500 mt-2">Scan with WhatsApp on your phone</p>
+                    <p class="text-xs text-gray-400 mt-1">This connection is permanent</p>
                 </div>
             `;
-        } else if (qrData) {
-            qrContainer.innerHTML = `
-                <div class="text-center">
-                    <img src="${qrData}" alt="QR Code" class="mx-auto" style="max-width: 200px; border-radius: 8px;">
-                    <p class="text-xs text-gray-500 mt-2">Scan with WhatsApp on your phone</p>
-                </div>
-            `;
+            qrStatusText.textContent = 'Scan QR with WhatsApp';
         }
-        
-        statusBadge.className = 'status-badge status-scanning';
-        statusBadge.innerHTML = '<i class="fas fa-circle mr-1"></i> Scan QR';
+        updateStatusBadge('scanning', 'Scan QR with WhatsApp');
         showMessage('QR Code generated! Scan with WhatsApp.', 'success');
     });
     
-    // Listen for ready event
-    socket.on('ready', () => {
-        console.log('✅ WhatsApp is ready!');
-        const statusBadge = document.getElementById('statusBadge');
-        statusBadge.className = 'status-badge status-connected';
-        statusBadge.innerHTML = '<i class="fas fa-circle mr-1"></i> Connected';
-        
-        const qrContainer = document.getElementById('qrContainer');
+    socket.on('global_ready', () => {
+        console.log('✅ Global WhatsApp ready!');
+        updateStatusBadge('connected', 'WhatsApp is connected and ready');
         qrContainer.innerHTML = `
             <div class="text-center text-green-500">
                 <i class="fas fa-check-circle text-5xl mb-2 block"></i>
-                <p class="text-sm font-medium">Connected</p>
-                <p class="text-xs text-gray-400 mt-1">WhatsApp is ready</p>
+                <p class="text-sm font-medium">WhatsApp Connected</p>
+                <p class="text-xs text-gray-400 mt-1">Ready to send messages</p>
             </div>
         `;
+        qrStatusText.textContent = 'WhatsApp is connected';
+        
+        if (isMaster) {
+            markMasterConnected();
+        }
         showMessage('WhatsApp connected successfully!', 'success');
     });
     
-    // Listen for disconnect
-    socket.on('disconnected', () => {
-        console.log('❌ WhatsApp disconnected');
-        const statusBadge = document.getElementById('statusBadge');
-        statusBadge.className = 'status-badge status-disconnected';
-        statusBadge.innerHTML = '<i class="fas fa-circle mr-1"></i> Disconnected';
-        
-        const qrContainer = document.getElementById('qrContainer');
+    socket.on('global_disconnected', () => {
+        console.log('❌ Global WhatsApp disconnected');
+        updateStatusBadge('disconnected', 'WhatsApp is not connected');
         qrContainer.innerHTML = `
             <div class="text-center text-gray-400">
                 <i class="fas fa-qrcode text-4xl mb-2 block"></i>
-                <p class="text-sm">No QR code available</p>
-                <p class="text-xs text-gray-400 mt-1">Click "Generate QR Code"</p>
+                <p class="text-sm">Waiting for connection</p>
+                <p class="text-xs text-gray-400 mt-1">${isMaster ? 'Generate QR to connect' : 'Managed by administrator'}</p>
             </div>
         `;
+        qrStatusText.textContent = 'Waiting for connection';
     });
-
-    // ==================== UI FUNCTIONS ====================
-    let statusInterval = null;
-    let qrTimeout = null;
     
-    // Save settings (only enabled status)
+    // ==================== UI FUNCTIONS ====================
+    
+    function updateStatusBadge(status, message) {
+        if (!statusBadge) return;
+        statusBadge.className = 'status-badge';
+        if (status === 'connected') {
+            statusBadge.classList.add('status-connected');
+            statusBadge.innerHTML = '<i class="fas fa-circle mr-1"></i> Connected';
+        } else if (status === 'scanning') {
+            statusBadge.classList.add('status-scanning');
+            statusBadge.innerHTML = '<i class="fas fa-circle mr-1"></i> Scan QR';
+        } else {
+            statusBadge.classList.add('status-disconnected');
+            statusBadge.innerHTML = '<i class="fas fa-circle mr-1"></i> Disconnected';
+        }
+        if (statusDetail) {
+            statusDetail.textContent = message || '';
+        }
+        if (statusTime) {
+            statusTime.textContent = 'Updated: ' + new Date().toLocaleTimeString();
+        }
+    }
+    
+    async function markMasterConnected() {
+        try {
+            const response = await fetch('/whatsapp-integration/api/mark-master-connected', {
+                method: 'POST'
+            });
+            const result = await response.json();
+            if (result.success) {
+                console.log('✅ Marked master as connected permanently');
+            }
+        } catch (error) {
+            console.error('Error marking master connected:', error);
+        }
+    }
+    
     document.getElementById('whatsappSettingsForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
@@ -373,19 +389,10 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            
             const result = await response.json();
             loading.classList.add('hidden');
             loading.classList.remove('flex');
-            
-            if (result.success) {
-                showMessage(result.message, 'success');
-                if (data.is_enabled) {
-                    setTimeout(checkStatus, 1000);
-                }
-            } else {
-                showMessage(result.message, 'error');
-            }
+            showMessage(result.message || 'Status updated', result.success ? 'success' : 'error');
         } catch (error) {
             loading.classList.add('hidden');
             loading.classList.remove('flex');
@@ -393,35 +400,18 @@
         }
     });
     
-    // Check status via REST API
-    async function checkStatus() {
-        try {
-            const response = await fetch('/whatsapp-integration/api/status');
-            const result = await response.json();
-            
-            if (result.success && result.status) {
-                // Update UI based on status
-                const statusBadge = document.getElementById('statusBadge');
-                const qrContainer = document.getElementById('qrContainer');
-                
-                if (result.status.ready) {
-                    statusBadge.className = 'status-badge status-connected';
-                    statusBadge.innerHTML = '<i class="fas fa-circle mr-1"></i> Connected';
-                } else if (result.status.qrCode) {
-                    // QR exists but not connected - socket will handle display
-                }
-            }
-        } catch (error) {
-            console.error('Status check error:', error);
-        }
-    }
-    
     async function requestQR() {
-        const btn = document.getElementById('qrBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        if (!isMaster) {
+            showMessage('Only the administrator can connect WhatsApp.', 'warning');
+            return;
+        }
         
-        const qrContainer = document.getElementById('qrContainer');
+        const btn = document.getElementById('qrBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        }
+        
         qrContainer.innerHTML = `
             <div class="text-center">
                 <div class="loader mx-auto"></div>
@@ -431,25 +421,14 @@
         
         try {
             const response = await fetch('/whatsapp-integration/api/request-qr', {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instituteId: instituteId })
             });
-            
             const result = await response.json();
             
             if (result.success) {
                 showMessage('QR code requested. Please scan with WhatsApp.', 'success');
-                // Start polling for status
-                if (statusInterval) clearInterval(statusInterval);
-                statusInterval = setInterval(checkStatus, 3000);
-                
-                // Stop after 60 seconds
-                if (qrTimeout) clearTimeout(qrTimeout);
-                qrTimeout = setTimeout(() => {
-                    if (statusInterval) {
-                        clearInterval(statusInterval);
-                        statusInterval = null;
-                    }
-                }, 60000);
             } else {
                 showMessage(result.message || 'Failed to generate QR code', 'error');
                 qrContainer.innerHTML = `
@@ -463,55 +442,92 @@
         } catch (error) {
             showMessage('Error: ' + error.message, 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-qrcode"></i> Generate QR Code';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-qrcode"></i> Generate QR Code';
+            }
         }
     }
     
     async function logoutWhatsApp() {
-        if (!confirm('Disconnect WhatsApp? Session will be cleared.')) return;
+        if (!isMaster) {
+            showMessage('Only the administrator can disconnect WhatsApp.', 'warning');
+            return;
+        }
+        if (!confirm('Disconnect WhatsApp? The administrator will need to reconnect.')) return;
         
         const btn = document.getElementById('logoutBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Disconnecting...';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Disconnecting...';
+        }
         
         try {
             const response = await fetch('/whatsapp-integration/api/logout', {
                 method: 'POST'
             });
-            
             const result = await response.json();
-            
             if (result.success) {
                 showMessage('Disconnected successfully', 'success');
-                if (statusInterval) {
-                    clearInterval(statusInterval);
-                    statusInterval = null;
-                }
-                // Socket will handle UI update via 'disconnected' event
+                updateStatusBadge('disconnected', 'WhatsApp is not connected');
             } else {
                 showMessage(result.message || 'Failed to disconnect', 'error');
             }
         } catch (error) {
             showMessage('Error: ' + error.message, 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Disconnect';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Disconnect';
+            }
         }
     }
     
     async function refreshStatus() {
-        showMessage('Refreshing status...', 'info');
-        await checkStatus();
-        setTimeout(() => {
-            showMessage('Status updated', 'success');
-        }, 500);
+        try {
+            const response = await fetch('/whatsapp-integration/api/status');
+            const result = await response.json();
+            
+            if (result.success && result.status) {
+                const status = result.status;
+                const isConnected = status.ready === true;
+                
+                if (isConnected) {
+                    updateStatusBadge('connected', 'WhatsApp is connected and ready');
+                    qrContainer.innerHTML = `
+                        <div class="text-center text-green-500">
+                            <i class="fas fa-check-circle text-5xl mb-2 block"></i>
+                            <p class="text-sm font-medium">WhatsApp Connected</p>
+                            <p class="text-xs text-gray-400 mt-1">Ready to send messages</p>
+                        </div>
+                    `;
+                    qrStatusText.textContent = 'WhatsApp is connected';
+                } else if (status.qrCode) {
+                    updateStatusBadge('scanning', 'QR code available - scan with WhatsApp');
+                    qrContainer.innerHTML = `
+                        <div class="text-center">
+                            <div class="loader mx-auto"></div>
+                            <p class="text-sm text-gray-500 mt-2">QR code generated. Scan with WhatsApp.</p>
+                            <p class="text-xs text-gray-400 mt-1">Waiting for scan...</p>
+                        </div>
+                    `;
+                    qrStatusText.textContent = 'QR generated - waiting for scan';
+                } else {
+                    updateStatusBadge('disconnected', status.message || 'WhatsApp is not connected');
+                }
+            } else {
+                updateStatusBadge('disconnected', 'Unable to get status');
+            }
+        } catch (error) {
+            console.error('Status refresh error:', error);
+            updateStatusBadge('disconnected', 'Error checking status');
+        }
     }
     
     function showMessage(message, type) {
-        const flashContainer = document.getElementById('flashMessages');
-        if (!flashContainer) {
-            const container = document.createElement('div');
+        let container = document.getElementById('flashMessages');
+        if (!container) {
+            container = document.createElement('div');
             container.id = 'flashMessages';
             container.className = 'flash-messages';
             document.body.appendChild(container);
@@ -519,23 +535,28 @@
         
         const flashMsg = document.createElement('div');
         flashMsg.className = `flash-message ${type}`;
+        const iconMap = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            warning: 'fa-exclamation-triangle',
+            info: 'fa-info-circle'
+        };
         flashMsg.innerHTML = `
             <div class="flex items-center gap-2">
-                <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+                <i class="fas ${iconMap[type] || 'fa-info-circle'}"></i>
                 <span>${message}</span>
             </div>
         `;
-        
-        document.getElementById('flashMessages').appendChild(flashMsg);
+        container.appendChild(flashMsg);
         
         setTimeout(() => {
             flashMsg.style.opacity = '0';
             setTimeout(() => flashMsg.remove(), 300);
-        }, 5000);
+        }, 8000);
     }
     
-    // Initial checks
-    setTimeout(checkStatus, 1000);
-    setInterval(checkStatus, 30000);
+    // Initial status check
+    setTimeout(refreshStatus, 1000);
+    setInterval(refreshStatus, 30000);
 </script>
 {% endblock %}

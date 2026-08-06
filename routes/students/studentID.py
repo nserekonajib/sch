@@ -21,7 +21,7 @@ SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ID Card API Configuration
-ID_CARD_API_BATCH_URL = os.getenv('ID_CARD_API_BATCH_URL', 'http://d44cgg048cgckw4kwo4osw4k.195.200.15.127.sslip.io/api/id-cards/batch')
+ID_CARD_API_BATCH_URL = os.getenv('ID_CARD_API_BATCH_URL', ' http://d44cgg048cgckw4kwo4osw4k.195.200.15.127.sslip.io/api/id-cards/batch')
 id_bp = Blueprint('id', __name__, url_prefix='/student-id')
 
 def login_required(f):

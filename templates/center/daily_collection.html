@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Collection Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-card { transition: all 0.3s ease; cursor: pointer; }
+    .report-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+    .btn-gradient { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+    .btn-gradient:hover { background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); transform: translateY(-2px); }
+    .report-table { width: 100%; border-collapse: collapse; }
+    .report-table th, .report-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    .report-table th { background-color: #f9fafb; font-weight: 600; font-size: 13px; position: sticky; top: 0; z-index: 10; }
+    .report-table td { font-size: 13px; }
+    .report-table tbody tr:hover { background-color: #fef3c7; cursor: pointer; }
+    .summary-card { background: linear-gradient(135deg, #fef9e7 0%, #fff 100%); border-left: 4px solid #f97316; }
+    .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #f97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .student-link { color: #ea580c; text-decoration: none; font-weight: 500; }
+    .student-link:hover { color: #c2410c; text-decoration: underline; }
+    .pagination-btn { padding: 8px 12px; margin: 0 4px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; color: #4b5563; transition: all 0.2s; cursor: pointer; }
+    .pagination-btn:hover:not(:disabled) { background: #f97316; color: white; border-color: #f97316; }
+    .pagination-btn.active { background: #f97316; color: white; border-color: #f97316; }
+    .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .modal-overlay { animation: fadeIn 0.3s ease-out; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .modal-container { animation: slideUp 0.4s cubic-bezier(0.34,1.2,0.64,1); background: white; border-radius: 12px; max-width: 90vw; max-height: 90vh; overflow: auto; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(50px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .export-btn { background: linear-gradient(135deg, #059669, #047857); }
+    .export-btn:hover { background: linear-gradient(135deg, #047857, #065f46); transform: translateY(-2px); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">Daily Collection Report</h2>
+                <p class="text-gray-500 text-sm mt-1">Track daily fee collections and payment patterns</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="loadReport()" class="btn-gradient px-5 py-2.5 rounded-lg text-white font-medium">
+                    <i class="fas fa-search mr-2"></i>Generate Report
+                </button>
+                <button onclick="exportReport()" id="export_btn" class="export-btn px-5 py-2.5 rounded-lg text-white font-medium" style="display: none;">
+                    <i class="fas fa-file-excel mr-2"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div class="flex flex-wrap gap-4 items-end">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input type="date" id="start_date" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input type="date" id="end_date" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border">
+            </div>
+            <div class="flex-1"></div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div id="summary_cards" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" style="display: none;">
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div class="flex items-center justify-between">
+                <div><p class="text-sm text-gray-500 mb-1">Total Collected</p><p id="total_collected" class="text-2xl font-bold text-gray-800">UGX 0</p></div>
+                <i class="fas fa-money-bill-wave text-orange-500 text-2xl"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div class="flex items-center justify-between">
+                <div><p class="text-sm text-gray-500 mb-1">Total Transactions</p><p id="total_transactions" class="text-2xl font-bold text-gray-800">0</p></div>
+                <i class="fas fa-receipt text-orange-500 text-2xl"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div class="flex items-center justify-between">
+                <div><p class="text-sm text-gray-500 mb-1">Days</p><p id="total_days" class="text-2xl font-bold text-gray-800">0</p></div>
+                <i class="fas fa-calendar-day text-orange-500 text-2xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Content -->
+    <div id="report_content" class="bg-white rounded-xl shadow-sm p-6 min-h-[400px]">
+        <div class="text-center py-12">
+            <i class="fas fa-calendar-day text-gray-300 text-5xl mb-4"></i>
+            <p class="text-gray-500">Select a date range and click Generate Report</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="report_modal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+            <h3 id="modal_title" class="text-xl font-bold text-gray-800">Daily Details</h3>
+            <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-2xl"></i></button>
+        </div>
+        <div id="modal_content" class="p-6"></div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+    let currentPage = 1;
+    let currentData = null;
+
+    // Set default dates
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('start_date').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('end_date').value = today.toISOString().split('T')[0];
+
+    function loadReport() {
+        const startDate = document.getElementById('start_date').value;
+        const endDate = document.getElementById('end_date').value;
+        
+        if (!startDate || !endDate) {
+            alert('Please select both start and end dates');
+            return;
+        }
+
+        document.getElementById('report_content').innerHTML = `
+            <div class="text-center py-12">
+                <div class="loading-spinner mx-auto mb-4"></div>
+                <p class="text-gray-500">Loading report...</p>
+            </div>
+        `;
+        document.getElementById('export_btn').style.display = 'none';
+        document.getElementById('summary_cards').style.display = 'none';
+
+        $.ajax({
+            url: '/center/api/daily-collection',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ start_date: startDate, end_date: endDate, page: currentPage }),
+            success: function(response) {
+                if (response.success) {
+                    currentData = response;
+                    displayReport(response);
+                    document.getElementById('export_btn').style.display = 'inline-flex';
+                    document.getElementById('summary_cards').style.display = 'grid';
+                    document.getElementById('total_collected').textContent = `UGX ${response.total_collected.toLocaleString()}`;
+                    document.getElementById('total_transactions').textContent = response.total_transactions;
+                    document.getElementById('total_days').textContent = response.data.length;
+                } else {
+                    showError(response.message || 'Failed to load report');
+                }
+            },
+            error: function() {
+                showError('An error occurred while loading the report');
+            }
+        });
+    }
+
+    function displayReport(data) {
+        let html = '';
+        
+        if (data.data && data.data.length > 0) {
+            html += '<div class="overflow-x-auto"><table class="report-table">';
+            html += '<thead><tr><th>Date</th><th>Total Collected</th><th>Transactions</th><th>Actions</th></tr></thead><tbody>';
+            
+            data.data.forEach(day => {
+                html += `<tr>
+                    <td><strong>${day.date}</strong></td>
+                    <td class="font-semibold">UGX ${day.total.toLocaleString()}</td>
+                    <td>${day.count}</td>
+                    <td>
+                        <button onclick="showDailyDetails('${day.date}', ${JSON.stringify(day.transactions).replace(/"/g, '&quot;')})" 
+                                class="text-orange-600 hover:text-orange-800 font-medium">
+                            <i class="fas fa-eye mr-1"></i>View Details
+                        </button>
+                    </td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+        } else {
+            html = '<div class="text-center py-12"><p class="text-gray-500">No data available for the selected period</p></div>';
+        }
+
+        // Pagination
+        if (data.pagination && data.pagination.total_pages > 1) {
+            html += '<div class="flex justify-center items-center mt-6 gap-2 flex-wrap">';
+            html += `<button onclick="goToPage(${data.pagination.current_page - 1})" class="pagination-btn" ${data.pagination.current_page === 1 ? 'disabled' : ''}>Previous</button>`;
+            
+            let startPage = Math.max(1, data.pagination.current_page - 2);
+            let endPage = Math.min(data.pagination.total_pages, startPage + 4);
+            
+            if (startPage > 1) {
+                html += `<button onclick="goToPage(1)" class="pagination-btn">1</button>`;
+                if (startPage > 2) html += '<span class="px-2">...</span>';
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button onclick="goToPage(${i})" class="pagination-btn ${i === data.pagination.current_page ? 'active' : ''}">${i}</button>`;
+            }
+            
+            if (endPage < data.pagination.total_pages) {
+                if (endPage < data.pagination.total_pages - 1) html += '<span class="px-2">...</span>';
+                html += `<button onclick="goToPage(${data.pagination.total_pages})" class="pagination-btn">${data.pagination.total_pages}</button>`;
+            }
+            
+            html += `<button onclick="goToPage(${data.pagination.current_page + 1})" class="pagination-btn" ${data.pagination.current_page === data.pagination.total_pages ? 'disabled' : ''}>Next</button>`;
+            html += `<span class="text-sm text-gray-500 ml-4">Page ${data.pagination.current_page} of ${data.pagination.total_pages}</span>`;
+            html += '</div>';
+        }
+
+        document.getElementById('report_content').innerHTML = html;
+    }
+
+    function showDailyDetails(date, transactions) {
+        let modalHtml = `<h4 class="font-bold text-lg mb-4">Transactions for ${date}</h4>`;
+        modalHtml += '<div class="overflow-x-auto"><table class="report-table"><thead><tr>';
+        modalHtml += '<th>Receipt Number</th><th>Student Name</th><th>Student ID</th><th>Amount</th><th>Payment Method</th><th>Actions</th>';
+        modalHtml += '</tr></thead><tbody>';
+        
+        transactions.forEach(trans => {
+            let studentLink = trans.student_uuid ? `/student-details/${trans.student_uuid}` : '#';
+            modalHtml += `<tr>
+                <td>${trans.receipt_number || 'N/A'}</td>
+                <td><a href="${studentLink}" class="student-link" target="_blank">${trans.student_name}</a></td>
+                <td>${trans.student_id}</td>
+                <td class="font-semibold">UGX ${trans.amount.toLocaleString()}</td>
+                <td><span class="capitalize">${trans.payment_method}</span></td>
+                <td><a href="${studentLink}" target="_blank" class="text-blue-600 hover:text-blue-800"><i class="fas fa-user"></i> Profile</a></td>
+            </tr>`;
+        });
+        
+        modalHtml += '</tbody></table></div>';
+        
+        document.getElementById('modal_title').innerText = `Daily Collection - ${date}`;
+        document.getElementById('modal_content').innerHTML = modalHtml;
+        document.getElementById('report_modal').style.display = 'flex';
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        loadReport();
+    }
+
+    function exportReport() {
+        if (!currentData) return alert('No data to export');
+        const startDate = document.getElementById('start_date').value;
+        const endDate = document.getElementById('end_date').value;
+        
+        $.ajax({
+            url: '/center/export',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                report_type: 'daily_collection',
+                data: currentData.data,
+                start_date: startDate,
+                end_date: endDate
+            }),
+            xhrFields: { responseType: 'blob' },
+            success: function(blob) {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `daily_collection_${startDate}_to_${endDate}.xlsx`;
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+            error: function() {
+                alert('Failed to export report');
+            }
+        });
+    }
+
+    function showError(message) {
+        document.getElementById('report_content').innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center text-red-600">${message}</div>
+        `;
+    }
+
+    function closeModal() {
+        document.getElementById('report_modal').style.display = 'none';
+    }
+
+    document.getElementById('report_modal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    // Auto-load on page load
+    $(document).ready(function() {
+        loadReport();
+    });
+</script>
+{% endblock %}

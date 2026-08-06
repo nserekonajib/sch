@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}AI Analysis{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+    .btn-gradient:hover { background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); transform: translateY(-2px); }
+    .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #8b5cf6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .ai-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; transition: all 0.3s ease; }
+    .ai-card:hover { border-color: #8b5cf6; box-shadow: 0 4px 12px rgba(139,92,246,0.1); }
+    .prose { line-height: 1.6; }
+    .prose h2 { font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 1rem; color: #1f2937; border-bottom: 2px solid #f97316; padding-bottom: 0.5rem; }
+    .prose h3 { font-size: 1.25rem; margin-top: 1.25rem; margin-bottom: 0.75rem; color: #374151; }
+    .prose h4 { font-size: 1.1rem; margin-top: 1rem; margin-bottom: 0.5rem; color: #4b5563; font-weight: 600; }
+    .prose strong { color: #ea580c; }
+    .prose ul, .prose ol { margin: 1rem 0; padding-left: 2rem; }
+    .prose li { margin: 0.25rem 0; }
+    .prose p { margin-bottom: 1rem; }
+    .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }
+    .prose th { background-color: #f3f4f6; padding: 0.75rem; text-align: left; font-weight: 600; border: 1px solid #e5e7eb; }
+    .prose td { padding: 0.75rem; border: 1px solid #e5e7eb; }
+    .prose tr:hover { background-color: #fef3c7; }
+    .prose blockquote { border-left: 4px solid #f97316; padding-left: 1rem; margin: 1rem 0; color: #6b7280; font-style: italic; }
+    .export-btn { background: linear-gradient(135deg, #059669, #047857); }
+    .export-btn:hover { background: linear-gradient(135deg, #047857, #065f46); transform: translateY(-2px); }
+    .report-option-card { cursor: pointer; transition: all 0.3s ease; border: 2px solid #e5e7eb; }
+    .report-option-card:hover { border-color: #8b5cf6; transform: translateY(-2px); }
+    .report-option-card.selected { border-color: #8b5cf6; background: #f5f3ff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">AI-Powered Financial Analysis</h2>
+                <p class="text-gray-500 text-sm mt-1">Get intelligent insights and recommendations for your financial data</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration -->
+    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <h3 class="font-bold text-gray-800 mb-4"><i class="fas fa-sliders-h mr-2 text-purple-500"></i>Analysis Configuration</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
+                <select id="ai_report_type" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border">
+                    <option value="daily_collection">Daily Collection Report</option>
+                    <option value="balance_report">Balance Report</option>
+                    <option value="income_expense">Income & Expense Report</option>
+                    <option value="class_report">Class Report</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Class (Optional)</label>
+                <select id="ai_class_filter" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border">
+                    <option value="">All Classes</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                <input type="date" id="ai_start_date" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                <input type="date" id="ai_end_date" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border">
+                <p class="text-xs text-red-500 mt-1" id="ai_date_warning"></p>
+            </div>
+            <div class="flex items-end">
+                <button onclick="runAIAnalysis()" id="ai_analyze_btn" 
+                        class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-2.5 rounded-lg transition-all">
+                    <i class="fas fa-magic mr-2"></i>Run Analysis
+                </button>
+            </div>
+        </div>
+        
+        <div id="ai_loading" class="text-center py-4" style="display: none;">
+            <div class="loading-spinner mx-auto mb-2"></div>
+            <p class="text-gray-600">AI is analyzing your data...</p>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div id="ai_results" style="display: none;">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-800"><i class="fas fa-robot mr-2 text-purple-500"></i>Analysis Results</h3>
+                <div class="flex gap-2">
+                    <button onclick="printAIAnalysis()" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm transition-all">
+                        <i class="fas fa-print mr-1"></i>Print
+                    </button>
+                    <button onclick="downloadAIAnalysis()" class="export-btn px-3 py-1.5 rounded text-sm text-white transition-all">
+                        <i class="fas fa-download mr-1"></i>Download
+                    </button>
+                </div>
+            </div>
+            <div id="ai_analysis_result" class="prose max-w-none"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+    let currentAIAnalysis = null;
+
+    const todayDate = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(todayDate.getDate() - 30);
+    document.getElementById('ai_start_date').value = thirtyDaysAgo.toISOString().split('T')[0];
+    document.getElementById('ai_end_date').value = todayDate.toISOString().split('T')[0];
+
+    document.getElementById('ai_end_date').addEventListener('change', validateAIDateRange);
+    document.getElementById('ai_start_date').addEventListener('change', validateAIDateRange);
+
+    function validateAIDateRange() {
+        const startDate = new Date(document.getElementById('ai_start_date').value);
+        const endDate = new Date(document.getElementById('ai_end_date').value);
+        const diffDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24));
+        const warning = document.getElementById('ai_date_warning');
+        const btn = document.getElementById('ai_analyze_btn');
+        
+        if (diffDays > 31) {
+            if (warning) warning.innerHTML = '⚠️ Date range cannot exceed 31 days for AI analysis';
+            if (btn) { btn.disabled = true; btn.classList.add('opacity-50'); }
+            return false;
+        }
+        if (warning) warning.innerHTML = '';
+        if (btn) { btn.disabled = false; btn.classList.remove('opacity-50'); }
+        return true;
+    }
+
+    function runAIAnalysis() {
+        if (!validateAIDateRange()) {
+            alert('Please select a date range of 31 days or less for AI analysis');
+            return;
+        }
+        
+        const reportType = document.getElementById('ai_report_type').value;
+        const classId = document.getElementById('ai_class_filter').value;
+        const startDate = document.getElementById('ai_start_date').value;
+        const endDate = document.getElementById('ai_end_date').value;
+        
+        if (!startDate || !endDate) {
+            alert('Please select both start and end dates');
+            return;
+        }
+        
+        const loadingDiv = document.getElementById('ai_loading');
+        const resultsDiv = document.getElementById('ai_results');
+        const analyzeBtn = document.getElementById('ai_analyze_btn');
+        
+        loadingDiv.style.display = 'block';
+        resultsDiv.style.display = 'none';
+        analyzeBtn.disabled = true;
+        analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Analyzing...';
+        
+        $.ajax({
+            url: '/center/api/ai-analyze',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                report_type: reportType,
+                class_id: classId,
+                start_date: startDate,
+                end_date: endDate
+            }),
+            success: function(response) {
+                if (response.success) {
+                    const resultDiv = document.getElementById('ai_analysis_result');
+                    const printArea = `
+                        <div id="print-area">
+                            <div class="mb-4 pb-3 border-b">
+                                <h3 class="text-xl font-bold">AI Analysis Report</h3>
+                                <p class="text-sm text-gray-500">Generated on ${new Date().toLocaleString()}</p>
+                                <p class="text-xs text-gray-400">Report: ${reportType.replace(/_/g, ' ').toUpperCase()} | Period: ${startDate} to ${endDate}</p>
+                            </div>
+                            ${response.analysis}
+                        </div>
+                    `;
+                    resultDiv.innerHTML = printArea;
+                    resultsDiv.style.display = 'block';
+                    currentAIAnalysis = response.analysis;
+                } else {
+                    alert(response.message || 'Analysis failed');
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('Error during analysis: ' + (xhr.responseJSON?.message || error || 'Unknown error'));
+            },
+            complete: function() {
+                loadingDiv.style.display = 'none';
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = '<i class="fas fa-magic mr-2"></i>Run Analysis';
+            }
+        });
+    }
+
+    function printAIAnalysis() {
+        const content = document.getElementById('print-area');
+        if (!content) return;
+        
+        const w = window.open('', '_blank');
+        w.document.write(`
+            <html>
+                <head>
+                    <title>AI Analysis Report</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+                    <style>
+                        body { padding: 40px; font-family: 'Inter', sans-serif; }
+                        .prose { max-width: none; }
+                        .prose h2 { font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 1rem; color: #1f2937; border-bottom: 2px solid #f97316; padding-bottom: 0.5rem; }
+                        .prose h3 { font-size: 1.25rem; margin-top: 1.25rem; margin-bottom: 0.75rem; color: #374151; }
+                        .prose h4 { font-size: 1.1rem; margin-top: 1rem; margin-bottom: 0.5rem; color: #4b5563; font-weight: 600; }
+                        .prose strong { color: #ea580c; }
+                        .prose ul, .prose ol { margin: 1rem 0; padding-left: 2rem; }
+                        .prose li { margin: 0.25rem 0; }
+                        .prose p { margin-bottom: 1rem; }
+                        .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }
+                        .prose th { background-color: #f3f4f6; padding: 0.75rem; text-align: left; font-weight: 600; border: 1px solid #e5e7eb; }
+                        .prose td { padding: 0.75rem; border: 1px solid #e5e7eb; }
+                        .prose tr:hover { background-color: #fef3c7; }
+                        .prose blockquote { border-left: 4px solid #f97316; padding-left: 1rem; margin: 1rem 0; color: #6b7280; font-style: italic; }
+                        @media print { body { padding: 20px; } }
+                    </style>
+                </head>
+                <body>${content.innerHTML}</body>
+            </html>
+        `);
+        w.document.close();
+        setTimeout(() => { w.print(); }, 500);
+    }
+
+    function downloadAIAnalysis() {
+        const content = document.getElementById('print-area');
+        if (!content) return;
+        
+        const html = `
+            <html>
+                <head>
+                    <title>AI Analysis Report</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+                    <style>
+                        body { padding: 40px; font-family: 'Inter', sans-serif; }
+                        .prose { max-width: none; }
+                        .prose h2 { font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 1rem; color: #1f2937; border-bottom: 2px solid #f97316; padding-bottom: 0.5rem; }
+                        .prose h3 { font-size: 1.25rem; margin-top: 1.25rem; margin-bottom: 0.75rem; color: #374151; }
+                        .prose h4 { font-size: 1.1rem; margin-top: 1rem; margin-bottom: 0.5rem; color: #4b5563; font-weight: 600; }
+                        .prose strong { color: #ea580c; }
+                        .prose ul, .prose ol { margin: 1rem 0; padding-left: 2rem; }
+                        .prose li { margin: 0.25rem 0; }
+                        .prose p { margin-bottom: 1rem; }
+                        .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }
+                        .prose th { background-color: #f3f4f6; padding: 0.75rem; text-align: left; font-weight: 600; border: 1px solid #e5e7eb; }
+                        .prose td { padding: 0.75rem; border: 1px solid #e5e7eb; }
+                        .prose tr:hover { background-color: #fef3c7; }
+                        .prose blockquote { border-left: 4px solid #f97316; padding-left: 1rem; margin: 1rem 0; color: #6b7280; font-style: italic; }
+                    </style>
+                </head>
+                <body>${content.innerHTML}</body>
+            </html>
+        `;
+        
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ai_analysis_${new Date().toISOString().slice(0,10)}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // Validate on load
+    validateAIDateRange();
+</script>
+{% endblock %}

@@ -1,4 +1,5 @@
-# Center.py - Optimized Report Center with Batch Processing
+# reportCentre.py - Fixed with correct column names
+
 from flask import Blueprint, render_template, request, jsonify, session, send_file, json
 from supabase import create_client, Client
 import os
@@ -137,7 +138,6 @@ def get_dashboard_summary_optimized(institute_id):
         first_day = today.replace(day=1).strftime('%Y-%m-%d')
         last_day = today.strftime('%Y-%m-%d')
         
-        # Prepare parallel queries
         queries = [
             ('payments', {
                 'institute_id': institute_id,
@@ -176,13 +176,225 @@ def get_dashboard_summary_optimized(institute_id):
         return {}
 
 # ============================================================
-# OPTIMIZED REPORT API ENDPOINTS
+# INDIVIDUAL REPORT ROUTES
+# ============================================================
+
+@center_bp.route('/daily-collection')
+@login_required
+def daily_collection():
+    """Daily Collection Report Page"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return render_template('center/daily_collection.html', classes=[], institute=None)
+    
+    try:
+        classes_response = supabase.table('classes')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .order('name')\
+            .execute()
+        
+        classes = classes_response.data if classes_response.data else []
+        
+        return render_template('center/daily_collection.html', classes=classes)
+        
+    except Exception as e:
+        logger.error(f"Error loading daily collection page: {e}")
+        return render_template('center/daily_collection.html', classes=[])
+
+
+@center_bp.route('/balance-report')
+@login_required
+def balance_report():
+    """Balance Report Page"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return render_template('center/balance_report.html', classes=[], institute=None)
+    
+    try:
+        classes_response = supabase.table('classes')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .order('name')\
+            .execute()
+        
+        classes = classes_response.data if classes_response.data else []
+        
+        return render_template('center/balance_report.html', classes=classes)
+        
+    except Exception as e:
+        logger.error(f"Error loading balance report page: {e}")
+        return render_template('center/balance_report.html', classes=[])
+
+
+@center_bp.route('/income-expense')
+@login_required
+def income_expense():
+    """Income & Expense Report Page"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return render_template('center/income_expense.html', classes=[], institute=None)
+    
+    try:
+        classes_response = supabase.table('classes')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .order('name')\
+            .execute()
+        
+        classes = classes_response.data if classes_response.data else []
+        
+        return render_template('center/income_expense.html', classes=classes)
+        
+    except Exception as e:
+        logger.error(f"Error loading income expense page: {e}")
+        return render_template('center/income_expense.html', classes=[])
+
+
+@center_bp.route('/income-statement')
+@login_required
+def income_statement():
+    """Income Statement (Profit & Loss) Page"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return render_template('center/income_statement.html', classes=[], institute=None)
+    
+    try:
+        classes_response = supabase.table('classes')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .order('name')\
+            .execute()
+        
+        classes = classes_response.data if classes_response.data else []
+        
+        return render_template('center/income_statement.html', classes=classes)
+        
+    except Exception as e:
+        logger.error(f"Error loading income statement page: {e}")
+        return render_template('center/income_statement.html', classes=[])
+
+
+@center_bp.route('/student-report')
+@login_required
+def student_report():
+    """Student Report Page"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return render_template('center/student_report.html', classes=[], institute=None)
+    
+    try:
+        classes_response = supabase.table('classes')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .order('name')\
+            .execute()
+        
+        classes = classes_response.data if classes_response.data else []
+        
+        return render_template('center/student_report.html', classes=classes)
+        
+    except Exception as e:
+        logger.error(f"Error loading student report page: {e}")
+        return render_template('center/student_report.html', classes=[])
+
+
+@center_bp.route('/class-report')
+@login_required
+def class_report():
+    """Class Report Page"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return render_template('center/class_report.html', classes=[], institute=None)
+    
+    try:
+        classes_response = supabase.table('classes')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .order('name')\
+            .execute()
+        
+        classes = classes_response.data if classes_response.data else []
+        
+        return render_template('center/class_report.html', classes=classes)
+        
+    except Exception as e:
+        logger.error(f"Error loading class report page: {e}")
+        return render_template('center/class_report.html', classes=[])
+
+
+@center_bp.route('/payment-methods')
+@login_required
+def payment_methods():
+    """Payment Methods Report Page"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return render_template('center/payment_methods.html', classes=[], institute=None)
+    
+    try:
+        classes_response = supabase.table('classes')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .order('name')\
+            .execute()
+        
+        classes = classes_response.data if classes_response.data else []
+        
+        return render_template('center/payment_methods.html', classes=classes)
+        
+    except Exception as e:
+        logger.error(f"Error loading payment methods page: {e}")
+        return render_template('center/payment_methods.html', classes=[])
+
+
+@center_bp.route('/ai-analysis')
+@login_required
+def ai_analysis():
+    """AI Analysis Page"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return render_template('center/ai_analysis.html', classes=[], institute=None)
+    
+    try:
+        classes_response = supabase.table('classes')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .order('name')\
+            .execute()
+        
+        classes = classes_response.data if classes_response.data else []
+        
+        return render_template('center/ai_analysis.html', classes=classes)
+        
+    except Exception as e:
+        logger.error(f"Error loading AI analysis page: {e}")
+        return render_template('center/ai_analysis.html', classes=[])
+
+
+# ============================================================
+# API ENDPOINTS - FIXED with correct column names
 # ============================================================
 
 @center_bp.route('/api/daily-collection', methods=['POST'])
 @login_required
 def get_daily_collection():
-    """Get daily collection report with optimized batch processing"""
+    """Get daily collection report"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -194,9 +406,8 @@ def get_daily_collection():
         start_date = data.get('start_date', datetime.now().date().isoformat())
         end_date = data.get('end_date', datetime.now().date().isoformat())
         page = data.get('page', 1)
-        per_page = min(data.get('per_page', 20), 100)  # Max 100 per page
+        per_page = min(data.get('per_page', 20), 100)
         
-        # Use batch query for payments with student data
         payments = batch_query('payments', 
             {
                 'institute_id': institute_id,
@@ -221,7 +432,6 @@ def get_daily_collection():
                 }
             })
         
-        # Use dictionary comprehension for faster aggregation
         daily_data = {}
         total_collected = 0
         
@@ -251,11 +461,8 @@ def get_daily_collection():
             })
         
         result = list(daily_data.values())
-        
-        # Sort by date descending
         result.sort(key=lambda x: x['date'], reverse=True)
         
-        # Pagination
         total_items = len(result)
         total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 1
         start_idx = (page - 1) * per_page
@@ -281,10 +488,11 @@ def get_daily_collection():
         logger.error(f"Error getting daily collection: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @center_bp.route('/api/balance-report', methods=['POST'])
 @login_required
 def get_balance_report():
-    """Get fees balance report with optimized batch queries and parallel processing"""
+    """Get fees balance report"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -299,7 +507,6 @@ def get_balance_report():
         page = data.get('page', 1)
         per_page = min(data.get('per_page', 20), 100)
         
-        # Step 1: Get all active students with class info in one query
         students_query = supabase.table('students')\
             .select('id, name, student_id, contact_number, class_id, classes(name)')\
             .eq('institute_id', institute_id)\
@@ -330,10 +537,8 @@ def get_balance_report():
                 }
             })
         
-        # Get student IDs in batches
         student_ids = [s['id'] for s in students]
         
-        # Step 2: Parallel fetch invoices and payments
         queries = [
             ('invoices', {
                 'institute_id': institute_id,
@@ -347,11 +552,9 @@ def get_balance_report():
         
         all_invoices, all_payments = parallel_fetch(queries)
         
-        # Step 3: Build fast lookup dictionaries
         invoices_by_student = {}
         payments_by_student = {}
         
-        # Use defaultdict-like behavior with dict.setdefault for speed
         for inv in all_invoices:
             student_id = inv['student_id']
             if student_id not in invoices_by_student:
@@ -364,14 +567,12 @@ def get_balance_report():
                 payments_by_student[student_id] = []
             payments_by_student[student_id].append(pay)
         
-        # Step 4: Build report data efficiently
         report_data = []
         total_invoiced = 0
         total_paid = 0
         total_discount = 0
         total_balance = 0
         
-        # Pre-calculate activity check
         has_date_filter = bool(start_date or end_date)
         
         for student in students:
@@ -379,13 +580,11 @@ def get_balance_report():
             invoices = invoices_by_student.get(student_id, [])
             payments = payments_by_student.get(student_id, [])
             
-            # Calculate totals using generator expressions (more memory efficient)
             student_total_invoiced = sum(float(inv.get('total_amount', 0)) for inv in invoices)
             student_total_paid = sum(float(p.get('amount', 0)) for p in payments)
             student_discount = sum(float(inv.get('discount_applied', 0)) for inv in invoices)
             student_balance = student_total_invoiced - student_total_paid - student_discount
             
-            # Check activity in date range if needed
             include_student = True
             if has_date_filter:
                 has_invoice_activity = any(
@@ -422,10 +621,8 @@ def get_balance_report():
                 total_discount += student_discount
                 total_balance += student_balance
         
-        # Sort by balance (highest first) using key function
         report_data.sort(key=lambda x: x['balance'], reverse=True)
         
-        # Apply pagination
         total_items = len(report_data)
         total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 1
         start_idx = (page - 1) * per_page
@@ -456,10 +653,11 @@ def get_balance_report():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @center_bp.route('/api/income-expense', methods=['POST'])
 @login_required
 def get_income_expense_report():
-    """Get income and expense report with parallel processing"""
+    """Get income and expense report - FIXED: removed category column"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -473,7 +671,7 @@ def get_income_expense_report():
         page = data.get('page', 1)
         per_page = min(data.get('per_page', 20), 100)
         
-        # Parallel fetch for all transaction types
+        # FIXED: Removed 'category' from select fields for income_transactions
         queries = [
             ('payments', {
                 'institute_id': institute_id,
@@ -482,23 +680,21 @@ def get_income_expense_report():
             ('income_transactions', {
                 'institute_id': institute_id,
                 'transaction_date': {'gte': start_date, 'lte': end_date}
-            }, '*'),
+            }, 'amount, transaction_date, description, payment_method'),
             ('expense_transactions', {
                 'institute_id': institute_id,
                 'transaction_date': {'gte': start_date, 'lte': end_date}
-            }, '*')
+            }, 'amount, transaction_date, description, payment_method')
         ]
         
         payments, other_income, expenses = parallel_fetch(queries)
         
-        # Calculate totals efficiently
         total_fee_income = sum(float(p['amount']) for p in payments)
         total_other_income = sum(float(i['amount']) for i in other_income)
         total_income = total_fee_income + total_other_income
         total_expenses = sum(float(e['amount']) for e in expenses)
         net_profit = total_income - total_expenses
         
-        # Prepare transactions with list comprehensions (faster)
         fee_transactions = [{
             'date': p['payment_date'],
             'description': f"Fee payment - {p['students']['name']} ({p['students']['student_id']})",
@@ -513,7 +709,7 @@ def get_income_expense_report():
             'description': i.get('description', 'Other Income'),
             'amount': float(i['amount']),
             'type': 'income',
-            'category': i.get('category', 'Other'),
+            'category': 'Other Income',
             'payment_method': i.get('payment_method', 'cash')
         } for i in other_income]
         
@@ -522,15 +718,13 @@ def get_income_expense_report():
             'description': e.get('description', 'Expense'),
             'amount': float(e['amount']),
             'type': 'expense',
-            'category': e.get('category', 'General'),
+            'category': 'Expense',
             'payment_method': e.get('payment_method', 'cash')
         } for e in expenses]
         
-        # Combine and sort all transactions
         all_transactions = fee_transactions + other_income_transactions + expense_transactions
         all_transactions.sort(key=lambda x: x['date'], reverse=True)
         
-        # Pagination
         total_items = len(all_transactions)
         total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 1
         start_idx = (page - 1) * per_page
@@ -561,10 +755,144 @@ def get_income_expense_report():
         logger.error(f"Error getting income/expense report: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@center_bp.route('/api/income-statement', methods=['POST'])
+@login_required
+def get_income_statement():
+    """Get Income Statement (Profit & Loss) - FIXED: includes payment_date"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    try:
+        data = request.get_json()
+        start_date = data.get('start_date', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
+        end_date = data.get('end_date', datetime.now().strftime('%Y-%m-%d'))
+        page = data.get('page', 1)
+        per_page = min(data.get('per_page', 20), 100)
+        
+        # FIXED: Added payment_date to select fields for payments
+        queries = [
+            ('payments', {
+                'institute_id': institute_id,
+                'payment_date': {'gte': start_date, 'lte': end_date}
+            }, 'amount, payment_date, payment_method, students(name, student_id)'),
+            ('income_transactions', {
+                'institute_id': institute_id,
+                'transaction_date': {'gte': start_date, 'lte': end_date}
+            }, 'amount, transaction_date, description, payment_method'),
+            ('expense_transactions', {
+                'institute_id': institute_id,
+                'transaction_date': {'gte': start_date, 'lte': end_date}
+            }, 'amount, transaction_date, description, payment_method')
+        ]
+        
+        payments, other_income, expenses = parallel_fetch(queries)
+        
+        # Calculate totals
+        fee_income = sum(float(p['amount']) for p in payments)
+        other_income_total = sum(float(i['amount']) for i in other_income)
+        total_income = fee_income + other_income_total
+        total_expenses = sum(float(e['amount']) for e in expenses)
+        net_income = total_income - total_expenses
+        
+        # Group income by category (using payment method as proxy for category)
+        income_by_category = {'School Fees': fee_income}
+        for inc in other_income:
+            # Use description or payment_method as category
+            category = inc.get('description', 'Other Income')[:30]
+            income_by_category[category] = income_by_category.get(category, 0) + float(inc['amount'])
+        
+        # Group expenses by category (using description as category)
+        expenses_by_category = {}
+        for exp in expenses:
+            category = exp.get('description', 'General Expense')[:30]
+            expenses_by_category[category] = expenses_by_category.get(category, 0) + float(exp['amount'])
+        
+        # Build transaction list for display
+        income_transactions = [{
+            'date': p.get('payment_date', p.get('created_at', '')),
+            'description': f"Fee payment - {p['students']['name']}",
+            'amount': float(p['amount']),
+            'type': 'income',
+            'category': 'School Fees',
+            'payment_method': p.get('payment_method', 'cash')
+        } for p in payments]
+        
+        income_transactions.extend([{
+            'date': i.get('transaction_date', i.get('created_at', '')),
+            'description': i.get('description', 'Other Income'),
+            'amount': float(i['amount']),
+            'type': 'income',
+            'category': 'Other Income',
+            'payment_method': i.get('payment_method', 'cash')
+        } for i in other_income])
+        
+        expense_transactions = [{
+            'date': e.get('transaction_date', e.get('created_at', '')),
+            'description': e.get('description', 'Expense'),
+            'amount': float(e['amount']),
+            'type': 'expense',
+            'category': 'Expense',
+            'payment_method': e.get('payment_method', 'cash')
+        } for e in expenses]
+        
+        all_transactions = income_transactions + expense_transactions
+        all_transactions.sort(key=lambda x: x['date'], reverse=True)
+        
+        total_items = len(all_transactions)
+        total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 1
+        start_idx = (page - 1) * per_page
+        end_idx = min(start_idx + per_page, total_items)
+        paginated_data = all_transactions[start_idx:end_idx]
+        
+        # Prepare income statement data
+        income_statement = {
+            'income': {
+                'school_fees': fee_income,
+                'other_income': other_income_total,
+                'total_income': total_income,
+                'by_category': income_by_category
+            },
+            'expenses': {
+                'total_expenses': total_expenses,
+                'by_category': expenses_by_category
+            },
+            'net_income': net_income,
+            'profit_margin': (net_income / total_income * 100) if total_income > 0 else 0
+        }
+        
+        return jsonify({
+            'success': True,
+            'income_statement': income_statement,
+            'transactions': paginated_data,
+            'start_date': start_date,
+            'end_date': end_date,
+            'summary': {
+                'total_income': total_income,
+                'total_expenses': total_expenses,
+                'net_income': net_income,
+                'profit_margin': income_statement['profit_margin']
+            },
+            'pagination': {
+                'current_page': page,
+                'total_pages': total_pages,
+                'total_items': total_items,
+                'per_page': per_page
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting income statement: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @center_bp.route('/api/student-report', methods=['POST'])
 @login_required
 def get_student_report():
-    """Get student-wise report with optimized queries"""
+    """Get student-wise report"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -578,7 +906,6 @@ def get_student_report():
         page = data.get('page', 1)
         per_page = min(data.get('per_page', 20), 100)
         
-        # Build student query with class info
         students_query = supabase.table('students')\
             .select('*, classes(name)')\
             .eq('institute_id', institute_id)\
@@ -590,7 +917,6 @@ def get_student_report():
         students_response = students_query.execute()
         students = students_response.data if students_response.data else []
         
-        # Filter by search if provided
         if search:
             search_lower = search.lower()
             students = [s for s in students 
@@ -615,10 +941,8 @@ def get_student_report():
                 }
             })
         
-        # Get student IDs
         student_ids = [s['id'] for s in students]
         
-        # Parallel fetch invoices and recent payments
         queries = [
             ('invoices', {
                 'institute_id': institute_id,
@@ -632,7 +956,6 @@ def get_student_report():
         
         all_invoices, all_payments = parallel_fetch(queries)
         
-        # Group data by student
         invoices_by_student = {}
         payments_by_student = {}
         
@@ -648,7 +971,6 @@ def get_student_report():
                 payments_by_student[student_id] = []
             payments_by_student[student_id].append(pay)
         
-        # Build report data
         report_data = []
         total_invoiced_sum = 0
         total_paid_sum = 0
@@ -663,7 +985,6 @@ def get_student_report():
             total_paid = sum(float(inv['paid_amount']) for inv in invoices)
             balance = sum(float(inv['balance']) for inv in invoices if inv.get('status') != 'paid')
             
-            # Get 3 most recent payments
             recent_payments = sorted(payments, key=lambda x: x['payment_date'], reverse=True)[:3]
             
             report_data.append({
@@ -683,10 +1004,8 @@ def get_student_report():
             total_paid_sum += total_paid
             total_balance_sum += balance
         
-        # Sort by balance (highest first)
         report_data.sort(key=lambda x: x['balance'], reverse=True)
         
-        # Pagination
         total_items = len(report_data)
         total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 1
         start_idx = (page - 1) * per_page
@@ -714,10 +1033,11 @@ def get_student_report():
         logger.error(f"Error getting student report: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @center_bp.route('/api/class-report', methods=['POST'])
 @login_required
 def get_class_report():
-    """Get class-wise report with optimized batch processing"""
+    """Get class-wise report"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -731,7 +1051,6 @@ def get_class_report():
         page = data.get('page', 1)
         per_page = min(data.get('per_page', 20), 100)
         
-        # Get all classes
         classes_response = supabase.table('classes')\
             .select('*')\
             .eq('institute_id', institute_id)\
@@ -758,7 +1077,6 @@ def get_class_report():
                 }
             })
         
-        # Get all students by class
         class_ids = [c['id'] for c in classes]
         students_response = supabase.table('students')\
             .select('id, class_id')\
@@ -769,7 +1087,6 @@ def get_class_report():
         
         students = students_response.data or []
         
-        # Group students by class
         students_by_class = {}
         for student in students:
             class_id = student['class_id']
@@ -777,7 +1094,6 @@ def get_class_report():
                 students_by_class[class_id] = []
             students_by_class[class_id].append(student['id'])
         
-        # Get all payments and invoices for students
         all_student_ids = [s['id'] for s in students]
         
         queries = []
@@ -801,7 +1117,6 @@ def get_class_report():
         
         all_payments, all_invoices = parallel_fetch(queries) if queries else ([], [])
         
-        # Aggregate by student
         payments_by_student = {}
         invoices_by_student = {}
         
@@ -817,7 +1132,6 @@ def get_class_report():
                 invoices_by_student[student_id] = 0
             invoices_by_student[student_id] += float(inv['total_amount'])
         
-        # Build class report
         report_data = []
         total_students_all = 0
         total_collected_all = 0
@@ -828,7 +1142,6 @@ def get_class_report():
             student_ids = students_by_class.get(class_id, [])
             student_count = len(student_ids)
             
-            # Calculate totals for this class
             class_collected = sum(payments_by_student.get(sid, 0) for sid in student_ids)
             class_expected = sum(invoices_by_student.get(sid, 0) for sid in student_ids)
             
@@ -845,10 +1158,8 @@ def get_class_report():
             total_collected_all += class_collected
             total_expected_all += class_expected
         
-        # Sort by class name
         report_data.sort(key=lambda x: x['class_name'])
         
-        # Pagination
         total_items = len(report_data)
         total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 1
         start_idx = (page - 1) * per_page
@@ -877,10 +1188,11 @@ def get_class_report():
         logger.error(f"Error getting class report: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 @center_bp.route('/api/payment-method-report', methods=['POST'])
 @login_required
 def get_payment_method_report():
-    """Get payment method breakdown report with optimized queries"""
+    """Get payment method breakdown report"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -892,7 +1204,6 @@ def get_payment_method_report():
         start_date = data.get('start_date', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
         end_date = data.get('end_date', datetime.now().strftime('%Y-%m-%d'))
         
-        # Parallel fetch payments and expenses
         queries = [
             ('payments', {
                 'institute_id': institute_id,
@@ -906,7 +1217,6 @@ def get_payment_method_report():
         
         payments, expenses = parallel_fetch(queries)
         
-        # Aggregate using dictionary comprehensions
         method_totals = {}
         for payment in payments:
             method = payment.get('payment_method', 'other')
@@ -917,7 +1227,6 @@ def get_payment_method_report():
             method = expense.get('payment_method', 'cash')
             expense_method_totals[method] = expense_method_totals.get(method, 0) + float(expense['amount'])
         
-        # Build report data
         all_methods = set(method_totals.keys()) | set(expense_method_totals.keys())
         report_data = []
         
@@ -929,7 +1238,6 @@ def get_payment_method_report():
                 'net': method_totals.get(method, 0) - expense_method_totals.get(method, 0)
             })
         
-        # Sort by income descending
         report_data.sort(key=lambda x: x['income'], reverse=True)
         
         total_income = sum(method_totals.values())
@@ -951,14 +1259,15 @@ def get_payment_method_report():
         logger.error(f"Error getting payment method report: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 # ============================================================
-# EXPORT ENDPOINT (Optimized)
+# EXPORT ENDPOINT
 # ============================================================
 
 @center_bp.route('/export', methods=['POST'])
 @login_required
 def export_report():
-    """Export report data to Excel with optimized processing"""
+    """Export report data to Excel"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -975,7 +1284,6 @@ def export_report():
         if not report_data:
             return jsonify({'success': False, 'message': 'No data to export'}), 400
         
-        # Get institute name (cached or single query)
         institute_response = supabase.table('institutes')\
             .select('institute_name')\
             .eq('id', institute_id)\
@@ -983,7 +1291,6 @@ def export_report():
         
         institute_name = institute_response.data[0]['institute_name'] if institute_response.data else 'Institute'
         
-        # Define column mappings for each report type
         report_configs = {
             'daily_collection': {
                 'columns': ['Date', 'Receipt Number', 'Student Name', 'Student ID', 'Amount', 'Payment Method', 'Notes'],
@@ -1062,12 +1369,24 @@ def export_report():
                     'expenses': 'Expenses',
                     'net': 'Net'
                 }
+            },
+            'income_statement': {
+                'columns': ['Date', 'Description', 'Amount', 'Type', 'Category', 'Payment Method'],
+                'data_mapper': lambda data: data,
+                'currency_cols': ['Amount'],
+                'column_mapping': {
+                    'date': 'Date',
+                    'description': 'Description',
+                    'amount': 'Amount',
+                    'type': 'Type',
+                    'category': 'Category',
+                    'payment_method': 'Payment Method'
+                }
             }
         }
         
         config = report_configs.get(report_type, {'data_mapper': lambda x: x, 'currency_cols': []})
         
-        # Transform data
         if report_type in report_configs:
             if report_type == 'daily_collection':
                 df_data = config['data_mapper'](report_data)
@@ -1081,19 +1400,16 @@ def export_report():
         
         df = pd.DataFrame(df_data)
         
-        # Format currency columns
         currency_cols = config.get('currency_cols', [])
         for col in currency_cols:
             if col in df.columns:
                 df[col] = df[col].apply(lambda x: f'UGX {x:,.2f}' if pd.notna(x) else 'UGX 0')
         
-        # Create Excel file
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             sheet_name = report_type.replace('_', ' ').title()
             df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
             
-            # Summary sheet
             summary_data = {
                 'Report Type': [sheet_name],
                 'Institute': [institute_name],
@@ -1105,7 +1421,6 @@ def export_report():
             summary_df = pd.DataFrame(summary_data)
             summary_df.to_excel(writer, sheet_name='Summary', index=False)
             
-            # Auto-adjust column widths
             for sheet_name in writer.sheets:
                 worksheet = writer.sheets[sheet_name]
                 for column in worksheet.columns:
@@ -1137,14 +1452,15 @@ def export_report():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 # ============================================================
-# AI ANALYSIS ENDPOINTS (Optimized)
+# AI ANALYSIS
 # ============================================================
 
 @center_bp.route('/api/ai-analyze', methods=['POST'])
 @login_required
 def ai_analyze():
-    """AI Analysis of selected report data with optimized fetching"""
+    """AI Analysis of selected report data"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -1159,7 +1475,6 @@ def ai_analyze():
         class_id = data.get('class_id')
         search = data.get('search', '')
         
-        # Validate date range (not more than a month)
         if start_date and end_date:
             start = datetime.strptime(start_date, '%Y-%m-%d')
             end = datetime.strptime(end_date, '%Y-%m-%d')
@@ -1170,7 +1485,6 @@ def ai_analyze():
                     'message': 'Date range cannot exceed 31 days (one month) for AI analysis'
                 }), 400
         
-        # Fetch report data using optimized functions
         report_data = fetch_report_data_optimized(institute_id, report_type, start_date, end_date, class_id, search)
         
         if not report_data or not report_data.get('data'):
@@ -1179,7 +1493,6 @@ def ai_analyze():
                 'message': 'No data available for the selected period. Please try a different date range.'
             }), 400
         
-        # Check if there's data to analyze
         has_data = False
         if isinstance(report_data.get('data'), list) and len(report_data.get('data', [])) > 0:
             has_data = True
@@ -1194,20 +1507,13 @@ def ai_analyze():
                 'message': 'No data available for the selected period. Please try a different date range.'
             }), 400
         
-        # Prepare data for AI analysis
         analysis_prompt = create_analysis_prompt(report_type, report_data, start_date, end_date)
         
-        # Get AI analysis
         from routes.ai.ai import OpenRouterClient
         ai_client = OpenRouterClient()
-        
-        # For non-streaming analysis
         analysis_result = ai_client.chat(analysis_prompt, stream=False)
-        
-        # Format the analysis
         formatted_analysis = format_ai_analysis(analysis_result, report_type, report_data)
         
-        # Prepare data sample efficiently
         data_sample = []
         if isinstance(report_data.get('data'), list):
             data_sample = report_data['data'][:10]
@@ -1227,8 +1533,9 @@ def ai_analyze():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 def fetch_report_data_optimized(institute_id, report_type, start_date, end_date, class_id=None, search=''):
-    """Fetch report data for AI analysis using optimized queries"""
+    """Fetch report data for AI analysis"""
     
     if report_type == 'daily_collection':
         payments = batch_query('payments',
@@ -1272,7 +1579,6 @@ def fetch_report_data_optimized(institute_id, report_type, start_date, end_date,
         }
     
     elif report_type == 'balance_report':
-        # Get students with class info
         students_query = supabase.table('students')\
             .select('*, classes(name)')\
             .eq('institute_id', institute_id)\
@@ -1289,7 +1595,6 @@ def fetch_report_data_optimized(institute_id, report_type, start_date, end_date,
         
         student_ids = [s['id'] for s in students]
         
-        # Parallel fetch invoices and payments
         queries = [
             ('invoices', {
                 'institute_id': institute_id,
@@ -1303,7 +1608,6 @@ def fetch_report_data_optimized(institute_id, report_type, start_date, end_date,
         
         all_invoices, all_payments = parallel_fetch(queries)
         
-        # Aggregate
         invoices_by_student = {}
         for inv in all_invoices:
             student_id = inv['student_id']
@@ -1361,7 +1665,6 @@ def fetch_report_data_optimized(institute_id, report_type, start_date, end_date,
         }
     
     elif report_type == 'income_expense':
-        # Parallel fetch all transactions
         queries = [
             ('payments', {
                 'institute_id': institute_id,
@@ -1370,11 +1673,11 @@ def fetch_report_data_optimized(institute_id, report_type, start_date, end_date,
             ('income_transactions', {
                 'institute_id': institute_id,
                 'transaction_date': {'gte': start_date, 'lte': end_date}
-            }, 'amount, category'),
+            }, 'amount, description'),
             ('expense_transactions', {
                 'institute_id': institute_id,
                 'transaction_date': {'gte': start_date, 'lte': end_date}
-            }, 'amount, category')
+            }, 'amount, description')
         ]
         
         payments, other_income, expenses = parallel_fetch(queries)
@@ -1383,15 +1686,14 @@ def fetch_report_data_optimized(institute_id, report_type, start_date, end_date,
         total_other_income = sum(float(i['amount']) for i in other_income)
         total_expenses = sum(float(e['amount']) for e in expenses)
         
-        # Group by category
         expenses_by_category = {}
         for expense in expenses:
-            category = expense.get('category', 'General')
+            category = expense.get('description', 'General Expense')[:30]
             expenses_by_category[category] = expenses_by_category.get(category, 0) + float(expense['amount'])
         
         income_by_category = {'School Fees': total_fee_income}
         for inc in other_income:
-            category = inc.get('category', 'Other Income')
+            category = inc.get('description', 'Other Income')[:30]
             income_by_category[category] = income_by_category.get(category, 0) + float(inc['amount'])
         
         total_income = total_fee_income + total_other_income
@@ -1431,7 +1733,6 @@ def fetch_report_data_optimized(institute_id, report_type, start_date, end_date,
         
         class_ids = [c['id'] for c in classes]
         
-        # Get students by class
         students_response = supabase.table('students')\
             .select('id, class_id')\
             .eq('institute_id', institute_id)\
@@ -1450,7 +1751,6 @@ def fetch_report_data_optimized(institute_id, report_type, start_date, end_date,
         
         all_student_ids = [s['id'] for s in students]
         
-        # Get payments
         payments_by_student = {}
         if all_student_ids:
             payments = batch_query('payments',
@@ -1496,15 +1796,15 @@ def fetch_report_data_optimized(institute_id, report_type, start_date, end_date,
     
     return {'data': [], 'summary': {}}
 
+
 def create_analysis_prompt(report_type, report_data, start_date, end_date):
-    """Create AI analysis prompt based on report type"""
+    """Create AI analysis prompt"""
     
     report_name = report_type.replace('_', ' ').title()
     
-    # Safely convert data to JSON string
     data_for_prompt = report_data.get('data', {})
     if isinstance(data_for_prompt, list):
-        data_str = json.dumps(data_for_prompt[:20], indent=2, default=str)  # Limit to 20 items
+        data_str = json.dumps(data_for_prompt[:20], indent=2, default=str)
     else:
         data_str = json.dumps(data_for_prompt, indent=2, default=str)
     
@@ -1552,8 +1852,9 @@ Be specific and reference actual numbers from the data provided."""
     
     return prompt
 
+
 def format_ai_analysis(analysis_text, report_type, report_data):
-    """Format AI analysis for display with proper styling"""
+    """Format AI analysis for display"""
     
     summary = report_data.get('summary', {})
     
@@ -1584,7 +1885,6 @@ def format_ai_analysis(analysis_text, report_type, report_data):
     
     metrics_html += '</div></div>'
     
-    # Process the analysis text with regex
     import re
     
     analysis_html = analysis_text
@@ -1592,12 +1892,10 @@ def format_ai_analysis(analysis_text, report_type, report_data):
     analysis_html = re.sub(r'## (.*?)\n', r'<h3 class="font-bold text-lg text-gray-800 mt-6 mb-3 border-b border-orange-200 pb-2">\1</h3>', analysis_html)
     analysis_html = re.sub(r'\*\*(.*?)\*\*', r'<strong class="text-orange-600">\1</strong>', analysis_html)
     
-    # Convert lists
     analysis_html = re.sub(r'^\* (.*?)$', r'<li class="ml-4 mb-1">\1</li>', analysis_html, flags=re.MULTILINE)
     analysis_html = re.sub(r'^- (.*?)$', r'<li class="ml-4 mb-1">\1</li>', analysis_html, flags=re.MULTILINE)
     analysis_html = re.sub(r'(<li.*?</li>)', r'<ul class="list-disc mb-3">\1</ul>', analysis_html, flags=re.DOTALL)
     
-    # Convert markdown tables
     table_pattern = r'\|(.+)\|\n\|[-:| ]+\|\n((?:\|.+\|\n?)+)'
     
     def convert_table(match):
@@ -1624,7 +1922,6 @@ def format_ai_analysis(analysis_text, report_type, report_data):
     
     analysis_html = re.sub(table_pattern, convert_table, analysis_html, flags=re.MULTILINE)
     
-    # Convert paragraphs
     paragraphs = analysis_html.split('\n\n')
     formatted_paragraphs = []
     for para in paragraphs:
@@ -1635,6 +1932,7 @@ def format_ai_analysis(analysis_text, report_type, report_data):
     analysis_html = '\n\n'.join(formatted_paragraphs)
     
     return metrics_html + analysis_html
+
 
 @center_bp.route('/api/ai-report-options', methods=['GET'])
 @login_required

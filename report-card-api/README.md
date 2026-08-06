@@ -9,7 +9,7 @@ without building a frontend first.
 
 ```
 npm install
-npm start          # listens on http://localhost:4000
+npm start          # listens on http://d44cgg048cgckw4kwo4osw4k.195.200.15.127.sslip.io
 ```
 
 ### Endpoints
@@ -62,7 +62,7 @@ pip install flask requests --break-system-packages
 python app.py          # http://localhost:5000
 ```
 
-By default it talks to the Node API at `http://localhost:4000`. Override with:
+By default it talks to the Node API at `http://d44cgg048cgckw4kwo4osw4k.195.200.15.127.sslip.io`. Override with:
 
 ```
 NODE_API_URL=http://your-node-host:4000 python app.py

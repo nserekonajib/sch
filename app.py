@@ -4,12 +4,14 @@ from flask import Blueprint
 import os
 from dotenv import load_dotenv
 from flask import send_from_directory
+from flask_cors import CORS
 
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 import ssl
 import certifi

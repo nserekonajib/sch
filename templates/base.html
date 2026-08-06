@@ -21,8 +21,10 @@
                 theme: {
                     extend: {
                         colors: {
-                            primary: '#ffa500',
-                            primaryDark: '#ff8c00',
+                            primary: '#f97316',
+                            primaryDark: '#ea580c',
+                            primaryLight: '#fb923c',
+                            primaryBg: '#fff7ed',
                         }
                     }
                 }
@@ -36,32 +38,31 @@
 
     <style>
         :root{
-            --color-primary:#ffa500;
-            --color-primary-dark:#ff8c00;
-            --color-blue:#3b82f6;
-            --color-blue-dark:#2563eb;
-            --color-emerald:#10b981;
-            --color-emerald-dark:#059669;
-            --color-violet:#8b5cf6;
-            --color-violet-dark:#7c3aed;
-            --color-rose:#f43f5e;
+            --color-primary: #f97316;
+            --color-primary-dark: #ea580c;
+            --color-primary-light: #fb923c;
+            --color-primary-bg: #fff7ed;
+            --color-emerald: #10b981;
+            --color-emerald-dark: #059669;
+            --color-violet: #8b5cf6;
+            --color-violet-dark: #7c3aed;
 
-            --bg-app-from:#faf8f5;
-            --bg-app-via:#f4f1ec;
-            --bg-app-to:#eef1f6;
-            --bg-sidebar:#ffffff;
-            --border-soft:#ece7de;
-            --border-soft-2:#e7e2d8;
+            --bg-app-from: #faf8f5;
+            --bg-app-via: #f4f1ec;
+            --bg-app-to: #eef1f6;
+            --bg-sidebar: #1a1a2e;
+            --border-soft: #ece7de;
+            --border-soft-2: #e7e2d8;
 
-            --shadow-xs:0 1px 2px rgba(31,27,20,0.05);
-            --shadow-soft:0 6px 20px -6px rgba(31,27,20,0.10);
-            --shadow-elevated:0 20px 45px -12px rgba(31,27,20,0.18);
-            --shadow-glow-orange:0 8px 24px -6px rgba(255,140,0,0.35);
+            --shadow-xs: 0 1px 2px rgba(31,27,20,0.05);
+            --shadow-soft: 0 6px 20px -6px rgba(31,27,20,0.10);
+            --shadow-elevated: 0 20px 45px -12px rgba(31,27,20,0.18);
+            --shadow-glow-orange: 0 8px 24px -6px rgba(249,115,22,0.45);
 
-            --radius-sm:10px;
-            --radius-md:14px;
-            --radius-lg:18px;
-            --radius-xl:24px;
+            --radius-sm: 10px;
+            --radius-md: 14px;
+            --radius-lg: 18px;
+            --radius-xl: 24px;
         }
 
         * {
@@ -73,28 +74,211 @@
         body{
             background-color: var(--bg-app-via);
             background-image:
-                radial-gradient(circle at 1px 1px, rgba(255,165,0,0.10) 1px, transparent 0),
+                radial-gradient(circle at 1px 1px, rgba(249,115,22,0.08) 1px, transparent 0),
                 linear-gradient(135deg, var(--bg-app-from) 0%, var(--bg-app-via) 45%, var(--bg-app-to) 100%);
             background-size: 22px 22px, 100% 100%;
             background-attachment: fixed;
         }
 
-        /* Custom scrollbar */
+        /* ==================== SIDEBAR STYLES ==================== */
+        #sidebar {
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            box-shadow: 4px 0 30px rgba(0,0,0,0.3);
+            border-right: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .sidebar-logo {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            box-shadow: 0 8px 24px -6px rgba(249,115,22,0.4);
+        }
+
+        .nav-item {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            color: rgba(255,255,255,0.7);
+            border-radius: var(--radius-sm);
+        }
+        .nav-item:hover {
+            background: rgba(249,115,22,0.12);
+            color: #fff;
+            transform: translateX(4px);
+        }
+
+        .nav-item-active {
+            background: linear-gradient(90deg, rgba(249,115,22,0.2) 0%, rgba(249,115,22,0.05) 100%);
+            color: #f97316;
+            border: 1px solid rgba(249,115,22,0.15);
+        }
+        .nav-item-active::before {
+            content: "";
+            position: absolute;
+            left: -12px;
+            top: 8px;
+            bottom: 8px;
+            width: 4px;
+            border-radius: 6px;
+            background: linear-gradient(180deg, #f97316, #ea580c);
+            box-shadow: 0 0 16px rgba(249,115,22,0.6);
+        }
+
+        .nav-icon-chip {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            flex-shrink: 0;
+            transition: all 0.25s ease;
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.6);
+        }
+        .nav-item:hover .nav-icon-chip {
+            background: rgba(249,115,22,0.2);
+            color: #f97316;
+            transform: scale(1.05);
+        }
+        .nav-item-active .nav-icon-chip {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: #fff;
+            box-shadow: var(--shadow-glow-orange);
+        }
+
+        .nav-group-btn {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            color: rgba(255,255,255,0.7);
+        }
+        .nav-group-btn:hover {
+            background: rgba(249,115,22,0.1);
+            color: #fff;
+        }
+        .nav-group-btn .chevron {
+            color: rgba(255,255,255,0.3);
+            transition: all 0.3s ease;
+        }
+        .nav-group-btn:hover .chevron {
+            color: rgba(255,255,255,0.6);
+        }
+        .nav-group-btn .chevron.rotated {
+            transform: rotate(180deg);
+            color: #f97316;
+        }
+
+        .sub-menu {
+            border-left: 2px solid rgba(249,115,22,0.2);
+            margin-left: 18px;
+        }
+        .sub-menu a {
+            color: rgba(255,255,255,0.5);
+            transition: all 0.2s ease;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .sub-menu a:hover {
+            color: #fff;
+            background: rgba(249,115,22,0.1);
+        }
+        .sub-menu a.active {
+            color: #f97316;
+            background: rgba(249,115,22,0.08);
+        }
+
         .sidebar-scroll::-webkit-scrollbar {
-            width: 5px;
+            width: 4px;
         }
         .sidebar-scroll::-webkit-scrollbar-track {
             background: transparent;
         }
         .sidebar-scroll::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, #ffd08a, #ffb347);
+            background: rgba(249,115,22,0.3);
             border-radius: 10px;
         }
         .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(180deg, #ffb347, var(--color-primary-dark));
+            background: rgba(249,115,22,0.5);
         }
 
-        /* Mobile sidebar transition */
+        .sidebar-user {
+            background: rgba(255,255,255,0.04);
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .sidebar-user .avatar {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            box-shadow: 0 4px 12px rgba(249,115,22,0.3);
+        }
+        .sidebar-user .username {
+            color: rgba(255,255,255,0.9);
+            font-weight: 600;
+        }
+        .sidebar-user .useremail {
+            color: rgba(255,255,255,0.4);
+            font-size: 12px;
+        }
+        .sidebar-user .logout-btn {
+            color: rgba(255,255,255,0.3);
+            transition: all 0.2s ease;
+        }
+        .sidebar-user .logout-btn:hover {
+            color: #f97316;
+            background: rgba(249,115,22,0.1);
+        }
+
+        /* ==================== SUBSCRIPTION REMINDER BANNER ==================== */
+        .subscription-reminder {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-bottom: 2px solid #f59e0b;
+            color: #92400e;
+            font-weight: 500;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            font-size: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 15;
+            animation: slideDown 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
+            flex-wrap: wrap;
+        }
+        .subscription-reminder .btn-renew {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: #fff;
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .subscription-reminder .btn-renew:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(249,115,22,0.4);
+        }
+        .subscription-reminder .close-reminder {
+            color: #92400e;
+            opacity: 0.6;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: none;
+            border: none;
+            font-size: 18px;
+            padding: 4px;
+        }
+        .subscription-reminder .close-reminder:hover {
+            opacity: 1;
+            transform: rotate(90deg);
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ==================== OTHER STYLES ==================== */
         .mobile-sidebar {
             transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
             transform: translateX(-100%);
@@ -103,101 +287,35 @@
             transform: translateX(0);
         }
 
-        /* Desktop sidebar always visible - FIXED LAYOUT */
         @media (min-width: 1024px) {
             .mobile-sidebar {
                 transform: translateX(0) !important;
                 position: relative !important;
-                width: 288px;
+                width: 280px;
                 flex-shrink: 0;
             }
-            .mobile-sidebar.sidebar-visible {
-                transform: translateX(0) !important;
-            }
-            /* Main content wrapper for desktop */
-            .main-content-wrapper {
-                width: calc(100% - 288px);
-                flex: 1;
-            }
         }
 
-        /* Sidebar surface */
-        #sidebar{
-            background: linear-gradient(180deg, #ffffff 0%, #fffdfa 55%, #fffaf3 100%);
-            box-shadow: var(--shadow-elevated);
-            border-right: 1px solid var(--border-soft);
+        .sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 25;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .sidebar-backdrop.active { opacity: 1; visibility: visible; }
+        @media (min-width: 1024px) { .sidebar-backdrop { display: none; } }
+
+        .topbar-glass{
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(14px) saturate(160%);
+            -webkit-backdrop-filter: blur(14px) saturate(160%);
+            border-bottom: 1px solid var(--border-soft);
         }
 
-        /* Navigation item styles */
-        .nav-item{
-            transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
-            position: relative;
-        }
-        .nav-item:hover{
-            transform: translateX(2px);
-        }
-
-        .nav-item-active{
-            background: linear-gradient(90deg, rgba(255,165,0,0.14) 0%, rgba(255,165,0,0.04) 100%);
-            color: var(--color-primary-dark);
-            box-shadow: inset 0 0 0 1px rgba(255,165,0,0.16);
-        }
-        .nav-item-active::before{
-            content:"";
-            position:absolute;
-            left:-12px; top:8px; bottom:8px;
-            width:4px;
-            border-radius: 6px;
-            background: linear-gradient(180deg, var(--color-primary), var(--color-primary-dark));
-            box-shadow: 0 0 10px rgba(255,140,0,0.55);
-        }
-
-        /* Colored icon chips for nav groups */
-        .nav-icon-chip{
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            flex-shrink: 0;
-            transition: all 0.2s ease;
-        }
-        .chip-orange{ background: linear-gradient(135deg, rgba(255,165,0,0.16), rgba(255,140,0,0.08)); color:#c2660a; }
-        .chip-blue{ background: linear-gradient(135deg, rgba(59,130,246,0.16), rgba(37,99,235,0.08)); color:#1d4ed8; }
-        .chip-emerald{ background: linear-gradient(135deg, rgba(16,185,129,0.16), rgba(5,150,105,0.08)); color:#047857; }
-        .chip-violet{ background: linear-gradient(135deg, rgba(139,92,246,0.16), rgba(124,58,237,0.08)); color:#6d28d9; }
-        .chip-rose{ background: linear-gradient(135deg, rgba(244,63,94,0.16), rgba(225,29,72,0.08)); color:#be123c; }
-
-        .nav-item:hover .nav-icon-chip{ transform: scale(1.08); }
-        .nav-item-active .chip-orange{ background: linear-gradient(135deg,var(--color-primary),var(--color-primary-dark)); color:#fff; box-shadow: var(--shadow-glow-orange); }
-        .nav-item-active .chip-blue{ background: linear-gradient(135deg,var(--color-blue),var(--color-blue-dark)); color:#fff; box-shadow: 0 8px 20px -6px rgba(37,99,235,0.45); }
-        .nav-item-active .chip-emerald{ background: linear-gradient(135deg,var(--color-emerald),var(--color-emerald-dark)); color:#fff; box-shadow: 0 8px 20px -6px rgba(5,150,105,0.45); }
-        .nav-item-active .chip-violet{ background: linear-gradient(135deg,var(--color-violet),var(--color-violet-dark)); color:#fff; box-shadow: 0 8px 20px -6px rgba(124,58,237,0.45); }
-
-        .nav-group-btn:hover{ background: #fafafa; }
-
-        /* Alpine.js cloak */
-        [x-cloak] {
-            display: none !important;
-        }
-
-        /* Smooth transitions */
-        .transition-smooth {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* Flash message animations */
-        .flash-message {
-            animation: slideInRight 0.35s cubic-bezier(0.34,1.2,0.64,1);
-        }
-
-        @keyframes slideInRight {
-            from { transform: translateX(110%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        /* Flash messages container */
         .flash-messages-container {
             position: fixed;
             top: 20px;
@@ -205,7 +323,6 @@
             z-index: 9999;
             max-width: 380px;
         }
-
         .flash-message {
             padding: 14px 20px;
             margin-bottom: 10px;
@@ -214,98 +331,25 @@
             font-weight: 500;
             box-shadow: var(--shadow-elevated);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.18);
+            animation: slideInRight 0.35s cubic-bezier(0.34,1.2,0.64,1);
         }
-
+        @keyframes slideInRight {
+            from { transform: translateX(110%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
         .flash-message.success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
         .flash-message.error { background: linear-gradient(135deg, #f43f5e, #e11d48); color: white; }
         .flash-message.warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
-        .flash-message.info { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+        .flash-message.info { background: linear-gradient(135deg, #f97316, #ea580c); color: white; }
 
-        /* Mobile overlay backdrop */
-        .sidebar-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(20, 16, 10, 0.55);
-            backdrop-filter: blur(2px);
-            z-index: 25;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        .sidebar-backdrop.active { opacity: 1; visibility: visible; }
-
-        @media (min-width: 1024px) { .sidebar-backdrop { display: none; } }
-
-        .overflow-safe { overflow-x: auto; overflow-y: auto; }
-        .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-        /* Glass topbar */
-        .topbar-glass{
-            background: rgba(255,255,255,0.82);
-            backdrop-filter: blur(14px) saturate(160%);
-            -webkit-backdrop-filter: blur(14px) saturate(160%);
-            border-bottom: 1px solid var(--border-soft);
-        }
-
-        /* Search dropdown styles */
-        .search-container { position: relative; display: inline-block; }
-
-        .search-results-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: rgba(255,255,255,0.98);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border-soft);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-elevated);
-            max-height: 400px;
-            overflow-y: auto;
-            z-index: 1000;
-            margin-top: 8px;
-            display: none;
-        }
-
-        .search-results-dropdown.active { display: block; animation: fadeInDown 0.2s ease-out; }
-
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .search-result-item {
-            padding: 12px 16px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border-bottom: 1px solid #f3f0ea;
-        }
-        .search-result-item:hover { background: linear-gradient(90deg, rgba(255,165,0,0.08), rgba(255,165,0,0.02)); }
-
-        .search-result-name { font-weight: 600; color: #1f2937; margin-bottom: 4px; }
-
-        .search-result-details { font-size: 12px; color: #6b7280; display: flex; gap: 16px; }
-        .search-result-details i { margin-right: 4px; font-size: 10px; }
-
-        .search-loading { padding: 20px; text-align: center; color: #6b7280; }
-        .search-loading i { animation: spin 1s linear infinite; }
-
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        .search-no-results { padding: 20px; text-align: center; color: #6b7280; }
-
-        .search-highlight { background-color: #fef3c7; color: #b45309; font-weight: 600; border-radius: 3px; padding: 0 2px; }
-
-        /* Buttons */
         .btn-gradient{
-            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
             box-shadow: var(--shadow-glow-orange);
             transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+            color: white;
         }
-        .btn-gradient:hover{ transform: translateY(-2px); box-shadow: 0 14px 30px -8px rgba(255,140,0,0.5); }
+        .btn-gradient:hover{ transform: translateY(-2px); box-shadow: 0 14px 30px -8px rgba(249,115,22,0.5); color: white; }
 
-        /* Card surface helper (available for content blocks) */
         .surface-card{
             background: rgba(255,255,255,0.92);
             border: 1px solid var(--border-soft);
@@ -313,7 +357,6 @@
             box-shadow: var(--shadow-soft);
         }
 
-        /* Inactivity popup */
         #inactive-popup{
             position: fixed;
             inset: 0;
@@ -338,7 +381,7 @@
         .inactive-popup-content p{ font-size: 14px; color:#6b7280; margin-bottom: 18px; }
         .inactive-popup-content #countdown{ font-weight:700; color: var(--color-primary-dark); }
         #stay-active-btn{
-            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
             color:#fff;
             font-weight: 600;
             padding: 10px 22px;
@@ -349,12 +392,184 @@
             transition: all 0.2s ease;
         }
         #stay-active-btn:hover{ transform: translateY(-2px); }
+
+        .subscription-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.92);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .subscription-overlay-content {
+            background: #fff;
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            animation: slideUp 0.4s cubic-bezier(0.34,1.2,0.64,1);
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .subscription-overlay-content .icon {
+            width: 72px;
+            height: 72px;
+            background: #fef3c7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+        .subscription-overlay-content .icon i {
+            font-size: 32px;
+            color: #f59e0b;
+        }
+
+        .search-container { position: relative; display: inline-block; }
+        .search-results-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-elevated);
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            margin-top: 8px;
+            display: none;
+        }
+        .search-results-dropdown.active { display: block; animation: fadeInDown 0.2s ease-out; }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .search-result-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid #f3f0ea;
+        }
+        .search-result-item:hover { background: linear-gradient(90deg, rgba(249,115,22,0.08), rgba(249,115,22,0.02)); }
+        .search-result-name { font-weight: 600; color: #1f2937; margin-bottom: 4px; }
+        .search-result-details { font-size: 12px; color: #6b7280; display: flex; gap: 16px; flex-wrap: wrap; }
+        .search-highlight { background-color: #fef3c7; color: #b45309; font-weight: 600; border-radius: 3px; padding: 0 2px; }
+
+        [x-cloak] { display: none !important; }
+
+        /* ============================================================ */
+        /* Menu Themes - All Orange focused, no blue */
+        /* ============================================================ */
+
+        /* Attendance menu - Emerald theme */
+        .menu-attendance .nav-group-btn {
+            color: rgba(255,255,255,0.7);
+        }
+        .menu-attendance .nav-group-btn:hover {
+            background: rgba(16,185,129,0.12);
+            color: #34d399;
+        }
+        .menu-attendance .nav-icon-chip {
+            background: rgba(16,185,129,0.12);
+            color: #34d399;
+        }
+        .menu-attendance .nav-item-active .nav-icon-chip {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+        }
+        .menu-attendance .sub-menu {
+            border-left-color: rgba(16,185,129,0.25);
+        }
+
+        /* Exams&ReportCards menu - Orange theme */
+        .menu-exams .nav-group-btn {
+            color: rgba(255,255,255,0.7);
+        }
+        .menu-exams .nav-group-btn:hover {
+            background: rgba(249,115,22,0.12);
+            color: #f97316;
+        }
+        .menu-exams .nav-icon-chip {
+            background: rgba(249,115,22,0.12);
+            color: #f97316;
+        }
+        .menu-exams .nav-item-active .nav-icon-chip {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: #fff;
+        }
+        .menu-exams .sub-menu {
+            border-left-color: rgba(249,115,22,0.25);
+        }
+
+        /* Reporting menu - Violet theme */
+        .menu-reporting .nav-group-btn {
+            color: rgba(255,255,255,0.7);
+        }
+        .menu-reporting .nav-group-btn:hover {
+            background: rgba(139,92,246,0.12);
+            color: #a78bfa;
+        }
+        .menu-reporting .nav-icon-chip {
+            background: rgba(139,92,246,0.12);
+            color: #a78bfa;
+        }
+        .menu-reporting .nav-item-active .nav-icon-chip {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: #fff;
+        }
+        .menu-reporting .sub-menu {
+            border-left-color: rgba(139,92,246,0.25);
+        }
+
+        .sub-menu a.nav-item-active {
+            color: #f97316 !important;
+            background: rgba(249,115,22,0.08) !important;
+        }
+        .menu-attendance .sub-menu a.nav-item-active {
+            color: #34d399 !important;
+            background: rgba(16,185,129,0.08) !important;
+        }
+        .menu-exams .sub-menu a.nav-item-active {
+            color: #f97316 !important;
+            background: rgba(249,115,22,0.08) !important;
+        }
+        .menu-reporting .sub-menu a.nav-item-active {
+            color: #a78bfa !important;
+            background: rgba(139,92,246,0.08) !important;
+        }
     </style>
 
     {% block extra_css %}{% endblock %}
 </head>
 
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 antialiased overflow-hidden h-screen">
+
+<!-- ==================== SUBSCRIPTION REMINDER BANNER ==================== -->
+<div id="subscriptionReminder" class="subscription-reminder" style="display: none;">
+    <i class="fas fa-clock"></i>
+    <span id="reminderText">
+        <strong>Subscription expires in <span id="daysRemaining">0</span> days!</strong>
+        Renew now to avoid interruption.
+    </span>
+    <a href="{{ url_for('billing.index') }}" class="btn-renew">
+        <i class="fas fa-credit-card"></i> Renew Now
+    </a>
+    <button class="close-reminder" onclick="document.getElementById('subscriptionReminder').style.display='none'">
+        <i class="fas fa-times"></i>
+    </button>
+</div>
 
 <!-- Flash Messages Container -->
 <div class="flash-messages-container" id="flashMessages">
@@ -386,28 +601,40 @@
     <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
     <!-- ==================== SIDEBAR ==================== -->
-    <aside id="sidebar" class="mobile-sidebar fixed lg:relative inset-y-0 left-0 z-30 w-72 sidebar-scroll overflow-y-auto flex-shrink-0">
+    <aside id="sidebar" class="mobile-sidebar fixed lg:relative inset-y-0 left-0 z-30 w-[280px] sidebar-scroll overflow-y-auto flex-shrink-0">
         <div class="flex flex-col h-full">
             <!-- Logo Header -->
-            <div class="flex items-center justify-between px-6 py-6 border-b border-gray-100 bg-gradient-to-r from-orange-50/70 via-white to-white">
+            <div class="flex items-center justify-between px-5 py-5 border-b border-white/5">
                 <div class="flex items-center space-x-3">
-                    <div class="h-11 w-11 rounded-xl bg-gradient-to-br from-[#ffa500] to-[#ff8c00] flex items-center justify-center shadow-lg ring-4 ring-orange-100">
+                    <div class="sidebar-logo h-11 w-11 rounded-xl flex items-center justify-center shadow-lg">
                         <i class="fas fa-graduation-cap text-white text-xl"></i>
                     </div>
                     <div>
-                        <span class="font-extrabold text-xl text-gray-800 tracking-tight">Lunserk<span class="text-transparent bg-clip-text bg-gradient-to-r from-[#ffa500] to-[#ff8c00]">ERP</span></span>
-                        <p class="text-xs text-gray-500 mt-0.5 font-medium">School Management System</p>
+                        <span class="font-extrabold text-xl text-white tracking-tight">Lunserk<span class="text-[#f97316]">ERP</span></span>
+                        <p class="text-xs text-white/40 mt-0.5 font-medium">School Management System</p>
                     </div>
                 </div>
-                <button id="closeSidebarBtn" class="lg:hidden text-gray-400 hover:text-gray-600 transition-colors">
+                <button id="closeSidebarBtn" class="lg:hidden text-white/40 hover:text-white/80 transition-colors">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
 
             <!-- Navigation Menu -->
-            <nav class="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto" x-data="{
+            <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto sidebar-scroll" x-data="{
                 activeMenu: '{{ request.endpoint.split(".")[-1] if request.endpoint else "dashboard" }}',
-                openMenus: {},
+                openMenus: {
+                    settings: false,
+                    classes: false,
+                    subjects: false,
+                    students: false,
+                    employees: false,
+                    accounts: false,
+                    fees: false,
+                    salary: false,
+                    reporting: false,
+                    attendance: false,
+                    exams: false
+                },
                 toggleMenu(menu) {
                     this.openMenus[menu] = !this.openMenus[menu];
                 }
@@ -415,264 +642,264 @@
                 <!-- Dashboard -->
                 <a href="{{ url_for('dashboard.index') }}"
                     :class="{'nav-item-active': activeMenu === 'dashboard'}"
-                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-orange-50/70 hover:text-[#c2660a] transition-all group">
-                    <span class="nav-icon-chip chip-orange"><i class="fas fa-chart-line text-base"></i></span>
+                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group">
+                    <span class="nav-icon-chip"><i class="fas fa-chart-line text-base"></i></span>
                     <span class="font-medium">Dashboard</span>
                 </a>
 
                 <!-- Study Resources -->
                 <a href="{{ url_for('studyresource.index') }}"
                     :class="{'nav-item-active': activeMenu === 'resources'}"
-                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50/70 hover:text-blue-700 transition-all group">
-                    <span class="nav-icon-chip chip-blue"><i class="fas fa-book-open text-base"></i></span>
+                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group">
+                    <span class="nav-icon-chip"><i class="fas fa-book-open text-base"></i></span>
                     <span class="font-medium">Study Resources</span>
                 </a>
 
                 <!-- General Settings -->
                 <div>
                     <button @click="toggleMenu('settings')"
-                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-violet-50/70 hover:text-violet-700 transition-all group">
+                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
                         <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip chip-violet"><i class="fas fa-sliders-h text-base"></i></span>
+                            <span class="nav-icon-chip"><i class="fas fa-sliders-h text-base"></i></span>
                             <span class="font-medium">General Settings</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.settings ? 'rotate-180 text-violet-600' : 'text-gray-400'"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.settings ? 'rotated' : ''"></i>
                     </button>
-                    <div x-show="openMenus.settings" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-violet-100 ml-6">
-                        <a href="{{ url_for('instituteProfile.profile') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Institute Profile</a>
-                        <a href="{{ url_for('auth.profile') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Profile</a>
-                        <a href="{{url_for('sms_settings.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">SMS Settings</a>
-                        <a href="{{url_for('schoolpay.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">SchoolPay Settings</a>
-                        <a href="{{url_for('permissions.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Permissions</a>
-                        <a href="{{ url_for('grading.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Marks Grading</a>
-                       
-                        <a href="{{ url_for('cdc_settings.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">CB Settings</a>
+                    <div x-show="openMenus.settings" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                        <a href="{{ url_for('instituteProfile.profile') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Institute Profile</a>
+                        <a href="{{ url_for('auth.profile') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Profile</a>
+                        <a href="{{ url_for('sms_settings.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">SMS Settings</a>
+                        <a href="{{ url_for('whatsapp.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">WhatsApp Settings</a>
+                        <a href="{{ url_for('schoolpay.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">SchoolPay Settings</a>
+                        <a href="{{ url_for('permissions.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Permissions</a>
+                        <a href="{{ url_for('grading.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Marks Grading</a>
+                        <a href="{{ url_for('cdc_settings.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">CB Settings</a>
                     </div>
                 </div>
 
                 <!-- Classes -->
                 <div>
                     <button @click="toggleMenu('classes')"
-                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-emerald-50/70 hover:text-emerald-700 transition-all group">
+                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
                         <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip chip-emerald"><i class="fas fa-chalkboard text-base"></i></span>
+                            <span class="nav-icon-chip"><i class="fas fa-chalkboard text-base"></i></span>
                             <span class="font-medium">Classes</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.classes ? 'rotate-180 text-emerald-600' : 'text-gray-400'"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.classes ? 'rotated' : ''"></i>
                     </button>
-                    <div x-show="openMenus.classes" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-emerald-100 ml-6">
-                        <a href="{{ url_for('class.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">All Classes</a>
-                        <a href="{{ url_for('class.create') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">New Class</a>
+                    <div x-show="openMenus.classes" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                        <a href="{{ url_for('class.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">All Classes</a>
+                        <a href="{{ url_for('class.create') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">New Class</a>
                     </div>
                 </div>
 
-               <!--Subjects -->
+                <!-- Subjects -->
                 <div>
                     <button @click="toggleMenu('subjects')"
-                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50/70 hover:text-blue-700 transition-all group">
+                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
                         <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip chip-blue"><i class="fas fa-book-open text-base"></i></span>
+                            <span class="nav-icon-chip"><i class="fas fa-book-open text-base"></i></span>
                             <span class="font-medium">Subjects</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.subjects ? 'rotate-180 text-blue-600' : 'text-gray-400'"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.subjects ? 'rotated' : ''"></i>
                     </button>
-                    <div x-show="openMenus.subjects" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-blue-100 ml-6">
-                        <a href="{{ url_for('subjects.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50/60 rounded-lg transition-all">Classes With Subjects</a>
-                        <a href="#" @click.prevent="activeMenu = 'assign-subjects'" class="block py-2 px-3 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50/60 rounded-lg transition-all">Assign Subjects</a>
+                    <div x-show="openMenus.subjects" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                        <a href="{{ url_for('subjects.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Classes With Subjects</a>
+                        <a href="#" @click.prevent="activeMenu = 'assign-subjects'" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Assign Subjects</a>
                     </div>
                 </div>
 
                 <!-- Students -->
                 <div>
                     <button @click="toggleMenu('students')"
-                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-orange-50/70 hover:text-[#c2660a] transition-all group">
+                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
                         <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip chip-orange"><i class="fas fa-user-graduate text-base"></i></span>
+                            <span class="nav-icon-chip"><i class="fas fa-user-graduate text-base"></i></span>
                             <span class="font-medium">Students</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.students ? 'rotate-180 text-[#ff8c00]' : 'text-gray-400'"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.students ? 'rotated' : ''"></i>
                     </button>
-                    <div x-show="openMenus.students" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-orange-100 ml-6">
-                        <a href="{{url_for('student.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Student Management</a>
-                        <a href="{{url_for('houses.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Student Houses</a>
-                        <a href="{{url_for('id.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Student ID Cards</a>
-                        <a href="{{url_for('student_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Print Basic List</a>
-                        <!--<a href="#" @click.prevent="activeMenu = 'manage-login'" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Manage Login</a>-->
-                        <a href="{{url_for('promote.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Promote Students</a>
+                    <div x-show="openMenus.students" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                        <a href="{{ url_for('student.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Student Management</a>
+                        <a href="{{ url_for('houses.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Student Houses</a>
+                        <a href="{{ url_for('id.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Student ID Cards</a>
+                        <a href="{{ url_for('student_list.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Print Basic List</a>
+                        <a href="{{ url_for('promote.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Promote Students</a>
                     </div>
                 </div>
 
                 <!-- Employees -->
                 <div>
                     <button @click="toggleMenu('employees')"
-                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-violet-50/70 hover:text-violet-700 transition-all group">
+                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
                         <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip chip-violet"><i class="fas fa-chalkboard-user text-base"></i></span>
+                            <span class="nav-icon-chip"><i class="fas fa-chalkboard-user text-base"></i></span>
                             <span class="font-medium">Employees</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.employees ? 'rotate-180 text-violet-600' : 'text-gray-400'"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.employees ? 'rotated' : ''"></i>
                     </button>
-                    <div x-show="openMenus.employees" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-violet-100 ml-6">
-                        <a href="{{ url_for('employees.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Employees Management</a>
+                    <div x-show="openMenus.employees" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                        <a href="{{ url_for('employees.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Employees Management</a>
                     </div>
                 </div>
 
                 <!-- Accounts -->
                 <div>
                     <button @click="toggleMenu('accounts')"
-                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-emerald-50/70 hover:text-emerald-700 transition-all group">
+                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
                         <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip chip-emerald"><i class="fas fa-wallet text-base"></i></span>
+                            <span class="nav-icon-chip"><i class="fas fa-wallet text-base"></i></span>
                             <span class="font-medium">Accounts</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.accounts ? 'rotate-180 text-emerald-600' : 'text-gray-400'"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.accounts ? 'rotated' : ''"></i>
                     </button>
-                    <div x-show="openMenus.accounts" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-emerald-100 ml-6">
-                        <a href="{{url_for('accounts.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Accounts Management</a>
-                        <a href="{{url_for('statements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Student Statements</a>
-                        <a href="{{url_for('accounts.expenses')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Expenses</a>
-                        <a href="{{url_for('accounts.income')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Income</a>
-                        <a href="{{url_for('budget.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Budget</a>
+                    <div x-show="openMenus.accounts" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                        <a href="{{ url_for('accounts.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Accounts Management</a>
+                        <a href="{{ url_for('statements.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Student Statements</a>
+                        <a href="{{ url_for('accounts.expenses') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Expenses</a>
+                        <a href="{{ url_for('accounts.income') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Income</a>
+                        <a href="{{ url_for('budget.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Budget</a>
+                    </div>
+                </div>
+
+
+                  <!-- Reporting Center -->
+                <!-- Reporting Center -->
+                <div class="menu-reporting">
+                    <button @click="toggleMenu('reporting')"
+                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
+                        <div class="flex items-center gap-3">
+                            <span class="nav-icon-chip"><i class="fas fa-chart-pie text-base"></i></span>
+                            <span class="font-medium">Reporting Center</span>
+                        </div>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.reporting ? 'rotated' : ''"></i>
+                    </button>
+                    <div x-show="openMenus.reporting" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                        <a href="{{ url_for('center.daily_collection') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Daily Collection</a>
+                        <a href="{{ url_for('center.balance_report') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Balance Report</a>
+                        <a href="{{ url_for('center.income_expense') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Income & Expenses</a>
+                        <a href="{{ url_for('center.income_statement') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Income Statement</a>
+                        <a href="{{ url_for('center.student_report') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Student Report</a>
+                        <a href="{{ url_for('center.class_report') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Class Report</a>
+                        <a href="{{ url_for('center.payment_methods') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Payment Methods</a>
+                        <a href="{{ url_for('center.ai_analysis') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">AI Analysis</a>
                     </div>
                 </div>
 
                 <!-- Fees -->
                 <div>
                     <button @click="toggleMenu('fees')"
-                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-orange-50/70 hover:text-[#c2660a] transition-all group">
+                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
                         <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip chip-orange"><i class="fas fa-money-bill-wave text-base"></i></span>
+                            <span class="nav-icon-chip"><i class="fas fa-money-bill-wave text-base"></i></span>
                             <span class="font-medium">Fees</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.fees ? 'rotate-180 text-[#ff8c00]' : 'text-gray-400'"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.fees ? 'rotated' : ''"></i>
                     </button>
-                    <div x-show="openMenus.fees" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-orange-100 ml-6">
-                        <a href="{{ url_for('fees.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Fees Management</a>
-
-                         <a href="{{url_for('fees.students_without_invoices_page')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Non Invoiced Students</a>
-
-                        <a href="{{url_for('collect.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Collect Fees</a>
-
-                        <a href="{{url_for('requirements.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Requirements</a>
-
-                        <a href="{{url_for('sync.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a]
-                         hover:bg-orange-50/60 rounded-lg transition-all">School Pay</a>
-
-                        <a href="{{url_for('payments_list.index')}}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Transaction List</a>
-
-                        <a href="{{ url_for('edit_invoice.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Edit Invoice</a>
-
-                       <a href="{{ url_for('collect.discounts_page') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Discounts</a>
-
+                    <div x-show="openMenus.fees" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                        <a href="{{ url_for('fees.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Fees Management</a>
+                        <a href="{{ url_for('fees.students_without_invoices_page') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Non Invoiced Students</a>
+                        <a href="{{ url_for('collect.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Collect Fees</a>
+                        <a href="{{ url_for('requirements.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Requirements</a>
+                        <a href="{{ url_for('sync.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">School Pay</a>
+                        <a href="{{ url_for('payments_list.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Transaction List</a>
+                        <a href="{{ url_for('edit_invoice.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Edit Invoice</a>
+                        <a href="{{ url_for('collect.discounts_page') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Discounts</a>
                     </div>
                 </div>
 
                 <!-- Salary -->
                 <div>
                     <button @click="toggleMenu('salary')"
-                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50/70 hover:text-blue-700 transition-all group">
+                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
                         <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip chip-blue"><i class="fas fa-credit-card text-base"></i></span>
+                            <span class="nav-icon-chip"><i class="fas fa-credit-card text-base"></i></span>
                             <span class="font-medium">Salary</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.salary ? 'rotate-180 text-blue-600' : 'text-gray-400'"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.salary ? 'rotated' : ''"></i>
                     </button>
-                    <div x-show="openMenus.salary" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-blue-100 ml-6">
-                        <a href="{{ url_for('salary.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-blue-700 hover:bg-blue-50/60 rounded-lg transition-all">Pay Salary</a>
+                    <div x-show="openMenus.salary" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                        <a href="{{ url_for('salary.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Pay Salary</a>
                     </div>
                 </div>
 
-                <!-- Reporting Center -->
-                <div>
+              
+
+                <!-- Attendance -->
+                <div class="menu-attendance">
                     <button @click="toggleMenu('attendance')"
-                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-violet-50/70 hover:text-violet-700 transition-all group">
+                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
                         <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip chip-violet"><i class="fas fa-fingerprint text-base"></i></span>
-                            <span class="font-medium">Reporting</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.attendance ? 'rotate-180 text-violet-600' : 'text-gray-400'"></i>
-                    </button>
-                    <div x-show="openMenus.attendance" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-violet-100 ml-6">
-                        <a href="{{ url_for('center.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50/60 rounded-lg transition-all">Fees Reports</a>
-
-                        <!--<a href="{{ url_for('financial_reports.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 rounded-lg transition-all">Profit & Loss</a>-->
-
-                    </div>
-                </div>
-
-
-                    <div>
-                    <button @click="toggleMenu('attendance')"
-                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-emerald-50/70 hover:text-emerald-700 transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip chip-emerald"><i class="fas fa-fingerprint text-base"></i></span>
+                            <span class="nav-icon-chip"><i class="fas fa-fingerprint text-base"></i></span>
                             <span class="font-medium">Attendance</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.attendance ? 'rotate-180 text-emerald-600' : 'text-gray-400'"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.attendance ? 'rotated' : ''"></i>
                     </button>
-                    <div x-show="openMenus.attendance" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-emerald-100 ml-6">
-                        <a href="{{ url_for('attendance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Students Attendance</a>
-                        <a href="{{ url_for('staff_attendance.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Employees Attendance</a>
-                        <a href="{{ url_for('attendance_report.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Students Attendance Report</a>
-                        <a href="{{ url_for('staff_attendance_report.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-all">Employees Attendance Report</a>
+                    <div x-show="openMenus.attendance" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                        <a href="{{ url_for('attendance.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Students Attendance</a>
+                        <a href="{{ url_for('staff_attendance.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Employees Attendance</a>
+                        <a href="{{ url_for('attendance_report.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Students Attendance Report</a>
+                        <a href="{{ url_for('staff_attendance_report.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Employees Attendance Report</a>
                     </div>
+                </div>
 
-                    <button @click="toggleMenu('attendance')"
-                        class="nav-group-btn nav-item w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-orange-50/70 hover:text-[#c2660a] transition-all group">
+                <!-- Exams & Report Cards -->
+                <div class="menu-exams">
+                    <button @click="toggleMenu('exams')"
+                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
                         <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip chip-orange"><i class="fas fa-fingerprint text-base"></i></span>
-                            <span class="font-medium">Exams&ReportCards</span>
+                            <span class="nav-icon-chip"><i class="fas fa-file-alt text-base"></i></span>
+                            <span class="font-medium">Exams & Report Cards</span>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200" :class="openMenus.attendance ? 'rotate-180 text-[#ff8c00]' : 'text-gray-400'"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.exams ? 'rotated' : ''"></i>
                     </button>
-                    <div x-show="openMenus.attendance" x-cloak class="pl-11 mt-1.5 space-y-1 border-l-2 border-orange-100 ml-6">
-                        <a href="{{ url_for('exams.index') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Exams</a>
-                        <a href="{{ url_for('exams.marks') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Exam Marks</a>
-                        <a href="{{ url_for('results.r') }}" class="block py-2 px-3 text-sm text-gray-600 hover:text-[#c2660a] hover:bg-orange-50/60 rounded-lg transition-all">Report Cards</a>
-
+                    <div x-show="openMenus.exams" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                        <a href="{{ url_for('exams.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Exams</a>
+                        <a href="{{ url_for('exams.marks') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Exam Marks</a>
+                        <a href="{{ url_for('results.r') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Report Cards</a>
                     </div>
                 </div>
 
                 <!-- Messaging -->
                 <a href="{{ url_for('message.index') }}"
                     :class="{'nav-item-active': activeMenu === 'messaging'}"
-                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50/70 hover:text-blue-700 transition-all group">
-                    <span class="nav-icon-chip chip-blue"><i class="fas fa-comment-dots text-base"></i></span>
+                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group">
+                    <span class="nav-icon-chip"><i class="fas fa-comment-dots text-base"></i></span>
                     <span class="font-medium">Messaging</span>
                 </a>
 
                 <!-- Billing -->
                 <a href="{{ url_for('billing.index') }}"
                     :class="{'nav-item-active': activeMenu === 'billing'}"
-                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-violet-50/70 hover:text-violet-700 transition-all group">
-                    <span class="nav-icon-chip chip-violet"><i class="fas fa-credit-card text-base"></i></span>
+                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group">
+                    <span class="nav-icon-chip"><i class="fas fa-credit-card text-base"></i></span>
                     <span class="font-medium">Billing</span>
                 </a>
 
                 <!-- International Library -->
                 <a href="{{ url_for('library.index') }}"
                     :class="{'nav-item-active': activeMenu === 'library'}"
-                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-emerald-50/70 hover:text-emerald-700 transition-all group">
-                    <span class="nav-icon-chip chip-emerald"><i class="fas fa-globe-americas text-base"></i></span>
+                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group">
+                    <span class="nav-icon-chip"><i class="fas fa-globe-americas text-base"></i></span>
                     <span class="font-medium">International Library</span>
                 </a>
             </nav>
 
-            <!-- Footer / User Info - Fixed to use session.user data correctly -->
-            <div class="border-t border-gray-100 p-4 bg-gradient-to-r from-orange-50/50 to-white">
+            <!-- Footer / User Info -->
+            <div class="sidebar-user px-4 py-4 mt-auto">
                 <div class="flex items-center gap-3">
-                    <div class="h-10 w-10 rounded-full bg-gradient-to-br from-[#ffa500] to-[#ff8c00] flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white">
+                    <div class="avatar h-10 w-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg flex-shrink-0">
                         {{ session.user.email[0].upper() if session and session.user and session.user.email else 'U' }}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-800 truncate">
+                        <p class="username truncate">
                             {{ session.user.email.split('@')[0] if session and session.user and session.user.email else 'User' }}
                         </p>
-                        <p class="text-xs text-gray-500 truncate">
+                        <p class="useremail truncate">
                             {{ session.user.email if session and session.user and session.user.email else 'user@example.com' }}
                         </p>
                     </div>
-                    <a href="{{ url_for('auth.logout') }}" class="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-rose-500 transition-all" title="Logout">
+                    <a href="{{ url_for('auth.logout') }}" class="logout-btn h-8 w-8 flex items-center justify-center rounded-lg transition-all" title="Logout">
                         <i class="fas fa-sign-out-alt text-sm"></i>
                     </a>
                 </div>
@@ -684,30 +911,29 @@
     <div class="flex-1 flex flex-col overflow-hidden w-full">
         <!-- Top Navbar -->
         <header class="topbar-glass sticky top-0 z-20 flex-shrink-0">
-            <div class="flex items-center justify-between px-6 py-4">
+            <div class="flex items-center justify-between px-6 py-3">
                 <div class="flex items-center gap-4">
-                    <button id="openSidebarBtn" class="lg:hidden text-gray-600 hover:text-[#ffa500] text-2xl transition-colors">
+                    <button id="openSidebarBtn" class="lg:hidden text-gray-600 hover:text-[#f97316] text-2xl transition-colors">
                         <i class="fas fa-bars"></i>
                     </button>
                     <div class="relative hidden md:block">
                         <i class="fas fa-search absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
-                        <input type="text" placeholder="Search student, employee..."
-                               class="pl-10 pr-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl w-80 text-sm focus:outline-none focus:ring-2 focus:ring-[#ffa500]/50 focus:border-[#ffa500] focus:bg-white transition-all">
+                        <input type="text" id="studentSearchInput" placeholder="Search student by name or ID..."
+                               class="pl-10 pr-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl w-80 text-sm focus:outline-none focus:ring-2 focus:ring-[#f97316]/50 focus:border-[#f97316] focus:bg-white transition-all">
+                        <div id="searchResultsDropdown" class="search-results-dropdown"></div>
                     </div>
                 </div>
                 <div class="flex items-center gap-5">
-                    <div class="hidden md:flex gap-2">
-                    </div>
-                    <button class="relative h-10 w-10 flex items-center justify-center rounded-xl text-gray-600 hover:text-[#ffa500] hover:bg-orange-50 transition-all">
+                    <button class="relative h-10 w-10 flex items-center justify-center rounded-xl text-gray-600 hover:text-[#f97316] hover:bg-orange-50 transition-all">
                         <i class="fas fa-bell text-lg"></i>
                         <span class="absolute top-1 right-1 bg-gradient-to-br from-rose-500 to-rose-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse shadow-sm">3</span>
                     </button>
                     <div class="flex items-center gap-2 cursor-pointer group pl-3 border-l border-gray-200">
-                        <div class="h-9 w-9 rounded-full bg-gradient-to-br from-[#ffa500] to-[#ff8c00] flex items-center justify-center text-white font-semibold shadow-md ring-2 ring-orange-100">
+                        <div class="h-9 w-9 rounded-full bg-gradient-to-br from-[#f97316] to-[#ea580c] flex items-center justify-center text-white font-semibold shadow-md ring-2 ring-orange-100">
                             {{ session.user.email[0].upper() if session and session.user and session.user.email else 'U' }}
                         </div>
                         <div class="hidden md:block">
-                            <p class="text-sm font-semibold text-gray-800 group-hover:text-[#ffa500] transition-colors">
+                            <p class="text-sm font-semibold text-gray-800 group-hover:text-[#f97316] transition-colors">
                                 {{ session.user.email.split('@')[0] if session and session.user and session.user.email else 'User' }}
                             </p>
                             <p class="text-xs text-gray-500">
@@ -718,7 +944,7 @@
                                 {% endif %}
                             </p>
                         </div>
-                        <i class="fas fa-chevron-down text-xs text-gray-500 group-hover:text-[#ffa500] transition-colors"></i>
+                        <i class="fas fa-chevron-down text-xs text-gray-500 group-hover:text-[#f97316] transition-colors"></i>
                     </div>
                 </div>
             </div>
@@ -728,11 +954,10 @@
         <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
             <div class="w-full mx-auto">
                 {% block content %}
-                <!-- Default content if no block is provided -->
                 <div class="flex items-center justify-center min-h-[calc(100vh-200px)]">
                     <div class="text-center">
                         <div class="surface-card rounded-2xl shadow-xl p-10 max-w-md mx-auto">
-                            <div class="h-20 w-20 bg-gradient-to-br from-[#ffa500] to-[#ff8c00] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                            <div class="h-20 w-20 bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                                 <i class="fas fa-school text-white text-4xl"></i>
                             </div>
                             <h1 class="text-2xl font-bold text-gray-800 mb-2">Welcome to Lunserk ERP</h1>
@@ -749,7 +974,7 @@
 <!-- Scripts -->
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
-    // FIXED: Sidebar toggle functionality for mobile
+    // ==================== SIDEBAR TOGGLE ====================
     const sidebar = document.getElementById('sidebar');
     const openBtn = document.getElementById('openSidebarBtn');
     const closeBtn = document.getElementById('closeSidebarBtn');
@@ -771,38 +996,21 @@
         }
     }
 
-    if (openBtn) {
-        openBtn.addEventListener('click', openSidebar);
-    }
-    if (closeBtn) {
-        closeBtn.addEventListener('click', closeSidebar);
-    }
-    if (backdrop) {
-        backdrop.addEventListener('click', closeSidebar);
-    }
+    if (openBtn) openBtn.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (backdrop) backdrop.addEventListener('click', closeSidebar);
 
-    // Close sidebar when clicking outside on mobile (improved)
-    document.addEventListener('click', function(event) {
-        const isMobile = window.innerWidth < 1024;
-        if (isMobile && sidebar && !sidebar.contains(event.target) && !openBtn?.contains(event.target)) {
-            if (sidebar.classList.contains('sidebar-visible')) {
-                closeSidebar();
-            }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && window.innerWidth < 1024 && sidebar.classList.contains('sidebar-visible')) {
+            closeSidebar();
         }
     });
 
-    // Handle window resize - ensure sidebar state is correct
     let resizeTimer;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function() {
             if (window.innerWidth >= 1024) {
-                // On desktop, remove mobile classes and ensure body scroll is normal
-                sidebar.classList.remove('sidebar-visible');
-                if (backdrop) backdrop.classList.remove('active');
-                document.body.style.overflow = '';
-            } else {
-                // On mobile, make sure sidebar is closed by default
                 sidebar.classList.remove('sidebar-visible');
                 if (backdrop) backdrop.classList.remove('active');
                 document.body.style.overflow = '';
@@ -810,13 +1018,12 @@
         }, 150);
     });
 
-    // Ensure sidebar starts hidden on mobile
     if (window.innerWidth < 1024) {
         sidebar.classList.remove('sidebar-visible');
         if (backdrop) backdrop.classList.remove('active');
     }
 
-    // Auto-hide flash messages after 5 seconds
+    // ==================== FLASH MESSAGES ====================
     setTimeout(() => {
         document.querySelectorAll('.flash-message').forEach(msg => {
             setTimeout(() => {
@@ -827,76 +1034,147 @@
         });
     }, 100);
 
-    // Manual flash message removal
-    const flashMessages = document.querySelectorAll('.flash-message');
-    flashMessages.forEach(msg => {
-        setTimeout(() => {
-            msg.style.opacity = '0';
-            msg.style.transform = 'translateX(100%)';
-            setTimeout(() => msg.remove(), 300);
-        }, 5000);
-    });
-
-    // Subscription Check and Overlay
+    // ==================== SUBSCRIPTION CHECK WITH LOCAL STORAGE CACHE ====================
     let subscriptionCheckInterval = null;
     let subscriptionOverlay = null;
+    let lastCheckTime = null;
+    const CACHE_DURATION = 5 * 60 * 1000; // Cache for 5 minutes
+    const CACHE_KEY = 'lunserk_subscription_data';
 
-    // List of paths where overlay should NOT appear
     const excludedPaths = ['/billing', '/billing/', '/billing/index', '/billing/payment-callback'];
+    const reminderBanner = document.getElementById('subscriptionReminder');
+    const daysRemainingSpan = document.getElementById('daysRemaining');
 
     function isExcludedPath() {
         const currentPath = window.location.pathname;
         return excludedPaths.some(path => currentPath === path || currentPath.startsWith('/billing'));
     }
 
-    function checkSubscriptionStatus() {
-        // Don't check on billing pages
-        if (isExcludedPath()) {
-            return;
+    function getCachedSubscriptionData() {
+        try {
+            const cached = localStorage.getItem(CACHE_KEY);
+            if (!cached) return null;
+            
+            const data = JSON.parse(cached);
+            const now = Date.now();
+            
+            // Check if cache is still valid
+            if (data.timestamp && (now - data.timestamp) < CACHE_DURATION) {
+                return data.data;
+            }
+            return null;
+        } catch (e) {
+            console.error('Error reading cache:', e);
+            return null;
         }
-
-        fetch('/billing/check-subscription')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && !data.is_active) {
-                    showSubscriptionOverlay();
-                } else if (data.success && data.is_active && subscriptionOverlay) {
-                    hideSubscriptionOverlay();
-                }
-            })
-            .catch(error => console.error('Error checking subscription:', error));
     }
 
-    function showSubscriptionOverlay() {
-        // Don't show on billing pages
+    function setCachedSubscriptionData(data) {
+        try {
+            const cacheData = {
+                timestamp: Date.now(),
+                data: data
+            };
+            localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+        } catch (e) {
+            console.error('Error caching data:', e);
+        }
+    }
+
+    function clearCachedSubscriptionData() {
+        try {
+            localStorage.removeItem(CACHE_KEY);
+        } catch (e) {
+            console.error('Error clearing cache:', e);
+        }
+    }
+
+    function updateUIWithSubscriptionData(data) {
+        if (!data) return;
+
+        // Handle reminder banner
+        if (data.show_reminder && data.days_remaining > 0 && data.days_remaining <= 10) {
+            if (reminderBanner) {
+                daysRemainingSpan.textContent = data.days_remaining;
+                reminderBanner.style.display = 'flex';
+            }
+        } else {
+            if (reminderBanner) {
+                reminderBanner.style.display = 'none';
+            }
+        }
+
+        // Handle expired overlay
+        if (!data.is_active) {
+            showSubscriptionOverlay();
+        } else if (data.is_active && subscriptionOverlay) {
+            hideSubscriptionOverlay();
+        }
+    }
+
+    async function checkSubscriptionStatus(forceRefresh = false) {
         if (isExcludedPath()) {
+            if (reminderBanner) reminderBanner.style.display = 'none';
             return;
         }
 
-        if (subscriptionOverlay) return;
+        // Check cache first (unless force refresh)
+        if (!forceRefresh) {
+            const cachedData = getCachedSubscriptionData();
+            if (cachedData) {
+                console.log('📦 Using cached subscription data');
+                updateUIWithSubscriptionData(cachedData);
+                return;
+            }
+        }
+
+        // No cache or force refresh - hit the server
+        try {
+            console.log('🔄 Fetching fresh subscription data...');
+            const response = await fetch('/billing/api/subscription-status', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Cache the data
+                setCachedSubscriptionData(data);
+                updateUIWithSubscriptionData(data);
+            }
+        } catch (error) {
+            console.error('Error checking subscription:', error);
+            // If server fails, try to use stale cache
+            const staleData = getCachedSubscriptionData();
+            if (staleData) {
+                console.log('⚠️ Using stale cached data due to server error');
+                updateUIWithSubscriptionData(staleData);
+            }
+        }
+    }
+
+    // Call this when a payment is made to refresh the cache
+    function refreshSubscriptionData() {
+        clearCachedSubscriptionData();
+        checkSubscriptionStatus(true);
+    }
+
+    // Expose refresh function globally
+    window.refreshSubscriptionData = refreshSubscriptionData;
+
+    function showSubscriptionOverlay() {
+        if (isExcludedPath() || subscriptionOverlay) return;
 
         subscriptionOverlay = document.createElement('div');
-        subscriptionOverlay.id = 'subscriptionOverlay';
-        subscriptionOverlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(5px);
-        `;
-
+        subscriptionOverlay.className = 'subscription-overlay';
         subscriptionOverlay.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 text-center" style="animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);">
-                <div class="h-20 w-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+            <div class="subscription-overlay-content">
+                <div class="icon">
+                    <i class="fas fa-exclamation-triangle"></i>
                 </div>
-                <h3 class="text-xl font-semibold text-gray-800 mb-2">Subscription Expired</h3>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Subscription Expired</h3>
                 <p class="text-gray-600 mb-4">
                     Your subscription has expired. Please renew to continue accessing the system.
                 </p>
@@ -906,50 +1184,11 @@
                         Renew now for only UGX 50,000 per month
                     </p>
                 </div>
-                <div class="flex gap-3">
-                    <a href="/billing" class="flex-1 btn-gradient py-2 rounded-lg text-white font-medium text-center">
-                        <i class="fas fa-credit-card"></i> Renew Now
-                    </a>
-                </div>
+                <a href="/billing" class="btn-gradient w-full py-2.5 rounded-lg font-medium text-center inline-block">
+                    <i class="fas fa-credit-card"></i> Renew Now
+                </a>
             </div>
         `;
-
-        // Add animation styles if not already present
-        if (!document.querySelector('#subscriptionStyles')) {
-            const style = document.createElement('style');
-            style.id = 'subscriptionStyles';
-            style.textContent = `
-                @keyframes slideUp {
-                    from {
-                        opacity: 0;
-                        transform: translateY(50px) scale(0.95);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0) scale(1);
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
-        // Add btn-gradient styles if not present
-        if (!document.querySelector('#btnGradientStyles')) {
-            const btnStyle = document.createElement('style');
-            btnStyle.id = 'btnGradientStyles';
-            btnStyle.textContent = `
-                .btn-gradient {
-                    background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-                    transition: all 0.3s ease;
-                }
-                .btn-gradient:hover {
-                    background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
-                    transform: translateY(-2px);
-                }
-            `;
-            document.head.appendChild(btnStyle);
-        }
-
         document.body.appendChild(subscriptionOverlay);
         document.body.style.overflow = 'hidden';
     }
@@ -962,44 +1201,12 @@
         }
     }
 
-    // Check subscription on page load and every 5 minutes (but not on billing pages)
-    document.addEventListener('DOMContentLoaded', function() {
-        // Only check if not on billing page
-        if (!isExcludedPath()) {
-            checkSubscriptionStatus();
-            subscriptionCheckInterval = setInterval(checkSubscriptionStatus, 5 * 60 * 1000);
-        }
-    });
-
-    // Also check when the page becomes visible again (user returns from billing)
-    document.addEventListener('visibilitychange', function() {
-        if (!document.hidden && !isExcludedPath()) {
-            checkSubscriptionStatus();
-        }
-    });
-
-    // Clean up interval on page unload
-    window.addEventListener('beforeunload', function() {
-        if (subscriptionCheckInterval) {
-            clearInterval(subscriptionCheckInterval);
-        }
-    });
-
-    // Optional: Also check when returning from billing page via navigation
-    window.addEventListener('pageshow', function() {
-        if (!isExcludedPath()) {
-            checkSubscriptionStatus();
-        }
-    });
-
+    // ==================== INACTIVITY TIMER ====================
     (() => {
-        const WARNING_TIME = 1 * 60 * 1000;  // Show warning after 1 minute
-        const LOGOUT_TIME = 3 * 60 * 1000;   // Logout after 3 minutes
+        const WARNING_TIME = 1 * 60 * 1000;
+        const LOGOUT_TIME = 3 * 60 * 1000;
 
-        let warningTimer;
-        let logoutTimer;
-        let countdownInterval;
-        let popup;
+        let warningTimer, logoutTimer, countdownInterval, popup;
 
         function createPopup() {
             popup = document.createElement("div");
@@ -1011,7 +1218,6 @@
                     <button id="stay-active-btn">Stay Here</button>
                 </div>
             `;
-
             document.body.appendChild(popup);
 
             document.getElementById("stay-active-btn").addEventListener("click", () => {
@@ -1021,39 +1227,19 @@
         }
 
         function removePopup() {
-            if (popup) {
-                popup.remove();
-                popup = null;
-            }
-
-            if (countdownInterval) {
-                clearInterval(countdownInterval);
-            }
+            if (popup) { popup.remove(); popup = null; }
+            if (countdownInterval) { clearInterval(countdownInterval); }
         }
 
         function showWarning() {
-            if (!popup) {
-                createPopup();
-            }
-
+            if (!popup) createPopup();
             let seconds = Math.floor((LOGOUT_TIME - WARNING_TIME) / 1000);
-
             countdownInterval = setInterval(() => {
                 seconds--;
-
                 const countdown = document.getElementById("countdown");
-                if (countdown) {
-                    countdown.textContent = seconds;
-                }
-
-                if (seconds <= 0) {
-                    clearInterval(countdownInterval);
-                }
+                if (countdown) countdown.textContent = seconds;
+                if (seconds <= 0) clearInterval(countdownInterval);
             }, 1000);
-        }
-
-        function logoutUser() {
-            window.location.href = "/auth/logout";
         }
 
         function resetTimers() {
@@ -1061,353 +1247,289 @@
             clearTimeout(logoutTimer);
             clearInterval(countdownInterval);
             removePopup();
-
             warningTimer = setTimeout(showWarning, WARNING_TIME);
-            logoutTimer = setTimeout(logoutUser, LOGOUT_TIME);
+            logoutTimer = setTimeout(() => window.location.href = "/auth/logout", LOGOUT_TIME);
         }
 
-        // Add event listeners for user activity
         ["mousemove", "keydown", "click", "scroll", "touchstart"].forEach(event => {
             document.addEventListener(event, resetTimers);
         });
-
-        // Initial start
         resetTimers();
     })();
 
+    // ==================== STUDENT SEARCH ====================
+    class StudentSearch {
+        constructor() {
+            this.searchInput = document.getElementById('studentSearchInput');
+            this.dropdown = document.getElementById('searchResultsDropdown');
+            this.searchTimeout = null;
+            this.currentPage = 1;
+            this.hasMore = false;
+            this.isLoading = false;
+            this.currentSearchTerm = '';
 
-    // Student Search Functionality
-class StudentSearch {
-    constructor() {
-        this.searchInput = document.getElementById('studentSearchInput');
-        this.dropdown = document.getElementById('searchResultsDropdown');
-        this.searchTimeout = null;
-        this.currentPage = 1;
-        this.hasMore = false;
-        this.isLoading = false;
-        this.currentSearchTerm = '';
-
-        if (this.searchInput) {
-            this.init();
-        }
-    }
-
-    init() {
-        // Add search container wrapper if not already present
-        const searchWrapper = document.createElement('div');
-        searchWrapper.className = 'search-container';
-        this.searchInput.parentNode.insertBefore(searchWrapper, this.searchInput);
-        searchWrapper.appendChild(this.searchInput);
-
-        // Create dropdown element
-        this.dropdown = document.createElement('div');
-        this.dropdown.id = 'searchResultsDropdown';
-        this.dropdown.className = 'search-results-dropdown';
-        searchWrapper.appendChild(this.dropdown);
-
-        // Add input event listener with debounce
-        this.searchInput.addEventListener('input', (e) => {
-            this.handleSearch(e.target.value);
-        });
-
-        // Handle click outside to close dropdown
-        document.addEventListener('click', (e) => {
-            if (!searchWrapper.contains(e.target)) {
-                this.closeDropdown();
+            if (this.searchInput && this.dropdown) {
+                this.init();
             }
-        });
-
-        // Handle keyboard navigation
-        this.searchInput.addEventListener('keydown', (e) => {
-            this.handleKeyboardNavigation(e);
-        });
-
-        // Handle focus
-        this.searchInput.addEventListener('focus', () => {
-            if (this.currentSearchTerm && this.dropdown.children.length > 0) {
-                this.dropdown.classList.add('active');
-            }
-        });
-    }
-
-    async handleSearch(searchTerm) {
-        // Clear previous timeout
-        if (this.searchTimeout) {
-            clearTimeout(this.searchTimeout);
         }
 
-        // Store current search term
-        this.currentSearchTerm = searchTerm.trim();
-
-        // If search is empty, close dropdown and return
-        if (!this.currentSearchTerm) {
-            this.closeDropdown();
-            return;
-        }
-
-        // Debounce search
-        this.searchTimeout = setTimeout(() => {
-            this.performSearch(1);
-        }, 300);
-    }
-
-    async performSearch(page = 1) {
-        if (this.isLoading) return;
-
-        this.isLoading = true;
-        this.currentPage = page;
-
-        // Show loading state
-        this.showLoading();
-
-        try {
-            // Build URL with pagination
-            const url = new URL('/students/api/students', window.location.origin);
-            url.searchParams.append('search', this.currentSearchTerm);
-            url.searchParams.append('page', page);
-            url.searchParams.append('per_page', 10);
-
-            // Make API request
-            const response = await fetch(url.toString(), {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'same-origin'
+        init() {
+            this.searchInput.addEventListener('input', (e) => {
+                this.handleSearch(e.target.value);
             });
 
-            if (!response.ok) {
-                throw new Error('Search failed');
-            }
+            document.addEventListener('click', (e) => {
+                if (!this.searchInput.parentNode.contains(e.target)) {
+                    this.closeDropdown();
+                }
+            });
 
-            const result = await response.json();
+            this.searchInput.addEventListener('keydown', (e) => {
+                this.handleKeyboardNavigation(e);
+            });
 
-            if (result.success) {
-                this.hasMore = result.has_more;
-                this.displayResults(result.data);
-            } else {
-                this.showError(result.message);
-            }
-        } catch (error) {
-            console.error('Search error:', error);
-            this.showError('Failed to search students');
-        } finally {
-            this.isLoading = false;
+            this.searchInput.addEventListener('focus', () => {
+                if (this.currentSearchTerm && this.dropdown.children.length > 0) {
+                    this.dropdown.classList.add('active');
+                }
+            });
         }
-    }
 
-    showLoading() {
-        if (!this.dropdown) return;
+        async handleSearch(searchTerm) {
+            if (this.searchTimeout) clearTimeout(this.searchTimeout);
+            this.currentSearchTerm = searchTerm.trim();
 
-        this.dropdown.innerHTML = `
-            <div class="search-loading">
-                <i class="fas fa-spinner"></i> Searching...
-            </div>
-        `;
-        this.dropdown.classList.add('active');
-    }
+            if (!this.currentSearchTerm) {
+                this.closeDropdown();
+                return;
+            }
 
-    displayResults(students) {
-        if (!this.dropdown) return;
+            this.searchTimeout = setTimeout(() => this.performSearch(1), 300);
+        }
 
-        if (!students || students.length === 0) {
+        async performSearch(page = 1) {
+            if (this.isLoading) return;
+            this.isLoading = true;
+            this.currentPage = page;
+
+            try {
+                const url = new URL('/students/api/students', window.location.origin);
+                url.searchParams.append('search', this.currentSearchTerm);
+                url.searchParams.append('page', page);
+                url.searchParams.append('per_page', 10);
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) throw new Error('Search failed');
+                const result = await response.json();
+
+                if (result.success) {
+                    this.hasMore = result.has_more;
+                    this.displayResults(result.data);
+                } else {
+                    this.showError(result.message);
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                this.showError('Failed to search students');
+            } finally {
+                this.isLoading = false;
+            }
+        }
+
+        displayResults(students) {
+            if (!this.dropdown) return;
+
+            if (!students || students.length === 0) {
+                this.dropdown.innerHTML = `
+                    <div class="search-no-results">
+                        <i class="fas fa-user-graduate"></i> No students found
+                    </div>
+                `;
+                this.dropdown.classList.add('active');
+                return;
+            }
+
+            let html = '<div class="search-results-list">';
+            students.forEach(student => {
+                const highlightedName = this.highlightText(student.name, this.currentSearchTerm);
+                html += `
+                    <div class="search-result-item" data-student-id="${student.id}">
+                        <div class="search-result-name">${highlightedName}</div>
+                        <div class="search-result-details">
+                            <span><i class="fas fa-id-card"></i> ${student.student_id || 'No ID'}</span>
+                            <span><i class="fas fa-chalkboard"></i> ${student.classes?.name || 'No Class'}</span>
+                            <span><i class="fas ${student.gender === 'Male' ? 'fa-mars' : 'fa-venus'}"></i> ${student.gender || 'N/A'}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (this.hasMore) {
+                html += `
+                    <div class="search-result-item load-more" style="text-align: center; color: #f97316; cursor: pointer;">
+                        <i class="fas fa-chevron-down"></i> Load more students...
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            this.dropdown.innerHTML = html;
+            this.dropdown.classList.add('active');
+
+            this.dropdown.querySelectorAll('.search-result-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    if (item.classList.contains('load-more')) {
+                        this.performSearch(this.currentPage + 1);
+                    } else {
+                        const studentId = item.dataset.studentId;
+                        if (studentId) {
+                            window.location.href = `/student-details/${studentId}`;
+                        }
+                    }
+                });
+            });
+        }
+
+        highlightText(text, searchTerm) {
+            if (!text || !searchTerm) return text;
+            const regex = new RegExp(`(${this.escapeRegex(searchTerm)})`, 'gi');
+            return text.replace(regex, '<span class="search-highlight">$1</span>');
+        }
+
+        escapeRegex(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        handleKeyboardNavigation(e) {
+            const items = this.dropdown?.querySelectorAll('.search-result-item:not(.load-more)');
+            if (!items || items.length === 0) return;
+
+            let currentIndex = -1;
+            items.forEach((item, index) => {
+                if (item.classList.contains('active-keyboard')) {
+                    currentIndex = index;
+                    item.classList.remove('active-keyboard');
+                }
+            });
+
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    currentIndex = (currentIndex + 1) % items.length;
+                    this.focusItem(items[currentIndex]);
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    currentIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+                    this.focusItem(items[currentIndex]);
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (currentIndex >= 0) {
+                        const studentId = items[currentIndex].dataset.studentId;
+                        if (studentId) window.location.href = `/student-details/${studentId}`;
+                    }
+                    break;
+                case 'Escape':
+                    this.closeDropdown();
+                    this.searchInput.blur();
+                    break;
+            }
+        }
+
+        focusItem(item) {
+            if (!item) return;
+            this.dropdown.querySelectorAll('.search-result-item').forEach(i => i.classList.remove('active-keyboard'));
+            item.classList.add('active-keyboard');
+            item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            item.style.backgroundColor = '#fff7ed';
+        }
+
+        showError(message) {
             this.dropdown.innerHTML = `
-                <div class="search-no-results">
-                    <i class="fas fa-user-graduate"></i> No students found
+                <div class="search-no-results" style="color: #ef4444;">
+                    <i class="fas fa-exclamation-circle"></i> ${message}
                 </div>
             `;
             this.dropdown.classList.add('active');
-            return;
+            setTimeout(() => this.closeDropdown(), 2000);
         }
 
-        // Build results HTML
-        let html = '<div class="search-results-list">';
+        closeDropdown() {
+            if (this.dropdown) this.dropdown.classList.remove('active');
+        }
+    }
 
-        students.forEach(student => {
-            // Highlight matching text in student name
-            const highlightedName = this.highlightText(student.name, this.currentSearchTerm);
-            const highlightedId = this.highlightText(student.student_id || 'No ID', this.currentSearchTerm);
-
-            html += `
-                <div class="search-result-item" data-student-id="${student.id}">
-                    <div class="search-result-name">${highlightedName}</div>
-                    <div class="search-result-details">
-                        <span><i class="fas fa-id-card"></i> ${highlightedId}</span>
-                        <span><i class="fas fa-chalkboard"></i> ${student.classes?.name || 'No Class'}</span>
-                        <span><i class="fas ${student.gender === 'Male' ? 'fa-mars' : 'fa-venus'}"></i> ${student.gender || 'N/A'}</span>
-                    </div>
-                </div>
-            `;
-        });
-
-        // Add "Load More" button if there are more results
-        if (this.hasMore) {
-            html += `
-                <div class="search-result-item load-more" style="text-align: center; color: #ffa500;">
-                    <i class="fas fa-chevron-down"></i> Load more students...
-                </div>
-            `;
+    // ==================== INITIALIZATION ====================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Student Search
+        const searchInputs = document.querySelectorAll('header input[placeholder*="Search"]');
+        if (searchInputs.length > 0) {
+            searchInputs[0].id = 'studentSearchInput';
+            searchInputs[0].placeholder = 'Search student by name or ID...';
+            window.studentSearch = new StudentSearch();
         }
 
-        html += '</div>';
-        this.dropdown.innerHTML = html;
-        this.dropdown.classList.add('active');
+        // Initial subscription check (use cache first)
+        if (!isExcludedPath()) {
+            setTimeout(() => checkSubscriptionStatus(false), 500);
+            
+            // Check every 5 minutes (but only after cache expires)
+            subscriptionCheckInterval = setInterval(() => {
+                checkSubscriptionStatus(false);
+            }, CACHE_DURATION);
+        }
+    });
 
-        // Add click handlers to result items
-        const resultItems = this.dropdown.querySelectorAll('.search-result-item');
-        resultItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-
-                // Check if it's the load more button
-                if (item.classList.contains('load-more')) {
-                    this.loadMore();
-                } else {
-                    const studentId = item.dataset.studentId;
-                    if (studentId) {
-                        this.goToStudentDetails(studentId);
+    // Check subscription when page becomes visible
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && !isExcludedPath()) {
+            // Check if cache is expired
+            const cached = localStorage.getItem(CACHE_KEY);
+            if (cached) {
+                try {
+                    const data = JSON.parse(cached);
+                    const now = Date.now();
+                    if ((now - data.timestamp) >= CACHE_DURATION) {
+                        // Cache expired, refresh
+                        checkSubscriptionStatus(true);
                     }
+                } catch (e) {
+                    checkSubscriptionStatus(true);
                 }
-            });
-        });
-    }
-
-    loadMore() {
-        if (this.isLoading) return;
-        this.performSearch(this.currentPage + 1);
-    }
-
-    highlightText(text, searchTerm) {
-        if (!text || !searchTerm) return text;
-
-        const regex = new RegExp(`(${this.escapeRegex(searchTerm)})`, 'gi');
-        return text.replace(regex, '<span class="search-highlight">$1</span>');
-    }
-
-    escapeRegex(string) {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-
-    handleKeyboardNavigation(e) {
-        const items = this.dropdown?.querySelectorAll('.search-result-item:not(.load-more)');
-        if (!items || items.length === 0) return;
-
-        let currentIndex = -1;
-
-        // Find currently focused item
-        items.forEach((item, index) => {
-            if (item.classList.contains('active-keyboard')) {
-                currentIndex = index;
-                item.classList.remove('active-keyboard');
+            } else {
+                checkSubscriptionStatus(true);
             }
-        });
-
-        switch(e.key) {
-            case 'ArrowDown':
-                e.preventDefault();
-                currentIndex = (currentIndex + 1) % items.length;
-                this.focusItem(items[currentIndex]);
-                break;
-            case 'ArrowUp':
-                e.preventDefault();
-                currentIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
-                this.focusItem(items[currentIndex]);
-                break;
-            case 'Enter':
-                e.preventDefault();
-                if (currentIndex >= 0) {
-                    const studentId = items[currentIndex].dataset.studentId;
-                    if (studentId) {
-                        this.goToStudentDetails(studentId);
-                    }
-                }
-                break;
-            case 'Escape':
-                this.closeDropdown();
-                this.searchInput.blur();
-                break;
         }
-    }
+    });
 
-    focusItem(item) {
-        if (!item) return;
-
-        // Remove active class from all items
-        const allItems = this.dropdown.querySelectorAll('.search-result-item');
-        allItems.forEach(i => i.classList.remove('active-keyboard'));
-
-        // Add active class to current item
-        item.classList.add('active-keyboard');
-
-        // Scroll into view
-        item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-
-        // Add hover style
-        item.style.backgroundColor = '#fff7ed';
-    }
-
-    showError(message) {
-        if (!this.dropdown) return;
-
-        this.dropdown.innerHTML = `
-            <div class="search-no-results" style="color: #ef4444;">
-                <i class="fas fa-exclamation-circle"></i> ${message}
-            </div>
-        `;
-        this.dropdown.classList.add('active');
-
-        // Auto close after 2 seconds
-        setTimeout(() => {
-            if (this.dropdown.classList.contains('active')) {
-                this.closeDropdown();
-            }
-        }, 2000);
-    }
-
-    closeDropdown() {
-        if (this.dropdown) {
-            this.dropdown.classList.remove('active');
+    // Refresh subscription data when returning from billing page (page was in bfcache)
+    window.addEventListener('pageshow', function(event) {
+        if (!isExcludedPath() && event.persisted) {
+            // If page was loaded from bfcache, refresh data
+            checkSubscriptionStatus(true);
         }
-    }
+    });
 
-    goToStudentDetails(studentId) {
-        if (studentId) {
-            // Clear search input and close dropdown
-            this.searchInput.value = '';
-            this.closeDropdown();
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        if (subscriptionCheckInterval) clearInterval(subscriptionCheckInterval);
+    });
 
-            // Navigate to student details page
-            window.location.href = `/student-details/${studentId}`;
+    // Keyboard navigation styles
+    const keyboardStyle = document.createElement('style');
+    keyboardStyle.textContent = `
+        .search-result-item.active-keyboard {
+            background-color: #fff7ed !important;
+            outline: none;
         }
-    }
-}
-
-// Initialize search when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Add ID to the search input in the navbar
-    const searchInputs = document.querySelectorAll('header input[placeholder*="Search"]');
-    if (searchInputs.length > 0) {
-        searchInputs[0].id = 'studentSearchInput';
-        searchInputs[0].placeholder = 'Search student by name or ID...';
-
-        // Initialize search functionality
-        window.studentSearch = new StudentSearch();
-    }
-});
-
-// Add styles for keyboard navigation
-const keyboardStyle = document.createElement('style');
-keyboardStyle.textContent = `
-    .search-result-item.active-keyboard {
-        background-color: #fff7ed !important;
-        outline: none;
-    }
-
-    .search-result-item {
-        transition: background-color 0.2s ease;
-    }
-`;
-document.head.appendChild(keyboardStyle);
+    `;
+    document.head.appendChild(keyboardStyle);
 </script>
 
 {% block extra_js %}{% endblock %}

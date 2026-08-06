@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Student Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+    .btn-gradient:hover { background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); transform: translateY(-2px); }
+    .report-table { width: 100%; border-collapse: collapse; }
+    .report-table th, .report-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    .report-table th { background-color: #f9fafb; font-weight: 600; font-size: 13px; position: sticky; top: 0; z-index: 10; }
+    .report-table td { font-size: 13px; }
+    .report-table tbody tr:hover { background-color: #fef3c7; cursor: pointer; }
+    .summary-card { background: linear-gradient(135deg, #fef9e7 0%, #fff 100%); border-left: 4px solid #f97316; }
+    .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #f97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .student-link { color: #ea580c; text-decoration: none; font-weight: 500; }
+    .student-link:hover { color: #c2410c; text-decoration: underline; }
+    .pagination-btn { padding: 8px 12px; margin: 0 4px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; color: #4b5563; transition: all 0.2s; cursor: pointer; }
+    .pagination-btn:hover:not(:disabled) { background: #f97316; color: white; border-color: #f97316; }
+    .pagination-btn.active { background: #f97316; color: white; border-color: #f97316; }
+    .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .export-btn { background: linear-gradient(135deg, #059669, #047857); }
+    .export-btn:hover { background: linear-gradient(135deg, #047857, #065f46); transform: translateY(-2px); }
+    .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .status-paid { background: #d1fae5; color: #065f46; }
+    .status-partial { background: #fef3c7; color: #92400e; }
+    .status-due { background: #fee2e2; color: #991b1b; }
+    .search-input { padding-left: 36px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">Student Report</h2>
+                <p class="text-gray-500 text-sm mt-1">Individual student fee status and payment history</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="loadReport()" class="btn-gradient px-5 py-2.5 rounded-lg text-white font-medium">
+                    <i class="fas fa-search mr-2"></i>Generate Report
+                </button>
+                <button onclick="exportReport()" id="export_btn" class="export-btn px-5 py-2.5 rounded-lg text-white font-medium" style="display: none;">
+                    <i class="fas fa-file-excel mr-2"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div class="flex flex-wrap gap-4 items-end">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                <select id="class_filter" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border">
+                    <option value="">All Classes</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="relative">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Search Student</label>
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="search_input" placeholder="Search by name or ID..." 
+                       class="search-input rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border w-64">
+            </div>
+            <div class="flex-1"></div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div id="summary_cards" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" style="display: none;">
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div><p class="text-sm text-gray-500 mb-1">Total Students</p><p id="total_students" class="text-2xl font-bold text-gray-800">0</p></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div><p class="text-sm text-gray-500 mb-1">Total Invoiced</p><p id="total_invoiced" class="text-2xl font-bold text-gray-800">UGX 0</p></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div><p class="text-sm text-gray-500 mb-1">Total Paid</p><p id="total_paid" class="text-2xl font-bold text-green-600">UGX 0</p></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div><p class="text-sm text-gray-500 mb-1">Total Balance</p><p id="total_balance" class="text-2xl font-bold text-red-600">UGX 0</p></div>
+        </div>
+    </div>
+
+    <!-- Report Content -->
+    <div id="report_content" class="bg-white rounded-xl shadow-sm p-6 min-h-[400px]">
+        <div class="text-center py-12">
+            <i class="fas fa-user-graduate text-gray-300 text-5xl mb-4"></i>
+            <p class="text-gray-500">Select filters and click Generate Report</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+    let currentPage = 1;
+    let currentData = null;
+    let searchTimeout = null;
+
+    function loadReport() {
+        const classId = document.getElementById('class_filter').value;
+        const search = document.getElementById('search_input').value;
+
+        document.getElementById('report_content').innerHTML = `
+            <div class="text-center py-12">
+                <div class="loading-spinner mx-auto mb-4"></div>
+                <p class="text-gray-500">Loading report...</p>
+            </div>
+        `;
+        document.getElementById('export_btn').style.display = 'none';
+        document.getElementById('summary_cards').style.display = 'none';
+
+        $.ajax({
+            url: '/center/api/student-report',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                class_id: classId,
+                search: search,
+                page: currentPage
+            }),
+            success: function(response) {
+                if (response.success) {
+                    currentData = response;
+                    displayReport(response);
+                    document.getElementById('export_btn').style.display = 'inline-flex';
+                    document.getElementById('summary_cards').style.display = 'grid';
+                    document.getElementById('total_students').textContent = response.summary.total_students;
+                    document.getElementById('total_invoiced').textContent = `UGX ${response.summary.total_invoiced.toLocaleString()}`;
+                    document.getElementById('total_paid').textContent = `UGX ${response.summary.total_paid.toLocaleString()}`;
+                    document.getElementById('total_balance').textContent = `UGX ${response.summary.total_balance.toLocaleString()}`;
+                } else {
+                    showError(response.message || 'Failed to load report');
+                }
+            },
+            error: function() {
+                showError('An error occurred while loading the report');
+            }
+        });
+    }
+
+    function displayReport(data) {
+        let html = '';
+        
+        if (data.data && data.data.length > 0) {
+            html += '<div class="overflow-x-auto"><table class="report-table">';
+            html += '<thead><tr><th>Student ID</th><th>Student Name</th><th>Class</th><th>Parent Contact</th><th>Total Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+            
+            data.data.forEach(student => {
+                let statusClass = student.status === 'Paid' ? 'status-paid' : (student.status === 'Partial' ? 'status-partial' : 'status-due');
+                html += `<tr>
+                    <td>${student.student_id}</td>
+                    <td><a href="/student-details/${student.student_uuid}" class="student-link" target="_blank">${student.student_name}</a></td>
+                    <td>${student.class}</td>
+                    <td>${student.parent_contact}</td>
+                    <td>UGX ${student.total_paid.toLocaleString()}</td>
+                    <td class="font-semibold">UGX ${student.balance.toLocaleString()}</td>
+                    <td><span class="status-badge ${statusClass}">${student.status}</span></td>
+                    <td><a href="/student-details/${student.student_uuid}" target="_blank" class="text-blue-600 hover:text-blue-800"><i class="fas fa-user"></i> Profile</a></td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+        } else {
+            html = '<div class="text-center py-12"><p class="text-gray-500">No students found</p></div>';
+        }
+
+        if (data.pagination && data.pagination.total_pages > 1) {
+            html += '<div class="flex justify-center items-center mt-6 gap-2 flex-wrap">';
+            html += `<button onclick="goToPage(${data.pagination.current_page - 1})" class="pagination-btn" ${data.pagination.current_page === 1 ? 'disabled' : ''}>Previous</button>`;
+            
+            let startPage = Math.max(1, data.pagination.current_page - 2);
+            let endPage = Math.min(data.pagination.total_pages, startPage + 4);
+            
+            if (startPage > 1) {
+                html += `<button onclick="goToPage(1)" class="pagination-btn">1</button>`;
+                if (startPage > 2) html += '<span class="px-2">...</span>';
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button onclick="goToPage(${i})" class="pagination-btn ${i === data.pagination.current_page ? 'active' : ''}">${i}</button>`;
+            }
+            
+            if (endPage < data.pagination.total_pages) {
+                if (endPage < data.pagination.total_pages - 1) html += '<span class="px-2">...</span>';
+                html += `<button onclick="goToPage(${data.pagination.total_pages})" class="pagination-btn">${data.pagination.total_pages}</button>`;
+            }
+            
+            html += `<button onclick="goToPage(${data.pagination.current_page + 1})" class="pagination-btn" ${data.pagination.current_page === data.pagination.total_pages ? 'disabled' : ''}>Next</button>`;
+            html += `<span class="text-sm text-gray-500 ml-4">Page ${data.pagination.current_page} of ${data.pagination.total_pages}</span>`;
+            html += '</div>';
+        }
+
+        document.getElementById('report_content').innerHTML = html;
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        loadReport();
+    }
+
+    function exportReport() {
+        if (!currentData) return alert('No data to export');
+        
+        $.ajax({
+            url: '/center/export',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                report_type: 'student_report',
+                data: currentData.data,
+                start_date: '',
+                end_date: ''
+            }),
+            xhrFields: { responseType: 'blob' },
+            success: function(blob) {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `student_report_${new Date().toISOString().slice(0,10)}.xlsx`;
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+            error: function() {
+                alert('Failed to export report');
+            }
+        });
+    }
+
+    function showError(message) {
+        document.getElementById('report_content').innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center text-red-600">${message}</div>
+        `;
+    }
+
+    // Search with debounce
+    document.getElementById('search_input').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            currentPage = 1;
+            loadReport();
+        }, 500);
+    });
+
+    $(document).ready(function() {
+        loadReport();
+    });
+</script>
+{% endblock %}
