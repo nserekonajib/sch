@@ -36,3 +36,4 @@ docxtpl
 xlrd
 xlwt
 flask[async]
+flask_cors
