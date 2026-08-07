@@ -754,11 +754,13 @@ def get_income_expense_report():
     except Exception as e:
         logger.error(f"Error getting income/expense report: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
+    
+    
 @center_bp.route('/api/income-statement', methods=['POST'])
 @login_required
 def get_income_statement():
-    """Get Income Statement (Profit & Loss) - FIXED: includes payment_date"""
+    """Get Income Statement (Profit & Loss) with proper category grouping from chart_of_accounts"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     
@@ -767,51 +769,124 @@ def get_income_statement():
     
     try:
         data = request.get_json()
-        start_date = data.get('start_date', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
+        start_date = data.get('start_date', (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d'))
         end_date = data.get('end_date', datetime.now().strftime('%Y-%m-%d'))
         page = data.get('page', 1)
         per_page = min(data.get('per_page', 20), 100)
         
-        # FIXED: Added payment_date to select fields for payments
-        queries = [
-            ('payments', {
+        # Fetch payments (school fees)
+        payments = batch_query('payments', 
+            {
                 'institute_id': institute_id,
                 'payment_date': {'gte': start_date, 'lte': end_date}
-            }, 'amount, payment_date, payment_method, students(name, student_id)'),
-            ('income_transactions', {
-                'institute_id': institute_id,
-                'transaction_date': {'gte': start_date, 'lte': end_date}
-            }, 'amount, transaction_date, description, payment_method'),
-            ('expense_transactions', {
-                'institute_id': institute_id,
-                'transaction_date': {'gte': start_date, 'lte': end_date}
-            }, 'amount, transaction_date, description, payment_method')
-        ]
+            },
+            'amount, payment_date, payment_method, students(name, student_id)'
+        )
         
-        payments, other_income, expenses = parallel_fetch(queries)
+        # Fetch income transactions with chart_of_accounts join
+        income_transactions = batch_query('income_transactions',
+            {
+                'institute_id': institute_id,
+                'transaction_date': {'gte': start_date, 'lte': end_date}
+            },
+            'amount, transaction_date, description, payment_method, account_id'
+        )
+        
+        # Fetch expense transactions with chart_of_accounts join
+        expense_transactions = batch_query('expense_transactions',
+            {
+                'institute_id': institute_id,
+                'transaction_date': {'gte': start_date, 'lte': end_date}
+            },
+            'amount, transaction_date, description, payment_method, account_id'
+        )
+        
+        # Get all chart of accounts for this institute to map account_id to account_name
+        chart_response = supabase.table('chart_of_accounts')\
+            .select('id, account_name, account_type')\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        chart_of_accounts = chart_response.data if chart_response.data else []
+        
+        # Build lookup dictionary: account_id -> account_name
+        account_name_map = {}
+        account_type_map = {}
+        for acc in chart_of_accounts:
+            account_name_map[acc['id']] = acc['account_name']
+            account_type_map[acc['id']] = acc['account_type']
         
         # Calculate totals
         fee_income = sum(float(p['amount']) for p in payments)
-        other_income_total = sum(float(i['amount']) for i in other_income)
+        other_income_total = sum(float(i['amount']) for i in income_transactions)
         total_income = fee_income + other_income_total
-        total_expenses = sum(float(e['amount']) for e in expenses)
+        total_expenses = sum(float(e['amount']) for e in expense_transactions)
         net_income = total_income - total_expenses
         
-        # Group income by category (using payment method as proxy for category)
+        # Group income by category - use account_name from chart_of_accounts
         income_by_category = {'School Fees': fee_income}
-        for inc in other_income:
-            # Use description or payment_method as category
-            category = inc.get('description', 'Other Income')[:30]
+        for inc in income_transactions:
+            account_id = inc.get('account_id')
+            if account_id and account_id in account_name_map:
+                category = account_name_map[account_id]
+            else:
+                category = inc.get('description', 'Other Income')[:30]
             income_by_category[category] = income_by_category.get(category, 0) + float(inc['amount'])
         
-        # Group expenses by category (using description as category)
+        # Group expenses by category - use account_name from chart_of_accounts
         expenses_by_category = {}
-        for exp in expenses:
-            category = exp.get('description', 'General Expense')[:30]
-            expenses_by_category[category] = expenses_by_category.get(category, 0) + float(exp['amount'])
+        expense_groups = {}
         
-        # Build transaction list for display
-        income_transactions = [{
+        for exp in expense_transactions:
+            account_id = exp.get('account_id')
+            if account_id and account_id in account_name_map:
+                category = account_name_map[account_id]
+            else:
+                # Fallback: try to extract category from description
+                desc = exp.get('description', 'General Expense')
+                if desc.lower().startswith('salary'):
+                    category = 'Salaries & Wages'
+                elif desc.lower().startswith('rent'):
+                    category = 'Rent'
+                elif desc.lower().startswith('utility'):
+                    category = 'Utilities'
+                elif desc.lower().startswith('transport'):
+                    category = 'Transport'
+                elif desc.lower().startswith('stationery'):
+                    category = 'Stationery'
+                elif desc.lower().startswith('maintenance'):
+                    category = 'Maintenance'
+                elif desc.lower().startswith('posho') or desc.lower().startswith('flour') or desc.lower().startswith('sweet potatoes'):
+                    category = 'Food Supplies'
+                else:
+                    category = 'General Expenses'
+            
+            expenses_by_category[category] = expenses_by_category.get(category, 0) + float(exp['amount'])
+            
+            # Build expense groups with transactions
+            if category not in expense_groups:
+                expense_groups[category] = []
+            expense_groups[category].append({
+                'date': exp.get('transaction_date', exp.get('created_at', '')),
+                'description': exp.get('description', ''),
+                'amount': float(exp['amount'])
+            })
+        
+        # Convert expense groups to sorted list
+        expense_groups_list = []
+        for category, transactions in expense_groups.items():
+            expense_groups_list.append({
+                'category': category,
+                'total': expenses_by_category.get(category, 0),
+                'transactions': transactions,
+                'count': len(transactions)
+            })
+        
+        # Sort expense groups by total (highest first)
+        expense_groups_list.sort(key=lambda x: x['total'], reverse=True)
+        
+        # Build income transactions for display
+        income_transactions_list = [{
             'date': p.get('payment_date', p.get('created_at', '')),
             'description': f"Fee payment - {p['students']['name']}",
             'amount': float(p['amount']),
@@ -820,34 +895,64 @@ def get_income_statement():
             'payment_method': p.get('payment_method', 'cash')
         } for p in payments]
         
-        income_transactions.extend([{
-            'date': i.get('transaction_date', i.get('created_at', '')),
-            'description': i.get('description', 'Other Income'),
-            'amount': float(i['amount']),
-            'type': 'income',
-            'category': 'Other Income',
-            'payment_method': i.get('payment_method', 'cash')
-        } for i in other_income])
+        for inc in income_transactions:
+            account_id = inc.get('account_id')
+            if account_id and account_id in account_name_map:
+                cat_name = account_name_map[account_id]
+            else:
+                cat_name = inc.get('description', 'Other Income')[:30]
+            
+            income_transactions_list.append({
+                'date': inc.get('transaction_date', inc.get('created_at', '')),
+                'description': inc.get('description', 'Other Income'),
+                'amount': float(inc['amount']),
+                'type': 'income',
+                'category': cat_name,
+                'payment_method': inc.get('payment_method', 'cash')
+            })
         
-        expense_transactions = [{
-            'date': e.get('transaction_date', e.get('created_at', '')),
-            'description': e.get('description', 'Expense'),
-            'amount': float(e['amount']),
-            'type': 'expense',
-            'category': 'Expense',
-            'payment_method': e.get('payment_method', 'cash')
-        } for e in expenses]
+        # Sort income transactions by date
+        income_transactions_list.sort(key=lambda x: x['date'], reverse=True)
         
-        all_transactions = income_transactions + expense_transactions
-        all_transactions.sort(key=lambda x: x['date'], reverse=True)
+        # Combine all transactions for the table view
+        all_transactions = []
         
+        # Add income transactions
+        for t in income_transactions_list:
+            all_transactions.append({
+                'date': t['date'],
+                'description': t['description'],
+                'amount': t['amount'],
+                'type': 'income',
+                'category': t['category'],
+                'payment_method': t.get('payment_method', 'cash')
+            })
+        
+        # Add expense transactions grouped - only headers in main view
+        for group in expense_groups_list:
+            # Add a header row for the category
+            all_transactions.append({
+                'date': '',
+                'description': f'--- {group["category"].upper()} ---',
+                'amount': group['total'],
+                'type': 'expense_header',
+                'category': group['category'],
+                'payment_method': '',
+                'is_header': True,
+                'transaction_count': group['count']
+            })
+        
+        # Sort transactions by date (most recent first)
+        all_transactions.sort(key=lambda x: x['date'] if x['date'] else 'zzzzzzzzz', reverse=True)
+        
+        # Apply pagination to transactions
         total_items = len(all_transactions)
         total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 1
         start_idx = (page - 1) * per_page
         end_idx = min(start_idx + per_page, total_items)
         paginated_data = all_transactions[start_idx:end_idx]
         
-        # Prepare income statement data
+        # Prepare income statement data with proper grouping
         income_statement = {
             'income': {
                 'school_fees': fee_income,
@@ -857,10 +962,13 @@ def get_income_statement():
             },
             'expenses': {
                 'total_expenses': total_expenses,
-                'by_category': expenses_by_category
+                'by_category': expenses_by_category,
+                'groups': expense_groups_list
             },
             'net_income': net_income,
-            'profit_margin': (net_income / total_income * 100) if total_income > 0 else 0
+            'profit_margin': (net_income / total_income * 100) if total_income > 0 else 0,
+            'income_count': len(payments) + len(income_transactions),
+            'expense_count': len(expense_transactions)
         }
         
         return jsonify({
@@ -873,7 +981,9 @@ def get_income_statement():
                 'total_income': total_income,
                 'total_expenses': total_expenses,
                 'net_income': net_income,
-                'profit_margin': income_statement['profit_margin']
+                'profit_margin': income_statement['profit_margin'],
+                'income_count': income_statement['income_count'],
+                'expense_count': income_statement['expense_count']
             },
             'pagination': {
                 'current_page': page,
@@ -888,7 +998,7 @@ def get_income_statement():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
 @center_bp.route('/api/student-report', methods=['POST'])
 @login_required
 def get_student_report():

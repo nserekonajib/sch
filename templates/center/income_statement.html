@@ -7,25 +7,175 @@
     .btn-gradient { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
     .btn-gradient:hover { background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); transform: translateY(-2px); }
     .report-table { width: 100%; border-collapse: collapse; }
-    .report-table th, .report-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-    .report-table th { background-color: #f9fafb; font-weight: 600; font-size: 13px; position: sticky; top: 0; z-index: 10; }
+    .report-table th, .report-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    .report-table th { background-color: #f9fafb; font-weight: 600; font-size: 12px; position: sticky; top: 0; z-index: 10; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; }
     .report-table td { font-size: 13px; }
     .report-table tbody tr:hover { background-color: #f3f4f6; }
     .summary-card { background: linear-gradient(135deg, #fef9e7 0%, #fff 100%); border-left: 4px solid #f97316; }
     .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #f97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .pagination-btn { padding: 8px 12px; margin: 0 4px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; color: #4b5563; transition: all 0.2s; cursor: pointer; }
+    .pagination-btn { padding: 8px 12px; margin: 0 4px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; color: #4b5563; transition: all 0.2s; cursor: pointer; font-size: 13px; }
     .pagination-btn:hover:not(:disabled) { background: #f97316; color: white; border-color: #f97316; }
     .pagination-btn.active { background: #f97316; color: white; border-color: #f97316; }
     .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .export-btn { background: linear-gradient(135deg, #059669, #047857); }
     .export-btn:hover { background: linear-gradient(135deg, #047857, #065f46); transform: translateY(-2px); }
-    .income-statement-section { background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-    .income-statement-section h3 { font-size: 16px; font-weight: 600; color: #1f2937; margin-bottom: 12px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
-    .income-statement-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6; }
-    .income-statement-row.total { font-weight: 700; font-size: 16px; border-top: 2px solid #d1d5db; border-bottom: none; padding-top: 12px; margin-top: 8px; }
-    .income-statement-row.net { font-weight: 700; font-size: 18px; color: #16a34a; border-top: 3px solid #16a34a; padding-top: 12px; margin-top: 8px; }
-    .income-statement-row.net.loss { color: #dc2626; border-top-color: #dc2626; }
+    
+    /* Income Statement Professional Styles */
+    .statement-section { background: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 20px; }
+    .statement-section-header { background: #f8fafc; padding: 14px 20px; border-bottom: 2px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+    .statement-section-header h3 { font-size: 15px; font-weight: 700; color: #1f2937; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .statement-section-header .badge { font-size: 11px; font-weight: 600; padding: 2px 12px; border-radius: 12px; }
+    .badge-income { background: #d1fae5; color: #065f46; }
+    .badge-expense { background: #fee2e2; color: #991b1b; }
+    
+    .statement-row { display: flex; justify-content: space-between; padding: 8px 20px; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+    .statement-row:hover { background: #fafafa; }
+    .statement-row .label { color: #4b5563; }
+    .statement-row .amount { font-weight: 500; color: #1f2937; }
+    .statement-row .amount.positive { color: #16a34a; }
+    .statement-row .amount.negative { color: #dc2626; }
+    
+    .statement-row.sub-total { font-weight: 600; background: #f9fafb; border-top: 2px solid #d1d5db; padding-top: 10px; margin-top: 4px; }
+    .statement-row.sub-total .label { color: #1f2937; }
+    .statement-row.sub-total .amount { font-weight: 700; }
+    
+    .statement-row.grand-total { font-weight: 700; font-size: 16px; background: #f0fdf4; border-top: 3px solid #16a34a; padding: 12px 20px; }
+    .statement-row.grand-total.loss { background: #fef2f2; border-top-color: #dc2626; }
+    .statement-row.grand-total .label { color: #1f2937; }
+    .statement-row.grand-total .amount { font-size: 18px; }
+    .statement-row.grand-total .amount.positive { color: #16a34a; }
+    .statement-row.grand-total .amount.negative { color: #dc2626; }
+    
+    .profit-margin { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .profit-margin.positive { background: #d1fae5; color: #065f46; }
+    .profit-margin.negative { background: #fee2e2; color: #991b1b; }
+    
+    .category-header-row { background: #f3f4f6; font-weight: 600; color: #374151; cursor: pointer; }
+    .category-header-row:hover { background: #e5e7eb; }
+    .category-header-row td { padding: 8px 12px; }
+    .category-header-row .category-total { font-weight: 700; color: #1f2937; }
+    .category-header-row .category-count { font-size: 12px; color: #6b7280; font-weight: 400; }
+    
+    .income-row td { color: #065f46; }
+    .expense-row td { color: #991b1b; }
+    
+    .transaction-count { font-size: 12px; color: #6b7280; margin-left: 12px; }
+    
+    .summary-stats { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
+    .summary-stat { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #4b5563; }
+    .summary-stat strong { color: #1f2937; }
+    .summary-stat .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot-income { background: #16a34a; }
+    .dot-expense { background: #dc2626; }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-overlay.active {
+        display: flex;
+    }
+    .modal-container {
+        background: white;
+        border-radius: 16px;
+        max-width: 700px;
+        width: 90%;
+        max-height: 85vh;
+        overflow: hidden;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+        animation: slideUp 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    .modal-header {
+        padding: 18px 24px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8fafc;
+    }
+    .modal-header h3 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0;
+    }
+    .modal-header .close-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: #9ca3af;
+        cursor: pointer;
+        transition: color 0.2s;
+        padding: 0 8px;
+    }
+    .modal-header .close-btn:hover {
+        color: #1f2937;
+    }
+    .modal-body {
+        padding: 20px 24px;
+        overflow-y: auto;
+        max-height: 65vh;
+    }
+    .modal-body .modal-total {
+        font-size: 16px;
+        font-weight: 700;
+        color: #dc2626;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f3f4f6;
+    }
+    .modal-body .modal-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid #f3f4f6;
+        font-size: 13px;
+    }
+    .modal-body .modal-row .date {
+        color: #6b7280;
+        width: 25%;
+    }
+    .modal-body .modal-row .desc {
+        color: #1f2937;
+        width: 55%;
+    }
+    .modal-body .modal-row .amt {
+        font-weight: 500;
+        color: #1f2937;
+        width: 20%;
+        text-align: right;
+    }
+    .modal-body .modal-row:hover {
+        background: #f9fafb;
+    }
+    .modal-footer {
+        padding: 12px 24px;
+        border-top: 1px solid #e5e7eb;
+        background: #f8fafc;
+        text-align: right;
+        font-size: 13px;
+        color: #6b7280;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(30px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
 </style>
 {% endblock %}
 
@@ -35,12 +185,12 @@
     <div class="mb-6">
         <div class="flex items-center justify-between">
             <div>
-                <h2 class="text-2xl font-bold text-gray-800">Income Statement (Profit & Loss)</h2>
-                <p class="text-gray-500 text-sm mt-1">Detailed profit and loss analysis</p>
+                <h2 class="text-2xl font-bold text-gray-800">Income Statement</h2>
+                <p class="text-gray-500 text-sm mt-1">Profit & Loss statement with categorized expenses</p>
             </div>
             <div class="flex gap-2">
                 <button onclick="loadReport()" class="btn-gradient px-5 py-2.5 rounded-lg text-white font-medium">
-                    <i class="fas fa-search mr-2"></i>Generate Report
+                    <i class="fas fa-sync-alt mr-2"></i>Refresh
                 </button>
                 <button onclick="exportReport()" id="export_btn" class="export-btn px-5 py-2.5 rounded-lg text-white font-medium" style="display: none;">
                     <i class="fas fa-file-excel mr-2"></i>Export
@@ -60,12 +210,17 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
                 <input type="date" id="end_date" class="rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border">
             </div>
+            <div>
+                <button onclick="loadReport()" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium transition-all">
+                    <i class="fas fa-search mr-2"></i>Generate Report
+                </button>
+            </div>
             <div class="flex-1"></div>
         </div>
     </div>
 
     <!-- Summary Cards -->
-    <div id="summary_cards" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" style="display: none;">
+    <div id="summary_cards" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" style="display: none;">
         <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
             <div><p class="text-sm text-gray-500 mb-1">Total Revenue</p><p id="total_revenue" class="text-2xl font-bold text-green-600">UGX 0</p></div>
         </div>
@@ -74,6 +229,9 @@
         </div>
         <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
             <div><p class="text-sm text-gray-500 mb-1">Net Income</p><p id="net_income" class="text-2xl font-bold text-gray-800">UGX 0</p></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 summary-card">
+            <div><p class="text-sm text-gray-500 mb-1">Profit Margin</p><p id="profit_margin" class="text-2xl font-bold text-gray-800">0%</p></div>
         </div>
     </div>
 
@@ -86,15 +244,33 @@
     </div>
 </div>
 
+<!-- Category Details Modal -->
+<div id="categoryModal" class="modal-overlay">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3 id="modalCategoryTitle">Category Details</h3>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Content dynamically inserted -->
+        </div>
+        <div class="modal-footer">
+            <span id="modalTransactionCount">0 transactions</span>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
     let currentPage = 1;
     let currentData = null;
+    let categoryData = null;
 
+    // Set default date range to 3 months
     const today = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-    document.getElementById('start_date').value = thirtyDaysAgo.toISOString().split('T')[0];
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(today.getMonth() - 3);
+    document.getElementById('start_date').value = threeMonthsAgo.toISOString().split('T')[0];
     document.getElementById('end_date').value = today.toISOString().split('T')[0];
 
     function loadReport() {
@@ -127,12 +303,18 @@
             success: function(response) {
                 if (response.success) {
                     currentData = response;
+                    categoryData = response.income_statement.expenses.groups;
                     displayReport(response);
                     document.getElementById('export_btn').style.display = 'inline-flex';
                     document.getElementById('summary_cards').style.display = 'grid';
-                    document.getElementById('total_revenue').textContent = `UGX ${response.summary.total_income.toLocaleString()}`;
-                    document.getElementById('total_expenses').textContent = `UGX ${response.summary.total_expenses.toLocaleString()}`;
-                    document.getElementById('net_income').textContent = `UGX ${response.summary.net_income.toLocaleString()}`;
+                    
+                    const s = response.summary;
+                    document.getElementById('total_revenue').textContent = `UGX ${s.total_income.toLocaleString()}`;
+                    document.getElementById('total_expenses').textContent = `UGX ${s.total_expenses.toLocaleString()}`;
+                    document.getElementById('net_income').textContent = `UGX ${s.net_income.toLocaleString()}`;
+                    
+                    let marginColor = s.profit_margin >= 0 ? 'text-green-600' : 'text-red-600';
+                    document.getElementById('profit_margin').innerHTML = `<span class="${marginColor}">${s.profit_margin.toFixed(1)}%</span>`;
                 } else {
                     showError(response.message || 'Failed to load report');
                 }
@@ -148,88 +330,204 @@
         const is = data.income_statement;
         
         if (is) {
-            // Income Section
-            html += '<div class="income-statement-section">';
-            html += '<h3><i class="fas fa-arrow-up text-green-500 mr-2"></i>Revenue / Income</h3>';
+            // Summary Stats
+            html += `<div class="summary-stats">
+                <span class="summary-stat"><span class="dot dot-income"></span> <strong>${is.income_count}</strong> Income Transactions</span>
+                <span class="summary-stat"><span class="dot dot-expense"></span> <strong>${is.expense_count}</strong> Expense Transactions</span>
+                <span class="summary-stat">Period: <strong>${data.start_date}</strong> to <strong>${data.end_date}</strong></span>
+            </div>`;
+            
+            // INCOME SECTION
+            html += `<div class="statement-section">`;
+            html += `<div class="statement-section-header">
+                <h3><i class="fas fa-arrow-up text-green-500"></i> Revenue / Income</h3>
+                <span class="badge badge-income">${Object.keys(is.income.by_category).length} Categories</span>
+            </div>`;
             
             for (const [category, amount] of Object.entries(is.income.by_category)) {
-                html += `<div class="income-statement-row"><span>${category}</span><span>UGX ${amount.toLocaleString()}</span></div>`;
+                if (amount > 0) {
+                    html += `<div class="statement-row">
+                        <span class="label">${category}</span>
+                        <span class="amount positive">UGX ${amount.toLocaleString()}</span>
+                    </div>`;
+                }
             }
             
-            html += `<div class="income-statement-row total"><span>Total Revenue</span><span>UGX ${is.income.total_income.toLocaleString()}</span></div>`;
-            html += '</div>';
-
-            // Expenses Section
-            html += '<div class="income-statement-section">';
-            html += '<h3><i class="fas fa-arrow-down text-red-500 mr-2"></i>Expenses</h3>';
+            html += `<div class="statement-row sub-total">
+                <span class="label">Total Revenue</span>
+                <span class="amount positive">UGX ${is.income.total_income.toLocaleString()}</span>
+            </div>`;
+            html += `</div>`;
             
-            for (const [category, amount] of Object.entries(is.expenses.by_category)) {
-                html += `<div class="income-statement-row"><span>${category}</span><span>UGX ${amount.toLocaleString()}</span></div>`;
+            // EXPENSES SECTION - GROUPED BY CATEGORY (Clickable)
+            html += `<div class="statement-section">`;
+            html += `<div class="statement-section-header">
+                <h3><i class="fas fa-arrow-down text-red-500"></i> Expenses</h3>
+                <span class="badge badge-expense">${is.expenses.groups ? is.expenses.groups.length : 0} Categories</span>
+            </div>`;
+            
+            if (is.expenses.groups && is.expenses.groups.length > 0) {
+                for (const group of is.expenses.groups) {
+                    html += `<div class="statement-row" style="background: #f8fafc; font-weight: 600; cursor: pointer;" onclick="showCategoryDetails('${group.category}')">
+                        <span class="label">${group.category} <span class="category-count">(${group.count} transactions)</span></span>
+                        <span class="amount negative">UGX ${group.total.toLocaleString()}</span>
+                    </div>`;
+                }
+            } else {
+                html += `<div class="statement-row" style="color: #9ca3af; padding: 12px 20px;">
+                    <span class="label">No expenses recorded for this period</span>
+                    <span class="amount">UGX 0</span>
+                </div>`;
             }
             
-            html += `<div class="income-statement-row total"><span>Total Expenses</span><span>UGX ${is.expenses.total_expenses.toLocaleString()}</span></div>`;
-            html += '</div>';
-
-            // Net Income
-            let netClass = 'net';
+            html += `<div class="statement-row sub-total">
+                <span class="label">Total Expenses</span>
+                <span class="amount negative">UGX ${is.expenses.total_expenses.toLocaleString()}</span>
+            </div>`;
+            html += `</div>`;
+            
+            // NET INCOME
+            let netClass = 'grand-total';
+            let amountClass = is.net_income >= 0 ? 'positive' : 'negative';
+            let netLabel = is.net_income >= 0 ? 'Net Profit' : 'Net Loss';
             if (is.net_income < 0) netClass += ' loss';
-            html += `<div class="income-statement-section">`;
-            html += `<div class="income-statement-row ${netClass}"><span>Net Income</span><span>UGX ${is.net_income.toLocaleString()}</span></div>`;
-            html += `<div style="margin-top:8px;font-size:14px;color:#6b7280;">Profit Margin: ${is.profit_margin.toFixed(1)}%</div>`;
-            html += '</div>';
-
-            // Transactions Table
+            
+            html += `<div class="statement-section" style="border: 2px solid ${is.net_income >= 0 ? '#16a34a' : '#dc2626'};">`;
+            html += `<div class="statement-row ${netClass}">
+                <span class="label">${netLabel}</span>
+                <span class="amount ${amountClass}">UGX ${is.net_income.toLocaleString()}</span>
+            </div>`;
+            html += `<div style="padding: 8px 20px 12px; display: flex; justify-content: space-between; align-items: center; background: ${is.net_income >= 0 ? '#f0fdf4' : '#fef2f2'}; border-top: 1px solid ${is.net_income >= 0 ? '#bbf7d0' : '#fecaca'};">`;
+            html += `<span style="font-size: 13px; color: #4b5563;">Profit Margin</span>`;
+            let marginClass = is.profit_margin >= 0 ? 'positive' : 'negative';
+            html += `<span class="profit-margin ${marginClass}">${is.profit_margin.toFixed(1)}%</span>`;
+            html += `</div>`;
+            html += `</div>`;
+            
+            // TRANSACTIONS TABLE - Simplified with only category headers
             if (data.transactions && data.transactions.length > 0) {
-                html += '<h3 class="font-bold text-gray-800 mt-6 mb-4"><i class="fas fa-list mr-2"></i>All Transactions</h3>';
-                html += '<div class="overflow-x-auto"><table class="report-table">';
-                html += '<thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th></tr></thead><tbody>';
+                html += `<div style="margin-top: 24px;">`;
+                html += `<h4 class="font-bold text-gray-800 mb-3"><i class="fas fa-list mr-2"></i>All Transactions</h4>`;
+                html += `<div class="overflow-x-auto"><table class="report-table">`;
+                html += `<thead><tr>
+                    <th style="width: 15%;">Date</th>
+                    <th style="width: 45%;">Description</th>
+                    <th style="width: 15%;">Category</th>
+                    <th style="width: 10%;">Type</th>
+                    <th style="width: 15%; text-align: right;">Amount</th>
+                </tr></thead><tbody>`;
                 
-                data.transactions.forEach(trans => {
-                    let rowClass = trans.type === 'income' ? 'text-green-600' : 'text-red-600';
-                    html += `<tr class="${rowClass}">
-                        <td>${trans.date}</td>
-                        <td>${trans.description}</td>
-                        <td><span class="capitalize">${trans.category}</span></td>
-                        <td><span class="capitalize font-semibold">${trans.type}</span></td>
-                        <td class="font-semibold">UGX ${trans.amount.toLocaleString()}</td>
-                    </tr>`;
-                });
+                for (const trans of data.transactions) {
+                    if (trans.is_header) {
+                        html += `<tr class="category-header-row" onclick="showCategoryDetails('${trans.category}')">
+                            <td colspan="5">${trans.description} <span class="category-count">(${trans.transaction_count || 0} transactions)</span></td>
+                        </tr>`;
+                    } else {
+                        let rowClass = trans.type === 'income' ? 'income-row' : 'expense-row';
+                        let amountDisplay = trans.amount.toLocaleString();
+                        html += `<tr class="${rowClass}">
+                            <td>${trans.date || '-'}</td>
+                            <td>${trans.description}</td>
+                            <td><span class="capitalize">${trans.category}</span></td>
+                            <td><span class="capitalize font-semibold">${trans.type === 'income' ? 'Income' : 'Expense'}</span></td>
+                            <td style="text-align: right; font-weight: 600;">UGX ${amountDisplay}</td>
+                        </tr>`;
+                    }
+                }
                 
                 html += '</tbody></table></div>';
+                
+                // Pagination
+                if (data.pagination && data.pagination.total_pages > 1) {
+                    html += '<div class="flex justify-center items-center mt-6 gap-2 flex-wrap">';
+                    html += `<button onclick="goToPage(${data.pagination.current_page - 1})" class="pagination-btn" ${data.pagination.current_page === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i> Previous</button>`;
+                    
+                    let startPage = Math.max(1, data.pagination.current_page - 2);
+                    let endPage = Math.min(data.pagination.total_pages, startPage + 4);
+                    
+                    if (startPage > 1) {
+                        html += `<button onclick="goToPage(1)" class="pagination-btn">1</button>`;
+                        if (startPage > 2) html += '<span class="px-2 text-gray-400">...</span>';
+                    }
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                        html += `<button onclick="goToPage(${i})" class="pagination-btn ${i === data.pagination.current_page ? 'active' : ''}">${i}</button>`;
+                    }
+                    
+                    if (endPage < data.pagination.total_pages) {
+                        if (endPage < data.pagination.total_pages - 1) html += '<span class="px-2 text-gray-400">...</span>';
+                        html += `<button onclick="goToPage(${data.pagination.total_pages})" class="pagination-btn">${data.pagination.total_pages}</button>`;
+                    }
+                    
+                    html += `<button onclick="goToPage(${data.pagination.current_page + 1})" class="pagination-btn" ${data.pagination.current_page === data.pagination.total_pages ? 'disabled' : ''}>Next <i class="fas fa-chevron-right"></i></button>`;
+                    html += `<span class="text-sm text-gray-500 ml-4">${data.pagination.current_page} of ${data.pagination.total_pages} (${data.pagination.total_items} items)</span>`;
+                    html += '</div>';
+                }
+                
+                html += `</div>`;
             }
         } else {
             html = '<div class="text-center py-12"><p class="text-gray-500">No data available</p></div>';
         }
 
-        // Pagination
-        if (data.pagination && data.pagination.total_pages > 1) {
-            html += '<div class="flex justify-center items-center mt-6 gap-2 flex-wrap">';
-            html += `<button onclick="goToPage(${data.pagination.current_page - 1})" class="pagination-btn" ${data.pagination.current_page === 1 ? 'disabled' : ''}>Previous</button>`;
-            
-            let startPage = Math.max(1, data.pagination.current_page - 2);
-            let endPage = Math.min(data.pagination.total_pages, startPage + 4);
-            
-            if (startPage > 1) {
-                html += `<button onclick="goToPage(1)" class="pagination-btn">1</button>`;
-                if (startPage > 2) html += '<span class="px-2">...</span>';
-            }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                html += `<button onclick="goToPage(${i})" class="pagination-btn ${i === data.pagination.current_page ? 'active' : ''}">${i}</button>`;
-            }
-            
-            if (endPage < data.pagination.total_pages) {
-                if (endPage < data.pagination.total_pages - 1) html += '<span class="px-2">...</span>';
-                html += `<button onclick="goToPage(${data.pagination.total_pages})" class="pagination-btn">${data.pagination.total_pages}</button>`;
-            }
-            
-            html += `<button onclick="goToPage(${data.pagination.current_page + 1})" class="pagination-btn" ${data.pagination.current_page === data.pagination.total_pages ? 'disabled' : ''}>Next</button>`;
-            html += `<span class="text-sm text-gray-500 ml-4">Page ${data.pagination.current_page} of ${data.pagination.total_pages}</span>`;
-            html += '</div>';
-        }
-
         document.getElementById('report_content').innerHTML = html;
     }
+
+    function showCategoryDetails(categoryName) {
+        if (!categoryData) return;
+        
+        // Find the category group
+        const group = categoryData.find(g => g.category === categoryName);
+        if (!group) {
+            alert('Category not found');
+            return;
+        }
+        
+        // Build modal content
+        let modalHtml = `<div class="modal-total">Total: UGX ${group.total.toLocaleString()}</div>`;
+        modalHtml += `<div style="margin-bottom: 12px; font-size: 13px; color: #6b7280;">${group.count} transactions</div>`;
+        
+        // Sort transactions by date (most recent first)
+        const sortedTransactions = [...group.transactions].sort((a, b) => {
+            if (a.date > b.date) return -1;
+            if (a.date < b.date) return 1;
+            return 0;
+        });
+        
+        for (const t of sortedTransactions) {
+            modalHtml += `<div class="modal-row">
+                <span class="date">${t.date || '-'}</span>
+                <span class="desc">${t.description}</span>
+                <span class="amt">UGX ${t.amount.toLocaleString()}</span>
+            </div>`;
+        }
+        
+        document.getElementById('modalCategoryTitle').textContent = categoryName;
+        document.getElementById('modalBody').innerHTML = modalHtml;
+        document.getElementById('modalTransactionCount').textContent = `${group.count} transactions`;
+        
+        document.getElementById('categoryModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        document.getElementById('categoryModal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('categoryModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal();
+        }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    });
 
     function goToPage(page) {
         currentPage = page;
@@ -272,6 +570,7 @@
         `;
     }
 
+    // Auto-load on page load
     $(document).ready(function() {
         loadReport();
     });
