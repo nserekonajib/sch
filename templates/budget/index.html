@@ -1,11 +1,10 @@
 {% extends "base.html" %}
-{% block title %}School Budget & Variance{% endblock %}
+{% block title %}Advanced School Budget & Variance{% endblock %}
 {% block content %}
 
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -22,6 +21,7 @@
     --rust-soft:#F7EAE9;
     --amber:#C08A2E;
     --navy:#1B2A4A;
+    --gold:#D4A847;
   }
   #ledger-root{
     background:var(--paper);
@@ -29,7 +29,7 @@
     color:var(--ink);
   }
   #ledger-root h1,#ledger-root h2,#ledger-root .display{
-    font-family:'Fraunces',serif;
+    font-weight:600;
   }
   #ledger-root .num{
     font-family:'IBM Plex Mono',monospace;
@@ -37,7 +37,7 @@
   }
   .eyebrow{
     font-family:'IBM Plex Mono',monospace;
-    font-size:11px;
+    font-size:10px;
     letter-spacing:.16em;
     text-transform:uppercase;
     color:var(--ink-soft);
@@ -46,11 +46,6 @@
     border-bottom:2px solid var(--ink);
     padding-bottom:20px;
     margin-bottom:28px;
-  }
-  .masthead-rule{
-    height:1px;
-    background:var(--rule-strong);
-    margin:16px 0;
   }
   .hairline{ border-color:var(--rule); }
   .hairline-strong{ border-color:var(--rule-strong); }
@@ -71,6 +66,32 @@
     border:1px solid var(--ink);
     background:var(--paper-raised);
   }
+  
+  /* Dashboard Stats */
+  .stat-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    padding: 16px 20px;
+    transition: all 0.2s ease;
+  }
+  .stat-card:hover {
+    border-color: var(--ink);
+    transform: translateY(-2px);
+  }
+  .stat-card .stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .stat-card .stat-label {
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  
+  /* Variance Tracker */
   .variance-track{
     position:relative;
     height:6px;
@@ -85,6 +106,8 @@
   .variance-target{
     position:absolute; top:-3px; width:2px; height:12px; background:var(--ink);
   }
+  
+  /* Table Styles */
   table.ledger th{
     font-family:'IBM Plex Mono',monospace;
     font-size:10px;
@@ -94,17 +117,14 @@
   }
   table.ledger td{ border-bottom:1px solid var(--rule); }
   table.ledger tbody tr:hover{ background:#FFFFFF; }
+  
   .custom-scrollbar::-webkit-scrollbar{ height:8px; }
   .custom-scrollbar::-webkit-scrollbar-track{ background:var(--paper); }
   .custom-scrollbar::-webkit-scrollbar-thumb{ background:var(--rule-strong); }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover{ background:var(--ink-soft); }
-  input[type="number"]:focus{ box-shadow:0 0 0 2px var(--navy); }
-  .modal-panel{ border:1px solid var(--ink); box-shadow:none; }
-  @media (prefers-reduced-motion: reduce){
-    *{ transition:none !important; animation:none !important; }
-  }
-
-  /* ===== RESTYLED EDIT MODAL ===== */
+  
+  /* Modal Styles */
+  .modal-panel{ border:1px solid var(--ink); box-shadow:0 20px 60px rgba(28,35,51,0.15); }
   .edit-modal-grid {
     display: grid;
     grid-template-columns: 200px 1fr;
@@ -169,10 +189,6 @@
     box-shadow: 0 0 0 3px rgba(27, 42, 74, 0.1);
     background: white;
   }
-  .edit-modal-grid .periods-row .period-cell input:hover {
-    background: white;
-  }
-
   .edit-modal-header-grid {
     display: grid;
     grid-template-columns: 200px 1fr;
@@ -209,7 +225,6 @@
     color: var(--ink-soft);
     font-weight: 500;
   }
-
   .edit-modal-total-grid {
     display: grid;
     grid-template-columns: 200px 1fr;
@@ -242,45 +257,29 @@
     font-weight: 600;
     color: var(--green);
   }
-
-  /* Modal container improvements */
-  #editModal .modal-panel {
-    border: 1px solid var(--ink);
-    border-radius: 0;
-    box-shadow: 0 20px 60px rgba(28, 35, 51, 0.15);
-  }
-
-  /* Scrollable body with clean edges */
   .edit-scroll-body {
     overflow-y: auto;
     overflow-x: hidden;
     max-height: 55vh;
     scroll-behavior: smooth;
   }
-  .edit-scroll-body::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+  .edit-scroll-body::-webkit-scrollbar { width: 4px; height: 4px; }
+  .edit-scroll-body::-webkit-scrollbar-track { background: var(--paper); }
+  .edit-scroll-body::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 2px; }
+  
+  /* Status Badges */
+  .status-badge {
+    padding: 2px 12px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
-  .edit-scroll-body::-webkit-scrollbar-track {
-    background: var(--paper);
-  }
-  .edit-scroll-body::-webkit-scrollbar-thumb {
-    background: var(--rule-strong);
-    border-radius: 2px;
-  }
-  .edit-scroll-body::-webkit-scrollbar-thumb:hover {
-    background: var(--ink-soft);
-  }
-
-  .edit-modal-footer {
-    background: var(--paper);
-    border-top: 1px solid var(--rule-strong);
-    padding: 16px 24px;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 12px;
-  }
+  .status-active { background: var(--green-soft); color: var(--green); }
+  .status-draft { background: #F3F4F6; color: #6B7280; }
+  .status-archived { background: var(--rust-soft); color: var(--rust); }
+  .status-approved { background: #DBEAFE; color: #1E40AF; }
 </style>
 
 <div id="ledger-root" class="min-h-screen p-6">
@@ -289,15 +288,21 @@
     <div class="masthead">
         <div class="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-5">
             <div>
-                <div class="eyebrow mb-1">Financial Ledger</div>
-                <h1 class="text-4xl font-semibold tracking-tight" style="color:var(--ink)">School Budget</h1>
+                <div class="eyebrow mb-1">Financial Planning</div>
+                <h1 class="text-4xl font-semibold tracking-tight" style="color:var(--ink)">Budget Management</h1>
                 <div class="flex flex-wrap gap-6 mt-3 text-sm">
                     <div><span class="eyebrow mr-2">School</span><span class="font-medium">{{ institute.institute_name if institute else 'N/A' }}</span></div>
-                    <div><span class="eyebrow mr-2">Fiscal Year</span><span class="num font-medium" id="yearDisplay">2026</span></div>
+                    <div><span class="eyebrow mr-2">Fiscal Year</span>
+                        <select id="yearSelector" class="num font-medium bg-transparent border-0 border-b border-gray-300 focus:border-ink outline-none text-sm">
+                            {% for year in years %}
+                            <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-                <div class="relative flex-1 xl:flex-none min-w-[220px]">
+                <div class="relative flex-1 xl:flex-none min-w-[240px]">
                     <select id="budgetSelector" class="plan-select w-full pl-4 pr-9 py-2.5 text-sm appearance-none">
                         <option value="">— Select a budget plan —</option>
                     </select>
@@ -306,10 +311,34 @@
                 <button onclick="openCreateModal()" class="btn-outline px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2">
                     <i class="fas fa-plus"></i> New Plan
                 </button>
-                <button onclick="openEditModal()" class="btn-ink px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2" id="editBtn">
+                <button onclick="openEditModal()" class="btn-ink px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2" id="editBtn" disabled>
                     <i class="fas fa-pen"></i> Edit Values
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- DASHBOARD STATS -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8" id="statsGrid">
+        <div class="stat-card rounded">
+            <div class="stat-label">Total Budgets</div>
+            <div class="stat-value" id="statTotalBudgets">0</div>
+        </div>
+        <div class="stat-card rounded">
+            <div class="stat-label">Active Plans</div>
+            <div class="stat-value" id="statActiveBudgets">0</div>
+        </div>
+        <div class="stat-card rounded">
+            <div class="stat-label">Total Income</div>
+            <div class="stat-value text-green-700" id="statTotalIncome">UGX 0</div>
+        </div>
+        <div class="stat-card rounded">
+            <div class="stat-label">Total Expenses</div>
+            <div class="stat-value text-red-700" id="statTotalExpenses">UGX 0</div>
+        </div>
+        <div class="stat-card rounded">
+            <div class="stat-label">Net Position</div>
+            <div class="stat-value" id="statNetPosition">UGX 0</div>
         </div>
     </div>
 
@@ -327,14 +356,19 @@
                         <span class="text-sm" style="color:var(--ink-soft)">Total Expenses</span>
                         <span class="num text-lg font-medium" style="color:var(--rust)" id="summaryExpenses">UGX 0</span>
                     </div>
-                    <div class="flex justify-between items-baseline pt-3">
-                        <span class="text-sm font-semibold">Net Income</span>
+                    <div class="flex justify-between items-baseline pb-3 border-b hairline">
+                        <span class="text-sm" style="color:var(--ink-soft)">Budgeted Net</span>
+                        <span class="num text-lg font-medium" style="color:var(--navy)" id="summaryBudgetedNet">UGX 0</span>
+                    </div>
+                    <div class="flex justify-between items-baseline pt-3 border-t-2 border-ink">
+                        <span class="text-sm font-semibold">Actual Net</span>
                         <span class="num text-2xl font-semibold" style="color:var(--navy)" id="summaryNet">UGX 0</span>
                     </div>
                 </div>
             </div>
-            <div class="mt-8 text-[11px] flex items-center gap-2" style="color:var(--ink-soft)">
-                <span class="status-dot" style="background:var(--green)"></span> Actuals based on posted transactions
+            <div class="mt-8 text-[11px] flex items-center gap-4" style="color:var(--ink-soft)">
+                <span class="flex items-center gap-1.5"><span class="status-dot" style="background:var(--green)"></span> On Track</span>
+                <span class="flex items-center gap-1.5"><span class="status-dot" style="background:var(--rust)"></span> Over Budget</span>
             </div>
         </div>
 
@@ -360,6 +394,9 @@
                 <button onclick="toggleMonthlyView()" id="toggleMonthlyBtn" class="text-[10px] px-3 py-1 border hairline-strong font-medium transition-colors flex items-center gap-1" style="color:var(--ink-soft)">
                     <i class="fas fa-chevron-down text-[8px]"></i> Show Months
                 </button>
+                <button onclick="exportBudgetReport()" class="text-[10px] px-3 py-1 border hairline-strong font-medium transition-colors flex items-center gap-1" style="color:var(--ink-soft)">
+                    <i class="fas fa-file-export"></i> Export
+                </button>
             </div>
             <span class="text-xs num" style="color:var(--ink-soft)" id="recordCount">0 accounts</span>
         </div>
@@ -368,12 +405,11 @@
             <table class="ledger w-full text-sm border-collapse" id="varianceTable">
                 <thead>
                     <tr>
-                        <th class="px-5 py-3 text-left uppercase border-r hairline sticky left-0 bg-inherit z-10" style="min-width: 200px; background:var(--paper);">Account Category</th>
+                        <th class="px-5 py-3 text-left uppercase border-r hairline sticky left-0 bg-inherit z-10" style="min-width: 200px; background:var(--paper);">Account</th>
                         <th class="px-4 py-3 text-right uppercase">Actual</th>
-                        <th class="px-4 py-3 text-right uppercase">Budgeted</th>
+                        <th class="px-4 py-3 text-right uppercase">Budget</th>
                         <th class="px-4 py-3 text-left uppercase" style="min-width:120px;">Variance</th>
                         <th class="px-4 py-3 text-center uppercase">Status</th>
-
                         <th class="month-col hidden px-3 py-3 text-center uppercase border-l hairline">JAN</th>
                         <th class="month-col hidden px-3 py-3 text-center uppercase">FEB</th>
                         <th class="month-col hidden px-3 py-3 text-center uppercase">MAR</th>
@@ -388,7 +424,6 @@
                         <th class="month-col hidden px-3 py-3 text-center uppercase border-l hairline">DEC</th>
                     </tr>
                 </thead>
-
                 <tbody id="varianceTableBody">
                     <tr><td colspan="17" class="px-5 py-14 text-center italic text-sm" style="color:var(--ink-soft)">Select a budget plan above to open its ledger.</td></tr>
                 </tbody>
@@ -397,7 +432,7 @@
     </div>
 </div>
 
-<!-- ===== UPDATED CREATE BUDGET MODAL WITH DATE RANGE ===== -->
+<!-- CREATE BUDGET MODAL -->
 <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center opacity-0 transition-opacity duration-200" id="createModal">
     <div class="modal-panel bg-white w-full max-w-lg p-7 transform scale-95 transition-transform duration-200">
         <div class="flex items-center gap-3 mb-6 pb-4 border-b hairline-strong">
@@ -407,25 +442,26 @@
         <div class="space-y-5">
             <div>
                 <label class="block text-sm font-medium mb-1.5">Plan Name <span style="color:var(--rust)">*</span></label>
-                <input type="text" id="newBudgetName" class="w-full px-4 py-2.5 border hairline-strong outline-none" placeholder="e.g. Term 1 Budget 2026">
+                <input type="text" id="newBudgetName" class="w-full px-4 py-2.5 border hairline-strong outline-none rounded" placeholder="e.g. Term 1 Budget 2026">
             </div>
-            
-            <!-- Date Range Selection -->
+            <div>
+                <label class="block text-sm font-medium mb-1.5">Description</label>
+                <input type="text" id="newBudgetDescription" class="w-full px-4 py-2.5 border hairline-strong outline-none rounded" placeholder="Optional description">
+            </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1.5">Start Date <span style="color:var(--rust)">*</span></label>
-                    <input type="date" id="newBudgetStartDate" class="w-full px-4 py-2.5 border hairline-strong outline-none num">
+                    <input type="date" id="newBudgetStartDate" class="w-full px-4 py-2.5 border hairline-strong outline-none num rounded">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1.5">End Date <span style="color:var(--rust)">*</span></label>
-                    <input type="date" id="newBudgetEndDate" class="w-full px-4 py-2.5 border hairline-strong outline-none num">
+                    <input type="date" id="newBudgetEndDate" class="w-full px-4 py-2.5 border hairline-strong outline-none num rounded">
                 </div>
             </div>
-            
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1.5">Period Breakdown</label>
-                    <select id="newBudgetPeriod" class="w-full px-4 py-2.5 border hairline-strong outline-none">
+                    <select id="newBudgetPeriod" class="w-full px-4 py-2.5 border hairline-strong outline-none rounded">
                         <option value="yearly">Yearly (Annual Total)</option>
                         <option value="quarterly">Quarterly (4 Quarters)</option>
                         <option value="monthly" selected>Monthly (12 Months)</option>
@@ -433,31 +469,24 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1.5">Fiscal Year</label>
-                    <div class="w-full px-4 py-2.5 border hairline-strong outline-none num bg-gray-50" id="fiscalYearDisplay" style="color:var(--ink-soft); background:var(--paper);">
+                    <div class="w-full px-4 py-2.5 border hairline-strong outline-none num bg-gray-50 rounded" id="fiscalYearDisplay" style="color:var(--ink-soft); background:var(--paper);">
                         2026
                     </div>
                 </div>
             </div>
-            
-            <div class="text-xs mt-2" style="color:var(--ink-soft)">
-                <i class="fas fa-info-circle mr-1"></i> 
-                Fiscal Year is auto-calculated from the start date.
-            </div>
         </div>
         <div class="flex justify-end gap-3 mt-8 border-t hairline pt-5">
-            <button onclick="closeCreateModal()" class="px-5 py-2.5 font-medium transition-colors" style="color:var(--ink-soft)">Cancel</button>
-            <button onclick="createBudget()" class="btn-ink px-5 py-2.5 font-medium transition-colors flex items-center gap-2">
+            <button onclick="closeCreateModal()" class="px-5 py-2.5 font-medium transition-colors hover:bg-gray-50 rounded" style="color:var(--ink-soft)">Cancel</button>
+            <button onclick="createBudget()" class="btn-ink px-5 py-2.5 font-medium transition-colors flex items-center gap-2 rounded">
                 <i class="fas fa-check"></i> Create Plan
             </button>
         </div>
     </div>
 </div>
 
-<!-- ===== RESTYLED EDIT BUDGET MODAL ===== -->
+<!-- EDIT BUDGET MODAL -->
 <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center opacity-0 transition-opacity duration-200" id="editModal">
     <div class="modal-panel bg-white w-full max-w-[96%] max-h-[92vh] flex flex-col transform scale-95 transition-transform duration-200">
-
-        <!-- Modal Header -->
         <div class="px-6 py-4 flex justify-between items-center shrink-0" style="background:var(--ink);">
             <div class="flex items-center gap-3">
                 <i class="fas fa-scroll" style="color:#9CB3A8"></i>
@@ -468,28 +497,19 @@
             <button onclick="closeEditModal()" class="text-white/70 hover:text-white text-xl transition-colors"><i class="fas fa-times"></i></button>
         </div>
 
-        <!-- Edit Grid Container -->
         <div class="edit-scroll-body flex-1">
-
-            <!-- Header Row (sticky) -->
             <div class="edit-modal-header-grid">
                 <div class="account-label">Account</div>
                 <div class="period-labels" id="editPeriodHeaders"></div>
             </div>
-
-            <!-- Data Rows -->
             <div id="editBudgetBody" class="edit-modal-grid-wrapper"></div>
-
-            <!-- Total Row (sticky footer) -->
             <div class="edit-modal-total-grid">
                 <div class="total-label">TOTAL BUDGET</div>
                 <div class="total-values" id="editPeriodTotals"></div>
             </div>
-
         </div>
 
-        <!-- Footer -->
-        <div class="edit-modal-footer">
+        <div class="edit-modal-footer bg-paper border-t border-rule-strong p-4 flex justify-end gap-3">
             <button onclick="closeEditModal()" class="px-5 py-2 font-medium transition-colors hover:bg-black/5 rounded" style="color:var(--ink-soft)">Cancel</button>
             <button onclick="saveBudgetLines()" class="btn-ink px-6 py-2 font-medium transition-colors flex items-center gap-2 rounded">
                 <i class="fas fa-save"></i> Save All Changes
@@ -502,54 +522,66 @@
 let budgetChartInstance = null;
 let currentBudgetId = null;
 let showMonths = false;
+let allBudgetsData = {};
 
 document.addEventListener('DOMContentLoaded', function() {
     loadBudgetHeaders();
+    loadDashboardStats();
     
     // Set default dates for create modal
     const today = new Date();
     const year = today.getFullYear();
-    const startDateInput = document.getElementById('newBudgetStartDate');
-    const endDateInput = document.getElementById('newBudgetEndDate');
-    const fiscalYearDisplay = document.getElementById('fiscalYearDisplay');
-    
-    // Set default to current year
-    startDateInput.value = `${year}-01-01`;
-    endDateInput.value = `${year}-12-31`;
-    fiscalYearDisplay.textContent = year;
+    document.getElementById('newBudgetStartDate').value = `${year}-01-01`;
+    document.getElementById('newBudgetEndDate').value = `${year}-12-31`;
+    document.getElementById('fiscalYearDisplay').textContent = year;
     
     // Update fiscal year when start date changes
-    startDateInput.addEventListener('change', function() {
+    document.getElementById('newBudgetStartDate').addEventListener('change', function() {
         if(this.value) {
             const selectedYear = new Date(this.value).getFullYear();
-            fiscalYearDisplay.textContent = selectedYear;
+            document.getElementById('fiscalYearDisplay').textContent = selectedYear;
         }
     });
     
+    // Year selector change
+    document.getElementById('yearSelector').addEventListener('change', function() {
+        loadBudgetHeaders();
+        loadDashboardStats();
+    });
+    
+    // Budget selector change
     document.getElementById('budgetSelector').addEventListener('change', function() {
         if(this.value) {
             currentBudgetId = this.value;
             loadBudgetData(this.value);
+            document.getElementById('editBtn').disabled = false;
         } else {
-            document.getElementById('varianceTableBody').innerHTML = '<tr><td colspan="17" class="px-5 py-14 text-center italic text-sm" style="color:var(--ink-soft)">Select a budget plan above to open its ledger.</td></tr>';
-            document.getElementById('summaryIncome').innerText = 'UGX 0';
-            document.getElementById('summaryExpenses').innerText = 'UGX 0';
-            document.getElementById('summaryNet').innerText = 'UGX 0';
+            resetView();
             document.getElementById('editBtn').disabled = true;
         }
     });
 });
 
-function toggleMonthlyView() {
-    showMonths = !showMonths;
-    const cols = document.querySelectorAll('.month-col');
-    const btn = document.getElementById('toggleMonthlyBtn');
-    cols.forEach(c => c.classList.toggle('hidden'));
-    btn.innerHTML = showMonths ? '<i class="fas fa-chevron-up text-[8px]"></i> Hide Months' : '<i class="fas fa-chevron-down text-[8px]"></i> Show Months';
+function loadDashboardStats() {
+    const year = document.getElementById('yearSelector').value;
+    fetch(`/budget/api/dashboard-stats?year=${year}`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                const s = data.stats;
+                document.getElementById('statTotalBudgets').textContent = s.total_budgets;
+                document.getElementById('statActiveBudgets').textContent = s.active_budgets;
+                document.getElementById('statTotalIncome').textContent = `UGX ${formatMoney(s.total_income)}`;
+                document.getElementById('statTotalExpenses').textContent = `UGX ${formatMoney(s.total_expenses)}`;
+                const netColor = s.net_actual >= 0 ? 'text-green-700' : 'text-red-700';
+                document.getElementById('statNetPosition').innerHTML = `<span class="${netColor}">UGX ${formatMoney(s.net_actual)}</span>`;
+            }
+        })
+        .catch(error => console.error('Error loading stats:', error));
 }
 
 function loadBudgetHeaders() {
-    const year = new Date().getFullYear();
+    const year = document.getElementById('yearSelector').value;
     fetch(`/budget/api/headers?year=${year}`)
         .then(res => res.json())
         .then(data => {
@@ -557,9 +589,9 @@ function loadBudgetHeaders() {
             sel.innerHTML = '<option value="">— Select a budget plan —</option>';
             if(data.headers && data.headers.length > 0) {
                 data.headers.forEach(h => {
-                    const statusIcon = h.status === 'approved' ? '●' : h.status === 'archived' ? '□' : '○';
+                    const statusDot = h.status === 'active' ? '🟢' : h.status === 'approved' ? '🔵' : h.status === 'archived' ? '🔴' : '⚪';
                     const dateRange = h.start_date && h.end_date ? ` (${h.start_date} to ${h.end_date})` : '';
-                    sel.innerHTML += `<option value="${h.id}">${statusIcon} ${h.name} — ${h.period_type}${dateRange}</option>`;
+                    sel.innerHTML += `<option value="${h.id}">${statusDot} ${h.name} — ${h.period_type}${dateRange}</option>`;
                 });
                 sel.value = data.headers[0].id;
                 currentBudgetId = data.headers[0].id;
@@ -567,9 +599,7 @@ function loadBudgetHeaders() {
                 document.getElementById('editBtn').disabled = false;
             }
         })
-        .catch(error => {
-            console.error('Error loading budget headers:', error);
-        });
+        .catch(error => console.error('Error loading budget headers:', error));
 }
 
 function loadBudgetData(id) {
@@ -577,21 +607,21 @@ function loadBudgetData(id) {
         .then(res => res.json())
         .then(data => {
             if(data.success) {
+                allBudgetsData = data;
                 renderSummary(data.totals);
                 renderChart(data.budgets);
                 renderTable(data.budgets);
+                updateForecast(data.forecast);
             }
         })
-        .catch(error => {
-            console.error('Error loading budget data:', error);
-        });
+        .catch(error => console.error('Error loading budget data:', error));
 }
 
 function renderSummary(totals) {
     document.getElementById('summaryIncome').innerText = `UGX ${formatMoney(totals.actual_income || 0)}`;
     document.getElementById('summaryExpenses').innerText = `UGX ${formatMoney(totals.actual_expenses || 0)}`;
+    document.getElementById('summaryBudgetedNet').innerText = `UGX ${formatMoney((totals.budgeted_income || 0) - (totals.budgeted_expenses || 0))}`;
     
-    // Calculate net income properly
     const netIncome = (totals.actual_income || 0) - (totals.actual_expenses || 0);
     document.getElementById('summaryNet').innerText = `UGX ${formatMoney(netIncome)}`;
 }
@@ -640,13 +670,21 @@ function renderTable(budgets) {
         const fillPct = Math.min((actual / maxVal) * 100, 100);
         const targetPct = Math.min((budgeted / maxVal) * 100, 100);
 
-        const monthlyCols = item.period_values.map(val =>
-            `<td class="month-col hidden px-3 py-3 text-center num text-[11px]" style="color:var(--ink-soft)">${formatMoney(val)}</td>`
-        ).join('');
+        // Only show monthly columns if we have period values
+        const monthlyCols = (item.period_values && item.period_values.length > 0) ? 
+            item.period_values.map(val =>
+                `<td class="month-col hidden px-3 py-3 text-center num text-[11px]" style="color:var(--ink-soft)">${formatMoney(val)}</td>`
+            ).join('') :
+            '<td class="month-col hidden px-3 py-3 text-center text-gray-400 text-xs">—</td>'.repeat(12);
 
+        const typeLabel = item.type === 'income' ? 'Income' : 'Expense';
+        
         html += `
             <tr>
-                <td class="px-5 py-3.5 font-medium border-r hairline sticky left-0 z-10" style="background:var(--paper-raised);">${item.name}</td>
+                <td class="px-5 py-3.5 font-medium border-r hairline sticky left-0 z-10" style="background:var(--paper-raised);">
+                    <span class="text-[10px] uppercase tracking-wider" style="color:${item.type === 'income' ? 'var(--green)' : 'var(--rust)'}">${typeLabel}</span>
+                    <span class="ml-2">${item.name}</span>
+                </td>
                 <td class="px-4 py-3.5 text-right num font-medium">UGX ${formatMoney(item.actual)}</td>
                 <td class="px-4 py-3.5 text-right num" style="color:var(--ink-soft)">UGX ${formatMoney(item.budgeted)}</td>
                 <td class="px-4 py-3.5">
@@ -657,9 +695,10 @@ function renderTable(budgets) {
                     <div class="num text-[10px] mt-1" style="color:${textColor}">${item.variance >= 0 ? '+' : ''}UGX ${formatMoney(item.variance)}</div>
                 </td>
                 <td class="px-4 py-3.5 text-center">
-                    <span class="px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider" style="background:${badgeBg}; color:${textColor};">
+                    <span class="px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider rounded" style="background:${badgeBg}; color:${textColor};">
                         ${item.status === 'over_budget' ? 'Over' : 'On Track'}
                     </span>
+                    <div class="text-[9px] mt-0.5" style="color:var(--ink-soft)">${item.utilization || 0}% used</div>
                 </td>
                 ${monthlyCols}
             </tr>
@@ -668,8 +707,30 @@ function renderTable(budgets) {
     tbody.innerHTML = html;
 }
 
+function updateForecast(forecast) {
+    // You can add a forecast section in the UI
+    console.log('Forecast:', forecast);
+}
+
+function toggleMonthlyView() {
+    showMonths = !showMonths;
+    const cols = document.querySelectorAll('.month-col');
+    const btn = document.getElementById('toggleMonthlyBtn');
+    cols.forEach(c => c.classList.toggle('hidden'));
+    btn.innerHTML = showMonths ? '<i class="fas fa-chevron-up text-[8px]"></i> Hide Months' : '<i class="fas fa-chevron-down text-[8px]"></i> Show Months';
+}
+
+function resetView() {
+    document.getElementById('varianceTableBody').innerHTML = '<tr><td colspan="17" class="px-5 py-14 text-center italic text-sm" style="color:var(--ink-soft)">Select a budget plan above to open its ledger.</td></tr>';
+    document.getElementById('summaryIncome').innerText = 'UGX 0';
+    document.getElementById('summaryExpenses').innerText = 'UGX 0';
+    document.getElementById('summaryBudgetedNet').innerText = 'UGX 0';
+    document.getElementById('summaryNet').innerText = 'UGX 0';
+    document.getElementById('recordCount').innerText = '0 accounts';
+}
+
 // =========================
-// CREATE MODAL LOGIC WITH DATE RANGE
+// CREATE MODAL
 // =========================
 function openCreateModal() {
     const modal = document.getElementById('createModal');
@@ -685,6 +746,7 @@ function closeCreateModal() {
 
 function createBudget() {
     const name = document.getElementById('newBudgetName').value;
+    const description = document.getElementById('newBudgetDescription').value;
     const startDate = document.getElementById('newBudgetStartDate').value;
     const endDate = document.getElementById('newBudgetEndDate').value;
     const period = document.getElementById('newBudgetPeriod').value;
@@ -692,17 +754,14 @@ function createBudget() {
     if(!name) return alert("Please enter a budget name");
     if(!startDate) return alert("Please select a start date");
     if(!endDate) return alert("Please select an end date");
-    
-    // Validate dates
-    if(new Date(startDate) >= new Date(endDate)) {
-        return alert("End date must be after start date");
-    }
+    if(new Date(startDate) >= new Date(endDate)) return alert("End date must be after start date");
 
     fetch('/budget/api/headers/create', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             name: name,
+            description: description,
             start_date: startDate,
             end_date: endDate,
             period_type: period
@@ -713,18 +772,18 @@ function createBudget() {
         if(data.success) {
             closeCreateModal();
             document.getElementById('newBudgetName').value = '';
+            document.getElementById('newBudgetDescription').value = '';
             loadBudgetHeaders();
+            loadDashboardStats();
         } else {
             alert('Error: ' + (data.message || 'Failed to create budget'));
         }
     })
-    .catch(error => {
-        alert('Error creating budget: ' + error.message);
-    });
+    .catch(error => alert('Error creating budget: ' + error.message));
 }
 
 // =========================
-// RESTYLED EDIT MODAL LOGIC
+// EDIT MODAL
 // =========================
 function openEditModal() {
     if(!currentBudgetId) return alert("Please select a budget first");
@@ -732,6 +791,8 @@ function openEditModal() {
     fetch(`/budget/api/budgets/${currentBudgetId}`)
         .then(res => res.json())
         .then(data => {
+            if(!data.success) return alert('Failed to load budget data');
+            
             const header = data.header;
             const budgets = data.budgets;
 
@@ -742,30 +803,27 @@ function openEditModal() {
             let periodLabels = [];
             if(header.period_type === 'yearly') periodLabels = ['Annual'];
             else if(header.period_type === 'quarterly') periodLabels = ['Q1', 'Q2', 'Q3', 'Q4'];
-            else if(header.period_type === 'monthly') periodLabels = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+            else periodLabels = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 
-            // Build header labels
             document.getElementById('editPeriodHeaders').innerHTML = periodLabels.map(l =>
                 `<span>${l}</span>`
             ).join('');
 
-            // Build rows using grid layout
             const wrapper = document.getElementById('editBudgetBody');
             let html = '';
             let columnTotals = new Array(periodLabels.length).fill(0);
 
-            budgets.forEach((item, idx) => {
+            budgets.forEach((item) => {
                 const rowSum = item.period_values.reduce((a, b) => a + b, 0);
-                // Build period cells
                 let periodCells = '';
-                item.period_values.forEach((val, idx2) => {
-                    columnTotals[idx2] += val;
+                item.period_values.forEach((val, idx) => {
+                    columnTotals[idx] += val;
                     periodCells += `
                         <div class="period-cell">
                             <input type="number"
                                    class="edit-period-input"
                                    data-account-id="${item.account_id}"
-                                   data-index="${idx2}"
+                                   data-index="${idx}"
                                    value="${val}"
                                    step="10000"
                                    onfocus="this.select()">
@@ -787,20 +845,15 @@ function openEditModal() {
             });
 
             wrapper.innerHTML = html;
-
-            // Update totals
             document.getElementById('editPeriodTotals').innerHTML = periodLabels.map((l, idx) =>
                 `<span>UGX ${formatMoney(columnTotals[idx])}</span>`
             ).join('');
 
-            // Show modal
             const modal = document.getElementById('editModal');
             modal.classList.remove('hidden');
             setTimeout(() => { modal.classList.remove('opacity-0'); modal.querySelector('div').classList.remove('scale-95'); }, 10);
         })
-        .catch(error => {
-            alert('Error loading budget data: ' + error.message);
-        });
+        .catch(error => alert('Error loading budget data: ' + error.message));
 }
 
 function closeEditModal() {
@@ -842,13 +895,33 @@ function saveBudgetLines() {
             alert('Error: ' + (data.message || 'Failed to save budget'));
         }
     })
-    .catch(error => {
-        alert('Error saving budget: ' + error.message);
-    })
+    .catch(error => alert('Error saving budget: ' + error.message))
     .finally(() => {
         saveBtn.innerHTML = originalHTML; 
         saveBtn.disabled = false;
     });
+}
+
+function exportBudgetReport() {
+    if(!currentBudgetId) return alert("Please select a budget first");
+    
+    const data = allBudgetsData;
+    if(!data || !data.budgets) return alert("No data to export");
+    
+    // Create CSV
+    let csv = "Account,Type,Actual,Budgeted,Variance,Status\n";
+    data.budgets.forEach(item => {
+        csv += `${item.name},${item.type},${item.actual},${item.budgeted},${item.variance},${item.status}\n`;
+    });
+    
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `budget_report_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
 }
 
 function formatMoney(amount) {
