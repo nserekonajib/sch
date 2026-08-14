@@ -451,6 +451,155 @@ def get_payments():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+    
+@payments_bp.route('/api/recent', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant', 'admin'])
+def get_recent_payments():
+    """Return the 5 most recent fee payments for the dashboard."""
+    try:
+        user = session.get('user')
+
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'Unauthorized'
+            }), 401
+
+        user_email = user.get('email', '')
+        admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
+        is_admin = user_email in admin_emails
+
+        # ---------------------------------------------------------
+        # Get institute
+        # ---------------------------------------------------------
+        institute_id = None
+
+        if not is_admin:
+            institute_id = get_institute_id(user['id'])
+
+            if not institute_id:
+                return jsonify({
+                    'success': True,
+                    'payments': []
+                })
+
+        else:
+            institute_id = request.args.get('institute_id', '')
+
+        # ---------------------------------------------------------
+        # Get latest 5 payments
+        # ---------------------------------------------------------
+        query = (
+            supabase
+            .table('payments')
+            .select('*')
+            .order('payment_date', desc=True)
+            .limit(5)
+        )
+
+        if institute_id:
+            query = query.eq('institute_id', institute_id)
+
+        response = query.execute()
+
+        payments = response.data or []
+
+        if not payments:
+            return jsonify({
+                'success': True,
+                'payments': []
+            })
+
+        # ---------------------------------------------------------
+        # Get students
+        # ---------------------------------------------------------
+        student_ids = list({
+            p.get('student_id')
+            for p in payments
+            if p.get('student_id')
+        })
+
+        students_map = {}
+
+        if student_ids:
+            student_response = (
+                supabase
+                .table('students')
+                .select('id, name, student_id, class_id')
+                .in_('id', student_ids)
+                .execute()
+            )
+
+            for student in student_response.data or []:
+                students_map[student['id']] = student
+
+        # ---------------------------------------------------------
+        # Get classes
+        # ---------------------------------------------------------
+        class_ids = list({
+            student.get('class_id')
+            for student in students_map.values()
+            if student.get('class_id')
+        })
+
+        classes_map = {}
+
+        if class_ids:
+            class_response = (
+                supabase
+                .table('classes')
+                .select('id, name')
+                .in_('id', class_ids)
+                .execute()
+            )
+
+            for cls in class_response.data or []:
+                classes_map[cls['id']] = cls
+
+        # ---------------------------------------------------------
+        # Format dashboard response
+        # ---------------------------------------------------------
+        formatted = []
+
+        for payment in payments:
+
+            student_uuid = payment.get('student_id')
+            student = students_map.get(student_uuid, {})
+
+            class_name = 'N/A'
+
+            if student.get('class_id'):
+                class_name = classes_map.get(
+                    student['class_id'],
+                    {}
+                ).get('name', 'N/A')
+
+            formatted.append({
+                'id': payment.get('id'),
+                'receipt_number': payment.get('receipt_number'),
+                'student_name': student.get('name', 'Unknown Student'),
+                'student_id_display': student.get('student_id', 'N/A'),
+                'class_name': class_name,
+                'amount': float(payment.get('amount') or 0),
+                'payment_method': payment.get('payment_method') or 'Manual',
+                'payment_date': payment.get('payment_date'),
+                'whatsapp_status': payment.get('whatsapp_status'),
+            })
+
+        return jsonify({
+            'success': True,
+            'payments': formatted
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 
 
 @payments_bp.route('/api/export', methods=['POST'])

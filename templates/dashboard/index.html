@@ -1,1504 +1,2081 @@
-<!-- templates/dashboard/index.html - Complete Dashboard with Privacy Mode -->
+<!-- templates/dashboard/index.html -->
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Lunserk ERP{% endblock %}
+{% block title %}Dashboard - LunserkERP{% endblock %}
 
 {% block extra_css %}
+<!-- Tailwind CSS via CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
 <style>
-    .stat-card {
-        transition: all 0.3s ease;
-        cursor: pointer;
-        position: relative;
-        overflow: hidden;
-    }
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    }
-    .stat-card:active {
-        transform: translateY(0px);
-    }
-    .btn-gradient {
-        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-    }
-    .chart-container {
-        position: relative;
-        height: 300px;
-        width: 100%;
-    }
-    .activity-timeline {
-        max-height: 400px;
-        overflow-y: auto;
-    }
-    .timeline-item {
-        transition: all 0.2s;
-    }
-    .timeline-item:hover {
-        background-color: #fef3c7;
-        transform: translateX(4px);
-    }
-    .loader {
-        border: 3px solid #f3f3f3;
-        border-top: 3px solid #ffa500;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    .filter-bar {
-        background: white;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 20px;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-    }
-    .stat-card .stat-value {
-        font-size: 1.75rem;
-        line-height: 1.2;
-    }
-    @media (min-width: 768px) {
-        .stat-card .stat-value {
-            font-size: 2rem;
-        }
-    }
-    
-    /* Loading shimmer effect */
-    .loading-shimmer {
-        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-        background-size: 200% 100%;
-        animation: shimmer 1.5s infinite;
-        border-radius: 4px;
-    }
-    @keyframes shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-    }
-    .card-loader {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.9);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10;
-        border-radius: 12px;
-    }
-    .card-loader.hidden {
-        display: none;
-    }
-    .stat-card {
-        position: relative;
-    }
-    .table-loader {
-        text-align: center;
-        padding: 20px;
-    }
-    .skeleton-text {
-        height: 20px;
-        background: #e2e8f0;
-        border-radius: 4px;
-        margin: 8px 0;
-    }
-    .skeleton-card {
-        height: 100px;
-    }
-    
-    /* Click hint */
-    .stat-card .click-hint {
-        position: absolute;
-        bottom: 8px;
-        right: 12px;
-        opacity: 0;
-        transition: opacity 0.2s;
-        font-size: 11px;
-        color: #9ca3af;
-    }
-    .stat-card:hover .click-hint {
-        opacity: 1;
-    }
+/* ============================================================
+   LUNSERKERP PREMIUM DASHBOARD STYLES
+   ============================================================ */
 
-    /* Profit card hidden class */
-    .profit-card-hidden {
-        display: none;
-    }
+:root {
+    --erp-primary: #2563eb;
+    --erp-primary-dark: #1d4ed8;
+    --erp-primary-soft: #eff6ff;
+    --erp-navy: #0b1f3a;
+    --erp-navy-light: #16345c;
+    --erp-bg: #f6f8fc;
+    --erp-card: #ffffff;
+    --erp-text: #17233d;
+    --erp-muted: #718096;
+    --erp-border: #e8edf5;
+    --erp-green: #16a66a;
+    --erp-green-soft: #eaf9f2;
+    --erp-red: #ef4444;
+    --erp-red-soft: #fff0f0;
+    --erp-orange: #f59e0b;
+    --erp-orange-soft: #fff7e8;
+    --erp-purple: #7c3aed;
+    --erp-purple-soft: #f4efff;
+    --erp-cyan: #0891b2;
+    --erp-cyan-soft: #ecfeff;
+    --erp-radius: 18px;
+    --erp-shadow: 0 4px 20px rgba(15, 23, 42, .045);
+    --erp-shadow-hover: 0 12px 35px rgba(15, 23, 42, .085);
+}
 
-    /* Progress bar for collection percentage */
-    .progress-bar {
-        height: 4px;
-        background: #e5e7eb;
-        border-radius: 2px;
-        overflow: hidden;
-        margin-top: 8px;
-    }
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #10b981, #059669);
-        border-radius: 2px;
-        transition: width 0.3s ease;
-    }
-    .progress-fill.warning {
-        background: linear-gradient(90deg, #f59e0b, #d97706);
-    }
-    .progress-fill.danger {
-        background: linear-gradient(90deg, #ef4444, #dc2626);
-    }
+.erp-dashboard {
+    background: var(--erp-bg);
+    min-height: calc(100vh - 60px);
+    padding: 28px;
+}
 
-    /* Privacy Mode Styles */
-    .privacy-toggle-container {
-        background: white;
-        border-radius: 12px;
-        padding: 12px 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    .privacy-toggle {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .privacy-toggle-label {
-        font-size: 14px;
-        font-weight: 500;
-        color: #374151;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .privacy-toggle-label i {
-        color: #6b7280;
-    }
-    .toggle-switch {
-        position: relative;
-        width: 50px;
-        height: 26px;
-        background: #d1d5db;
-        border-radius: 13px;
-        cursor: pointer;
-        transition: background 0.3s;
-        flex-shrink: 0;
-    }
-    .toggle-switch.active {
-        background: #ffa500;
-    }
-    .toggle-switch .toggle-knob {
-        position: absolute;
-        top: 3px;
-        left: 3px;
-        width: 20px;
-        height: 20px;
-        background: white;
-        border-radius: 50%;
-        transition: transform 0.3s;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    .toggle-switch.active .toggle-knob {
-        transform: translateX(24px);
-    }
-    .privacy-status {
-        font-size: 13px;
-        color: #6b7280;
-    }
-    .privacy-status.active {
-        color: #ffa500;
-        font-weight: 600;
-    }
+.erp-container {
+    max-width: 1500px;
+    margin: 0 auto;
+}
 
-    /* Privacy Overlay */
-    .privacy-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.92);
-        backdrop-filter: blur(4px);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 20;
-        border-radius: 12px;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-    .privacy-overlay.visible {
-        opacity: 1;
-        pointer-events: all;
-    }
-    .privacy-overlay i {
-        font-size: 32px;
-        color: #ffa500;
-        margin-bottom: 8px;
-    }
-    .privacy-overlay span {
-        font-size: 13px;
-        color: #6b7280;
-        font-weight: 500;
-    }
+.erp-card {
+    background: var(--erp-card);
+    border: 1px solid var(--erp-border);
+    border-radius: var(--erp-radius);
+    box-shadow: var(--erp-shadow);
+    transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
 
-    /* Card with privacy mode */
-    .stat-card.privacy-mode .privacy-overlay {
-        opacity: 1;
-        pointer-events: all;
-    }
-    .stat-card.privacy-mode .stat-value {
-        filter: blur(8px);
-        user-select: none;
-        transition: filter 0.3s;
-    }
-    .stat-card.privacy-mode .stat-value.privacy-hidden {
-        filter: blur(8px);
-    }
-    .stat-card.privacy-mode .stat-value.privacy-visible {
-        filter: blur(0);
-    }
-    .stat-card.privacy-mode .progress-fill {
-        filter: blur(4px);
-    }
+.erp-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--erp-shadow-hover);
+    border-color: #dce5f2;
+}
 
-    /* Chart privacy mode */
-    .chart-privacy-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(4px);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 15;
-        border-radius: 12px;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-    .chart-privacy-overlay.visible {
-        opacity: 1;
-        pointer-events: all;
-    }
-    .chart-privacy-overlay i {
-        font-size: 36px;
-        color: #ffa500;
-        margin-bottom: 8px;
-    }
-    .chart-privacy-overlay span {
-        font-size: 14px;
-        color: #6b7280;
-        font-weight: 500;
-    }
+/* Privacy Overlay */
+.erp-private {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(255,255,255,.91);
+    backdrop-filter: blur(7px);
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease;
+}
 
-    /* Table privacy mode */
-    .table-privacy-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(4px);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 15;
-        border-radius: 12px;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-    .table-privacy-overlay.visible {
-        opacity: 1;
-        pointer-events: all;
-    }
-    .table-privacy-overlay i {
-        font-size: 32px;
-        color: #ffa500;
-        margin-bottom: 8px;
-    }
-    .table-privacy-overlay span {
-        font-size: 13px;
-        color: #6b7280;
-        font-weight: 500;
-    }
+.erp-private.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
 
-    .relative-container {
-        position: relative;
-    }
+.erp-private i {
+    width: 31px;
+    height: 31px;
+    border-radius: 9px;
+    background: #f1f5f9;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
 
-    /* Activities privacy */
-    .activities-privacy-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(4px);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 15;
-        border-radius: 12px;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-    .activities-privacy-overlay.visible {
-        opacity: 1;
-        pointer-events: all;
-    }
-    .activities-privacy-overlay i {
-        font-size: 32px;
-        color: #ffa500;
-        margin-bottom: 8px;
-    }
-    .activities-privacy-overlay span {
-        font-size: 13px;
-        color: #6b7280;
-        font-weight: 500;
-    }
+.erp-private span {
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 700;
+}
 
-    /* Privacy mode hint text */
-    .privacy-hint {
-        font-size: 12px;
-        color: #9ca3af;
-        margin-top: 4px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .privacy-hint i {
-        font-size: 10px;
-    }
+.erp-private-sub {
+    color: #94a3b8;
+    font-size: 8px;
+}
+
+/* Loading Spinner */
+.erp-loader {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    background: rgba(255,255,255,.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+}
+
+.erp-spinner {
+    width: 26px;
+    height: 26px;
+    border: 3px solid #e8eef8;
+    border-top-color: var(--erp-primary);
+    border-radius: 50%;
+    animation: erpSpin .8s linear infinite;
+}
+
+@keyframes erpSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* KPI Grid */
+.erp-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.erp-kpi {
+    padding: 17px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.erp-kpi-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.erp-kpi-label {
+    font-size: 10px;
+    color: #7b8798;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.erp-kpi-value {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -.4px;
+    color: var(--erp-text);
+    margin-top: 7px;
+}
+
+.erp-kpi-sub {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-top: 4px;
+}
+
+.erp-kpi-icon {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    font-size: 15px;
+}
+
+.kpi-blue .erp-kpi-icon { color: var(--erp-primary); background: var(--erp-primary-soft); }
+.kpi-green .erp-kpi-icon { color: var(--erp-green); background: var(--erp-green-soft); }
+.kpi-purple .erp-kpi-icon { color: var(--erp-purple); background: var(--erp-purple-soft); }
+.kpi-orange .erp-kpi-icon { color: var(--erp-orange); background: var(--erp-orange-soft); }
+.kpi-red .erp-kpi-icon { color: var(--erp-red); background: var(--erp-red-soft); }
+.kpi-cyan .erp-kpi-icon { color: var(--erp-cyan); background: var(--erp-cyan-soft); }
+
+.erp-green { color: var(--erp-green); }
+.erp-red { color: var(--erp-red); }
+.erp-purple { color: var(--erp-purple); }
+
+/* Progress Bar */
+.erp-progress {
+    height: 7px;
+    background: #edf1f6;
+    border-radius: 20px;
+    margin-top: 12px;
+    overflow: hidden;
+}
+
+.erp-progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #2563eb, #60a5fa);
+    transition: width .5s ease;
+}
+
+/* Analytics Grid */
+.erp-analytics-grid {
+    display: grid;
+    grid-template-columns: 1.25fr .9fr .9fr;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.erp-panel {
+    padding: 20px;
+    position: relative;
+}
+
+.erp-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 17px;
+}
+
+.erp-panel-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--erp-text);
+}
+
+.erp-view-all {
+    color: var(--erp-primary);
+    font-size: 10px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.erp-donut-wrap {
+    height: 220px;
+    position: relative;
+}
+
+.erp-donut-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+}
+
+.erp-donut-center strong {
+    display: block;
+    font-size: 23px;
+    font-weight: 800;
+}
+
+.erp-donut-center span {
+    font-size: 9px;
+    color: var(--erp-muted);
+}
+
+/* Lower Grid */
+.erp-lower-grid {
+    display: grid;
+    grid-template-columns: 1.45fr .8fr;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+/* Quick Actions */
+.erp-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+}
+
+.erp-action-card {
+    padding: 15px 10px;
+    border: 1px solid var(--erp-border);
+    border-radius: 12px;
+    text-align: center;
+    transition: .2s ease;
+    background: #fff;
+    text-decoration: none;
+    display: block;
+}
+
+.erp-action-card:hover {
+    border-color: #bfdbfe;
+    background: #f8fbff;
+    transform: translateY(-2px);
+}
+
+.erp-action-icon {
+    width: 34px;
+    height: 34px;
+    margin: 0 auto 8px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--erp-primary);
+    background: var(--erp-primary-soft);
+}
+
+.erp-action-card strong {
+    display: block;
+    font-size: 9px;
+    color: var(--erp-text);
+}
+
+.erp-action-card span {
+    display: block;
+    font-size: 8px;
+    color: #94a3b8;
+    margin-top: 3px;
+}
+
+/* Privacy Toggle */
+.privacy-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+    position: relative;
+    z-index: 9999;
+}
+
+.privacy-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.privacy-icon {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.privacy-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.privacy-status {
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.privacy-status.active {
+    color: #2563eb;
+}
+
+.privacy-switch {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.privacy-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.privacy-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #cbd5e1;
+    border-radius: 999px;
+    transition: .2s;
+}
+
+.privacy-slider::before {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    top: 3px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    transition: .2s;
+}
+
+.privacy-switch input:checked + .privacy-slider {
+    background: #2563eb;
+}
+
+.privacy-switch input:checked + .privacy-slider::before {
+    transform: translateX(18px);
+}
+
+/* Toolbar */
+.erp-toolbar {
+    background: #fff;
+    border: 1px solid var(--erp-border);
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 22px;
+    box-shadow: var(--erp-shadow);
+}
+
+.erp-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.erp-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.erp-date-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f8fafc;
+    border: 1px solid var(--erp-border);
+    padding: 8px 11px;
+    border-radius: 10px;
+}
+
+.erp-date-box input {
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-size: 12px;
+    color: var(--erp-text);
+    width: 125px;
+}
+
+.erp-btn {
+    border: 0;
+    border-radius: 10px;
+    padding: 9px 15px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: .2s ease;
+    cursor: pointer;
+}
+
+.erp-btn-primary {
+    background: var(--erp-primary);
+    color: #fff;
+}
+
+.erp-btn-primary:hover {
+    background: var(--erp-primary-dark);
+    transform: translateY(-1px);
+}
+
+.erp-btn-light {
+    background: #f5f7fb;
+    border: 1px solid var(--erp-border);
+    color: #475569;
+}
+
+.erp-btn-light:hover {
+    background: #eef2f7;
+}
+
+/* Recent Payments */
+.recent-payments-card {
+    background: #ffffff;
+    border: 1px solid #e8edf5;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 24px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #172554;
+    letter-spacing: -0.01em;
+}
+
+.card-subtitle {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.payments-header {
+    display: grid;
+    grid-template-columns: minmax(240px, 2fr) 1fr 1fr 1fr 100px;
+    padding: 12px 24px;
+    background: #f8fafc;
+    border-bottom: 1px solid #edf1f6;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .07em;
+}
+
+.payment-row {
+    display: grid;
+    grid-template-columns: minmax(240px, 2fr) 1fr 1fr 1fr 100px;
+    align-items: center;
+    min-height: 76px;
+    padding: 10px 24px;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background .18s ease;
+}
+
+.payment-row:hover {
+    background: #f8fbff;
+}
+
+.payment-student {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.student-avatar {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.student-name {
+    color: #172554;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.student-meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.payment-method {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    font-size: 12px;
+}
+
+.method-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.payment-date {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.payment-amount {
+    color: #059669;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 9px;
+    border-radius: 7px;
+    background: #ecfdf5;
+    color: #059669;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.payments-loading {
+    min-height: 250px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #e2e8f0;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: paymentSpin .7s linear infinite;
+}
+
+@keyframes paymentSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* AI Card */
+.erp-ai-card {
+    position: relative;
+    overflow: hidden;
+    padding: 21px;
+    background: radial-gradient(circle at 100% 0%, rgba(124,58,237,.16), transparent 38%),
+                linear-gradient(145deg, #fff, #f8f5ff);
+}
+
+.erp-ai-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--erp-purple);
+    background: var(--erp-purple-soft);
+    padding: 6px 9px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 800;
+    margin-bottom: 14px;
+}
+
+.erp-ai-title {
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.4;
+    margin-bottom: 9px;
+}
+
+.erp-ai-description {
+    font-size: 10px;
+    color: #64748b;
+    line-height: 1.7;
+}
+
+.erp-ai-number {
+    color: var(--erp-purple);
+    font-weight: 800;
+}
+
+.erp-ai-actions {
+    margin-top: 17px;
+}
+
+.erp-ai-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 9px;
+    color: #475569;
+    font-size: 9px;
+}
+
+.erp-ai-action span {
+    width: 17px;
+    height: 17px;
+    background: #ede9fe;
+    color: var(--erp-purple);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 800;
+}
+
+.erp-ai-button {
+    width: 100%;
+    border: 0;
+    background: var(--erp-purple);
+    color: white;
+    border-radius: 9px;
+    padding: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-top: 6px;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .erp-kpi-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .erp-analytics-grid { grid-template-columns: 1fr 1fr; }
+    .erp-analytics-grid > :last-child { grid-column: span 2; }
+    .erp-actions-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 900px) {
+    .erp-dashboard { padding: 18px; }
+    .erp-finance-hero { grid-template-columns: 1fr; }
+    .erp-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .erp-analytics-grid { grid-template-columns: 1fr; }
+    .erp-analytics-grid > :last-child { grid-column: auto; }
+    .erp-lower-grid { grid-template-columns: 1fr; }
+    .erp-toolbar { flex-direction: column; align-items: stretch; }
+    .erp-toolbar-left { flex-wrap: wrap; }
+}
+
+@media (max-width: 640px) {
+    .erp-dashboard { padding: 12px; }
+    .erp-kpi-grid { grid-template-columns: 1fr; }
+    .erp-actions-grid { grid-template-columns: repeat(2, 1fr); }
+    .payments-header { display: none; }
+    .payment-row { grid-template-columns: 1fr; gap: 8px; padding: 16px; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-6">
-    <!-- Page Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 mb-1">Dashboard</h1>
-        <p class="text-sm text-gray-600">Welcome back! Click on any card to view detailed reports.</p>
-    </div>
+<div class="erp-dashboard">
+<div class="erp-container">
 
-    <!-- Privacy Mode Toggle -->
-    <div class="privacy-toggle-container">
-        <div class="privacy-toggle">
-            <span class="privacy-toggle-label">
-                <i class="fas fa-lock"></i> Privacy Mode
-            </span>
-            <div class="toggle-switch" id="privacyToggle" onclick="togglePrivacy()">
-                <div class="toggle-knob"></div>
+<!-- ============================================================
+     HEADER
+============================================================ -->
+<div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-[#17233d] tracking-tight">
+            Good afternoon, Administrator 👋
+        </h1>
+        <p class="text-[#718096] text-sm mt-1.5">
+            Here's what's happening across your school today.
+        </p>
+    </div>
+    <div class="flex gap-2">
+        <button class="erp-btn erp-btn-light" onclick="refreshDashboard()">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<!-- ============================================================
+     TOOLBAR
+============================================================ -->
+<div class="erp-toolbar">
+    <div class="erp-toolbar-left">
+        <!-- Privacy Control -->
+        <div class="privacy-control">
+            <div class="privacy-info">
+                <div class="privacy-icon">
+                    <span id="privacyIcon">◉</span>
+                </div>
+                <div>
+                    <div class="privacy-title">Privacy Mode</div>
+                    <div class="privacy-status" id="privacyStatus">OFF</div>
+                </div>
             </div>
-            <span class="privacy-status" id="privacyStatus">OFF</span>
+            <label class="privacy-switch">
+                <input type="checkbox" id="privacyToggle">
+                <span class="privacy-slider"></span>
+            </label>
         </div>
-        <div class="privacy-hint">
-            <i class="fas fa-info-circle"></i>
-            <span>When enabled, all sensitive data will be hidden with padlocks</span>
+
+        <!-- Date Range -->
+        <div class="erp-date-box">
+            <i class="fas fa-calendar-alt"></i>
+            <input type="date" id="startDate">
+        </div>
+        <span class="text-[#94a3b8] text-xs">to</span>
+        <div class="erp-date-box">
+            <i class="fas fa-calendar-alt"></i>
+            <input type="date" id="endDate">
         </div>
     </div>
+    <div class="erp-toolbar-right">
+        <button onclick="refreshDashboard()" class="erp-btn erp-btn-primary">
+            <i class="fas fa-filter"></i> Apply Filter
+        </button>
+        <button onclick="resetDates()" class="erp-btn erp-btn-light">Reset</button>
+    </div>
+</div>
 
-    <!-- Date Filter Bar -->
-    <div class="filter-bar">
-        <div class="flex flex-wrap items-center gap-4">
+<!-- ============================================================
+     FINANCIAL HERO
+============================================================ -->
+<div class="grid grid-cols-1 lg:grid-cols-[1fr_330px] gap-4 mb-4">
+    <!-- Chart -->
+    <div class="erp-card p-5 min-h-[390px]">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                <input type="date" id="startDate" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                <h2 class="text-[15px] font-extrabold text-[#17233d]">Financial Performance</h2>
+                <p class="text-[11px] text-[#718096] mt-1">Income, expenses and profitability over time</p>
             </div>
+            <div class="flex gap-1 bg-[#f5f7fb] p-1 rounded-lg">
+                <button class="erp-chart-tab active px-3 py-1.5 text-[10px] font-bold rounded-md border-0 bg-white text-[#2563eb] shadow-sm">Monthly</button>
+                <button class="erp-chart-tab px-3 py-1.5 text-[10px] font-bold rounded-md border-0 bg-transparent text-[#64748b]">Weekly</button>
+                <button class="erp-chart-tab px-3 py-1.5 text-[10px] font-bold rounded-md border-0 bg-transparent text-[#64748b]">Daily</button>
+            </div>
+        </div>
+        <div class="h-[290px] relative">
+            <canvas id="incomeExpenseChart"></canvas>
+            <div id="chartLoader" class="erp-loader" style="display:none;">
+                <div class="erp-spinner"></div>
+            </div>
+            <div class="erp-private" id="privacyIncomeExpenseChart">
+                <i class="fas fa-lock"></i>
+                <span>Financial chart hidden</span>
+                <small class="erp-private-sub">Disable Privacy Mode to view</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Health -->
+    <div class="erp-card p-5 relative overflow-hidden">
+        <div class="absolute w-[170px] h-[170px] -right-20 -top-16 bg-[#2563eb]/10 rounded-full"></div>
+        <div class="text-sm font-extrabold mb-4">Financial Health</div>
+        <div class="p-4 bg-gradient-to-br from-[#f5f9ff] to-[#eef5ff] rounded-xl mb-3">
+            <span class="text-[#64748b] text-[10px]">Filtered Profit</span>
+            <strong class="block text-[23px] mt-1 text-[#2563eb]" id="heroProfit">UGX 0</strong>
+        </div>
+        <div class="erp-health-item flex justify-between py-2.5 border-b border-[#e8edf5]">
+            <span class="text-[#718096] text-xs">Fees Collected</span>
+            <strong class="text-[#16a66a] text-sm" id="heroCollected">UGX 0</strong>
+        </div>
+        <div class="erp-health-item flex justify-between py-2.5 border-b border-[#e8edf5]">
+            <span class="text-[#718096] text-xs">Other Income</span>
+            <strong class="text-[#16a66a] text-sm" id="heroOtherIncome">UGX 0</strong>
+        </div>
+        <div class="erp-health-item flex justify-between py-2.5 border-b border-[#e8edf5]">
+            <span class="text-[#718096] text-xs">Expenses</span>
+            <strong class="text-[#ef4444] text-sm" id="heroExpenses">UGX 0</strong>
+        </div>
+        <div class="erp-health-item flex justify-between py-2.5">
+            <span class="text-[#718096] text-xs">Overall Profit</span>
+            <strong class="text-[#7c3aed] text-sm" id="heroOverallProfit">UGX 0</strong>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     KPI ROW
+============================================================ -->
+<div class="erp-kpi-grid">
+    <!-- Students -->
+    <div class="erp-card erp-kpi kpi-blue" onclick="goToReport('students')">
+        <div class="erp-kpi-top">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input type="date" id="endDate" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                <div class="erp-kpi-label">Total Students</div>
+                <div class="erp-kpi-value" id="totalStudents">—</div>
+                <div class="erp-kpi-sub">Enrolled students</div>
             </div>
-            <div class="flex items-end gap-2">
-                <button onclick="refreshDashboard()" class="btn-gradient px-4 py-2 rounded-lg text-white text-sm font-medium">
-                    <i class="fas fa-sync-alt"></i> Apply Filter
-                </button>
-                <button onclick="resetDates()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50">
-                    Reset
-                </button>
+            <div class="erp-kpi-icon"><i class="fas fa-user-graduate"></i></div>
+        </div>
+        <div class="erp-private" id="privacyTotalStudents"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+
+    <!-- Employees -->
+    <div class="erp-card erp-kpi kpi-purple" onclick="goToReport('employees')">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Total Employees</div>
+                <div class="erp-kpi-value" id="totalEmployees">—</div>
+                <div class="erp-kpi-sub">Teaching & support staff</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-users"></i></div>
+        </div>
+        <div class="erp-private" id="privacyTotalEmployees"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+
+    <!-- Collected -->
+    <div class="erp-card erp-kpi kpi-green" onclick="goToReport('income')">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Total Collected</div>
+                <div class="erp-kpi-value erp-green" id="totalCollected">UGX 0</div>
+                <div class="erp-kpi-sub">Fee & other collections</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-wallet"></i></div>
+        </div>
+        <div class="erp-private" id="privacyTotalCollected"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+
+    <!-- Payable -->
+    <div class="erp-card erp-kpi kpi-orange">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Total Payable</div>
+                <div class="erp-kpi-value" id="totalPayable">UGX 0</div>
+                <div class="erp-kpi-sub">After discounts</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+        </div>
+        <div class="erp-private" id="privacyTotalPayable"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+
+    <!-- Invoiced -->
+    <div class="erp-card erp-kpi kpi-blue">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Total Invoiced</div>
+                <div class="erp-kpi-value" id="totalInvoiced">UGX 0</div>
+                <div class="erp-kpi-sub">Before discounts</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-file-alt"></i></div>
+        </div>
+        <div class="erp-private" id="privacyTotalInvoiced"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+
+    <!-- Discounts -->
+    <div class="erp-card erp-kpi kpi-red">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Discounts</div>
+                <div class="erp-kpi-value erp-red" id="totalDiscounts">UGX 0</div>
+                <div class="erp-kpi-sub">Amount waived</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-tags"></i></div>
+        </div>
+        <div class="erp-private" id="privacyTotalDiscounts"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+
+    <!-- Expenses -->
+    <div class="erp-card erp-kpi kpi-red" onclick="goToReport('expenses')">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Total Expenses</div>
+                <div class="erp-kpi-value erp-red" id="totalExpenses">UGX 0</div>
+                <div class="erp-kpi-sub">School expenses</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-receipt"></i></div>
+        </div>
+        <div class="erp-private" id="privacyTotalExpenses"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+
+    <!-- Collection Rate -->
+    <div class="erp-card erp-kpi kpi-cyan">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Collection Rate</div>
+                <div class="erp-kpi-value" id="collectionPercentage">0%</div>
+                <div class="erp-kpi-sub">Of total payable</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-chart-pie"></i></div>
+        </div>
+        <div class="erp-progress">
+            <div class="erp-progress-fill" id="collectionProgressBar"></div>
+        </div>
+        <div class="erp-private" id="privacyCollectionPercentage"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+
+    <!-- School Fees -->
+    <div class="erp-card erp-kpi kpi-green">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">School Fees</div>
+                <div class="erp-kpi-value erp-green" id="schoolFeesCollected">UGX 0</div>
+                <div class="erp-kpi-sub">Fee collections</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-graduation-cap"></i></div>
+        </div>
+        <div class="erp-private" id="privacySchoolFees"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+
+    <!-- Other Income -->
+    <div class="erp-card erp-kpi kpi-cyan">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Other Income</div>
+                <div class="erp-kpi-value erp-green" id="otherIncome">UGX 0</div>
+                <div class="erp-kpi-sub">Non-fee income</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-arrow-trend-up"></i></div>
+        </div>
+        <div class="erp-private" id="privacyOtherIncome"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+
+    <!-- Filtered Profit -->
+    <div class="erp-card erp-kpi kpi-purple" onclick="goToReport('profit-loss')">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Filtered Profit</div>
+                <div class="erp-kpi-value erp-purple" id="filteredProfit">UGX 0</div>
+                <div class="erp-kpi-sub">Current date range</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-chart-line"></i></div>
+        </div>
+        <div class="erp-private" id="privacyFilteredProfit"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+
+    <!-- Overall Profit -->
+    <div class="erp-card erp-kpi kpi-purple" onclick="goToReport('overall-profit')">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Overall Profit</div>
+                <div class="erp-kpi-value erp-purple" id="overallProfit">UGX 0</div>
+                <div class="erp-kpi-sub">All-time performance</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-trophy"></i></div>
+        </div>
+        <div class="erp-private" id="privacyOverallProfit"><i class="fas fa-lock"></i><span>Private</span></div>
+    </div>
+</div>
+
+<!-- ============================================================
+     ANALYTICS
+============================================================ -->
+<div class="erp-analytics-grid">
+    <!-- Student Distribution -->
+    <div class="erp-card erp-panel">
+        <div class="erp-panel-header">
+            <div>
+                <div class="erp-panel-title">Student Distribution</div>
+                <div class="text-[#94a3b8] text-[9px] mt-1">Students by class</div>
+            </div>
+            <a href="/reports/students" class="erp-view-all">View all →</a>
+        </div>
+        <div class="erp-donut-wrap relative">
+            <canvas id="classDistributionChart"></canvas>
+            <div class="erp-donut-center">
+                <strong id="studentChartTotal">0</strong>
+                <span>Students</span>
+            </div>
+            <div class="erp-private" id="privacyClassDistribution">
+                <i class="fas fa-lock"></i>
+                <span>Student data hidden</span>
             </div>
         </div>
     </div>
 
-    <!-- Stats Cards - Row 1: Basic Stats -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="statsContainer">
-        <!-- Card 1: Total Students -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-orange-500" id="cardTotalStudents" onclick="goToReport('students')">
-            <div class="card-loader hidden" id="loaderTotalStudents">
-                <div class="loader"></div>
-            </div>
-            <!-- Privacy Overlay -->
-            <div class="privacy-overlay" id="privacyTotalStudents">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">Total Students</p>
-                    <p class="stat-value font-bold text-gray-800 mt-1" id="totalStudents">-</p>
-                </div>
-                <div class="h-11 w-11 bg-orange-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-user-graduate text-orange-500 text-lg"></i>
-                </div>
-            </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
+    <!-- Class Overview -->
+    <div class="erp-card erp-panel">
+        <div class="erp-panel-header">
+            <div>
+                <div class="erp-panel-title">Class Overview</div>
+                <div class="text-[#94a3b8] text-[9px] mt-1">Enrollment distribution</div>
             </div>
         </div>
-        
-        <!-- Card 2: Total Employees -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-blue-500" id="cardTotalEmployees" onclick="goToReport('employees')">
-            <div class="card-loader hidden" id="loaderTotalEmployees">
-                <div class="loader"></div>
-            </div>
-            <div class="privacy-overlay" id="privacyTotalEmployees">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">Total Employees</p>
-                    <p class="stat-value font-bold text-gray-800 mt-1" id="totalEmployees">-</p>
-                </div>
-                <div class="h-11 w-11 bg-blue-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-user-tie text-blue-500 text-lg"></i>
-                </div>
-            </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
-            </div>
-        </div>
-        
-        <!-- Card 3: Total Collected -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-emerald-500" id="cardTotalCollected" onclick="goToReport('income')">
-            <div class="card-loader hidden" id="loaderTotalCollected">
-                <div class="loader"></div>
-            </div>
-            <div class="privacy-overlay" id="privacyTotalCollected">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">Total Collected</p>
-                    <p class="stat-value font-bold text-emerald-600 mt-1" id="totalCollected">UGX 0</p>
-                </div>
-                <div class="h-11 w-11 bg-emerald-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-coins text-emerald-500 text-lg"></i>
-                </div>
-            </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
-            </div>
-        </div>
-        
-        <!-- Card 4: Other Incomes -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-teal-500" id="cardOtherIncome" onclick="goToReport('other-income')">
-            <div class="card-loader hidden" id="loaderOtherIncome">
-                <div class="loader"></div>
-            </div>
-            <div class="privacy-overlay" id="privacyOtherIncome">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">Other Incomes</p>
-                    <p class="stat-value font-bold text-teal-600 mt-1" id="otherIncome">UGX 0</p>
-                </div>
-                <div class="h-11 w-11 bg-teal-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-chart-line text-teal-500 text-lg"></i>
-                </div>
-            </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
-            </div>
+        <div class="erp-class-list" id="classOverviewList">
+            <div class="text-[#94a3b8] text-[10px]">Loading classes...</div>
         </div>
     </div>
 
-    <!-- Stats Cards - Row 2: Fee Collection Summary -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="feeCollectionContainer">
-        <!-- Card 5: Total Invoiced -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-indigo-500" id="cardTotalInvoiced">
-            <div class="card-loader hidden" id="loaderTotalInvoiced">
-                <div class="loader"></div>
+    <!-- Student Attendance -->
+    <div class="erp-card erp-panel">
+        <div class="erp-panel-header">
+            <div>
+                <div class="erp-panel-title">Student Attendance</div>
+                <div class="text-[#94a3b8] text-[9px] mt-1">Today's attendance overview</div>
             </div>
-            <div class="privacy-overlay" id="privacyTotalInvoiced">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">Total Invoiced</p>
-                    <p class="stat-value font-bold text-gray-800 mt-1" id="totalInvoiced">UGX 0</p>
-                    <p class="text-xs text-gray-400 mt-1">Before discounts</p>
-                </div>
-                <div class="h-11 w-11 bg-indigo-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-file-invoice text-indigo-500 text-lg"></i>
-                </div>
-            </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
-            </div>
+            <a href="#" class="erp-view-all">Details →</a>
         </div>
-        
-        <!-- Card 6: Total Discounts Applied -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-rose-500" id="cardTotalDiscounts">
-            <div class="card-loader hidden" id="loaderTotalDiscounts">
-                <div class="loader"></div>
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <div class="p-3 rounded-lg bg-[#f8fafc]">
+                <span class="text-[#718096] text-[9px] block">Present</span>
+                <strong class="text-[#16a66a] text-base block mt-1" id="attendancePresent">0</strong>
             </div>
-            <div class="privacy-overlay" id="privacyTotalDiscounts">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
+            <div class="p-3 rounded-lg bg-[#f8fafc]">
+                <span class="text-[#718096] text-[9px] block">Absent</span>
+                <strong class="text-[#ef4444] text-base block mt-1" id="attendanceAbsent">0</strong>
             </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">Total Discounts</p>
-                    <p class="stat-value font-bold text-rose-600 mt-1" id="totalDiscounts">UGX 0</p>
-                    <p class="text-xs text-gray-400 mt-1">Amount waived</p>
-                </div>
-                <div class="h-11 w-11 bg-rose-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-tags text-rose-500 text-lg"></i>
-                </div>
+            <div class="p-3 rounded-lg bg-[#f8fafc]">
+                <span class="text-[#718096] text-[9px] block">Rate</span>
+                <strong class="text-base block mt-1" id="attendanceRate">0%</strong>
             </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
-            </div>
-        </div>
-        
-        <!-- Card 7: Total Payable -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-purple-500" id="cardTotalPayable">
-            <div class="card-loader hidden" id="loaderTotalPayable">
-                <div class="loader"></div>
-            </div>
-            <div class="privacy-overlay" id="privacyTotalPayable">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">Total Payable</p>
-                    <p class="stat-value font-bold text-purple-600 mt-1" id="totalPayable">UGX 0</p>
-                    <p class="text-xs text-gray-400 mt-1">After discounts</p>
-                </div>
-                <div class="h-11 w-11 bg-purple-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-calculator text-purple-500 text-lg"></i>
-                </div>
-            </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
-            </div>
-        </div>
-        
-        <!-- Card 8: Collection Percentage -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-cyan-500" id="cardCollectionPercentage">
-            <div class="card-loader hidden" id="loaderCollectionPercentage">
-                <div class="loader"></div>
-            </div>
-            <div class="privacy-overlay" id="privacyCollectionPercentage">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">Collection Rate</p>
-                    <p class="stat-value font-bold text-cyan-600 mt-1" id="collectionPercentage">0%</p>
-                    <p class="text-xs text-gray-400 mt-1">Of total payable</p>
-                </div>
-                <div class="h-11 w-11 bg-cyan-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-chart-pie text-cyan-500 text-lg"></i>
-                </div>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="collectionProgressBar" style="width: 0%"></div>
-            </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
-            </div>
-        </div>
-    </div>
-
-    <!-- Stats Cards - Row 3 (Profit cards conditionally visible) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="profitCardsContainer">
-        <!-- Card 9: Total Expenses -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-red-500" id="cardTotalExpenses" onclick="goToReport('expenses')">
-            <div class="card-loader hidden" id="loaderTotalExpenses">
-                <div class="loader"></div>
-            </div>
-            <div class="privacy-overlay" id="privacyTotalExpenses">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">Total Expenses</p>
-                    <p class="stat-value font-bold text-red-600 mt-1" id="totalExpenses">UGX 0</p>
-                </div>
-                <div class="h-11 w-11 bg-red-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-receipt text-red-500 text-lg"></i>
-                </div>
-            </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
-            </div>
-        </div>
-        
-        <!-- Card 10: School Fees Collected -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-indigo-500" id="cardSchoolFees" onclick="goToReport('school-fees')">
-            <div class="card-loader hidden" id="loaderSchoolFees">
-                <div class="loader"></div>
-            </div>
-            <div class="privacy-overlay" id="privacySchoolFees">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">School Fees</p>
-                    <p class="stat-value font-bold text-indigo-600 mt-1" id="schoolFeesCollected">UGX 0</p>
-                </div>
-                <div class="h-11 w-11 bg-indigo-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-money-bill-wave text-indigo-500 text-lg"></i>
-                </div>
-            </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
-            </div>
-        </div>
-        
-        <!-- Card 11: Filtered Profit -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-purple-500" id="cardFilteredProfit" onclick="goToReport('profit-loss')">
-            <div class="card-loader hidden" id="loaderFilteredProfit">
-                <div class="loader"></div>
-            </div>
-            <div class="privacy-overlay" id="privacyFilteredProfit">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">Filtered Profit</p>
-                    <p class="stat-value font-bold text-purple-600 mt-1" id="filteredProfit">UGX 0</p>
-                </div>
-                <div class="h-11 w-11 bg-purple-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-chart-line text-purple-500 text-lg"></i>
-                </div>
-            </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
-            </div>
-        </div>
-        
-        <!-- Card 12: Overall Profit -->
-        <div class="stat-card bg-white rounded-xl shadow-md p-5 border-l-4 border-rose-500" id="cardOverallProfit" onclick="goToReport('overall-profit')">
-            <div class="card-loader" id="loaderOverallProfit">
-                <div class="loader"></div>
-            </div>
-            <div class="privacy-overlay" id="privacyOverallProfit">
-                <i class="fas fa-lock"></i>
-                <span>Private</span>
-            </div>
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-xs uppercase tracking-wide">Overall Profit</p>
-                    <p class="stat-value font-bold text-rose-600 mt-1" id="overallProfit">UGX 0</p>
-                    <p class="text-xs text-gray-400 mt-1">All time total</p>
-                </div>
-                <div class="h-11 w-11 bg-rose-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-trophy text-rose-500 text-lg"></i>
-                </div>
-            </div>
-            <div class="click-hint">
-                <i class="fas fa-arrow-right"></i> Click to view
-            </div>
-        </div>
-    </div>
-
-    <!-- Charts Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <!-- Income vs Expense Line Chart -->
-        <div class="bg-white rounded-xl shadow-md p-5 relative-container">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Income vs Expense Trend</h3>
-            <div class="chart-container" id="chartContainer">
-                <canvas id="incomeExpenseChart"></canvas>
-                <div id="chartLoader" class="hidden absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
-                    <div class="loader"></div>
-                </div>
-                <div class="chart-privacy-overlay" id="privacyIncomeExpenseChart">
-                    <i class="fas fa-lock"></i>
-                    <span>Chart hidden in privacy mode</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Class Distribution Pie Chart -->
-        <div class="bg-white rounded-xl shadow-md p-5 relative-container">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Student Distribution by Class</h3>
-            <div class="chart-container" id="pieChartContainer">
-                <canvas id="classDistributionChart"></canvas>
-                <div id="pieChartLoader" class="hidden absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
-                    <div class="loader"></div>
-                </div>
-                <div class="chart-privacy-overlay" id="privacyClassDistribution">
-                    <i class="fas fa-lock"></i>
-                    <span>Chart hidden in privacy mode</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Attendance Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <!-- Student Attendance by Class -->
-        <div class="bg-white rounded-xl shadow-md p-5 relative-container">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Student Attendance by Class</h3>
-            <div class="overflow-x-auto relative">
-                <div id="studentAttendanceLoader" class="hidden absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
-                    <div class="loader"></div>
-                </div>
-                <div class="table-privacy-overlay" id="privacyStudentAttendance">
-                    <i class="fas fa-lock"></i>
-                    <span>Data hidden in privacy mode</span>
-                </div>
-                <table class="min-w-full">
-                    <thead>
-                        <tr class="border-b">
-                            <th class="text-left py-2 text-sm font-semibold">Class</th>
-                            <th class="text-center py-2 text-sm font-semibold">Present</th>
-                            <th class="text-center py-2 text-sm font-semibold">Absent</th>
-                            <th class="text-right py-2 text-sm font-semibold">%</th>
-                        </tr>
-                    </thead>
-                    <tbody id="classAttendanceTable">
-                        <tr><td colspan="4" class="text-center py-4 text-gray-400">Loading...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Staff Attendance by Role -->
-        <div class="bg-white rounded-xl shadow-md p-5 relative-container">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Staff Attendance by Role</h3>
-            <div class="overflow-x-auto relative">
-                <div id="staffAttendanceLoader" class="hidden absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
-                    <div class="loader"></div>
-                </div>
-                <div class="table-privacy-overlay" id="privacyStaffAttendance">
-                    <i class="fas fa-lock"></i>
-                    <span>Data hidden in privacy mode</span>
-                </div>
-                <table class="min-w-full">
-                    <thead>
-                        <tr class="border-b">
-                            <th class="text-left py-2 text-sm font-semibold">Role</th>
-                            <th class="text-center py-2 text-sm font-semibold">Present</th>
-                            <th class="text-center py-2 text-sm font-semibold">Absent</th>
-                            <th class="text-right py-2 text-sm font-semibold">%</th>
-                        </tr>
-                    </thead>
-                    <tbody id="staffAttendanceTable">
-                        <tr><td colspan="4" class="text-center py-4 text-gray-400">Loading...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Activities -->
-    <div class="bg-white rounded-xl shadow-md overflow-hidden relative-container">
-        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h3 class="text-lg font-semibold text-gray-800">Recent Activities</h3>
         </div>
         <div class="relative">
-            <div id="activitiesLoader" class="hidden absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
-                <div class="loader"></div>
-            </div>
-            <div class="activities-privacy-overlay" id="privacyActivities">
+            <table class="w-full border-collapse text-xs">
+                <thead>
+                    <tr>
+                        <th class="text-[#94a3b8] text-[9px] font-bold text-left p-2 border-b border-[#e8edf5]">Class</th>
+                        <th class="text-[#94a3b8] text-[9px] font-bold text-left p-2 border-b border-[#e8edf5]">Present</th>
+                        <th class="text-[#94a3b8] text-[9px] font-bold text-left p-2 border-b border-[#e8edf5]">Absent</th>
+                        <th class="text-[#94a3b8] text-[9px] font-bold text-right p-2 border-b border-[#e8edf5]">Rate</th>
+                    </tr>
+                </thead>
+                <tbody id="classAttendanceTable">
+                    <tr><td colspan="4" class="text-center text-[#94a3b8] py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+            <div class="erp-private" id="privacyStudentAttendance">
                 <i class="fas fa-lock"></i>
-                <span>Activities hidden in privacy mode</span>
-            </div>
-            <div id="activitiesList" class="divide-y divide-gray-200">
-                <div class="p-8 text-center text-gray-400">Loading activities...</div>
+                <span>Attendance hidden</span>
             </div>
         </div>
     </div>
 </div>
 
+<!-- ============================================================
+     RECENT PAYMENTS + AI
+============================================================ -->
+<div class="erp-lower-grid">
+    <!-- Recent Payments -->
+    <section class="recent-payments-card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Recent Fee Payments</div>
+                <div class="card-subtitle">Latest transactions recorded</div>
+            </div>
+            <a href="/payments" class="card-link">View transactions <span>→</span></a>
+        </div>
+        <div class="payments-header">
+            <span>STUDENT</span>
+            <span>METHOD</span>
+            <span>DATE</span>
+            <span>AMOUNT</span>
+            <span>STATUS</span>
+        </div>
+        <div id="recentPayments" class="recent-payments-list">
+            <div class="payments-loading">
+                <div class="loading-spinner"></div>
+                <span>Loading recent payments...</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Insights -->
+    <div class="erp-card erp-ai-card">
+        <div class="erp-ai-label"><i class="fas fa-sparkles"></i> AI SCHOOL INSIGHTS</div>
+        <div class="erp-ai-title">Collection performance needs attention</div>
+        <div class="erp-ai-description">
+            Your current collection rate is
+            <span class="erp-ai-number" id="aiCollectionRate">0%</span>.
+            Review outstanding balances and follow up with students who have unpaid invoices.
+        </div>
+        <div class="erp-ai-actions">
+            <div class="erp-ai-action"><span>1</span> Review outstanding student balances.</div>
+            <div class="erp-ai-action"><span>2</span> Follow up on overdue invoices.</div>
+            <div class="erp-ai-action"><span>3</span> Monitor expenses against budget.</div>
+        </div>
+        <button class="erp-ai-button" onclick="window.location.href='/center/ai-analysis'">
+            <i class="fas fa-wand-magic-sparkles"></i> Open AI Analysis
+        </button>
+    </div>
+</div>
+
+<!-- ============================================================
+     QUICK ACTIONS
+============================================================ -->
+<div class="erp-card p-5 mb-4">
+    <div class="erp-panel-header">
+        <div>
+            <div class="erp-panel-title">Quick Actions</div>
+            <div class="text-[#94a3b8] text-[9px] mt-1">Common tasks for administrators</div>
+        </div>
+    </div>
+    <div class="erp-actions-grid">
+        <a href="/students" class="erp-action-card">
+            <div class="erp-action-icon"><i class="fas fa-user-plus"></i></div>
+            <strong>Add Student</strong>
+            <span>Register student</span>
+        </a>
+        <a href="/collect-fees" class="erp-action-card">
+            <div class="erp-action-icon"><i class="fas fa-money-bill-wave"></i></div>
+            <strong>Collect Fees</strong>
+            <span>Record payment</span>
+        </a>
+        <a href="/fees" class="erp-action-card">
+            <div class="erp-action-icon"><i class="fas fa-file-invoice"></i></div>
+            <strong>Create Invoice</strong>
+            <span>New invoice</span>
+        </a>
+        <a href="/employees" class="erp-action-card">
+            <div class="erp-action-icon"><i class="fas fa-user-tie"></i></div>
+            <strong>Add Employee</strong>
+            <span>Register staff</span>
+        </a>
+        <a href="/classes/create" class="erp-action-card">
+            <div class="erp-action-icon"><i class="fas fa-school"></i></div>
+            <strong>Create Class</strong>
+            <span>Add class</span>
+        </a>
+        <a href="/accounts/expenses" class="erp-action-card">
+            <div class="erp-action-icon"><i class="fas fa-receipt"></i></div>
+            <strong>Record Expense</strong>
+            <span>Add expense</span>
+        </a>
+    </div>
+</div>
+
+<!-- ============================================================
+     STAFF ATTENDANCE + RECENT ACTIVITY
+============================================================ -->
+<div class="grid grid-cols-1 md:grid-cols-[0.8fr_1.2fr] gap-4">
+    <!-- Staff Attendance -->
+    <div class="erp-card erp-panel">
+        <div class="erp-panel-header">
+            <div>
+                <div class="erp-panel-title">Staff Attendance</div>
+                <div class="text-[#94a3b8] text-[9px] mt-1">Attendance by employee role</div>
+            </div>
+        </div>
+        <div class="relative">
+            <table class="w-full border-collapse text-xs">
+                <thead>
+                    <tr>
+                        <th class="text-[#94a3b8] text-[9px] font-bold text-left p-2 border-b border-[#e8edf5]">Role</th>
+                        <th class="text-[#94a3b8] text-[9px] font-bold text-left p-2 border-b border-[#e8edf5]">Present</th>
+                        <th class="text-[#94a3b8] text-[9px] font-bold text-left p-2 border-b border-[#e8edf5]">Absent</th>
+                        <th class="text-[#94a3b8] text-[9px] font-bold text-right p-2 border-b border-[#e8edf5]">Rate</th>
+                    </tr>
+                </thead>
+                <tbody id="staffAttendanceTable">
+                    <tr><td colspan="4" class="text-center text-[#94a3b8] py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+            <div class="erp-private" id="privacyStaffAttendance">
+                <i class="fas fa-lock"></i>
+                <span>Staff data hidden</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="erp-card p-5">
+        <div class="erp-panel-header">
+            <div>
+                <div class="erp-panel-title">Recent Activity</div>
+                <div class="text-[#94a3b8] text-[9px] mt-1">Latest actions in your school</div>
+            </div>
+            <a href="#" class="erp-view-all">View all →</a>
+        </div>
+        <div class="max-h-[350px] overflow-y-auto" id="activitiesList">
+            <div class="text-center py-8 text-[#94a3b8] text-[10px]">Loading activities...</div>
+        </div>
+        <div class="erp-private" id="privacyActivities">
+            <i class="fas fa-lock"></i>
+            <span>Activities hidden</span>
+        </div>
+    </div>
+</div>
+
+</div>
+</div>
+
 <script>
-    let incomeExpenseChart = null;
-    let classDistributionChart = null;
-    let privacyMode = true; // Default: privacy mode ON
-    
-    // Retry configuration
-    const MAX_RETRIES = 4;
-    const RETRY_DELAY = 1000;
+/* ============================================================
+   LUNSERKERP DASHBOARD JAVASCRIPT
+   ============================================================ */
 
-    // Check if user is owner or admin
-    const isOwnerOrAdmin = !{{ session.user.is_employee|tojson }} || 
-                           ({{ session.user.is_employee|tojson }} && 
-                            ({{ session.user.role|tojson }} === 'admin' || 
-                             {{ session.user.role|tojson }} === 'owner'));
+let incomeExpenseChart = null;
+let classDistributionChart = null;
+let privacyMode = false;
 
-    // Hide profit cards if user is not owner or admin
-    if (!isOwnerOrAdmin) {
-        const profitCards = document.getElementById('profitCardsContainer');
-        if (profitCards) {
-            profitCards.style.display = 'none';
-        }
-        console.log('Profit cards hidden - user is not owner or admin');
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 600;
+
+/* ============================================================
+   ROLE PERMISSION
+============================================================ */
+const isOwnerOrAdmin = !{{ session.user.is_employee|tojson }} ||
+    ({{ session.user.is_employee|tojson }} &&
+    ({{ session.user.role|tojson }} === 'admin' ||
+     {{ session.user.role|tojson }} === 'owner'));
+
+/* ============================================================
+   PRIVACY
+============================================================ */
+(function() {
+    const PRIVACY_KEY = 'lunserk_privacy_mode';
+
+    function getPrivacyState() {
+        return localStorage.getItem(PRIVACY_KEY) === 'true';
     }
 
-    // Toggle privacy mode
-    function togglePrivacy() {
-        privacyMode = !privacyMode;
+    function setPrivacyState(enabled) {
+        localStorage.setItem(PRIVACY_KEY, enabled ? 'true' : 'false');
+        applyPrivacyMode(enabled);
+        // Toggle all privacy overlays
+        document.querySelectorAll('.erp-private').forEach(el => {
+            el.classList.toggle('visible', enabled);
+        });
+    }
+
+    window.applyPrivacyMode = function(enabled) {
+        privacyMode = enabled;
+        document.body.classList.toggle('privacy-mode-active', enabled);
+
         const toggle = document.getElementById('privacyToggle');
         const status = document.getElementById('privacyStatus');
-        
-        if (privacyMode) {
-            toggle.classList.add('active');
-            status.textContent = 'ON';
-            status.classList.add('active');
-        } else {
-            toggle.classList.remove('active');
-            status.textContent = 'OFF';
-            status.classList.remove('active');
+        const icon = document.getElementById('privacyIcon');
+
+        if (toggle) toggle.checked = enabled;
+        if (status) {
+            status.textContent = enabled ? 'ON' : 'OFF';
+            status.classList.toggle('active', enabled);
         }
-        
-        applyPrivacyMode();
-        console.log('Privacy mode:', privacyMode ? 'ON' : 'OFF');
+        if (icon) icon.textContent = enabled ? '●' : '◉';
+
+        // Toggle all privacy overlays
+        document.querySelectorAll('.erp-private').forEach(el => {
+            el.classList.toggle('visible', enabled);
+        });
+    };
+
+    function initializePrivacyMode() {
+        const toggle = document.getElementById('privacyToggle');
+        if (!toggle) return;
+
+        const savedState = getPrivacyState();
+        applyPrivacyMode(savedState);
+
+        toggle.addEventListener('change', function() {
+            setPrivacyState(this.checked);
+        });
     }
 
-    // Apply privacy mode to all elements
-    function applyPrivacyMode() {
-        // Cards privacy
-        const allCards = document.querySelectorAll('.stat-card');
-        const privacyOverlays = document.querySelectorAll('.privacy-overlay');
-        const statValues = document.querySelectorAll('.stat-value');
-        const progressFills = document.querySelectorAll('.progress-fill');
-        
-        if (privacyMode) {
-            // Add privacy class to cards
-            allCards.forEach(card => card.classList.add('privacy-mode'));
-            // Show overlays
-            privacyOverlays.forEach(overlay => overlay.classList.add('visible'));
-            // Blur stat values
-            statValues.forEach(val => val.classList.add('privacy-hidden'));
-            // Blur progress bars
-            progressFills.forEach(fill => fill.style.filter = 'blur(4px)');
-        } else {
-            // Remove privacy class from cards
-            allCards.forEach(card => card.classList.remove('privacy-mode'));
-            // Hide overlays
-            privacyOverlays.forEach(overlay => overlay.classList.remove('visible'));
-            // Unblur stat values
-            statValues.forEach(val => val.classList.remove('privacy-hidden'));
-            // Unblur progress bars
-            progressFills.forEach(fill => fill.style.filter = 'blur(0)');
-        }
-        
-        // Chart privacy
-        const chartOverlays = document.querySelectorAll('.chart-privacy-overlay');
-        if (privacyMode) {
-            chartOverlays.forEach(overlay => overlay.classList.add('visible'));
-        } else {
-            chartOverlays.forEach(overlay => overlay.classList.remove('visible'));
-        }
-        
-        // Table privacy
-        const tableOverlays = document.querySelectorAll('.table-privacy-overlay');
-        if (privacyMode) {
-            tableOverlays.forEach(overlay => overlay.classList.add('visible'));
-        } else {
-            tableOverlays.forEach(overlay => overlay.classList.remove('visible'));
-        }
-        
-        // Activities privacy
-        const activitiesOverlay = document.getElementById('privacyActivities');
-        if (privacyMode) {
-            activitiesOverlay.classList.add('visible');
-        } else {
-            activitiesOverlay.classList.remove('visible');
-        }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializePrivacyMode);
+    } else {
+        initializePrivacyMode();
+    }
+})();
+
+/* ============================================================
+   REPORT NAVIGATION
+============================================================ */
+function goToReport(type) {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    let url = '';
+
+    switch(type) {
+        case 'students': url = '/reports/students'; break;
+        case 'employees': url = '/reports/employees'; break;
+        case 'income': url = `/reports/income?start_date=${startDate}&end_date=${endDate}`; break;
+        case 'expenses': url = `/reports/expenses?start_date=${startDate}&end_date=${endDate}`; break;
+        case 'profit-loss':
+            if (!isOwnerOrAdmin) return;
+            url = `/reports/profit-loss?start_date=${startDate}&end_date=${endDate}`;
+            break;
+        case 'overall-profit':
+            if (!isOwnerOrAdmin) return;
+            url = '/reports/overall-profit';
+            break;
+        default: return;
     }
 
-    // Navigation function for clickable cards
-    function goToReport(reportType) {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        
-        let url = '';
-        switch(reportType) {
-            case 'students':
-                url = '/reports/students';
-                break;
-            case 'employees':
-                url = '/reports/employees';
-                break;
-            case 'income':
-                url = `/reports/income?start_date=${startDate}&end_date=${endDate}`;
-                break;
-            case 'other-income':
-                url = `/reports/other-income?start_date=${startDate}&end_date=${endDate}`;
-                break;
-            case 'expenses':
-                url = `/reports/expenses?start_date=${startDate}&end_date=${endDate}`;
-                break;
-            case 'school-fees':
-                url = `/reports/school-fees?start_date=${startDate}&end_date=${endDate}`;
-                break;
-            case 'profit-loss':
-                if (!isOwnerOrAdmin) return;
-                url = `/reports/profit-loss?start_date=${startDate}&end_date=${endDate}`;
-                break;
-            case 'overall-profit':
-                if (!isOwnerOrAdmin) return;
-                url = '/reports/overall-profit';
-                break;
-            default:
-                return;
-        }
-        
-        // Add institute_id if available
-        {% if institute_id %}
-        url += (url.includes('?') ? '&' : '?') + 'institute_id={{ institute_id }}';
-        {% endif %}
-        
-        window.location.href = url;
-    }
+    {% if institute_id %}
+    url += (url.includes('?') ? '&' : '?') + 'institute_id={{ institute_id }}';
+    {% endif %}
+    window.location.href = url;
+}
 
-    // Generic fetch function with retry logic
-    async function fetchWithRetry(url, retryCount = 0) {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return await response.json();
-        } catch (error) {
-            console.error(`Fetch attempt ${retryCount + 1} failed for ${url}:`, error);
-            
-            if (retryCount < MAX_RETRIES) {
-                console.log(`Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
-                return fetchWithRetry(url, retryCount + 1);
-            } else {
-                throw error;
-            }
+/* ============================================================
+   FETCH WITH RETRY
+============================================================ */
+async function fetchWithRetry(url, retryCount = 0) {
+    try {
+        const response = await fetch(url, {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+    } catch(error) {
+        console.error(`Request failed: ${url}`, error);
+        if (retryCount < MAX_RETRIES) {
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
+            return fetchWithRetry(url, retryCount + 1);
         }
+        throw error;
     }
+}
 
-    // Set default dates (three months ago to today)
+/* ============================================================
+   DATE HELPERS
+============================================================ */
+function setDefaultDates() {
     const today = new Date();
     const threeMonthsAgo = new Date(today);
     threeMonthsAgo.setMonth(today.getMonth() - 3);
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const startDateInput = document.getElementById('startDate');
-        const endDateInput = document.getElementById('endDate');
-        
-        if (startDateInput) startDateInput.value = threeMonthsAgo.toISOString().split('T')[0];
-        if (endDateInput) endDateInput.value = today.toISOString().split('T')[0];
-        
-        // Set privacy mode default: ON
-        const toggle = document.getElementById('privacyToggle');
-        const status = document.getElementById('privacyStatus');
-        toggle.classList.add('active');
-        status.textContent = 'ON';
-        status.classList.add('active');
-        privacyMode = true;
-        
-        refreshDashboard();
-        
-        // Apply privacy after data loads
-        setTimeout(applyPrivacyMode, 100);
+    document.getElementById('startDate').value = threeMonthsAgo.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+}
+
+function resetDates() {
+    setDefaultDates();
+    refreshDashboard();
+}
+
+/* ============================================================
+   MAIN REFRESH
+============================================================ */
+async function refreshDashboard() {
+    const requests = [
+        loadStats(),
+        loadFeeCollectionSummary(),
+        loadIncomeExpenseGraph(),
+        loadClassDistribution(),
+        loadClassAttendance(),
+        loadStaffAttendance(),
+        loadRecentActivities()
+    ];
+
+    if (isOwnerOrAdmin) {
+        requests.push(loadOverallProfit());
+    }
+
+    const results = await Promise.allSettled(requests);
+    results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+            console.error('Dashboard request failed:', index, result.reason);
+        }
     });
+}
 
-    async function refreshDashboard() {
-        console.log('Refreshing dashboard...');
-        
-        const promises = [
-            loadStats(),
-            loadFeeCollectionSummary(),
-            loadIncomeExpenseGraph(),
-            loadClassDistribution(),
-            loadClassAttendance(),
-            loadStaffAttendance(),
-            loadRecentActivities()
-        ];
-        
-        if (isOwnerOrAdmin) {
-            promises.push(loadOverallProfit());
-        }
-        
-        const results = await Promise.allSettled(promises);
-        
-        results.forEach((result, index) => {
-            if (result.status === 'rejected') {
-                console.error(`Dashboard component ${index} failed:`, result.reason);
-            }
-        });
-        
-        // Re-apply privacy mode after data loads
-        applyPrivacyMode();
-        console.log('Dashboard refresh completed');
+/* ============================================================
+   STATS
+============================================================ */
+async function loadStats() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    try {
+        const data = await fetchWithRetry(
+            `/dashboard/api/stats?start_date=${startDate}&end_date=${endDate}`
+        );
+
+        if (!data.success) return;
+
+        const stats = data.stats;
+
+        document.getElementById('totalStudents').textContent =
+            Number(stats.total_students || 0).toLocaleString();
+        document.getElementById('totalEmployees').textContent =
+            Number(stats.total_employees || 0).toLocaleString();
+        document.getElementById('totalCollected').textContent = money(stats.total_collected);
+        document.getElementById('otherIncome').textContent = money(stats.other_income);
+        document.getElementById('totalExpenses').textContent = money(stats.total_expenses);
+        document.getElementById('schoolFeesCollected').textContent = money(stats.revenue_collected);
+        document.getElementById('filteredProfit').textContent = money(stats.total_profit);
+
+        // HERO
+        document.getElementById('heroCollected').textContent = money(stats.revenue_collected);
+        document.getElementById('heroOtherIncome').textContent = money(stats.other_income);
+        document.getElementById('heroExpenses').textContent = money(stats.total_expenses);
+        document.getElementById('heroProfit').textContent = money(stats.total_profit);
+
+    } catch(error) {
+        console.error('Stats error:', error);
     }
+}
 
-    async function loadFeeCollectionSummary() {
-        const feeLoaders = ['loaderTotalInvoiced', 'loaderTotalDiscounts', 'loaderTotalPayable', 'loaderCollectionPercentage'];
-        
-        feeLoaders.forEach(loaderId => {
-            const loader = document.getElementById(loaderId);
-            if (loader) loader.classList.remove('hidden');
-        });
-        
-        try {
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            const statsResponse = await fetch(`/dashboard/api/stats?start_date=${startDate}&end_date=${endDate}`);
-            const statsData = await statsResponse.json();
-            
-            if (statsData.success) {
-                const stats = statsData.stats;
-                
-                document.getElementById('totalInvoiced').textContent = `UGX ${Number(stats.total_invoiced || 0).toLocaleString()}`;
-                document.getElementById('totalDiscounts').textContent = `UGX ${Number(stats.total_discounts || 0).toLocaleString()}`;
-                
-                const totalPayable = (stats.total_invoiced || 0) - (stats.total_discounts || 0);
-                document.getElementById('totalPayable').textContent = `UGX ${Number(totalPayable).toLocaleString()}`;
-                
-                const revenueCollected = stats.revenue_collected || 0;
-                let percentage = 0;
-                
-                if (totalPayable > 0) {
-                    percentage = (revenueCollected / totalPayable) * 100;
-                } else if (revenueCollected > 0) {
-                    percentage = 100;
-                }
-                
-                percentage = Math.round(percentage * 10) / 10;
-                
-                const percentageElement = document.getElementById('collectionPercentage');
-                percentageElement.textContent = `${percentage.toFixed(1)}%`;
-                
-                const progressBar = document.getElementById('collectionProgressBar');
-                const displayPercentage = Math.min(percentage, 100);
-                progressBar.style.width = `${displayPercentage}%`;
-                
-                progressBar.classList.remove('danger', 'warning');
-                percentageElement.classList.remove('text-cyan-600', 'text-red-600', 'text-yellow-600', 'text-green-600');
-                
-                if (percentage < 50) {
-                    progressBar.classList.add('danger');
-                    percentageElement.classList.add('text-red-600');
-                } else if (percentage < 75) {
-                    progressBar.classList.add('warning');
-                    percentageElement.classList.add('text-yellow-600');
-                } else {
-                    percentageElement.classList.add('text-green-600');
-                }
-                
-                console.log('Fee collection summary loaded with collection rate:', percentage);
-            } else {
-                console.error('Error from stats API:', statsData.message);
-                showFeeError('Failed to load fee summary');
-            }
-        } catch (error) {
-            console.error('Error loading fee collection summary:', error);
-            showFeeError('Network error loading fee summary');
-        } finally {
-            feeLoaders.forEach(loaderId => {
-                const loader = document.getElementById(loaderId);
-                if (loader) loader.classList.add('hidden');
-            });
-        }
+/* ============================================================
+   OVERALL PROFIT
+============================================================ */
+async function loadOverallProfit() {
+    if (!isOwnerOrAdmin) return;
+
+    try {
+        const data = await fetchWithRetry('/dashboard/api/overall-profit');
+        if (!data.success) return;
+
+        const profit = Number(data.overall_profit || 0);
+        document.getElementById('overallProfit').textContent = money(profit);
+        document.getElementById('heroOverallProfit').textContent = money(profit);
+    } catch(error) {
+        console.error('Overall profit error:', error);
     }
+}
 
-    function showFeeError(message) {
-        document.getElementById('totalInvoiced').textContent = 'Error';
-        document.getElementById('totalDiscounts').textContent = 'Error';
-        document.getElementById('totalPayable').textContent = 'Error';
-        document.getElementById('collectionPercentage').textContent = '0%';
-        document.getElementById('collectionProgressBar').style.width = '0%';
+/* ============================================================
+   FEE COLLECTION
+============================================================ */
+async function loadFeeCollectionSummary() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    try {
+        const response = await fetchWithRetry(
+            `/dashboard/api/stats?start_date=${startDate}&end_date=${endDate}`
+        );
+
+        if (!response.success) return;
+
+        const stats = response.stats;
+        const invoiced = Number(stats.total_invoiced || 0);
+        const discounts = Number(stats.total_discounts || 0);
+        const collected = Number(stats.revenue_collected || 0);
+        const payable = Math.max(0, invoiced - discounts);
+
+        let percentage = 0;
+        if (payable > 0) percentage = (collected / payable) * 100;
+        percentage = Math.min(percentage, 100);
+
+        document.getElementById('totalInvoiced').textContent = money(invoiced);
+        document.getElementById('totalDiscounts').textContent = money(discounts);
+        document.getElementById('totalPayable').textContent = money(payable);
+        document.getElementById('collectionPercentage').textContent = percentage.toFixed(1) + '%';
+        document.getElementById('collectionProgressBar').style.width = percentage + '%';
+        document.getElementById('aiCollectionRate').textContent = percentage.toFixed(1) + '%';
+
+    } catch(error) {
+        console.error('Fee summary error:', error);
     }
+}
 
-    async function loadStats() {
-        const statLoaders = ['loaderTotalStudents', 'loaderTotalEmployees', 'loaderTotalCollected', 
-                            'loaderOtherIncome', 'loaderTotalExpenses', 'loaderSchoolFees'];
-        
-        if (isOwnerOrAdmin) {
-            statLoaders.push('loaderFilteredProfit');
-        }
-        
-        statLoaders.forEach(loaderId => {
-            const loader = document.getElementById(loaderId);
-            if (loader) loader.classList.remove('hidden');
-        });
-        
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        
-        try {
-            const data = await fetchWithRetry(`/dashboard/api/stats?start_date=${startDate}&end_date=${endDate}`);
-            
-            if (data.success) {
-                document.getElementById('totalStudents').textContent = data.stats.total_students;
-                document.getElementById('totalEmployees').textContent = data.stats.total_employees;
-                document.getElementById('totalCollected').textContent = `UGX ${data.stats.total_collected.toLocaleString()}`;
-                document.getElementById('otherIncome').textContent = `UGX ${data.stats.other_income.toLocaleString()}`;
-                document.getElementById('totalExpenses').textContent = `UGX ${data.stats.total_expenses.toLocaleString()}`;
-                document.getElementById('schoolFeesCollected').textContent = `UGX ${data.stats.revenue_collected.toLocaleString()}`;
-                
-                if (isOwnerOrAdmin) {
-                    document.getElementById('filteredProfit').textContent = `UGX ${data.stats.total_profit.toLocaleString()}`;
-                    
-                    const filteredProfitElement = document.getElementById('filteredProfit');
-                    if (data.stats.total_profit < 0) {
-                        filteredProfitElement.classList.remove('text-purple-600');
-                        filteredProfitElement.classList.add('text-red-600');
-                    } else {
-                        filteredProfitElement.classList.remove('text-red-600');
-                        filteredProfitElement.classList.add('text-purple-600');
-                    }
-                }
-                
-                console.log('Stats loaded successfully');
-            }
-        } catch (error) {
-            console.error('Error loading stats:', error);
-        } finally {
-            statLoaders.forEach(loaderId => {
-                const loader = document.getElementById(loaderId);
-                if (loader) loader.classList.add('hidden');
-            });
-        }
-    }
+/* ============================================================
+   INCOME / EXPENSE CHART
+============================================================ */
+async function loadIncomeExpenseGraph() {
+    try {
+        const data = await fetchWithRetry('/dashboard/api/income-expense-graph');
+        if (!data.success || !data.data || !data.data.length) return;
 
-    async function loadOverallProfit() {
-        if (!isOwnerOrAdmin) return;
-        
-        const loader = document.getElementById('loaderOverallProfit');
-        if (loader) loader.classList.remove('hidden');
-        
-        try {
-            const data = await fetchWithRetry('/dashboard/api/overall-profit');
-            
-            if (data.success) {
-                const overallProfitElement = document.getElementById('overallProfit');
-                overallProfitElement.textContent = `UGX ${data.overall_profit.toLocaleString()}`;
-                
-                if (data.overall_profit < 0) {
-                    overallProfitElement.classList.remove('text-rose-600');
-                    overallProfitElement.classList.add('text-red-600');
-                } else {
-                    overallProfitElement.classList.remove('text-red-600');
-                    overallProfitElement.classList.add('text-rose-600');
-                }
-                
-                console.log('Overall profit loaded successfully');
-            }
-        } catch (error) {
-            console.error('Error loading overall profit:', error);
-            const overallProfitElement = document.getElementById('overallProfit');
-            if (overallProfitElement) {
-                overallProfitElement.textContent = 'Error';
-            }
-        } finally {
-            if (loader) loader.classList.add('hidden');
-        }
-    }
+        const labels = data.data.map(item => item.month);
+        const incomes = data.data.map(item => item.income);
+        const expenses = data.data.map(item => item.expense);
+        const profits = data.data.map(item => item.profit);
 
-    async function loadIncomeExpenseGraph() {
-        const chartLoader = document.getElementById('chartLoader');
-        if (chartLoader) chartLoader.classList.remove('hidden');
-        
-        try {
-            const data = await fetchWithRetry('/dashboard/api/income-expense-graph');
-            
-            if (data.success && data.data && data.data.length > 0) {
-                const months = data.data.map(item => item.month);
-                const incomes = data.data.map(item => item.income);
-                const expenses = data.data.map(item => item.expense);
-                const profits = data.data.map(item => item.profit);
-                
-                if (incomeExpenseChart) {
-                    incomeExpenseChart.destroy();
-                }
-                
-                const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
-                incomeExpenseChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: months,
-                        datasets: [
-                            {
-                                label: 'Income',
-                                data: incomes,
-                                borderColor: '#10b981',
-                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                tension: 0.4,
-                                fill: true
-                            },
-                            {
-                                label: 'Expense',
-                                data: expenses,
-                                borderColor: '#ef4444',
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                tension: 0.4,
-                                fill: true
-                            },
-                            {
-                                label: 'Profit',
-                                data: profits,
-                                borderColor: '#ffa500',
-                                backgroundColor: 'rgba(255, 165, 0, 0.1)',
-                                tension: 0.4,
-                                fill: true,
-                                borderDash: [5, 5]
-                            }
-                        ]
+        if (incomeExpenseChart) incomeExpenseChart.destroy();
+
+        const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
+        const incomeGradient = ctx.createLinearGradient(0, 0, 0, 290);
+        incomeGradient.addColorStop(0, 'rgba(37,99,235,.16)');
+        incomeGradient.addColorStop(1, 'rgba(37,99,235,0)');
+
+        incomeExpenseChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Income',
+                        data: incomes,
+                        borderColor: '#2563eb',
+                        backgroundColor: incomeGradient,
+                        borderWidth: 2.5,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        fill: true,
+                        tension: .42
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        let label = context.dataset.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
-                                        label += 'UGX ' + context.parsed.y.toLocaleString();
-                                        return label;
-                                    }
-                                }
+                    {
+                        label: 'Expenses',
+                        data: expenses,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239,68,68,.04)',
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        fill: true,
+                        tension: .42
+                    },
+                    {
+                        label: 'Profit',
+                        data: profits,
+                        borderColor: '#7c3aed',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [6,5],
+                        pointRadius: 2,
+                        fill: false,
+                        tension: .42
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            boxWidth: 7,
+                            padding: 18,
+                            font: { size: 10 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#17233d',
+                        padding: 11,
+                        titleFont: { size: 10 },
+                        bodyFont: { size: 10 },
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': UGX ' +
+                                    Number(context.parsed.y || 0).toLocaleString();
                             }
                         }
                     }
-                });
-                console.log('Income/Expense graph loaded');
-            }
-        } catch (error) {
-            console.error('Error loading graph:', error);
-        } finally {
-            if (chartLoader) chartLoader.classList.add('hidden');
-        }
-    }
-
-    async function loadClassDistribution() {
-        const pieLoader = document.getElementById('pieChartLoader');
-        if (pieLoader) pieLoader.classList.remove('hidden');
-        
-        try {
-            const data = await fetchWithRetry('/dashboard/api/class-distribution');
-            
-            if (data.success && data.data && data.data.length > 0) {
-                const labels = data.data.map(item => item.name);
-                const counts = data.data.map(item => item.count);
-                
-                if (classDistributionChart) {
-                    classDistributionChart.destroy();
-                }
-                
-                const ctx = document.getElementById('classDistributionChart').getContext('2d');
-                classDistributionChart = new Chart(ctx, {
-                    type: 'pie',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: counts,
-                            backgroundColor: [
-                                '#FF6B6B', '#4ECDC4', '#FFE66D', '#A8E6CF', '#FF8C42',
-                                '#6C63FF', '#FF6F91', '#845EC2', '#00C9A7', '#C4E538',
-                                '#FD7272', '#58B19F', '#FEA47F', '#25CCF7', '#EAB543'
-                            ]
-                        }]
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 9 }, color: '#94a3b8' }
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'right',
-                                labels: {
-                                    boxWidth: 12,
-                                    font: { size: 11 }
-                                }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const label = context.label || '';
-                                        const value = context.parsed || 0;
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const percentage = ((value / total) * 100).toFixed(1);
-                                        return `${label}: ${value} students (${percentage}%)`;
-                                    }
-                                }
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#eef2f7' },
+                        border: { display: false },
+                        ticks: {
+                            font: { size: 9 },
+                            color: '#94a3b8',
+                            callback: function(value) {
+                                if (value >= 1000000) return 'UGX ' + (value/1000000).toFixed(0) + 'M';
+                                return 'UGX ' + value;
                             }
                         }
                     }
-                });
-                console.log('Class distribution loaded');
+                }
             }
-        } catch (error) {
-            console.error('Error loading class distribution:', error);
-        } finally {
-            if (pieLoader) pieLoader.classList.add('hidden');
+        });
+
+    } catch(error) {
+        console.error('Chart error:', error);
+    }
+}
+
+/* ============================================================
+   CLASS DISTRIBUTION
+============================================================ */
+async function loadClassDistribution() {
+    try {
+        const data = await fetchWithRetry('/dashboard/api/class-distribution');
+        if (!data.success || !data.data || !data.data.length) return;
+
+        const labels = data.data.map(item => item.name);
+        const counts = data.data.map(item => Number(item.count || 0));
+        const total = counts.reduce((a,b) => a+b, 0);
+
+        document.getElementById('studentChartTotal').textContent = total.toLocaleString();
+
+        if (classDistributionChart) classDistributionChart.destroy();
+
+        const ctx = document.getElementById('classDistributionChart').getContext('2d');
+        classDistributionChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: ['#2563eb','#7c3aed','#06b6d4','#16a66a','#f59e0b','#ec4899','#6366f1','#14b8a6','#f97316','#8b5cf6'],
+                    borderWidth: 3,
+                    borderColor: '#ffffff',
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '72%',
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 9,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 9,
+                            font: { size: 9 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed;
+                                const percent = total ? ((value / total) * 100).toFixed(1) : 0;
+                                return context.label + ': ' + value + ' (' + percent + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        renderClassOverview(data.data);
+
+    } catch(error) {
+        console.error('Class distribution error:', error);
+    }
+}
+
+/* ============================================================
+   CLASS OVERVIEW
+============================================================ */
+function renderClassOverview(classes) {
+    const container = document.getElementById('classOverviewList');
+    const sorted = [...classes].sort((a,b) => Number(b.count || 0) - Number(a.count || 0)).slice(0,5);
+    const max = Math.max(...sorted.map(item => Number(item.count || 0)), 1);
+
+    container.innerHTML = sorted.map(item => {
+        const count = Number(item.count || 0);
+        const width = (count / max) * 100;
+        return `
+            <div class="mb-3">
+                <div class="flex justify-between text-[10px] mb-1">
+                    <span class="text-[#475569] font-semibold">${escapeHtml(item.name)}</span>
+                    <span class="text-[#17233d] font-extrabold">${count}</span>
+                </div>
+                <div class="h-1.5 bg-[#edf1f6] rounded-full overflow-hidden">
+                    <span class="block h-full rounded-full bg-gradient-to-r from-[#2563eb] to-[#60a5fa]" style="width:${width}%"></span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/* ============================================================
+   STUDENT ATTENDANCE
+============================================================ */
+async function loadClassAttendance() {
+    try {
+        const data = await fetchWithRetry('/dashboard/api/class-attendance');
+        const tbody = document.getElementById('classAttendanceTable');
+
+        if (!data.success || !data.data || !data.data.length) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-[#94a3b8] py-4">No attendance data</td></tr>`;
+            return;
         }
+
+        let presentTotal = 0, absentTotal = 0;
+        data.data.forEach(item => {
+            presentTotal += Number(item.present || 0);
+            absentTotal += Number(item.absent || 0);
+        });
+
+        const attendanceTotal = presentTotal + absentTotal;
+        const rate = attendanceTotal ? (presentTotal / attendanceTotal * 100) : 0;
+
+        document.getElementById('attendancePresent').textContent = presentTotal;
+        document.getElementById('attendanceAbsent').textContent = absentTotal;
+        document.getElementById('attendanceRate').textContent = rate.toFixed(1) + '%';
+
+        tbody.innerHTML = data.data.slice(0,5).map(item => {
+            const percentage = Number(item.percentage || 0);
+            let badge = 'bg-[#ecfdf5] text-[#047857]';
+            if (percentage < 50) badge = 'bg-[#fef2f2] text-[#b91c1c]';
+            else if (percentage < 75) badge = 'bg-[#fffbeb] text-[#b45309]';
+
+            return `
+                <tr>
+                    <td class="p-2 text-[#475569]">${escapeHtml(item.class_name)}</td>
+                    <td class="p-2 text-[#16a66a] font-bold">${item.present}</td>
+                    <td class="p-2 text-[#ef4444] font-bold">${item.absent}</td>
+                    <td class="p-2 text-right">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-[9px] font-bold ${badge}">${percentage}%</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch(error) {
+        console.error('Attendance error:', error);
+    }
+}
+
+/* ============================================================
+   STAFF ATTENDANCE
+============================================================ */
+async function loadStaffAttendance() {
+    try {
+        const data = await fetchWithRetry('/dashboard/api/staff-attendance');
+        const tbody = document.getElementById('staffAttendanceTable');
+
+        if (!data.success || !data.data || !data.data.length) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-[#94a3b8] py-4">No staff attendance</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = data.data.slice(0,6).map(item => {
+            const percentage = Number(item.percentage || 0);
+            let badge = 'bg-[#ecfdf5] text-[#047857]';
+            if (percentage < 60) badge = 'bg-[#fef2f2] text-[#b91c1c]';
+            else if (percentage < 80) badge = 'bg-[#fffbeb] text-[#b45309]';
+
+            return `
+                <tr>
+                    <td class="p-2 text-[#475569]">${escapeHtml(item.role)}</td>
+                    <td class="p-2 text-[#16a66a] font-bold">${item.present}</td>
+                    <td class="p-2 text-[#ef4444] font-bold">${item.absent}</td>
+                    <td class="p-2 text-right">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-[9px] font-bold ${badge}">${percentage}%</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch(error) {
+        console.error('Staff attendance error:', error);
+    }
+}
+
+/* ============================================================
+   RECENT ACTIVITIES
+============================================================ */
+async function loadRecentActivities() {
+    try {
+        const data = await fetchWithRetry('/dashboard/api/recent-activities');
+        const container = document.getElementById('activitiesList');
+
+        if (!data.success || !data.activities || !data.activities.length) {
+            container.innerHTML = `<div class="text-center py-8 text-[#94a3b8] text-[10px]">No recent activities</div>`;
+            return;
+        }
+
+        const colorMap = {
+            green: 'background:#ecfdf5;color:#16a66a;',
+            blue: 'background:#eff6ff;color:#2563eb;',
+            purple: 'background:#f5f3ff;color:#7c3aed;',
+            orange: 'background:#fff7ed;color:#f97316;'
+        };
+
+        container.innerHTML = data.activities.slice(0,8).map(activity => `
+            <div class="flex items-center gap-3 py-3 border-b border-[#f0f3f7]">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-xs flex-shrink-0"
+                     style="${colorMap[activity.color] || 'background:#f1f5f9;color:#64748b;'}">
+                    <i class="fas fa-${activity.icon}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[10px] font-bold text-[#17233d]">${escapeHtml(activity.title)}</div>
+                    <div class="text-[9px] text-[#94a3b8] truncate">${escapeHtml(activity.description)}</div>
+                </div>
+                <div class="text-[8px] text-[#a1aab8] whitespace-nowrap">${formatDate(activity.time)}</div>
+            </div>
+        `).join('');
+
+    } catch(error) {
+        console.error('Activities error:', error);
+    }
+}
+
+/* ============================================================
+   RECENT PAYMENTS
+============================================================ */
+window.loadRecentPayments = async function() {
+    const container = document.getElementById('recentPayments');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="payments-loading">
+            <div class="loading-spinner"></div>
+            <span>Loading recent payments...</span>
+        </div>
+    `;
+
+    try {
+        const response = await fetch('/payments/api/recent', {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store'
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+        if (!data || data.success !== true) {
+            throw new Error(data?.message || 'Failed to load recent payments');
+        }
+
+        renderRecentPayments(Array.isArray(data.payments) ? data.payments : []);
+
+    } catch(error) {
+        console.error('[Recent Payments]', error);
+        container.innerHTML = `
+            <div class="payments-error">
+                <div class="error-icon">!</div>
+                <div>
+                    <strong>Unable to load payments</strong>
+                    <p>${escapeHtml(error?.message || 'Something went wrong')}</p>
+                </div>
+                <button type="button" onclick="loadRecentPayments()" class="px-3 py-2 bg-[#2563eb] text-white text-xs font-semibold rounded-lg border-0 cursor-pointer">Retry</button>
+            </div>
+        `;
+    }
+};
+
+function renderRecentPayments(payments) {
+    const container = document.getElementById('recentPayments');
+    if (!container) return;
+
+    const recent = Array.isArray(payments) ? payments.slice(0, 5) : [];
+
+    if (recent.length === 0) {
+        container.innerHTML = `
+            <div class="empty-payments">
+                <div class="empty-icon">💳</div>
+                <h4>No recent payments</h4>
+                <p>Fee payments will appear here once they are recorded.</p>
+            </div>
+        `;
+        return;
     }
 
-    async function loadClassAttendance() {
-        const attendanceLoader = document.getElementById('studentAttendanceLoader');
-        if (attendanceLoader) attendanceLoader.classList.remove('hidden');
-        
-        try {
-            const data = await fetchWithRetry('/dashboard/api/class-attendance');
-            const tbody = document.getElementById('classAttendanceTable');
-            
-            if (data.success && data.data && data.data.length > 0) {
-                tbody.innerHTML = data.data.map(item => `
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="py-2 text-left text-sm">${item.class_name}</td>
-                        <td class="py-2 text-center text-green-600 text-sm">${item.present}</td>
-                        <td class="py-2 text-center text-red-600 text-sm">${item.absent}</td>
-                        <td class="py-2 text-right font-medium text-sm">
-                            <span class="px-2 py-1 rounded-full ${item.percentage >= 75 ? 'bg-green-100 text-green-700' : item.percentage >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}">
-                                ${item.percentage}%
-                            </span>
-                        </td>
-                    </tr>
-                `).join('');
-            } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No attendance data available</td></tr>';
-            }
-        } catch (error) {
-            console.error('Error loading class attendance:', error);
-        } finally {
-            if (attendanceLoader) attendanceLoader.classList.add('hidden');
-        }
-    }
+    container.innerHTML = recent.map(function(payment) {
+        const studentName = payment.student_name || 'Unknown Student';
+        const studentId = payment.student_id_display || 'N/A';
+        const className = payment.class_name || 'N/A';
+        const method = payment.payment_method || 'Manual';
+        const amount = Number(payment.amount || 0);
+        const initials = getPaymentInitials(studentName);
+        const formattedAmount = formatPaymentCurrency(amount);
+        const formattedDate = formatPaymentDate(payment.payment_date);
+        const icon = getPaymentIcon(method);
 
-    async function loadStaffAttendance() {
-        const staffLoader = document.getElementById('staffAttendanceLoader');
-        if (staffLoader) staffLoader.classList.remove('hidden');
-        
-        try {
-            const data = await fetchWithRetry('/dashboard/api/staff-attendance');
-            const tbody = document.getElementById('staffAttendanceTable');
-            
-            if (data.success && data.data && data.data.length > 0) {
-                tbody.innerHTML = data.data.map(item => `
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="py-2 text-left text-sm">${item.role}</td>
-                        <td class="py-2 text-center text-green-600 text-sm">${item.present}</td>
-                        <td class="py-2 text-center text-red-600 text-sm">${item.absent}</td>
-                        <td class="py-2 text-right font-medium text-sm">
-                            <span class="px-2 py-1 rounded-full ${item.percentage >= 80 ? 'bg-green-100 text-green-700' : item.percentage >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}">
-                                ${item.percentage}%
-                            </span>
-                        </td>
-                    </tr>
-                `).join('');
-            } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No attendance data available</td></tr>';
-            }
-        } catch (error) {
-            console.error('Error loading staff attendance:', error);
-        } finally {
-            if (staffLoader) staffLoader.classList.add('hidden');
-        }
-    }
-
-    async function loadRecentActivities() {
-        const activitiesLoader = document.getElementById('activitiesLoader');
-        if (activitiesLoader) activitiesLoader.classList.remove('hidden');
-        
-        try {
-            const data = await fetchWithRetry('/dashboard/api/recent-activities');
-            const container = document.getElementById('activitiesList');
-            
-            if (data.success && data.activities && data.activities.length > 0) {
-                const colorMap = {
-                    'green': 'bg-green-100 text-green-600',
-                    'blue': 'bg-blue-100 text-blue-600',
-                    'purple': 'bg-purple-100 text-purple-600',
-                    'orange': 'bg-orange-100 text-orange-600'
-                };
-                
-                container.innerHTML = data.activities.map(activity => `
-                    <div class="timeline-item p-4 flex items-center gap-4 hover:bg-gray-50">
-                        <div class="${colorMap[activity.color] || 'bg-gray-100 text-gray-600'} h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0">
-                            <i class="fas fa-${activity.icon}"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="font-medium text-gray-800 text-sm">${escapeHtml(activity.title)}</p>
-                            <p class="text-xs text-gray-500 truncate">${escapeHtml(activity.description)}</p>
-                        </div>
-                        <div class="text-xs text-gray-400 whitespace-nowrap">
-                            ${formatDate(activity.time)}
+        return `
+            <div class="payment-row">
+                <div class="payment-student">
+                    <div class="student-avatar">${escapeHtml(initials)}</div>
+                    <div>
+                        <div class="student-name">${escapeHtml(studentName)}</div>
+                        <div class="student-meta">
+                            <span>${escapeHtml(studentId)}</span>
+                            <span>•</span>
+                            <span>${escapeHtml(className)}</span>
                         </div>
                     </div>
-                `).join('');
-            } else {
-                container.innerHTML = '<div class="p-8 text-center text-gray-400">No recent activities</div>';
-            }
-        } catch (error) {
-            console.error('Error loading activities:', error);
-        } finally {
-            if (activitiesLoader) activitiesLoader.classList.add('hidden');
-        }
-    }
+                </div>
+                <div class="payment-method">
+                    <span class="method-icon">${icon}</span>
+                    <span>${escapeHtml(method)}</span>
+                </div>
+                <div class="payment-date">${escapeHtml(formattedDate)}</div>
+                <div class="payment-amount">+${formattedAmount}</div>
+                <div><span class="status-badge">Received</span></div>
+            </div>
+        `;
+    }).join('');
+}
 
-    function formatDate(dateString) {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-        
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins} min ago`;
-        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-        if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-        return date.toLocaleDateString();
+function formatPaymentCurrency(amount) {
+    const value = Number(amount) || 0;
+    try {
+        return new Intl.NumberFormat('en-UG', {
+            style: 'currency',
+            currency: 'UGX',
+            maximumFractionDigits: 0
+        }).format(value);
+    } catch {
+        return 'UGX ' + Math.round(value).toLocaleString();
     }
+}
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+function formatPaymentDate(dateString) {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return String(dateString);
+    return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+}
 
-    function resetDates() {
-        const today = new Date();
-        const threeMonthsAgo = new Date(today);
-        threeMonthsAgo.setMonth(today.getMonth() - 3);
-        
-        document.getElementById('startDate').value = threeMonthsAgo.toISOString().split('T')[0];
-        document.getElementById('endDate').value = today.toISOString().split('T')[0];
-        refreshDashboard();
-    }
+function getPaymentInitials(name) {
+    if (!name) return '?';
+    const words = String(name).trim().split(/\s+/).filter(Boolean);
+    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+    return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+}
+
+function getPaymentIcon(method) {
+    const value = String(method || '').toLowerCase();
+    if (value.includes('mobile') || value.includes('mtn') || value.includes('airtel')) return '📱';
+    if (value.includes('cash')) return '💵';
+    if (value.includes('bank') || value.includes('transfer')) return '🏦';
+    if (value.includes('card') || value.includes('visa') || value.includes('master')) return '💳';
+    return '💳';
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+/* ============================================================
+   FORMAT MONEY
+============================================================ */
+function money(value) {
+    return 'UGX ' + Number(value || 0).toLocaleString();
+}
+
+/* ============================================================
+   FORMAT DATE
+============================================================ */
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString();
+}
+
+/* ============================================================
+   INITIALIZE
+============================================================ */
+document.addEventListener('DOMContentLoaded', function() {
+    setDefaultDates();
+    refreshDashboard();
+    loadRecentPayments();
+
+    // Chart tab switching
+    document.querySelectorAll('.erp-chart-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.erp-chart-tab').forEach(t => {
+                t.classList.remove('active');
+                t.classList.remove('bg-white', 'text-[#2563eb]', 'shadow-sm');
+                t.classList.add('bg-transparent', 'text-[#64748b]');
+            });
+            this.classList.add('active');
+            this.classList.add('bg-white', 'text-[#2563eb]', 'shadow-sm');
+            this.classList.remove('bg-transparent', 'text-[#64748b]');
+        });
+    });
+});
 </script>
 {% endblock %}
