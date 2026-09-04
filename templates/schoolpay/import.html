@@ -1,0 +1,1051 @@
+<!-- templates/schoolpay/sync.html - Simplified Excel Import (No Account Selection) -->
+{% extends "base.html" %}
+
+{% block title %}Sync SchoolPay Payments - Lunserk ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    }
+    .btn-gradient:hover {
+        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+        transform: translateY(-2px);
+    }
+    .btn-green {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    .btn-green:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-2px);
+    }
+    .sync-card {
+        transition: all 0.3s ease;
+    }
+    .sync-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .modal-overlay {
+        animation: fadeIn 0.3s ease-out;
+    }
+    .modal-container {
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ffa500;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .account-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 500;
+        background-color: #e0e7ff;
+        color: #3730a3;
+    }
+    .file-upload-area {
+        border: 2px dashed #e2e8f0;
+        transition: all 0.3s;
+        border-radius: 12px;
+        padding: 40px 20px;
+        text-align: center;
+        cursor: pointer;
+    }
+    .file-upload-area:hover {
+        border-color: #10b981;
+        background: #ecfdf5;
+    }
+    .file-upload-area.dragover {
+        border-color: #10b981;
+        background: #ecfdf5;
+        transform: scale(1.02);
+    }
+    .file-upload-area .icon {
+        font-size: 56px;
+        color: #10b981;
+        margin-bottom: 12px;
+    }
+    .file-upload-area .text {
+        color: #64748b;
+        font-size: 15px;
+        font-weight: 500;
+    }
+    .file-upload-area .subtext {
+        color: #94a3b8;
+        font-size: 12px;
+        margin-top: 4px;
+    }
+    .file-upload-area .file-name {
+        color: #10b981;
+        font-weight: 600;
+        margin-top: 10px;
+        font-size: 14px;
+    }
+    .preview-table-container {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .preview-table-container::-webkit-scrollbar {
+        width: 4px;
+    }
+    .preview-table-container::-webkit-scrollbar-thumb {
+        background: #10b981;
+        border-radius: 10px;
+    }
+    .preview-table-container::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    .stat-card {
+        transition: all 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .badge-success {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    .badge-danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .badge-warning {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .badge-info {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+    .progress-bar {
+        transition: width 0.5s ease;
+    }
+    .step-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    .step-indicator .step {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #94a3b8;
+    }
+    .step-indicator .step.active {
+        color: #10b981;
+    }
+    .step-indicator .step.done {
+        color: #10b981;
+    }
+    .step-indicator .step .num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+    }
+    .step-indicator .step.active .num {
+        background: #10b981;
+        color: white;
+    }
+    .step-indicator .step.done .num {
+        background: #10b981;
+        color: white;
+    }
+    .step-indicator .line {
+        flex: 1;
+        height: 2px;
+        background: #e2e8f0;
+        min-width: 20px;
+    }
+    .step-indicator .line.done {
+        background: #10b981;
+    }
+    .format-hint {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    }
+    .format-hint h5 {
+        font-size: 12px;
+        font-weight: 600;
+        color: #166534;
+        margin-bottom: 4px;
+    }
+    .format-hint ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .format-hint ul li {
+        font-size: 11px;
+        color: #15803d;
+        padding: 1px 0;
+    }
+    .format-hint ul li::before {
+        content: "• ";
+        color: #10b981;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Flash Messages -->
+    <div id="flashMessages" class="fixed top-4 right-4 z-50 space-y-2 max-w-md"></div>
+
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1">Sync SchoolPay Payments</h1>
+        <p class="text-sm text-gray-600">Import payments from SchoolPay Excel export files</p>
+    </div>
+
+    <!-- Info Banner -->
+    <div class="bg-blue-50 border-l-4 border-blue-500 rounded-xl p-4 mb-6">
+        <div class="flex items-start gap-3">
+            <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+            <div>
+                <p class="text-sm font-semibold text-gray-800 mb-1">Excel Import Only</p>
+                <p class="text-sm text-gray-600">
+                    Since you don't have API access, you can export payments from SchoolPay as Excel and import them here.
+                    The system will match students by their <strong>Payment Code</strong> and create payment records.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Card -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-white">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-file-excel text-green-500"></i>
+                Import SchoolPay Excel
+            </h2>
+            <p class="text-xs text-gray-500 mt-1">Upload your SchoolPay exported Excel file to sync payments</p>
+        </div>
+        
+        <div class="p-6">
+            <button onclick="openExcelImportModal()" 
+                    class="w-full md:w-auto px-8 py-3 btn-green text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-3">
+                <i class="fas fa-upload text-lg"></i>
+                Select Excel File to Import
+            </button>
+            <p class="text-xs text-gray-400 mt-3">
+                Supports .xlsx, .xls files exported from SchoolPay
+            </p>
+        </div>
+    </div>
+
+    <!-- Results Section (hidden initially) -->
+    <div id="resultsSection" class="hidden">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500 stat-card">
+                <p class="text-gray-500 text-sm">Synced Successfully</p>
+                <p class="text-2xl font-bold text-green-600" id="syncedCount">0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-red-500 stat-card">
+                <p class="text-gray-500 text-sm">Failed</p>
+                <p class="text-2xl font-bold text-red-600" id="failedCount">0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-yellow-500 stat-card">
+                <p class="text-gray-500 text-sm">Students Not Found</p>
+                <p class="text-2xl font-bold text-yellow-600" id="notFoundCount">0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500 stat-card">
+                <p class="text-gray-500 text-sm">Total Processed</p>
+                <p class="text-2xl font-bold text-blue-600" id="totalProcessed">0</p>
+            </div>
+        </div>
+        
+        <!-- Synced Payments Table -->
+        <div id="syncedSection" class="bg-white rounded-xl shadow-md overflow-hidden mb-6 hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-gray-800">Successfully Synced Payments</h3>
+                <span class="text-xs text-gray-500" id="syncedCountLabel"></span>
+            </div>
+            <div class="overflow-x-auto p-4">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student ID</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Receipt No.</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="syncedTableBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Failed Payments Table -->
+        <div id="failedSection" class="bg-white rounded-xl shadow-md overflow-hidden mb-6 hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="text-lg font-semibold text-gray-800">Failed Payments</h3>
+            </div>
+            <div class="overflow-x-auto p-4">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Code</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="failedTableBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Not Found Students Table -->
+        <div id="notFoundSection" class="bg-white rounded-xl shadow-md overflow-hidden mb-6 hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-gray-800">Students Not Found in System</h3>
+                <button id="downloadNotFoundBtn" class="px-3 py-1 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 transition-all">
+                    <i class="fas fa-download"></i> Download List
+                </button>
+            </div>
+            <div class="overflow-x-auto p-4">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Code</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="notFoundTableBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Duplicate Payments Table -->
+        <div id="duplicateSection" class="bg-white rounded-xl shadow-md overflow-hidden mb-6 hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="text-lg font-semibold text-gray-800">Duplicate Payments (Skipped)</h3>
+            </div>
+            <div class="overflow-x-auto p-4">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Receipt Number</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="duplicateTableBody" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- EXCEL IMPORT MODAL -->
+<!-- ============================================================ -->
+<div id="excelImportModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay" style="overflow-y: auto;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-3 my-8 transform transition-all modal-container">
+        <!-- Modal Header -->
+        <div class="sticky top-0 bg-white rounded-t-2xl border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-file-excel text-green-500"></i>
+                    Import SchoolPay Excel File
+                </h3>
+                <p class="text-xs text-gray-500 mt-0.5">Upload your SchoolPay exported Excel file</p>
+            </div>
+            <button onclick="closeExcelImportModal()" class="text-gray-400 hover:text-gray-600 hover:rotate-90 transition-all duration-200">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6">
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step active" id="step1">
+                    <span class="num">1</span>
+                    <span>Select File</span>
+                </div>
+                <div class="line" id="line1"></div>
+                <div class="step" id="step2">
+                    <span class="num">2</span>
+                    <span>Preview</span>
+                </div>
+                <div class="line" id="line2"></div>
+                <div class="step" id="step3">
+                    <span class="num">3</span>
+                    <span>Import</span>
+                </div>
+            </div>
+
+            <form id="excelImportForm" enctype="multipart/form-data">
+                <!-- Format Hint -->
+                <div class="format-hint">
+                    <h5>📋 Required Columns in your Excel file:</h5>
+                    <ul>
+                        <li><strong>Payment Code</strong> - Student's payment code (must match your system)</li>
+                        <li><strong>Amount</strong> - Payment amount</li>
+                        <li><strong>Student Name</strong> - Student's full name (optional but recommended)</li>
+                        <li><strong>Receipt Number</strong> - Receipt/transaction number (optional)</li>
+                        <li><strong>Payment Date</strong> - Date of payment (optional, defaults to today)</li>
+                    </ul>
+                </div>
+
+                <!-- Upload File -->
+                <div class="mb-5">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-upload text-green-500 mr-1"></i>
+                        Upload Excel File <span class="text-red-500">*</span>
+                    </label>
+                    <div id="fileDropArea" class="file-upload-area" onclick="document.getElementById('excelFileInput').click()">
+                        <div class="icon">
+                            <i class="fas fa-file-excel"></i>
+                        </div>
+                        <p class="text">Click to upload or drag & drop</p>
+                        <p class="subtext">Supports .xlsx, .xls files</p>
+                        <p id="selectedFileName" class="file-name hidden"></p>
+                        <input type="file" id="excelFileInput" name="file" accept=".xlsx,.xls" class="hidden" onchange="handleExcelFileSelect(this)">
+                    </div>
+                </div>
+
+                <!-- Preview (shows after file selection) -->
+                <div id="previewSection" class="hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                            <i class="fas fa-table text-gray-400"></i>
+                            Data Preview
+                            <span id="rowCount" class="text-xs text-gray-400 font-normal"></span>
+                        </h4>
+                        <span id="validationStatus" class="text-xs font-medium px-3 py-1 rounded-full"></span>
+                    </div>
+                    
+                    <!-- Column Mapping -->
+                    <div class="bg-blue-50 rounded-xl p-4 mb-4">
+                        <p class="text-xs text-blue-800 font-semibold mb-2">🔍 Detected Columns</p>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs" id="columnMapping">
+                            <div class="flex items-center gap-1">
+                                <span class="text-gray-500">Payment Code:</span>
+                                <span class="font-medium text-blue-700" id="mapPaymentCode">-</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-gray-500">Student Name:</span>
+                                <span class="font-medium text-blue-700" id="mapStudentName">-</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-gray-500">Class:</span>
+                                <span class="font-medium text-blue-700" id="mapClass">-</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-gray-500">Amount:</span>
+                                <span class="font-medium text-blue-700" id="mapAmount">-</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-gray-500">Receipt No.:</span>
+                                <span class="font-medium text-blue-700" id="mapReceipt">-</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-gray-500">Payment Date:</span>
+                                <span class="font-medium text-blue-700" id="mapDate">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview Table -->
+                    <div class="border border-gray-200 rounded-xl overflow-hidden">
+                        <div class="preview-table-container">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm" id="previewTable">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr id="previewHeader"></tr>
+                                </thead>
+                                <tbody id="previewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-3 pt-5 mt-4 border-t border-gray-200">
+                    <button type="button" onclick="closeExcelImportModal()" class="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-xl text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-all">
+                        Cancel
+                    </button>
+                    <button type="submit" id="excelImportSubmit" disabled 
+                            class="flex-1 px-4 py-2.5 btn-green text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-file-import text-sm"></i>
+                        Import Payments
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Modal -->
+<div id="progressModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 transform transition-all modal-container">
+        <div class="text-center">
+            <div class="loader mx-auto mb-4"></div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2" id="progressTitle">Processing...</h3>
+            <p class="text-sm text-gray-600 mb-3" id="progressMessage">Please wait while we process your request</p>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                <div id="progressBar" class="bg-green-500 h-2.5 rounded-full progress-bar" style="width: 0%"></div>
+            </div>
+            <p class="text-xs text-gray-400" id="progressDetail">0%</p>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 text-center transform transition-all modal-container">
+        <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-check-circle text-3xl text-green-500"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-800 mb-1">Complete!</h3>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage">Operation completed successfully</p>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2.5 rounded-xl text-white text-sm font-semibold">
+            Continue
+        </button>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // CONFIGURATION
+    // ============================================================
+    let notFoundStudentsData = [];
+    let selectedFile = null;
+    let excelData = null;
+    let excelHeaders = [];
+
+    // ============================================================
+    // FLASH MESSAGES
+    // ============================================================
+    function showFlash(message, type = 'success') {
+        const container = document.getElementById('flashMessages');
+        const colors = {
+            success: 'bg-green-50 border-green-500 text-green-700',
+            error: 'bg-red-50 border-red-500 text-red-700',
+            warning: 'bg-yellow-50 border-yellow-500 text-yellow-700',
+            info: 'bg-blue-50 border-blue-500 text-blue-700'
+        };
+        
+        const flash = document.createElement('div');
+        flash.className = `flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 shadow-lg ${colors[type] || colors.info}`;
+        flash.innerHTML = `
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+            <span class="text-sm">${message}</span>
+            <button onclick="this.parentElement.remove()" class="ml-auto text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        container.appendChild(flash);
+        setTimeout(() => {
+            flash.style.opacity = '0';
+            flash.style.transform = 'translateX(100px)';
+            flash.style.transition = 'all 0.3s ease';
+            setTimeout(() => flash.remove(), 300);
+        }, 5000);
+    }
+
+    // ============================================================
+    // EXCEL IMPORT MODAL
+    // ============================================================
+    
+    function openExcelImportModal() {
+        document.getElementById('excelImportModal').classList.remove('hidden');
+        document.getElementById('excelImportModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        resetExcelImportForm();
+    }
+    
+    function closeExcelImportModal() {
+        document.getElementById('excelImportModal').classList.add('hidden');
+        document.getElementById('excelImportModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        resetExcelImportForm();
+    }
+    
+    function resetExcelImportForm() {
+        document.getElementById('excelImportForm').reset();
+        document.getElementById('selectedFileName').classList.add('hidden');
+        document.getElementById('previewSection').classList.add('hidden');
+        document.getElementById('excelImportSubmit').disabled = true;
+        selectedFile = null;
+        excelData = null;
+        excelHeaders = [];
+        document.getElementById('fileDropArea').classList.remove('dragover');
+        
+        // Reset steps
+        document.getElementById('step1').className = 'step active';
+        document.getElementById('step2').className = 'step';
+        document.getElementById('step3').className = 'step';
+        document.getElementById('line1').className = 'line';
+        document.getElementById('line2').className = 'line';
+    }
+    
+    function updateSteps(step) {
+        const steps = ['step1', 'step2', 'step3'];
+        const lines = ['line1', 'line2'];
+        
+        steps.forEach((id, index) => {
+            const el = document.getElementById(id);
+            if (index + 1 < step) {
+                el.className = 'step done';
+            } else if (index + 1 === step) {
+                el.className = 'step active';
+            } else {
+                el.className = 'step';
+            }
+        });
+        
+        lines.forEach((id, index) => {
+            const el = document.getElementById(id);
+            if (index + 1 < step) {
+                el.className = 'line done';
+            } else {
+                el.className = 'line';
+            }
+        });
+    }
+    
+    function handleExcelFileSelect(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            selectedFile = file;
+            
+            // Show file name
+            const fileNameEl = document.getElementById('selectedFileName');
+            fileNameEl.textContent = `📎 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            fileNameEl.classList.remove('hidden');
+            
+            updateSteps(2);
+            
+            // Read and preview the file
+            readExcelFile(file);
+        }
+    }
+    
+    function readExcelFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                if (jsonData.length === 0) {
+                    showFlash('The Excel file is empty', 'error');
+                    return;
+                }
+                
+                excelData = jsonData;
+                excelHeaders = Object.keys(jsonData[0]);
+                
+                // Show preview
+                showExcelPreview(jsonData);
+                
+                // Enable submit button if valid
+                const isValid = detectColumnMapping(excelHeaders);
+                document.getElementById('excelImportSubmit').disabled = !isValid;
+                
+                if (isValid) {
+                    updateSteps(3);
+                }
+                
+            } catch (error) {
+                console.error('Error reading Excel:', error);
+                showFlash('Failed to read Excel file: ' + error.message, 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    
+    function detectColumnMapping(headers) {
+        const mapping = {
+            paymentCode: ['payment code', 'studentpaymentcode', 'student code', 'student_id', 'studentid', 'paymentcode'],
+            studentName: ['student name', 'name', 'full name', 'student', 'first name', 'last name'],
+            class: ['class', 'student class', 'grade', 'level', 'form'],
+            amount: ['amount', 'total', 'fee', 'payment amount', 'amount paid'],
+            receipt: ['receipt', 'receipt number', 'schoolpayreceiptnumber', 'receiptno', 'receipt_no', 'transaction'],
+            date: ['date', 'payment date', 'transaction date', 'completion date', 'payment_date']
+        };
+        
+        const lowerHeaders = headers.map(h => String(h).toLowerCase().trim());
+        
+        const found = {};
+        for (const [key, patterns] of Object.entries(mapping)) {
+            let matched = '-';
+            for (const pattern of patterns) {
+                const idx = lowerHeaders.findIndex(h => h.includes(pattern));
+                if (idx !== -1) {
+                    matched = headers[idx];
+                    break;
+                }
+            }
+            found[key] = matched;
+        }
+        
+        document.getElementById('mapPaymentCode').textContent = found.paymentCode;
+        document.getElementById('mapStudentName').textContent = found.studentName;
+        document.getElementById('mapClass').textContent = found.class;
+        document.getElementById('mapAmount').textContent = found.amount;
+        document.getElementById('mapReceipt').textContent = found.receipt;
+        document.getElementById('mapDate').textContent = found.date;
+        
+        // Validate if required columns exist
+        const requiredFound = found.paymentCode !== '-' && found.amount !== '-';
+        const statusEl = document.getElementById('validationStatus');
+        if (requiredFound) {
+            statusEl.textContent = '✅ Valid format - Ready to import';
+            statusEl.className = 'text-xs font-medium px-3 py-1 rounded-full bg-green-100 text-green-700';
+        } else {
+            statusEl.textContent = '⚠️ Missing required columns (Payment Code and Amount)';
+            statusEl.className = 'text-xs font-medium px-3 py-1 rounded-full bg-yellow-100 text-yellow-700';
+        }
+        
+        return requiredFound;
+    }
+    
+    function showExcelPreview(data) {
+        const previewSection = document.getElementById('previewSection');
+        previewSection.classList.remove('hidden');
+        
+        const rowCount = document.getElementById('rowCount');
+        rowCount.textContent = `(${data.length} rows)`;
+        
+        // Headers
+        const headerRow = document.getElementById('previewHeader');
+        headerRow.innerHTML = excelHeaders.map(h => 
+            `<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${escapeHtml(h)}</th>`
+        ).join('');
+        
+        // Body (show first 10 rows)
+        const body = document.getElementById('previewBody');
+        const displayData = data.slice(0, 10);
+        body.innerHTML = displayData.map(row => 
+            `<tr class="hover:bg-gray-50">${excelHeaders.map(h => 
+                `<td class="px-3 py-2 text-xs text-gray-600">${escapeHtml(String(row[h] || ''))}</td>`
+            ).join('')}</tr>`
+        ).join('');
+        
+        if (data.length > 10) {
+            body.innerHTML += `<tr><td colspan="${excelHeaders.length}" class="px-3 py-2 text-xs text-gray-400 text-center">... and ${data.length - 10} more rows</td></tr>`;
+        }
+    }
+    
+    // ============================================================
+    // EXCEL IMPORT SUBMISSION
+    // ============================================================
+    
+    document.getElementById('excelImportForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (!selectedFile) {
+            showFlash('Please select an Excel file', 'error');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        
+        // Show progress
+        const modal = document.getElementById('progressModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        document.getElementById('progressTitle').textContent = 'Importing Excel File';
+        document.getElementById('progressMessage').textContent = 'Processing payments from Excel...';
+        document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('progressDetail').textContent = '0%';
+        
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 5;
+            if (progress <= 90) {
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('progressDetail').textContent = progress + '%';
+            }
+        }, 300);
+        
+        try {
+            const response = await fetch('/sync-schoolpay/api/import-excel', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            clearInterval(progressInterval);
+            document.getElementById('progressBar').style.width = '100%';
+            document.getElementById('progressDetail').textContent = '100%';
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = '';
+            }, 500);
+            
+            if (result.success) {
+                closeExcelImportModal();
+                displayResults(result);
+                showFlash(result.message, 'success');
+            } else {
+                showFlash(result.message || 'Import failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            clearInterval(progressInterval);
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = '';
+            showFlash('Failed to import Excel: ' + error.message, 'error');
+        }
+    });
+    
+    // ============================================================
+    // DISPLAY RESULTS
+    // ============================================================
+    
+    function displayResults(result) {
+        // Store not found students for download
+        notFoundStudentsData = result.not_found || [];
+        
+        // Update stats
+        document.getElementById('syncedCount').textContent = result.synced_count || 0;
+        document.getElementById('failedCount').textContent = result.failed_count || 0;
+        document.getElementById('notFoundCount').textContent = result.not_found_count || 0;
+        document.getElementById('totalProcessed').textContent = (result.synced_count || 0) + (result.failed_count || 0) + (result.not_found_count || 0);
+        document.getElementById('syncedCountLabel').textContent = `${result.synced_count || 0} payments`;
+        
+        // Render synced payments
+        if (result.synced && result.synced.length > 0) {
+            const tbody = document.getElementById('syncedTableBody');
+            tbody.innerHTML = result.synced.map(p => `
+                <tr>
+                    <td class="px-4 py-2 text-sm font-medium text-gray-800">${escapeHtml(p.student_name)}</td>
+                    <td class="px-4 py-2 text-sm">${escapeHtml(p.student_id)}</td>
+                    <td class="px-4 py-2 text-sm text-right font-semibold text-green-600">UGX ${formatNumber(p.amount)}</td>
+                    <td class="px-4 py-2 text-sm font-mono">${escapeHtml(p.receipt_number)}</td>
+                    <td class="px-4 py-2 text-sm">${p.payment_date || '-'}</td>
+                </tr>
+            `).join('');
+            document.getElementById('syncedSection').classList.remove('hidden');
+        } else {
+            document.getElementById('syncedSection').classList.add('hidden');
+        }
+        
+        // Render failed payments
+        if (result.failed && result.failed.length > 0) {
+            const tbody = document.getElementById('failedTableBody');
+            tbody.innerHTML = result.failed.map(p => `
+                <tr>
+                    <td class="px-4 py-2 text-sm">${escapeHtml(p.student_name || 'Unknown')}</td>
+                    <td class="px-4 py-2 text-sm font-mono">${escapeHtml(p.student_payment_code || '-')}</td>
+                    <td class="px-4 py-2 text-sm text-right">UGX ${formatNumber(p.amount || 0)}</td>
+                    <td class="px-4 py-2 text-sm text-red-600">${escapeHtml(p.reason)}</td>
+                </tr>
+            `).join('');
+            document.getElementById('failedSection').classList.remove('hidden');
+        } else {
+            document.getElementById('failedSection').classList.add('hidden');
+        }
+        
+        // Render not found students
+        if (result.not_found && result.not_found.length > 0) {
+            const tbody = document.getElementById('notFoundTableBody');
+            tbody.innerHTML = result.not_found.map(s => `
+                <tr>
+                    <td class="px-4 py-2 text-sm font-mono">${escapeHtml(s.student_payment_code)}</td>
+                    <td class="px-4 py-2 text-sm">${escapeHtml(s.student_name || 'Unknown')}</td>
+                    <td class="px-4 py-2 text-sm">${escapeHtml(s.student_class || '-')}</td>
+                    <td class="px-4 py-2 text-sm text-right">UGX ${formatNumber(s.amount || 0)}</td>
+                    <td class="px-4 py-2 text-sm">${s.payment_date || '-'}</td>
+                </tr>
+            `).join('');
+            document.getElementById('notFoundSection').classList.remove('hidden');
+        } else {
+            document.getElementById('notFoundSection').classList.add('hidden');
+        }
+        
+        // Render duplicate payments
+        if (result.duplicates && result.duplicates.length > 0) {
+            const tbody = document.getElementById('duplicateTableBody');
+            tbody.innerHTML = result.duplicates.map(d => `
+                <tr>
+                    <td class="px-4 py-2 text-sm">${escapeHtml(d.student_name)}</td>
+                    <td class="px-4 py-2 text-sm font-mono">${escapeHtml(d.receipt_number)}</td>
+                    <td class="px-4 py-2 text-sm text-right">UGX ${formatNumber(d.amount)}</td>
+                    <td class="px-4 py-2 text-sm">${d.payment_date || '-'}</td>
+                </tr>
+            `).join('');
+            document.getElementById('duplicateSection').classList.remove('hidden');
+        } else {
+            document.getElementById('duplicateSection').classList.add('hidden');
+        }
+        
+        // Show results section
+        document.getElementById('resultsSection').classList.remove('hidden');
+        
+        // Scroll to results
+        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // Show success message
+        document.getElementById('successMessage').textContent = result.message || 'Operation completed successfully';
+        document.getElementById('successModal').classList.remove('hidden');
+        document.getElementById('successModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        
+        setTimeout(() => closeSuccessModal(), 3000);
+    }
+    
+    // ============================================================
+    // DOWNLOAD NOT FOUND STUDENTS
+    // ============================================================
+    
+    document.getElementById('downloadNotFoundBtn')?.addEventListener('click', async () => {
+        if (notFoundStudentsData.length === 0) {
+            showFlash('No data to download', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/sync-schoolpay/api/download-not-found', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ not_found_students: notFoundStudentsData })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `not_found_students_${new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showFlash('File downloaded successfully', 'success');
+            } else {
+                showFlash('Failed to download file', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showFlash('Failed to download file', 'error');
+        }
+    });
+    
+    // ============================================================
+    // UTILITY FUNCTIONS
+    // ============================================================
+    
+    function formatNumber(num) {
+        if (num === undefined || num === null) return '0';
+        return new Intl.NumberFormat('en-US').format(num);
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
+    }
+    
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.add('hidden');
+        document.getElementById('successModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+    
+    // ============================================================
+    // DRAG AND DROP SUPPORT
+    // ============================================================
+    
+    const dropArea = document.getElementById('fileDropArea');
+    if (dropArea) {
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.classList.add('dragover');
+        });
+        
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('dragover');
+        });
+        
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                const fileInput = document.getElementById('excelFileInput');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+                handleExcelFileSelect(fileInput);
+            }
+        });
+    }
+    
+    // ============================================================
+    // LOAD XLSX LIBRARY
+    // ============================================================
+    
+    function loadXLSXLibrary() {
+        if (typeof XLSX === 'undefined') {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
+            script.onload = function() {
+                console.log('SheetJS library loaded');
+            };
+            document.head.appendChild(script);
+        }
+    }
+    loadXLSXLibrary();
+</script>
+{% endblock %}

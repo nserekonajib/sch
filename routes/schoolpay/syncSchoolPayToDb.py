@@ -156,6 +156,19 @@ def index():
     
     return render_template('schoolpay/sync.html', accounts_count=len(accounts), now=datetime.now())
 
+@sync_bp.route('/import', methods=['GET','POST'])
+@login_required
+def import_page():
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return render_template('schoolpay/import.html', accounts_count=0, now=datetime.now())
+    
+    accounts = get_all_schoolpay_accounts(institute_id)
+    
+    return render_template('schoolpay/import.html', accounts_count=len(accounts), now=datetime.now())
+
 @sync_bp.route('/api/accounts', methods=['GET'])
 @login_required
 def get_accounts_list():
@@ -568,3 +581,245 @@ def check_accounts():
         'has_accounts': len(accounts) > 0,
         'accounts_count': len(accounts)
     })
+    
+    
+# Add this to syncSchoolPayToDb.py - Excel Import Endpoint
+# Add this to syncSchoolPayToDb.py - Excel Import Endpoint
+# Add this to syncSchoolPayToDb.py - Simplified Excel Import (No Account Required)
+
+@sync_bp.route('/api/import-excel', methods=['POST'])
+@login_required
+def import_excel():
+    """Import payments from a SchoolPay Excel file - No account selection needed"""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+    
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+    
+    # Check if file was uploaded
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file uploaded'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'No file selected'}), 400
+    
+    # Validate file extension
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        return jsonify({'success': False, 'message': 'Only Excel files (.xlsx, .xls) are allowed'}), 400
+    
+    try:
+        # Read Excel file
+        df = pd.read_excel(file)
+        
+        if df.empty:
+            return jsonify({'success': False, 'message': 'The Excel file is empty'}), 400
+        
+        # Detect columns
+        columns = df.columns.tolist()
+        
+        # Find required columns
+        def find_column(patterns):
+            for col in columns:
+                col_lower = str(col).lower().strip()
+                for pattern in patterns:
+                    if pattern in col_lower:
+                        return col
+            return None
+        
+        payment_code_col = find_column(['payment code', 'studentpaymentcode', 'student code', 'student_id', 'studentid', 'paymentcode'])
+        student_name_col = find_column(['student name', 'name', 'full name', 'student'])
+        amount_col = find_column(['amount', 'total', 'fee', 'payment amount', 'amount paid'])
+        receipt_col = find_column(['receipt', 'receipt number', 'schoolpayreceiptnumber', 'receiptno', 'receipt_no', 'transaction'])
+        date_col = find_column(['date', 'payment date', 'transaction date', 'completion date', 'payment_date'])
+        class_col = find_column(['class', 'student class', 'grade', 'level', 'form'])
+        
+        if not payment_code_col or not amount_col:
+            return jsonify({
+                'success': False, 
+                'message': 'Required columns not found. Please ensure your file has "Payment Code" and "Amount" columns.'
+            }), 400
+        
+        # Get ALL existing receipt numbers to avoid duplicates
+        existing_receipts_response = supabase.table('payments')\
+            .select('receipt_number')\
+            .eq('institute_id', institute_id)\
+            .execute()
+        
+        existing_receipts = set()
+        if existing_receipts_response.data:
+            existing_receipts = {r['receipt_number'] for r in existing_receipts_response.data}
+        
+        # Get all student payment codes from the file
+        student_codes = set()
+        for _, row in df.iterrows():
+            code = str(row[payment_code_col]).strip() if pd.notna(row[payment_code_col]) else None
+            if code:
+                student_codes.add(code)
+        
+        # Bulk fetch students
+        students_response = supabase.table('students')\
+            .select('id, name, student_id')\
+            .eq('institute_id', institute_id)\
+            .in_('student_id', list(student_codes))\
+            .execute()
+        
+        student_lookup = {}
+        if students_response.data:
+            for student in students_response.data:
+                student_lookup[student['student_id']] = student
+        
+        # Process each row
+        synced_payments = []
+        failed_payments = []
+        not_found_students = []
+        duplicate_payments = []
+        
+        for index, row in df.iterrows():
+            try:
+                payment_code = str(row[payment_code_col]).strip() if pd.notna(row[payment_code_col]) else None
+                if not payment_code:
+                    failed_payments.append({
+                        'account_name': 'Excel Import',
+                        'student_name': 'Unknown',
+                        'student_payment_code': '',
+                        'amount': 0,
+                        'reason': f'Row {index + 1}: Missing payment code'
+                    })
+                    continue
+                
+                # Get student
+                student = student_lookup.get(payment_code)
+                if not student:
+                    student_name = str(row[student_name_col]) if student_name_col and pd.notna(row[student_name_col]) else 'Unknown'
+                    student_class = str(row[class_col]) if class_col and pd.notna(row[class_col]) else 'N/A'
+                    amount = float(row[amount_col]) if pd.notna(row[amount_col]) else 0
+                    payment_date = str(row[date_col]) if date_col and pd.notna(row[date_col]) else datetime.now().date().isoformat()
+                    
+                    not_found_students.append({
+                        'account_name': 'Excel Import',
+                        'student_payment_code': payment_code,
+                        'student_name': student_name,
+                        'student_class': student_class,
+                        'amount': amount,
+                        'payment_date': parse_payment_date(payment_date)
+                    })
+                    continue
+                
+                # Get amount
+                try:
+                    amount = float(row[amount_col]) if pd.notna(row[amount_col]) else 0
+                    if amount <= 0:
+                        raise ValueError("Amount must be greater than 0")
+                except:
+                    failed_payments.append({
+                        'account_name': 'Excel Import',
+                        'student_name': student['name'],
+                        'student_payment_code': payment_code,
+                        'amount': 0,
+                        'reason': f'Row {index + 1}: Invalid amount'
+                    })
+                    continue
+                
+                # Get receipt number
+                receipt_number = None
+                if receipt_col and pd.notna(row[receipt_col]):
+                    receipt_number = str(row[receipt_col]).strip()
+                
+                if not receipt_number or receipt_number == '':
+                    receipt_number = f"EXCEL-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
+                
+                # Check for duplicate
+                if receipt_number in existing_receipts:
+                    duplicate_payments.append({
+                        'account_name': 'Excel Import',
+                        'student_name': student['name'],
+                        'receipt_number': receipt_number,
+                        'amount': amount,
+                        'payment_date': payment_date if date_col else datetime.now().date().isoformat()
+                    })
+                    continue
+                
+                existing_receipts.add(receipt_number)
+                
+                # Get payment date
+                payment_date = datetime.now().date().isoformat()
+                if date_col and pd.notna(row[date_col]):
+                    payment_date = parse_payment_date(str(row[date_col]))
+                
+                # Calculate fee_month from payment_date
+                fee_month = payment_date
+                
+                # Create payment record
+                payment_data = {
+                    'id': str(uuid.uuid4()),
+                    'institute_id': institute_id,
+                    'student_id': student['id'],
+                    'invoice_id': None,
+                    'amount': amount,
+                    'payment_method': 'schoolpay',
+                    'receipt_number': receipt_number,
+                    'payment_date': payment_date,
+                    'notes': f"Imported from Excel file: {file.filename}",
+                    'fee_month': fee_month,
+                    'created_at': datetime.now().isoformat()
+                }
+                
+                # Insert payment
+                payment_response = supabase.table('payments').insert(payment_data).execute()
+                
+                if payment_response.data:
+                    synced_payments.append({
+                        'account_name': 'Excel Import',
+                        'student_name': student['name'],
+                        'student_id': student['student_id'],
+                        'amount': amount,
+                        'receipt_number': receipt_number,
+                        'payment_date': payment_date
+                    })
+                else:
+                    failed_payments.append({
+                        'account_name': 'Excel Import',
+                        'student_name': student['name'],
+                        'student_payment_code': payment_code,
+                        'amount': amount,
+                        'reason': f'Row {index + 1}: Failed to insert payment'
+                    })
+                    
+            except Exception as row_error:
+                failed_payments.append({
+                    'account_name': 'Excel Import',
+                    'student_name': 'Unknown',
+                    'student_payment_code': '',
+                    'amount': 0,
+                    'reason': f'Row {index + 1}: {str(row_error)}'
+                })
+        
+        response_data = {
+            'success': True,
+            'message': f"Successfully imported {len(synced_payments)} payments from Excel file",
+            'synced_count': len(synced_payments),
+            'synced': synced_payments,
+            'failed_count': len(failed_payments),
+            'failed': failed_payments,
+            'duplicate_count': len(duplicate_payments),
+            'duplicates': duplicate_payments,
+            'not_found_count': len(not_found_students),
+            'not_found': not_found_students
+        }
+        
+        if duplicate_payments:
+            response_data['warning'] = f"{len(duplicate_payments)} duplicate payment(s) skipped (receipt already exists)."
+        
+        if not_found_students:
+            response_data['warning'] = (response_data.get('warning', '') + f" {len(not_found_students)} student(s) not found in the system.")
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        print(f"Error importing Excel: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
