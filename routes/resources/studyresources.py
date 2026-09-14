@@ -196,7 +196,7 @@ def extract_youtube_embed(url):
 # =========================================================
 
 @studyresource_bp.route('/')
-@login_required
+
 @role_required(['owner', 'teacher', 'accountant', 'student'])
 def index():
     """Study resources page - accessible to all authenticated users"""
@@ -214,7 +214,7 @@ def index():
 # =========================================================
 
 @studyresource_bp.route('/api/classes', methods=['GET'])
-@login_required
+
 @role_required(['owner', 'teacher', 'accountant', 'student'])
 def get_classes():
     """Get all classes from external API"""
@@ -240,7 +240,7 @@ def get_classes():
 # =========================================================
 
 @studyresource_bp.route('/api/subjects', methods=['POST'])
-@login_required
+
 @role_required(['owner', 'teacher', 'accountant', 'student'])
 def get_subjects():
     """Get subjects for a specific class"""
@@ -284,7 +284,7 @@ def get_subjects():
 # =========================================================
 
 @studyresource_bp.route('/api/terms', methods=['GET'])
-@login_required
+
 @role_required(['owner', 'teacher', 'accountant', 'student'])
 def get_terms():
     """Get all terms"""
@@ -310,7 +310,7 @@ def get_terms():
 # =========================================================
 
 @studyresource_bp.route('/api/topics', methods=['POST'])
-@login_required
+
 @role_required(['owner', 'teacher', 'accountant', 'student'])
 def get_topics():
     """Get topics for a specific class and subject"""
@@ -368,7 +368,7 @@ def get_topics():
 # =========================================================
 
 @studyresource_bp.route('/api/lessons', methods=['POST'])
-@login_required
+
 @role_required(['owner', 'teacher', 'accountant', 'student'])
 def get_lessons():
     """Get lessons for a specific topic"""
@@ -433,7 +433,7 @@ def get_lessons():
 # =========================================================
 
 @studyresource_bp.route('/api/resources', methods=['POST'])
-@login_required
+
 @role_required(['owner', 'teacher', 'accountant', 'student'])
 def get_resources():
     """Get study resources (PDFs, documents)"""
@@ -505,7 +505,7 @@ def get_resources():
 # =========================================================
 
 @studyresource_bp.route('/api/resource-types', methods=['GET'])
-@login_required
+
 @role_required(['owner', 'teacher', 'accountant', 'student'])
 def get_resource_types():
     """Get all resource types"""
@@ -533,7 +533,7 @@ def get_resource_types():
 # =========================================================
 
 @studyresource_bp.route('/api/filter-data', methods=['GET'])
-@login_required
+
 @role_required(['owner', 'teacher', 'accountant', 'student'])
 def filter_data():
     """Get filter data (classes and terms)"""
@@ -568,7 +568,7 @@ def filter_data():
 # =========================================================
 
 @studyresource_bp.route('/api/full-lessons-flow', methods=['POST'])
-@login_required
+
 @role_required(['owner', 'teacher', 'accountant', 'student'])
 def full_lessons_flow():
     """

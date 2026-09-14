@@ -1117,7 +1117,7 @@ def get_institutes_for_filter():
 
 
 @payments_bp.route('/api/institute-info', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_institute_info():
     """Get current user's institute information"""
     try:

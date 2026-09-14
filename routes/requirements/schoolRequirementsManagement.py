@@ -42,19 +42,19 @@ def login_required(f):
 # ==================== ITEM MANAGEMENT ====================
 
 @requirements_bp.route('/items')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def items_page():
     """Items management page"""
     return render_template('requirements/items.html')
 
 @requirements_bp.route('/index')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def index():
     """Items management page"""
     return render_template('requirements/index.html')
 
 @requirements_bp.route('/api/items', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_items():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -73,7 +73,7 @@ def get_items():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @requirements_bp.route('/api/items', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_item():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -99,7 +99,7 @@ def create_item():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @requirements_bp.route('/api/items/<item_id>', methods=['PUT'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def update_item(item_id):
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -127,12 +127,12 @@ def update_item(item_id):
 # ==================== CLASS ASSIGNMENT ====================
 
 @requirements_bp.route('/assignments')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def assignments_page():
     return render_template('requirements/assignments.html')
 
 @requirements_bp.route('/api/classes', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_classes():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -150,7 +150,7 @@ def get_classes():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @requirements_bp.route('/api/terms', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_terms():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -168,7 +168,7 @@ def get_terms():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @requirements_bp.route('/api/assignments', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_assignments():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -185,7 +185,7 @@ def get_assignments():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @requirements_bp.route('/api/assignments', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_assignment():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -213,7 +213,7 @@ def create_assignment():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @requirements_bp.route('/api/assignments/<assignment_id>', methods=['DELETE'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def delete_assignment(assignment_id):
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -233,12 +233,12 @@ def delete_assignment(assignment_id):
 # ==================== STUDENT SUBMISSION ====================
 
 @requirements_bp.route('/submissions')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def submissions_page():
     return render_template('requirements/submissions.html')
 
 @requirements_bp.route('/api/students/search', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def search_students():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -260,7 +260,7 @@ def search_students():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @requirements_bp.route('/api/student-requirements/<student_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_student_requirements(student_id):
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -355,7 +355,7 @@ def get_student_requirements(student_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @requirements_bp.route('/api/submissions', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_submission():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -399,12 +399,12 @@ def create_submission():
 # ==================== INVENTORY MANAGEMENT ====================
 
 @requirements_bp.route('/inventory')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def inventory_page():
     return render_template('requirements/inventory.html')
 
 @requirements_bp.route('/api/inventory', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_inventory():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -460,7 +460,7 @@ def get_inventory():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @requirements_bp.route('/api/inventory/use', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def use_inventory():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -507,7 +507,7 @@ def use_inventory():
 # ==================== REPORTS ====================
 
 @requirements_bp.route('/reports')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def reports_page():
     return render_template('requirements/reports.html')
 
@@ -515,7 +515,7 @@ def reports_page():
 
 # Update student compliance report to use date range
 @requirements_bp.route('/api/reports/student-compliance', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def student_compliance_report():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -605,7 +605,7 @@ def student_compliance_report():
 
 
 @requirements_bp.route('/api/reports/missing-requirements', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def missing_requirements_report():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -672,7 +672,7 @@ def missing_requirements_report():
 
 
 @requirements_bp.route('/api/submissions/count', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_submissions_count():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -689,7 +689,7 @@ def get_submissions_count():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @requirements_bp.route('/api/submissions/recent', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_recent_submissions():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -718,7 +718,7 @@ def get_recent_submissions():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @requirements_bp.route('/api/reports/pending-count', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_pending_compliance_count():
     institute_id = get_institute_id(session['user']['id'])
     if not institute_id:
@@ -769,7 +769,7 @@ def get_pending_compliance_count():
 # Make sure your DELETE endpoint in requirements.py looks like this:
 
 @requirements_bp.route('/api/items/<item_id>', methods=['DELETE'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def delete_item(item_id):
     """Delete a requirement item"""
     institute_id = get_institute_id(session['user']['id'])
@@ -823,7 +823,7 @@ def delete_item(item_id):
 # Add to requirements.py
 
 @requirements_bp.route('/api/items/<item_id>/dependencies', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def check_item_dependencies(item_id):
     """Check if item has any dependencies"""
     institute_id = get_institute_id(session['user']['id'])
@@ -859,7 +859,7 @@ def check_item_dependencies(item_id):
 # Add to requirements.py - Class Compliance Report API
 
 @requirements_bp.route('/api/reports/class-compliance', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def class_compliance_report():
     """Get class compliance report with date range"""
     institute_id = get_institute_id(session['user']['id'])

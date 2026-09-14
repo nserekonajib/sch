@@ -86,7 +86,7 @@ def format_currency(amount):
 # ==========================================
 
 @financial_reports_bp.route('/')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def index():
     """Financial Reports Dashboard"""
     user = session.get('user')
@@ -103,7 +103,7 @@ def index():
                          available_years=available_years)
 
 @financial_reports_bp.route('/profit-loss')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def profit_loss_page():
     """Profit & Loss Statement Page"""
     user = session.get('user')
@@ -120,7 +120,7 @@ def profit_loss_page():
                          available_years=available_years)
 
 @financial_reports_bp.route('/balance-sheet')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def balance_sheet_page():
     """Balance Sheet Page"""
     user = session.get('user')
@@ -137,7 +137,7 @@ def balance_sheet_page():
                          available_years=available_years)
 
 @financial_reports_bp.route('/trial-balance')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def trial_balance_page():
     """Trial Balance Page"""
     user = session.get('user')
@@ -839,7 +839,7 @@ def get_account_transactions_for_period(account_id, institute_id, start_date, en
 # ==========================================
 
 @financial_reports_bp.route('/api/profit-loss', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_profit_loss_data():
     """Get Profit & Loss statement data with drill-down capability"""
     user = session.get('user')
@@ -986,7 +986,7 @@ def get_profit_loss_data():
 # ==========================================
 
 @financial_reports_bp.route('/api/trial-balance', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_trial_balance():
     """Get Trial Balance data with drill-down capability"""
     user = session.get('user')
@@ -1028,7 +1028,7 @@ def get_trial_balance():
 # ==========================================
 
 @financial_reports_bp.route('/api/balance-sheet', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_balance_sheet_data():
     """Get Balance Sheet data with drill-down capability"""
     user = session.get('user')
@@ -1288,7 +1288,7 @@ def calculate_balance_correct(account_id, institute_id, as_of_date, account_type
 # ==========================================
 
 @financial_reports_bp.route('/api/account-details/<account_id>', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_account_details(account_id):
     """Get detailed account transactions for drill-down"""
     user = session.get('user')
@@ -1355,7 +1355,7 @@ def get_account_details(account_id):
 # ==========================================
 
 @financial_reports_bp.route('/api/transaction-detail/<entry_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_transaction_detail(entry_id):
     """Get detailed transaction information for drill-down"""
     user = session.get('user')
@@ -1456,7 +1456,7 @@ def get_transaction_detail(entry_id):
 # ==========================================
 
 @financial_reports_bp.route('/api/export/profit-loss', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def export_profit_loss():
     """Export Profit & Loss statement to Excel or CSV"""
     user = session.get('user')
@@ -1554,7 +1554,7 @@ def export_profit_loss():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @financial_reports_bp.route('/api/export/balance-sheet', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def export_balance_sheet():
     """Export Balance Sheet to Excel or CSV"""
     user = session.get('user')
@@ -1662,7 +1662,7 @@ def export_balance_sheet():
 # ==========================================
 
 @financial_reports_bp.route('/api/summary', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_financial_summary():
     """Get a quick financial summary for the dashboard"""
     user = session.get('user')

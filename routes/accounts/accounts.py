@@ -164,7 +164,8 @@ def get_current_institute():
     return get_institute_from_session(return_id_only=False)
 
 @accounts_bp.route('/')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
+
 def index():
     """Accounts Dashboard"""
     institute = get_institute_from_session()
@@ -178,7 +179,7 @@ def index():
 
 
 @accounts_bp.route('/dashboard/stats', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_dashboard_stats():
     """Get enhanced dashboard statistics"""
     institute = get_institute_from_session()
@@ -365,7 +366,7 @@ def get_dashboard_stats():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/chart-of-accounts', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_chart_of_accounts():
     """Get all chart of accounts for the current institute only"""
     institute = get_institute_from_session()
@@ -409,7 +410,7 @@ def get_chart_of_accounts():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/chart-of-accounts/create', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_account():
     """Create a new chart of account for the current institute"""
     institute = get_institute_from_session()
@@ -455,7 +456,7 @@ def create_account():
 
 
 @accounts_bp.route('/chart-of-accounts/delete/<account_id>', methods=['DELETE'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def delete_account(account_id):
     """Delete a chart of account for the current institute"""
     institute = get_institute_from_session()
@@ -550,7 +551,7 @@ def delete_account(account_id):
         return jsonify({'success': False, 'message': 'An error occurred while deleting the account'}), 500
 
 @accounts_bp.route('/income/create', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_income():
     """Record income transaction for the current institute"""
     institute = get_institute_from_session()
@@ -593,7 +594,7 @@ def create_income():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/expense/create', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_expense():
     """Record expense transaction for the current institute"""
     institute = get_institute_from_session()
@@ -637,7 +638,7 @@ def create_expense():
 
 
 @accounts_bp.route('/transactions', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_transactions():
     """Get all transactions for the current institute"""
     institute = get_institute_from_session()
@@ -725,7 +726,7 @@ def get_transactions():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/account-report/<account_id>', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_account_report(account_id):
     """Get report for specific account with date filtering"""
     institute = get_institute_from_session()
@@ -808,7 +809,7 @@ def get_account_report(account_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @accounts_bp.route('/export-report/<account_id>', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def export_account_report(account_id):
     """Export account report to Excel/CSV"""
     institute = get_institute_from_session()
@@ -961,7 +962,7 @@ def generate_account_code(institute_id, account_type):
 # ============ ASSET MANAGEMENT APIS ============
 
 @accounts_bp.route('/assets', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_assets():
     """Get all asset accounts with their current balances"""
     institute = get_institute_from_session()
@@ -1011,7 +1012,7 @@ def get_assets():
 
 
 @accounts_bp.route('/assets/create', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_asset():
     """Create a new asset account or record asset purchase"""
     institute = get_institute_from_session()
@@ -1075,7 +1076,7 @@ def create_asset():
 
 
 @accounts_bp.route('/assets/<asset_id>/transactions', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_asset_transactions(asset_id):
     """Get all transactions for a specific asset"""
     institute = get_institute_from_session()
@@ -1115,7 +1116,7 @@ def get_asset_transactions(asset_id):
 # ============ LIABILITY MANAGEMENT APIS ============
 
 @accounts_bp.route('/liabilities', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_liabilities():
     """Get all liability accounts with their current balances"""
     institute = get_institute_from_session()
@@ -1167,7 +1168,7 @@ def get_liabilities():
 
 
 @accounts_bp.route('/liabilities/create', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_liability():
     """Create a new liability account or record liability transaction"""
     institute = get_institute_from_session()
@@ -1460,7 +1461,7 @@ def record_liability_transaction_api_sync(institute_id, data):
 # Add these expense management endpoints to your accounts.py
 
 @accounts_bp.route('/expense/update/<expense_id>', methods=['PUT'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def update_expense(expense_id):
     """Update an existing expense transaction"""
     institute = get_institute_from_session()
@@ -1518,7 +1519,7 @@ def update_expense(expense_id):
 
 
 @accounts_bp.route('/expense/delete/<expense_id>', methods=['DELETE'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def delete_expense(expense_id):
     """Delete an expense transaction"""
     institute = get_institute_from_session()
@@ -1558,7 +1559,7 @@ def delete_expense(expense_id):
 
 
 @accounts_bp.route('/expense/<expense_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_expense(expense_id):
     """Get a single expense transaction by ID"""
     institute = get_institute_from_session()

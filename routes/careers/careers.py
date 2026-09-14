@@ -426,7 +426,7 @@ def create_task():
 # ==================== AGENT DASHBOARD ====================
 
 @agent_bp.route('/dashboard')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def agent_dashboard():
     """Agent Dashboard Page"""
     # Get agent record for logged-in user
@@ -445,7 +445,7 @@ def agent_dashboard():
     return render_template('agent/dashboard.html', agent=agent)
 
 @agent_bp.route('/api/agent/tasks', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_agent_tasks():
     """Get tasks assigned to the agent based on region"""
     try:
@@ -494,7 +494,7 @@ def get_agent_tasks():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @agent_bp.route('/api/agent/submit-task', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def submit_task():
     """Submit a task with location verification"""
     try:
@@ -596,7 +596,7 @@ def submit_task():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @agent_bp.route('/api/agent/submissions', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_agent_submissions():
     """Get agent's submission history"""
     try:
@@ -625,7 +625,7 @@ def get_agent_submissions():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @agent_bp.route('/api/agent/earnings', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_agent_earnings():
     """Get agent's earnings summary"""
     try:

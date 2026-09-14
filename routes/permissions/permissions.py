@@ -1,4 +1,5 @@
 # permissions.py - Fixed get_current_employee_id to return UUID
+import asyncio
 from functools import wraps
 from flask import session, request, redirect, url_for, flash, current_app
 from supabase import create_client, Client
@@ -235,72 +236,83 @@ def check_route_permission(employee_id, endpoint):
     
     # No explicit configuration - fall back to role-based access
     return None
+# In permissions.py — replace the role_required decorator
+
+from utils.permission_resolver import can_access_route
+# permissions.py
+
+from utils.permission_resolver import can_access_route, can_access_menu
+from utils.navigation import get_route_menu_key   # we'll add this helper
 
 
 def role_required(allowed_roles):
     """
-    Enhanced decorator that checks explicit database permissions first,
-    then falls back to role-based access control for unconfigured routes.
+    Enhanced role_required resolution order:
+      1. Owner → always allowed (if 'owner' is in allowed_roles)
+      2. Route-level override (route_overrides[endpoint])
+      3. Menu-level override (menu_overrides[menu_key_of_this_endpoint])
+      4. Hardcoded `allowed_roles`
     """
     def decorator(f):
         @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Check if user is logged in
+        async def decorated_function(*args, **kwargs):
             if 'user' not in session:
                 flash('Please login to access this page', 'warning')
                 return redirect(url_for('auth.login'))
-            
+
             user = session.get('user', {})
             is_employee = user.get('is_employee', False)
             user_role = user.get('role')
             endpoint = request.endpoint
-            
-            # Get employee_id for permission check (returns UUID)
-            employee_id = get_current_employee_id()
-            
-            # =============================================
-            # STEP 1: CHECK EXPLICIT DATABASE PERMISSIONS
-            # =============================================
-            if employee_id:
-                permissions = get_employee_permissions(employee_id)
-                
-                # Check specific route permission
-                if endpoint in permissions:
-                    if permissions[endpoint] is True:
-                        return f(*args, **kwargs)
-                    else:
-                        flash(f'Access denied. This action has been disabled for your account.', 'error')
-                        return redirect(url_for('dashboard.index'))
-                
-                # Check for category-level permission
-                category = get_route_category(endpoint)
-                category_key = f"category:{category}"
-                
-                if category_key in permissions:
-                    if permissions[category_key] is True:
-                        return f(*args, **kwargs)
-                    else:
-                        flash(f'Access denied. The {category} module has been disabled for your account.', 'error')
-                        return redirect(url_for('dashboard.index'))
-            
-            # =============================================
-            # STEP 2: FALLBACK TO ROLE-BASED ACCESS
-            # =============================================
-            # Check if user is institute owner (highest privilege)
+
+            # ── 1. Owner bypass ─────────────────────────────────────────────
             if not is_employee and 'owner' in allowed_roles:
-                return f(*args, **kwargs)
-            
-            # Check if employee has required role
-            if is_employee and user_role in allowed_roles:
-                return f(*args, **kwargs)
-            
-            # Access denied - no role match and no explicit permission
+                result = f(*args, **kwargs)
+                if asyncio.iscoroutine(result):
+                    return await result
+                return result
+
+            # ── 2 & 3. Employee override checks ─────────────────────────────
+            if is_employee and user_role:
+                institute_id = user.get('institute_id')
+
+                if institute_id and endpoint:
+                    # Route-level override wins first
+                    route_override = await can_access_route(institute_id, user_role, endpoint)
+                    if route_override is True:
+                        result = f(*args, **kwargs)
+                        if asyncio.iscoroutine(result):
+                            return await result
+                        return result
+                    elif route_override is False:
+                        flash('This action has been disabled for your role.', 'error')
+                        return redirect(url_for('dashboard.index'))
+
+                    # Then menu-level override
+                    menu_key = get_route_menu_key(endpoint)
+                    if menu_key:
+                        menu_override = await can_access_menu(institute_id, user_role, menu_key)
+                        if menu_override is True:
+                            result = f(*args, **kwargs)
+                            if asyncio.iscoroutine(result):
+                                return await result
+                            return result
+                        elif menu_override is False:
+                            flash('This module has been disabled for your role.', 'error')
+                            return redirect(url_for('dashboard.index'))
+
+                # ── 4. Fallback to hardcoded roles ──────────────────────────
+                if user_role in allowed_roles:
+                    result = f(*args, **kwargs)
+                    if asyncio.iscoroutine(result):
+                        return await result
+                    return result
+
             flash('Access denied. Insufficient privileges.', 'error')
             return redirect(url_for('dashboard.index'))
-        
+
         return decorated_function
     return decorator
-
 
 class PermissionManager:
     """Manage employee permissions - stores BOTH allow and deny states"""

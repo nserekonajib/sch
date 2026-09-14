@@ -44,7 +44,7 @@ def login_required(f):
 #         return None
 
 @discount_bp.route('/')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def index():
     """Discount Management Page"""
     user = session.get('user')
@@ -94,7 +94,7 @@ def index():
         return render_template('discounts/index.html', discounts=[], students=[], classes=[], institute=institute, now=datetime.now())
 
 @discount_bp.route('/create', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_discount():
     """Create a new discount"""
     user = session.get('user')
@@ -200,7 +200,7 @@ def create_discount():
         return jsonify({'success': False, 'message': str(e)}), 500
    
 @discount_bp.route('/apply-to-invoice', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def apply_discount_to_invoice():
     """Apply discount to an invoice"""
     user = session.get('user')
@@ -300,7 +300,7 @@ def apply_discount_to_invoice():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 # @discount_bp.route('/apply-to-invoice', methods=['POST'])
-# @role_required(['owner', 'teacher', 'accountant'])
+# @role_required(['owner','accountant'])
 # def apply_discount_to_invoice():
 #     """Apply discount to specific invoice"""
 #     user = session.get('user')
@@ -383,7 +383,7 @@ def apply_discount_to_invoice():
 #         return jsonify({'success': False, 'message': str(e)}), 500
 
 @discount_bp.route('/<discount_id>/toggle', methods=['PUT'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def toggle_discount(discount_id):
     """Enable or disable a discount"""
     user = session.get('user')
@@ -416,7 +416,7 @@ def toggle_discount(discount_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @discount_bp.route('/<discount_id>', methods=['DELETE'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def delete_discount(discount_id):
     """Delete a discount"""
     user = session.get('user')

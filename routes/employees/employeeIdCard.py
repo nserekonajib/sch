@@ -68,7 +68,7 @@ def login_required(f):
 #         return None
 
 @employeeID_bp.route('/')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def index():
     """Employee ID Card Generation Page"""
     user = session.get('user')
@@ -95,7 +95,7 @@ def index():
         return render_template('employee_id/index.html', employees=[], institute=institute)
 
 @employeeID_bp.route('/generate', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def generate_ids():
     """Generate ID cards for selected employees"""
     user = session.get('user')
@@ -198,7 +198,7 @@ def generate_ids():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employeeID_bp.route('/print-all', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def print_all():
     """Generate HTML for printing all ID cards"""
     user = session.get('user')
@@ -227,7 +227,7 @@ def print_all():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employeeID_bp.route('/preview/<employee_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def preview_card(employee_id):
     """Preview single ID card"""
     user = session.get('user')

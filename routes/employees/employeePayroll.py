@@ -207,7 +207,7 @@ def get_salary_expense_account(institute_id):
 # ==================== ROUTES ====================
 
 @payroll_bp.route('/')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def index():
     """Payroll Management Page"""
     user = session.get('user')
@@ -228,7 +228,7 @@ def index():
 
 
 @payroll_bp.route('/api/employees', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_employees():
     """Get all active employees for payroll"""
     user = session.get('user')
@@ -255,7 +255,7 @@ def get_employees():
 
 
 @payroll_bp.route('/api/salary-summary', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_salary_summary():
     """OPTIMIZED: Get salary summary with batch advance deductions"""
     user = session.get('user')
@@ -329,7 +329,7 @@ def get_salary_summary():
 
 
 @payroll_bp.route('/api/process-payment', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def process_payment():
     """OPTIMIZED: Process salary payments in BATCH mode"""
     user = session.get('user')
@@ -499,7 +499,7 @@ def process_payment():
 
 
 @payroll_bp.route('/api/print-payslip/<receipt_number>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def print_payslip(receipt_number):
     """Generate PDF salary slip for printing"""
     user = session.get('user')
@@ -682,7 +682,7 @@ def print_payslip(receipt_number):
 
 
 @payroll_bp.route('/api/download-payroll-pdf', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def download_payroll_pdf():
     """Download payroll summary as PDF with advance deductions column"""
     user = session.get('user')

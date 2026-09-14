@@ -26,7 +26,7 @@ budget_bp = Blueprint('budget', __name__, url_prefix='/budget')
 # ============================================================
 
 @budget_bp.route('/')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def index():
     """Budget Dashboard - Advanced Version"""
     institute = get_institute_from_session()
@@ -44,7 +44,7 @@ def index():
 
 
 @budget_bp.route('/api/dashboard-stats', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_dashboard_stats():
     """Get dashboard statistics for the budget overview"""
     institute = get_institute_from_session()
@@ -128,7 +128,7 @@ def get_dashboard_stats():
 
 
 @budget_bp.route('/api/headers', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_budget_headers():
     """Get all budget headers with advanced filtering"""
     institute = get_institute_from_session()
@@ -156,7 +156,7 @@ def get_budget_headers():
 
 
 @budget_bp.route('/api/headers/create', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_budget_header():
     """Create a new budget header with comprehensive validation"""
     institute = get_institute_from_session()
@@ -216,7 +216,7 @@ def create_budget_header():
 
 
 @budget_bp.route('/api/headers/<header_id>', methods=['PUT'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def update_budget_header(header_id):
     """Update budget header (name, status, dates)"""
     institute = get_institute_from_session()
@@ -256,7 +256,7 @@ def update_budget_header(header_id):
 
 
 @budget_bp.route('/api/headers/<header_id>', methods=['DELETE'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def delete_budget_header(header_id):
     """Delete a budget header and all its lines"""
     institute = get_institute_from_session()
@@ -293,7 +293,7 @@ def delete_budget_header(header_id):
 
 
 @budget_bp.route('/api/budgets/<header_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_budget_detail(header_id):
     """Get detailed budget with variance analysis and forecasting - FIXED: includes school fees"""
     institute = get_institute_from_session()
@@ -507,7 +507,7 @@ def get_budget_detail(header_id):
 
 
 @budget_bp.route('/api/budgets/save/<header_id>', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def save_budget_lines(header_id):
     """Save budget lines with upsert support"""
     institute = get_institute_from_session()
@@ -569,7 +569,7 @@ def save_budget_lines(header_id):
 
 
 @budget_bp.route('/api/forecast/<header_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_forecast(header_id):
     """Get budget forecast with trend analysis"""
     institute = get_institute_from_session()
@@ -595,7 +595,7 @@ def get_forecast(header_id):
 
 
 @budget_bp.route('/api/accounts', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_budget_accounts():
     """Get accounts available for budgeting"""
     institute = get_institute_from_session()
@@ -622,7 +622,7 @@ def get_budget_accounts():
 
 
 @budget_bp.route('/api/available-years', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_available_years():
     """Get available fiscal years with budget data"""
     institute = get_institute_from_session()

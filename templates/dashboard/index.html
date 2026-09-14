@@ -749,6 +749,44 @@
     cursor: pointer;
 }
 
+/* Librarian-focused card */
+.erp-librarian-card {
+    background: linear-gradient(145deg, #fff, #ecfeff);
+    border: 1px solid #cffafe;
+}
+
+.erp-librarian-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #0891b2;
+    background: #ecfeff;
+    padding: 6px 9px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 800;
+    margin-bottom: 14px;
+}
+
+/* Secretary-focused card */
+.erp-secretary-card {
+    background: linear-gradient(145deg, #fff, #f5f3ff);
+    border: 1px solid #e9d5ff;
+}
+
+.erp-secretary-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #7c3aed;
+    background: #f5f3ff;
+    padding: 6px 9px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 800;
+    margin-bottom: 14px;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
     .erp-kpi-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
@@ -759,7 +797,6 @@
 
 @media (max-width: 900px) {
     .erp-dashboard { padding: 18px; }
-    .erp-finance-hero { grid-template-columns: 1fr; }
     .erp-kpi-grid { grid-template-columns: repeat(2, 1fr); }
     .erp-analytics-grid { grid-template-columns: 1fr; }
     .erp-analytics-grid > :last-child { grid-column: auto; }
@@ -779,6 +816,39 @@
 {% endblock %}
 
 {% block content %}
+
+{# ============================================================
+   ROLE SETUP — determine what the current user can see
+============================================================ #}
+{% set is_employee = session.user.is_employee if (session and session.user) else False %}
+{% set user_role = session.user.role if is_employee else 'owner' %}
+
+{# Permission flags #}
+{% set can_view_finance       = (not is_employee) or user_role in ['accountant'] %}
+{% set can_view_students      = (not is_employee) or user_role in ['teacher', 'secretary', 'accountant'] %}
+{% set can_view_employees     = (not is_employee) or user_role in ['secretary'] %}
+{% set can_view_attendance    = (not is_employee) or user_role in ['teacher', 'secretary'] %}
+{% set can_view_exams         = (not is_employee) or user_role in ['teacher'] %}
+{% set can_view_library       = (not is_employee) or user_role in ['librarian', 'teacher'] %}
+{% set can_view_fees          = (not is_employee) or user_role in ['accountant', 'secretary'] %}
+{% set can_collect_fees       = (not is_employee) or user_role in ['accountant'] %}
+{% set can_view_payments      = (not is_employee) or user_role in ['accountant'] %}
+{% set can_view_activities    = True %}
+{% set can_view_quick_actions = (not is_employee) or user_role in ['accountant', 'secretary', 'teacher'] %}
+
+{# Owner-only expanded finance KPIs #}
+{% set show_full_finance_kpis = (not is_employee) %}
+
+{# Role display #}
+{% set greeting = {
+    'owner': 'Administrator',
+    'accountant': 'Accountant',
+    'teacher': 'Teacher',
+    'librarian': 'Librarian',
+    'secretary': 'Secretary',
+    'support_staff': 'Support Staff'
+}.get(user_role, 'User') %}
+
 <div class="erp-dashboard">
 <div class="erp-container">
 
@@ -788,10 +858,20 @@
 <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
     <div>
         <h1 class="text-2xl font-extrabold text-[#17233d] tracking-tight">
-            Good afternoon, Administrator 👋
+            Good afternoon, {{ greeting }} 👋
         </h1>
         <p class="text-[#718096] text-sm mt-1.5">
-            Here's what's happening across your school today.
+            {% if user_role == 'owner' %}
+                Here's what's happening across your school today.
+            {% elif user_role == 'accountant' %}
+                Here's your financial overview for today.
+            {% elif user_role == 'librarian' %}
+                Here's your library overview for today.
+            {% elif user_role == 'secretary' %}
+                Here's your administrative overview for today.
+            {% else %}
+                Here's your dashboard overview for today.
+            {% endif %}
         </p>
     </div>
     <div class="flex gap-2">
@@ -806,7 +886,8 @@
 ============================================================ -->
 <div class="erp-toolbar">
     <div class="erp-toolbar-left">
-        <!-- Privacy Control -->
+        <!-- Privacy Control (finance users only) -->
+        {% if can_view_finance %}
         <div class="privacy-control">
             <div class="privacy-info">
                 <div class="privacy-icon">
@@ -822,8 +903,10 @@
                 <span class="privacy-slider"></span>
             </label>
         </div>
+        {% endif %}
 
-        <!-- Date Range -->
+        <!-- Date Range (finance & attendance users) -->
+        {% if can_view_finance or can_view_attendance %}
         <div class="erp-date-box">
             <i class="fas fa-calendar-alt"></i>
             <input type="date" id="startDate">
@@ -833,20 +916,24 @@
             <i class="fas fa-calendar-alt"></i>
             <input type="date" id="endDate">
         </div>
+        {% endif %}
     </div>
     <div class="erp-toolbar-right">
+        {% if can_view_finance or can_view_attendance %}
         <button onclick="refreshDashboard()" class="erp-btn erp-btn-primary">
             <i class="fas fa-filter"></i> Apply Filter
         </button>
         <button onclick="resetDates()" class="erp-btn erp-btn-light">Reset</button>
+        {% endif %}
     </div>
 </div>
 
-<!-- ============================================================
-     FINANCIAL HERO
-============================================================ -->
-<div class="grid grid-cols-1 lg:grid-cols-[1fr_330px] gap-4 mb-4">
-    <!-- Chart -->
+{# ============================================================
+   FINANCIAL PERFORMANCE CHART — Owner & Accountant only
+   (Financial Health panel removed)
+============================================================ #}
+{% if can_view_finance %}
+<div class="grid grid-cols-1 gap-4 mb-4">
     <div class="erp-card p-5 min-h-[390px]">
         <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
             <div>
@@ -871,39 +958,119 @@
             </div>
         </div>
     </div>
+</div>
+{% endif %}
 
-    <!-- Financial Health -->
-    <div class="erp-card p-5 relative overflow-hidden">
-        <div class="absolute w-[170px] h-[170px] -right-20 -top-16 bg-[#2563eb]/10 rounded-full"></div>
-        <div class="text-sm font-extrabold mb-4">Financial Health</div>
-        <div class="p-4 bg-gradient-to-br from-[#f5f9ff] to-[#eef5ff] rounded-xl mb-3">
-            <span class="text-[#64748b] text-[10px]">Filtered Profit</span>
-            <strong class="block text-[23px] mt-1 text-[#2563eb]" id="heroProfit">UGX 0</strong>
-        </div>
-        <div class="erp-health-item flex justify-between py-2.5 border-b border-[#e8edf5]">
-            <span class="text-[#718096] text-xs">Fees Collected</span>
-            <strong class="text-[#16a66a] text-sm" id="heroCollected">UGX 0</strong>
-        </div>
-        <div class="erp-health-item flex justify-between py-2.5 border-b border-[#e8edf5]">
-            <span class="text-[#718096] text-xs">Other Income</span>
-            <strong class="text-[#16a66a] text-sm" id="heroOtherIncome">UGX 0</strong>
-        </div>
-        <div class="erp-health-item flex justify-between py-2.5 border-b border-[#e8edf5]">
-            <span class="text-[#718096] text-xs">Expenses</span>
-            <strong class="text-[#ef4444] text-sm" id="heroExpenses">UGX 0</strong>
-        </div>
-        <div class="erp-health-item flex justify-between py-2.5">
-            <span class="text-[#718096] text-xs">Overall Profit</span>
-            <strong class="text-[#7c3aed] text-sm" id="heroOverallProfit">UGX 0</strong>
+{# ============================================================
+   LIBRARIAN HERO — Librarian only
+============================================================ #}
+{% if is_employee and user_role == 'librarian' %}
+<div class="grid grid-cols-1 lg:grid-cols-[1fr_330px] gap-4 mb-4">
+    <div class="erp-card erp-librarian-card p-5 min-h-[280px] relative">
+        <div class="erp-librarian-label"><i class="fas fa-book"></i> LIBRARY OVERVIEW</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="p-4 rounded-xl bg-white/70 border border-cyan-100">
+                <span class="text-[10px] text-[#64748b] font-semibold">Total Books</span>
+                <strong class="block text-xl mt-1 text-[#0891b2]" id="libTotalBooks">—</strong>
+            </div>
+            <div class="p-4 rounded-xl bg-white/70 border border-cyan-100">
+                <span class="text-[10px] text-[#64748b] font-semibold">Borrowed</span>
+                <strong class="block text-xl mt-1 text-[#f59e0b]" id="libBorrowed">—</strong>
+            </div>
+            <div class="p-4 rounded-xl bg-white/70 border border-cyan-100">
+                <span class="text-[10px] text-[#64748b] font-semibold">Overdue</span>
+                <strong class="block text-xl mt-1 text-[#ef4444]" id="libOverdue">—</strong>
+            </div>
+            <div class="p-4 rounded-xl bg-white/70 border border-cyan-100">
+                <span class="text-[10px] text-[#64748b] font-semibold">Resources</span>
+                <strong class="block text-xl mt-1 text-[#0891b2]" id="libResources">—</strong>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- ============================================================
-     KPI ROW
-============================================================ -->
+    <div class="erp-card p-5 relative overflow-hidden">
+        <div class="absolute w-[170px] h-[170px] -right-20 -top-16 bg-[#06b6d4]/10 rounded-full"></div>
+        <div class="text-sm font-extrabold mb-4">Library Shortcuts</div>
+        <a href="{{ url_for('library.index') }}" class="flex items-center gap-3 p-3 rounded-xl bg-[#f8fafc] mb-2 hover:bg-[#ecfeff] transition-all no-underline">
+            <div class="w-9 h-9 rounded-lg bg-[#ecfeff] flex items-center justify-center text-[#0891b2]"><i class="fas fa-book"></i></div>
+            <div>
+                <div class="text-xs font-bold text-[#17233d]">Manage Library</div>
+                <div class="text-[10px] text-[#94a3b8]">Books & resources</div>
+            </div>
+        </a>
+        <a href="{{ url_for('studyresource.index') }}" class="flex items-center gap-3 p-3 rounded-xl bg-[#f8fafc] hover:bg-[#ecfeff] transition-all no-underline">
+            <div class="w-9 h-9 rounded-lg bg-[#ecfeff] flex items-center justify-center text-[#0891b2]"><i class="fas fa-graduation-cap"></i></div>
+            <div>
+                <div class="text-xs font-bold text-[#17233d]">Study Resources</div>
+                <div class="text-[10px] text-[#94a3b8]">Digital materials</div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{# ============================================================
+   SECRETARY HERO — Secretary only
+============================================================ #}
+{% if is_employee and user_role == 'secretary' %}
+<div class="grid grid-cols-1 lg:grid-cols-[1fr_330px] gap-4 mb-4">
+    <div class="erp-card erp-secretary-card p-5 min-h-[280px] relative">
+        <div class="erp-secretary-label"><i class="fas fa-user-tie"></i> ADMIN OVERVIEW</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="p-4 rounded-xl bg-white/70 border border-violet-100">
+                <span class="text-[10px] text-[#64748b] font-semibold">Students</span>
+                <strong class="block text-xl mt-1 text-[#7c3aed]" id="secStudentCount">—</strong>
+            </div>
+            <div class="p-4 rounded-xl bg-white/70 border border-violet-100">
+                <span class="text-[10px] text-[#64748b] font-semibold">Employees</span>
+                <strong class="block text-xl mt-1 text-[#7c3aed]" id="secEmployeeCount">—</strong>
+            </div>
+            <div class="p-4 rounded-xl bg-white/70 border border-violet-100">
+                <span class="text-[10px] text-[#64748b] font-semibold">Messages</span>
+                <strong class="block text-xl mt-1 text-[#7c3aed]" id="secMessageCount">—</strong>
+            </div>
+            <div class="p-4 rounded-xl bg-white/70 border border-violet-100">
+                <span class="text-[10px] text-[#64748b] font-semibold">Pending Tasks</span>
+                <strong class="block text-xl mt-1 text-[#f59e0b]" id="secPendingTasks">—</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="erp-card p-5 relative overflow-hidden">
+        <div class="absolute w-[170px] h-[170px] -right-20 -top-16 bg-[#8b5cf6]/10 rounded-full"></div>
+        <div class="text-sm font-extrabold mb-4">Admin Shortcuts</div>
+        <a href="{{ url_for('student.index') }}" class="flex items-center gap-3 p-3 rounded-xl bg-[#f8fafc] mb-2 hover:bg-[#f5f3ff] transition-all no-underline">
+            <div class="w-9 h-9 rounded-lg bg-[#f5f3ff] flex items-center justify-center text-[#7c3aed]"><i class="fas fa-user-graduate"></i></div>
+            <div>
+                <div class="text-xs font-bold text-[#17233d]">Manage Students</div>
+                <div class="text-[10px] text-[#94a3b8]">Records & admission</div>
+            </div>
+        </a>
+        <a href="{{ url_for('employees.index') }}" class="flex items-center gap-3 p-3 rounded-xl bg-[#f8fafc] mb-2 hover:bg-[#f5f3ff] transition-all no-underline">
+            <div class="w-9 h-9 rounded-lg bg-[#f5f3ff] flex items-center justify-center text-[#7c3aed]"><i class="fas fa-users"></i></div>
+            <div>
+                <div class="text-xs font-bold text-[#17233d]">Manage Employees</div>
+                <div class="text-[10px] text-[#94a3b8]">Staff records</div>
+            </div>
+        </a>
+        <a href="{{ url_for('message.index') }}" class="flex items-center gap-3 p-3 rounded-xl bg-[#f8fafc] hover:bg-[#f5f3ff] transition-all no-underline">
+            <div class="w-9 h-9 rounded-lg bg-[#f5f3ff] flex items-center justify-center text-[#7c3aed]"><i class="fas fa-comment-dots"></i></div>
+            <div>
+                <div class="text-xs font-bold text-[#17233d]">Messaging</div>
+                <div class="text-[10px] text-[#94a3b8]">Send announcements</div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{# ============================================================
+   KPI GRID — role-filtered
+============================================================ #}
 <div class="erp-kpi-grid">
-    <!-- Students -->
+
+    {# Students KPI — owner, teacher, secretary, accountant #}
+    {% if can_view_students %}
     <div class="erp-card erp-kpi kpi-blue" onclick="goToReport('students')">
         <div class="erp-kpi-top">
             <div>
@@ -915,8 +1082,10 @@
         </div>
         <div class="erp-private" id="privacyTotalStudents"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
+    {% endif %}
 
-    <!-- Employees -->
+    {# Employees KPI — owner, secretary #}
+    {% if can_view_employees %}
     <div class="erp-card erp-kpi kpi-purple" onclick="goToReport('employees')">
         <div class="erp-kpi-top">
             <div>
@@ -928,8 +1097,12 @@
         </div>
         <div class="erp-private" id="privacyTotalEmployees"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
+    {% endif %}
 
-    <!-- Collected -->
+    {# ─── Finance KPIs — Owner & Accountant ────────────────────── #}
+    {% if can_view_finance %}
+
+    {# Everyone with finance access sees these two: #}
     <div class="erp-card erp-kpi kpi-green" onclick="goToReport('income')">
         <div class="erp-kpi-top">
             <div>
@@ -942,7 +1115,6 @@
         <div class="erp-private" id="privacyTotalCollected"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
 
-    <!-- Payable -->
     <div class="erp-card erp-kpi kpi-orange">
         <div class="erp-kpi-top">
             <div>
@@ -955,7 +1127,8 @@
         <div class="erp-private" id="privacyTotalPayable"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
 
-    <!-- Invoiced -->
+    {# Owner-only finance KPIs — hidden from accountant #}
+    {% if show_full_finance_kpis %}
     <div class="erp-card erp-kpi kpi-blue">
         <div class="erp-kpi-top">
             <div>
@@ -968,7 +1141,6 @@
         <div class="erp-private" id="privacyTotalInvoiced"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
 
-    <!-- Discounts -->
     <div class="erp-card erp-kpi kpi-red">
         <div class="erp-kpi-top">
             <div>
@@ -981,7 +1153,6 @@
         <div class="erp-private" id="privacyTotalDiscounts"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
 
-    <!-- Expenses -->
     <div class="erp-card erp-kpi kpi-red" onclick="goToReport('expenses')">
         <div class="erp-kpi-top">
             <div>
@@ -994,7 +1165,6 @@
         <div class="erp-private" id="privacyTotalExpenses"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
 
-    <!-- Collection Rate -->
     <div class="erp-card erp-kpi kpi-cyan">
         <div class="erp-kpi-top">
             <div>
@@ -1010,7 +1180,6 @@
         <div class="erp-private" id="privacyCollectionPercentage"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
 
-    <!-- School Fees -->
     <div class="erp-card erp-kpi kpi-green">
         <div class="erp-kpi-top">
             <div>
@@ -1023,7 +1192,6 @@
         <div class="erp-private" id="privacySchoolFees"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
 
-    <!-- Other Income -->
     <div class="erp-card erp-kpi kpi-cyan">
         <div class="erp-kpi-top">
             <div>
@@ -1036,7 +1204,6 @@
         <div class="erp-private" id="privacyOtherIncome"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
 
-    <!-- Filtered Profit -->
     <div class="erp-card erp-kpi kpi-purple" onclick="goToReport('profit-loss')">
         <div class="erp-kpi-top">
             <div>
@@ -1049,7 +1216,6 @@
         <div class="erp-private" id="privacyFilteredProfit"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
 
-    <!-- Overall Profit -->
     <div class="erp-card erp-kpi kpi-purple" onclick="goToReport('overall-profit')">
         <div class="erp-kpi-top">
             <div>
@@ -1061,13 +1227,78 @@
         </div>
         <div class="erp-private" id="privacyOverallProfit"><i class="fas fa-lock"></i><span>Private</span></div>
     </div>
+    {% endif %}{# end owner-only finance KPIs #}
+    {% endif %}{# end can_view_finance #}
+
+    {# Attendance KPIs — teacher, secretary #}
+    {% if can_view_attendance and not can_view_finance %}
+    <div class="erp-card erp-kpi kpi-green">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Present Today</div>
+                <div class="erp-kpi-value erp-green" id="attendancePresentKpi">—</div>
+                <div class="erp-kpi-sub">Students present</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-user-check"></i></div>
+        </div>
+    </div>
+
+    <div class="erp-card erp-kpi kpi-red">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Absent Today</div>
+                <div class="erp-kpi-value erp-red" id="attendanceAbsentKpi">—</div>
+                <div class="erp-kpi-sub">Students absent</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-user-xmark"></i></div>
+        </div>
+    </div>
+
+    <div class="erp-card erp-kpi kpi-cyan">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Attendance Rate</div>
+                <div class="erp-kpi-value" id="attendanceRateKpi">—</div>
+                <div class="erp-kpi-sub">Today's rate</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-chart-pie"></i></div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Library KPIs — librarian #}
+    {% if can_view_library and is_employee and user_role == 'librarian' %}
+    <div class="erp-card erp-kpi kpi-cyan">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Library Items</div>
+                <div class="erp-kpi-value" id="libraryItemsKpi">—</div>
+                <div class="erp-kpi-sub">Books & resources</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-book"></i></div>
+        </div>
+    </div>
+
+    <div class="erp-card erp-kpi kpi-orange">
+        <div class="erp-kpi-top">
+            <div>
+                <div class="erp-kpi-label">Borrowed</div>
+                <div class="erp-kpi-value" id="libraryBorrowedKpi">—</div>
+                <div class="erp-kpi-sub">Currently out</div>
+            </div>
+            <div class="erp-kpi-icon"><i class="fas fa-bookmark"></i></div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
-<!-- ============================================================
-     ANALYTICS
-============================================================ -->
+{# ============================================================
+   ANALYTICS ROW — role-filtered
+============================================================ #}
 <div class="erp-analytics-grid">
-    <!-- Student Distribution -->
+
+    {# Student Distribution — owner, teacher, secretary, accountant #}
+    {% if can_view_students %}
     <div class="erp-card erp-panel">
         <div class="erp-panel-header">
             <div>
@@ -1088,8 +1319,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
-    <!-- Class Overview -->
+    {# Class Overview — owner, teacher, secretary, accountant #}
+    {% if can_view_students %}
     <div class="erp-card erp-panel">
         <div class="erp-panel-header">
             <div>
@@ -1101,15 +1334,17 @@
             <div class="text-[#94a3b8] text-[10px]">Loading classes...</div>
         </div>
     </div>
+    {% endif %}
 
-    <!-- Student Attendance -->
+    {# Student Attendance — teacher, secretary #}
+    {% if can_view_attendance %}
     <div class="erp-card erp-panel">
         <div class="erp-panel-header">
             <div>
                 <div class="erp-panel-title">Student Attendance</div>
                 <div class="text-[#94a3b8] text-[9px] mt-1">Today's attendance overview</div>
             </div>
-            <a href="#" class="erp-view-all">Details →</a>
+            <a href="{{ url_for('attendance_report.index') }}" class="erp-view-all">Details →</a>
         </div>
         <div class="grid grid-cols-3 gap-2 mb-4">
             <div class="p-3 rounded-lg bg-[#f8fafc]">
@@ -1145,13 +1380,32 @@
             </div>
         </div>
     </div>
+    {% endif %}
+
+    {# Library activity — librarian only #}
+    {% if is_employee and user_role == 'librarian' %}
+    <div class="erp-card erp-panel">
+        <div class="erp-panel-header">
+            <div>
+                <div class="erp-panel-title">Library Activity</div>
+                <div class="text-[#94a3b8] text-[9px] mt-1">Recent borrowings</div>
+            </div>
+            <a href="{{ url_for('library.index') }}" class="erp-view-all">Manage →</a>
+        </div>
+        <div id="libraryActivityList" class="space-y-2">
+            <div class="text-[#94a3b8] text-[10px]">Loading library activity...</div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
-<!-- ============================================================
-     RECENT PAYMENTS + AI
-============================================================ -->
+{# ============================================================
+   RECENT PAYMENTS + AI CARD
+============================================================ #}
 <div class="erp-lower-grid">
-    <!-- Recent Payments -->
+
+    {# Recent Payments — owner, accountant only #}
+    {% if can_view_payments %}
     <section class="recent-payments-card">
         <div class="card-header">
             <div>
@@ -1174,8 +1428,42 @@
             </div>
         </div>
     </section>
+    {% endif %}
 
-    <!-- AI Insights -->
+    {# Secretary — Recent students #}
+    {% if is_employee and user_role == 'secretary' %}
+    <section class="recent-payments-card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Recent Admissions</div>
+                <div class="card-subtitle">Newly registered students</div>
+            </div>
+            <a href="{{ url_for('student.index') }}" class="card-link">View all <span>→</span></a>
+        </div>
+        <div id="recentAdmissions" class="p-5">
+            <div class="text-center text-[#94a3b8] text-xs py-6">Loading admissions...</div>
+        </div>
+    </section>
+    {% endif %}
+
+    {# Librarian — Recent borrowings #}
+    {% if is_employee and user_role == 'librarian' %}
+    <section class="recent-payments-card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Recent Borrowings</div>
+                <div class="card-subtitle">Latest library transactions</div>
+            </div>
+            <a href="{{ url_for('library.index') }}" class="card-link">Manage <span>→</span></a>
+        </div>
+        <div id="recentBorrowings" class="p-5">
+            <div class="text-center text-[#94a3b8] text-xs py-6">Loading borrowings...</div>
+        </div>
+    </section>
+    {% endif %}
+
+    {# AI Insights — owner & accountant #}
+    {% if can_view_finance %}
     <div class="erp-card erp-ai-card">
         <div class="erp-ai-label"><i class="fas fa-sparkles"></i> AI SCHOOL INSIGHTS</div>
         <div class="erp-ai-title">Collection performance needs attention</div>
@@ -1193,57 +1481,117 @@
             <i class="fas fa-wand-magic-sparkles"></i> Open AI Analysis
         </button>
     </div>
+    {% elif is_employee and user_role == 'librarian' %}
+    <div class="erp-card erp-ai-card" style="background: radial-gradient(circle at 100% 0%, rgba(6,182,212,.16), transparent 38%), linear-gradient(145deg, #fff, #ecfeff);">
+        <div class="erp-ai-label" style="color:#0891b2;background:#ecfeff;"><i class="fas fa-book"></i> LIBRARY TIP</div>
+        <div class="erp-ai-title">Keep the library organized</div>
+        <div class="erp-ai-description">
+            Regularly check for overdue books and update the resource catalog so students
+            can always find what they need.
+        </div>
+        <button class="erp-ai-button" style="background:#0891b2;" onclick="window.location.href='{{ url_for('library.index') }}'">
+            <i class="fas fa-book-open"></i> Open Library
+        </button>
+    </div>
+    {% elif is_employee and user_role == 'secretary' %}
+    <div class="erp-card erp-ai-card" style="background: radial-gradient(circle at 100% 0%, rgba(124,58,237,.16), transparent 38%), linear-gradient(145deg, #fff, #f5f3ff);">
+        <div class="erp-ai-label" style="color:#7c3aed;background:#f5f3ff;"><i class="fas fa-user-tie"></i> ADMIN TIP</div>
+        <div class="erp-ai-title">Keep records current</div>
+        <div class="erp-ai-description">
+            Update student and employee records as soon as changes occur. Use messaging
+            to keep parents and staff informed.
+        </div>
+        <button class="erp-ai-button" style="background:#7c3aed;" onclick="window.location.href='{{ url_for('student.index') }}'">
+            <i class="fas fa-user-plus"></i> Manage Students
+        </button>
+    </div>
+    {% endif %}
 </div>
 
-<!-- ============================================================
-     QUICK ACTIONS
-============================================================ -->
+{# ============================================================
+   QUICK ACTIONS — role-filtered
+============================================================ #}
+{% if can_view_quick_actions %}
 <div class="erp-card p-5 mb-4">
     <div class="erp-panel-header">
         <div>
             <div class="erp-panel-title">Quick Actions</div>
-            <div class="text-[#94a3b8] text-[9px] mt-1">Common tasks for administrators</div>
+            <div class="text-[#94a3b8] text-[9px] mt-1">
+                {% if user_role == 'owner' %}Common tasks for administrators
+                {% elif user_role == 'accountant' %}Common tasks for accountants
+                {% elif user_role == 'secretary' %}Common tasks for secretaries
+                {% else %}Common tasks{% endif %}
+            </div>
         </div>
     </div>
     <div class="erp-actions-grid">
-        <a href="/students" class="erp-action-card">
+        {% if can_view_students %}
+        <a href="{{ url_for('student.index') }}" class="erp-action-card">
             <div class="erp-action-icon"><i class="fas fa-user-plus"></i></div>
             <strong>Add Student</strong>
             <span>Register student</span>
         </a>
-        <a href="/collect-fees" class="erp-action-card">
+        {% endif %}
+        {% if can_collect_fees %}
+        <a href="{{ url_for('collect.index') }}" class="erp-action-card">
             <div class="erp-action-icon"><i class="fas fa-money-bill-wave"></i></div>
             <strong>Collect Fees</strong>
             <span>Record payment</span>
         </a>
-        <a href="/fees" class="erp-action-card">
+        {% endif %}
+        {% if can_view_fees %}
+        <a href="{{ url_for('fees.index') }}" class="erp-action-card">
             <div class="erp-action-icon"><i class="fas fa-file-invoice"></i></div>
             <strong>Create Invoice</strong>
             <span>New invoice</span>
         </a>
-        <a href="/employees" class="erp-action-card">
+        {% endif %}
+        {% if can_view_employees %}
+        <a href="{{ url_for('employees.index') }}" class="erp-action-card">
             <div class="erp-action-icon"><i class="fas fa-user-tie"></i></div>
             <strong>Add Employee</strong>
             <span>Register staff</span>
         </a>
-        <a href="/classes/create" class="erp-action-card">
-            <div class="erp-action-icon"><i class="fas fa-school"></i></div>
-            <strong>Create Class</strong>
-            <span>Add class</span>
+        {% endif %}
+        {% if can_view_attendance %}
+        <a href="{{ url_for('attendance.index') }}" class="erp-action-card">
+            <div class="erp-action-icon"><i class="fas fa-fingerprint"></i></div>
+            <strong>Attendance</strong>
+            <span>Mark attendance</span>
         </a>
-        <a href="/accounts/expenses" class="erp-action-card">
+        {% endif %}
+        {% if can_view_exams %}
+        <a href="{{ url_for('exams.marks') }}" class="erp-action-card">
+            <div class="erp-action-icon"><i class="fas fa-pen-to-square"></i></div>
+            <strong>Enter Marks</strong>
+            <span>Record exam marks</span>
+        </a>
+        {% endif %}
+        {% if can_view_library %}
+        <a href="{{ url_for('library.index') }}" class="erp-action-card">
+            <div class="erp-action-icon"><i class="fas fa-book-open"></i></div>
+            <strong>Library</strong>
+            <span>Browse resources</span>
+        </a>
+        {% endif %}
+        {% if can_view_finance %}
+        <a href="{{ url_for('accounts.expenses') }}" class="erp-action-card">
             <div class="erp-action-icon"><i class="fas fa-receipt"></i></div>
             <strong>Record Expense</strong>
             <span>Add expense</span>
         </a>
+        {% endif %}
     </div>
 </div>
+{% endif %}
 
-<!-- ============================================================
-     STAFF ATTENDANCE + RECENT ACTIVITY
-============================================================ -->
+{# ============================================================
+   STAFF ATTENDANCE + RECENT ACTIVITY
+============================================================ #}
 <div class="grid grid-cols-1 md:grid-cols-[0.8fr_1.2fr] gap-4">
-    <!-- Staff Attendance -->
+
+    {# Staff Attendance — owner, secretary #}
+    {% if can_view_employees or (not is_employee) %}
     <div class="erp-card erp-panel">
         <div class="erp-panel-header">
             <div>
@@ -1271,15 +1619,16 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
-    <!-- Recent Activity -->
+    {# Recent Activity — everyone #}
+    {% if can_view_activities %}
     <div class="erp-card p-5">
         <div class="erp-panel-header">
             <div>
                 <div class="erp-panel-title">Recent Activity</div>
                 <div class="text-[#94a3b8] text-[9px] mt-1">Latest actions in your school</div>
             </div>
-            <a href="#" class="erp-view-all">View all →</a>
         </div>
         <div class="max-h-[350px] overflow-y-auto" id="activitiesList">
             <div class="text-center py-8 text-[#94a3b8] text-[10px]">Loading activities...</div>
@@ -1289,6 +1638,7 @@
             <span>Activities hidden</span>
         </div>
     </div>
+    {% endif %}
 </div>
 
 </div>
@@ -1296,9 +1646,25 @@
 
 <script>
 /* ============================================================
-   LUNSERKERP DASHBOARD JAVASCRIPT
-   ============================================================ */
+   ROLE & PERMISSION FLAGS (from session)
+============================================================ */
+const IS_EMPLOYEE   = {{ session.user.is_employee|tojson if session and session.user else 'false' }};
+const USER_ROLE     = {{ (session.user.role if session and session.user and session.user.is_employee else 'owner')|tojson }};
 
+/* Permission flags — mirror the Jinja logic above */
+const CAN_VIEW_FINANCE    = !IS_EMPLOYEE || USER_ROLE === 'accountant';
+const CAN_VIEW_STUDENTS   = !IS_EMPLOYEE || ['teacher','secretary','accountant'].includes(USER_ROLE);
+const CAN_VIEW_EMPLOYEES  = !IS_EMPLOYEE || USER_ROLE === 'secretary';
+const CAN_VIEW_ATTENDANCE = !IS_EMPLOYEE || ['teacher','secretary'].includes(USER_ROLE);
+const CAN_VIEW_EXAMS      = !IS_EMPLOYEE || USER_ROLE === 'teacher';
+const CAN_VIEW_LIBRARY    = !IS_EMPLOYEE || ['librarian','teacher'].includes(USER_ROLE);
+const CAN_VIEW_PAYMENTS   = !IS_EMPLOYEE || USER_ROLE === 'accountant';
+const CAN_VIEW_FEES       = !IS_EMPLOYEE || ['accountant','secretary'].includes(USER_ROLE);
+const SHOW_FULL_FINANCE   = !IS_EMPLOYEE;   // owner-only KPIs
+
+/* ============================================================
+   CHART STATE
+============================================================ */
 let incomeExpenseChart = null;
 let classDistributionChart = null;
 let privacyMode = false;
@@ -1307,15 +1673,7 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 600;
 
 /* ============================================================
-   ROLE PERMISSION
-============================================================ */
-const isOwnerOrAdmin = !{{ session.user.is_employee|tojson }} ||
-    ({{ session.user.is_employee|tojson }} &&
-    ({{ session.user.role|tojson }} === 'admin' ||
-     {{ session.user.role|tojson }} === 'owner'));
-
-/* ============================================================
-   PRIVACY
+   PRIVACY MODE
 ============================================================ */
 (function() {
     const PRIVACY_KEY = 'lunserk_privacy_mode';
@@ -1327,7 +1685,6 @@ const isOwnerOrAdmin = !{{ session.user.is_employee|tojson }} ||
     function setPrivacyState(enabled) {
         localStorage.setItem(PRIVACY_KEY, enabled ? 'true' : 'false');
         applyPrivacyMode(enabled);
-        // Toggle all privacy overlays
         document.querySelectorAll('.erp-private').forEach(el => {
             el.classList.toggle('visible', enabled);
         });
@@ -1348,7 +1705,6 @@ const isOwnerOrAdmin = !{{ session.user.is_employee|tojson }} ||
         }
         if (icon) icon.textContent = enabled ? '●' : '◉';
 
-        // Toggle all privacy overlays
         document.querySelectorAll('.erp-private').forEach(el => {
             el.classList.toggle('visible', enabled);
         });
@@ -1377,21 +1733,29 @@ const isOwnerOrAdmin = !{{ session.user.is_employee|tojson }} ||
    REPORT NAVIGATION
 ============================================================ */
 function goToReport(type) {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
+    const startDate = document.getElementById('startDate')?.value || '';
+    const endDate = document.getElementById('endDate')?.value || '';
     let url = '';
 
     switch(type) {
-        case 'students': url = '/reports/students'; break;
-        case 'employees': url = '/reports/employees'; break;
-        case 'income': url = `/reports/income?start_date=${startDate}&end_date=${endDate}`; break;
-        case 'expenses': url = `/reports/expenses?start_date=${startDate}&end_date=${endDate}`; break;
+        case 'students':
+            if (!CAN_VIEW_STUDENTS) return;
+            url = '/reports/students'; break;
+        case 'employees':
+            if (!CAN_VIEW_EMPLOYEES) return;
+            url = '/reports/employees'; break;
+        case 'income':
+            if (!CAN_VIEW_FINANCE) return;
+            url = `/reports/income?start_date=${startDate}&end_date=${endDate}`; break;
+        case 'expenses':
+            if (!CAN_VIEW_FINANCE) return;
+            url = `/reports/expenses?start_date=${startDate}&end_date=${endDate}`; break;
         case 'profit-loss':
-            if (!isOwnerOrAdmin) return;
+            if (!SHOW_FULL_FINANCE) return;
             url = `/reports/profit-loss?start_date=${startDate}&end_date=${endDate}`;
             break;
         case 'overall-profit':
-            if (!isOwnerOrAdmin) return;
+            if (!SHOW_FULL_FINANCE) return;
             url = '/reports/overall-profit';
             break;
         default: return;
@@ -1428,12 +1792,16 @@ async function fetchWithRetry(url, retryCount = 0) {
    DATE HELPERS
 ============================================================ */
 function setDefaultDates() {
+    const start = document.getElementById('startDate');
+    const end = document.getElementById('endDate');
+    if (!start || !end) return;
+
     const today = new Date();
     const threeMonthsAgo = new Date(today);
     threeMonthsAgo.setMonth(today.getMonth() - 3);
 
-    document.getElementById('startDate').value = threeMonthsAgo.toISOString().split('T')[0];
-    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    start.value = threeMonthsAgo.toISOString().split('T')[0];
+    end.value = today.toISOString().split('T')[0];
 }
 
 function resetDates() {
@@ -1442,21 +1810,41 @@ function resetDates() {
 }
 
 /* ============================================================
-   MAIN REFRESH
+   MAIN REFRESH — role-aware
 ============================================================ */
 async function refreshDashboard() {
-    const requests = [
-        loadStats(),
-        loadFeeCollectionSummary(),
-        loadIncomeExpenseGraph(),
-        loadClassDistribution(),
-        loadClassAttendance(),
-        loadStaffAttendance(),
-        loadRecentActivities()
-    ];
+    const requests = [];
 
-    if (isOwnerOrAdmin) {
+    requests.push(loadStats());
+
+    if (CAN_VIEW_FINANCE) {
+        requests.push(loadFeeCollectionSummary());
+        requests.push(loadIncomeExpenseGraph());
         requests.push(loadOverallProfit());
+    }
+
+    if (CAN_VIEW_STUDENTS) {
+        requests.push(loadClassDistribution());
+    }
+
+    if (CAN_VIEW_ATTENDANCE) {
+        requests.push(loadClassAttendance());
+    }
+
+    if (!IS_EMPLOYEE || USER_ROLE === 'secretary') {
+        requests.push(loadStaffAttendance());
+    }
+
+    requests.push(loadRecentActivities());
+
+    if (IS_EMPLOYEE && USER_ROLE === 'secretary') {
+        requests.push(loadSecretarySnapshot());
+        requests.push(loadRecentAdmissions());
+    }
+
+    if (IS_EMPLOYEE && USER_ROLE === 'librarian') {
+        requests.push(loadLibrarianSnapshot());
+        requests.push(loadRecentBorrowings());
     }
 
     const results = await Promise.allSettled(requests);
@@ -1471,8 +1859,8 @@ async function refreshDashboard() {
    STATS
 ============================================================ */
 async function loadStats() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
+    const startDate = document.getElementById('startDate')?.value || '';
+    const endDate = document.getElementById('endDate')?.value || '';
 
     try {
         const data = await fetchWithRetry(
@@ -1483,21 +1871,38 @@ async function loadStats() {
 
         const stats = data.stats;
 
-        document.getElementById('totalStudents').textContent =
-            Number(stats.total_students || 0).toLocaleString();
-        document.getElementById('totalEmployees').textContent =
-            Number(stats.total_employees || 0).toLocaleString();
-        document.getElementById('totalCollected').textContent = money(stats.total_collected);
-        document.getElementById('otherIncome').textContent = money(stats.other_income);
-        document.getElementById('totalExpenses').textContent = money(stats.total_expenses);
-        document.getElementById('schoolFeesCollected').textContent = money(stats.revenue_collected);
-        document.getElementById('filteredProfit').textContent = money(stats.total_profit);
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
 
-        // HERO
-        document.getElementById('heroCollected').textContent = money(stats.revenue_collected);
-        document.getElementById('heroOtherIncome').textContent = money(stats.other_income);
-        document.getElementById('heroExpenses').textContent = money(stats.total_expenses);
-        document.getElementById('heroProfit').textContent = money(stats.total_profit);
+        if (CAN_VIEW_STUDENTS) {
+            setText('totalStudents', Number(stats.total_students || 0).toLocaleString());
+        }
+
+        if (CAN_VIEW_EMPLOYEES || !IS_EMPLOYEE) {
+            setText('totalEmployees', Number(stats.total_employees || 0).toLocaleString());
+        }
+
+        if (CAN_VIEW_FINANCE) {
+            setText('totalCollected', money(stats.total_collected));
+            setText('totalPayable', money(stats.total_payable));
+
+            // Owner-only fields (elements won't exist for accountant — safe)
+            if (SHOW_FULL_FINANCE) {
+                setText('otherIncome', money(stats.other_income));
+                setText('totalExpenses', money(stats.total_expenses));
+                setText('schoolFeesCollected', money(stats.revenue_collected));
+                setText('filteredProfit', money(stats.total_profit));
+            }
+        }
+
+        if (CAN_VIEW_ATTENDANCE && !CAN_VIEW_FINANCE) {
+            setText('attendancePresentKpi', Number(stats.present_today || 0).toLocaleString());
+            setText('attendanceAbsentKpi', Number(stats.absent_today || 0).toLocaleString());
+            const rate = Number(stats.attendance_rate || 0).toFixed(1);
+            setText('attendanceRateKpi', rate + '%');
+        }
 
     } catch(error) {
         console.error('Stats error:', error);
@@ -1508,15 +1913,15 @@ async function loadStats() {
    OVERALL PROFIT
 ============================================================ */
 async function loadOverallProfit() {
-    if (!isOwnerOrAdmin) return;
+    if (!CAN_VIEW_FINANCE) return;
 
     try {
         const data = await fetchWithRetry('/dashboard/api/overall-profit');
         if (!data.success) return;
 
         const profit = Number(data.overall_profit || 0);
-        document.getElementById('overallProfit').textContent = money(profit);
-        document.getElementById('heroOverallProfit').textContent = money(profit);
+        const el = document.getElementById('overallProfit');
+        if (el) el.textContent = money(profit);
     } catch(error) {
         console.error('Overall profit error:', error);
     }
@@ -1526,8 +1931,10 @@ async function loadOverallProfit() {
    FEE COLLECTION
 ============================================================ */
 async function loadFeeCollectionSummary() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
+    if (!CAN_VIEW_FINANCE) return;
+
+    const startDate = document.getElementById('startDate')?.value || '';
+    const endDate = document.getElementById('endDate')?.value || '';
 
     try {
         const response = await fetchWithRetry(
@@ -1546,12 +1953,16 @@ async function loadFeeCollectionSummary() {
         if (payable > 0) percentage = (collected / payable) * 100;
         percentage = Math.min(percentage, 100);
 
-        document.getElementById('totalInvoiced').textContent = money(invoiced);
-        document.getElementById('totalDiscounts').textContent = money(discounts);
-        document.getElementById('totalPayable').textContent = money(payable);
-        document.getElementById('collectionPercentage').textContent = percentage.toFixed(1) + '%';
-        document.getElementById('collectionProgressBar').style.width = percentage + '%';
-        document.getElementById('aiCollectionRate').textContent = percentage.toFixed(1) + '%';
+        const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+        // Elements that may not exist for accountant:
+        setText('totalInvoiced', money(invoiced));
+        setText('totalDiscounts', money(discounts));
+        setText('collectionPercentage', percentage.toFixed(1) + '%');
+        setText('aiCollectionRate', percentage.toFixed(1) + '%');
+
+        const bar = document.getElementById('collectionProgressBar');
+        if (bar) bar.style.width = percentage + '%';
 
     } catch(error) {
         console.error('Fee summary error:', error);
@@ -1562,6 +1973,11 @@ async function loadFeeCollectionSummary() {
    INCOME / EXPENSE CHART
 ============================================================ */
 async function loadIncomeExpenseGraph() {
+    if (!CAN_VIEW_FINANCE) return;
+
+    const canvas = document.getElementById('incomeExpenseChart');
+    if (!canvas) return;
+
     try {
         const data = await fetchWithRetry('/dashboard/api/income-expense-graph');
         if (!data.success || !data.data || !data.data.length) return;
@@ -1573,7 +1989,7 @@ async function loadIncomeExpenseGraph() {
 
         if (incomeExpenseChart) incomeExpenseChart.destroy();
 
-        const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
+        const ctx = canvas.getContext('2d');
         const incomeGradient = ctx.createLinearGradient(0, 0, 0, 290);
         incomeGradient.addColorStop(0, 'rgba(37,99,235,.16)');
         incomeGradient.addColorStop(1, 'rgba(37,99,235,0)');
@@ -1583,38 +1999,9 @@ async function loadIncomeExpenseGraph() {
             data: {
                 labels,
                 datasets: [
-                    {
-                        label: 'Income',
-                        data: incomes,
-                        borderColor: '#2563eb',
-                        backgroundColor: incomeGradient,
-                        borderWidth: 2.5,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        fill: true,
-                        tension: .42
-                    },
-                    {
-                        label: 'Expenses',
-                        data: expenses,
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239,68,68,.04)',
-                        borderWidth: 2,
-                        pointRadius: 2,
-                        fill: true,
-                        tension: .42
-                    },
-                    {
-                        label: 'Profit',
-                        data: profits,
-                        borderColor: '#7c3aed',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        borderDash: [6,5],
-                        pointRadius: 2,
-                        fill: false,
-                        tension: .42
-                    }
+                    { label: 'Income', data: incomes, borderColor: '#2563eb', backgroundColor: incomeGradient, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 5, fill: true, tension: .42 },
+                    { label: 'Expenses', data: expenses, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.04)', borderWidth: 2, pointRadius: 2, fill: true, tension: .42 },
+                    { label: 'Profit', data: profits, borderColor: '#7c3aed', backgroundColor: 'transparent', borderWidth: 2, borderDash: [6,5], pointRadius: 2, fill: false, tension: .42 }
                 ]
             },
             options: {
@@ -1622,51 +2009,24 @@ async function loadIncomeExpenseGraph() {
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            boxWidth: 7,
-                            padding: 18,
-                            font: { size: 10 }
-                        }
-                    },
+                    legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 7, padding: 18, font: { size: 10 } } },
                     tooltip: {
-                        backgroundColor: '#17233d',
-                        padding: 11,
-                        titleFont: { size: 10 },
-                        bodyFont: { size: 10 },
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': UGX ' +
-                                    Number(context.parsed.y || 0).toLocaleString();
-                            }
-                        }
+                        backgroundColor: '#17233d', padding: 11, titleFont: { size: 10 }, bodyFont: { size: 10 },
+                        callbacks: { label: (ctx) => ctx.dataset.label + ': UGX ' + Number(ctx.parsed.y || 0).toLocaleString() }
                     }
                 },
                 scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { font: { size: 9 }, color: '#94a3b8' }
-                    },
+                    x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#94a3b8' } },
                     y: {
-                        beginAtZero: true,
-                        grid: { color: '#eef2f7' },
-                        border: { display: false },
+                        beginAtZero: true, grid: { color: '#eef2f7' }, border: { display: false },
                         ticks: {
-                            font: { size: 9 },
-                            color: '#94a3b8',
-                            callback: function(value) {
-                                if (value >= 1000000) return 'UGX ' + (value/1000000).toFixed(0) + 'M';
-                                return 'UGX ' + value;
-                            }
+                            font: { size: 9 }, color: '#94a3b8',
+                            callback: (v) => v >= 1000000 ? 'UGX ' + (v/1000000).toFixed(0) + 'M' : 'UGX ' + v
                         }
                     }
                 }
             }
         });
-
     } catch(error) {
         console.error('Chart error:', error);
     }
@@ -1676,6 +2036,11 @@ async function loadIncomeExpenseGraph() {
    CLASS DISTRIBUTION
 ============================================================ */
 async function loadClassDistribution() {
+    if (!CAN_VIEW_STUDENTS) return;
+
+    const canvas = document.getElementById('classDistributionChart');
+    if (!canvas) return;
+
     try {
         const data = await fetchWithRetry('/dashboard/api/class-distribution');
         if (!data.success || !data.data || !data.data.length) return;
@@ -1684,11 +2049,12 @@ async function loadClassDistribution() {
         const counts = data.data.map(item => Number(item.count || 0));
         const total = counts.reduce((a,b) => a+b, 0);
 
-        document.getElementById('studentChartTotal').textContent = total.toLocaleString();
+        const totalEl = document.getElementById('studentChartTotal');
+        if (totalEl) totalEl.textContent = total.toLocaleString();
 
         if (classDistributionChart) classDistributionChart.destroy();
 
-        const ctx = document.getElementById('classDistributionChart').getContext('2d');
+        const ctx = canvas.getContext('2d');
         classDistributionChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -1696,51 +2062,28 @@ async function loadClassDistribution() {
                 datasets: [{
                     data: counts,
                     backgroundColor: ['#2563eb','#7c3aed','#06b6d4','#16a66a','#f59e0b','#ec4899','#6366f1','#14b8a6','#f97316','#8b5cf6'],
-                    borderWidth: 3,
-                    borderColor: '#ffffff',
-                    hoverOffset: 6
+                    borderWidth: 3, borderColor: '#ffffff', hoverOffset: 6
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '72%',
+                responsive: true, maintainAspectRatio: false, cutout: '72%',
                 plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: {
-                            boxWidth: 9,
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            padding: 9,
-                            font: { size: 9 }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const value = context.parsed;
-                                const percent = total ? ((value / total) * 100).toFixed(1) : 0;
-                                return context.label + ': ' + value + ' (' + percent + '%)';
-                            }
-                        }
-                    }
+                    legend: { position: 'right', labels: { boxWidth: 9, usePointStyle: true, pointStyle: 'circle', padding: 9, font: { size: 9 } } },
+                    tooltip: { callbacks: { label: (ctx) => { const v = ctx.parsed; const p = total ? ((v/total)*100).toFixed(1) : 0; return ctx.label + ': ' + v + ' (' + p + '%)'; } } }
                 }
             }
         });
 
         renderClassOverview(data.data);
-
     } catch(error) {
         console.error('Class distribution error:', error);
     }
 }
 
-/* ============================================================
-   CLASS OVERVIEW
-============================================================ */
 function renderClassOverview(classes) {
     const container = document.getElementById('classOverviewList');
+    if (!container) return;
+
     const sorted = [...classes].sort((a,b) => Number(b.count || 0) - Number(a.count || 0)).slice(0,5);
     const max = Math.max(...sorted.map(item => Number(item.count || 0)), 1);
 
@@ -1765,9 +2108,13 @@ function renderClassOverview(classes) {
    STUDENT ATTENDANCE
 ============================================================ */
 async function loadClassAttendance() {
+    if (!CAN_VIEW_ATTENDANCE) return;
+
+    const tbody = document.getElementById('classAttendanceTable');
+    if (!tbody) return;
+
     try {
         const data = await fetchWithRetry('/dashboard/api/class-attendance');
-        const tbody = document.getElementById('classAttendanceTable');
 
         if (!data.success || !data.data || !data.data.length) {
             tbody.innerHTML = `<tr><td colspan="4" class="text-center text-[#94a3b8] py-4">No attendance data</td></tr>`;
@@ -1783,9 +2130,10 @@ async function loadClassAttendance() {
         const attendanceTotal = presentTotal + absentTotal;
         const rate = attendanceTotal ? (presentTotal / attendanceTotal * 100) : 0;
 
-        document.getElementById('attendancePresent').textContent = presentTotal;
-        document.getElementById('attendanceAbsent').textContent = absentTotal;
-        document.getElementById('attendanceRate').textContent = rate.toFixed(1) + '%';
+        const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setText('attendancePresent', presentTotal);
+        setText('attendanceAbsent', absentTotal);
+        setText('attendanceRate', rate.toFixed(1) + '%');
 
         tbody.innerHTML = data.data.slice(0,5).map(item => {
             const percentage = Number(item.percentage || 0);
@@ -1804,7 +2152,6 @@ async function loadClassAttendance() {
                 </tr>
             `;
         }).join('');
-
     } catch(error) {
         console.error('Attendance error:', error);
     }
@@ -1814,9 +2161,13 @@ async function loadClassAttendance() {
    STAFF ATTENDANCE
 ============================================================ */
 async function loadStaffAttendance() {
+    if (IS_EMPLOYEE && USER_ROLE !== 'secretary') return;
+
+    const tbody = document.getElementById('staffAttendanceTable');
+    if (!tbody) return;
+
     try {
         const data = await fetchWithRetry('/dashboard/api/staff-attendance');
-        const tbody = document.getElementById('staffAttendanceTable');
 
         if (!data.success || !data.data || !data.data.length) {
             tbody.innerHTML = `<tr><td colspan="4" class="text-center text-[#94a3b8] py-4">No staff attendance</td></tr>`;
@@ -1840,7 +2191,6 @@ async function loadStaffAttendance() {
                 </tr>
             `;
         }).join('');
-
     } catch(error) {
         console.error('Staff attendance error:', error);
     }
@@ -1850,9 +2200,11 @@ async function loadStaffAttendance() {
    RECENT ACTIVITIES
 ============================================================ */
 async function loadRecentActivities() {
+    const container = document.getElementById('activitiesList');
+    if (!container) return;
+
     try {
         const data = await fetchWithRetry('/dashboard/api/recent-activities');
-        const container = document.getElementById('activitiesList');
 
         if (!data.success || !data.activities || !data.activities.length) {
             container.innerHTML = `<div class="text-center py-8 text-[#94a3b8] text-[10px]">No recent activities</div>`;
@@ -1879,7 +2231,6 @@ async function loadRecentActivities() {
                 <div class="text-[8px] text-[#a1aab8] whitespace-nowrap">${formatDate(activity.time)}</div>
             </div>
         `).join('');
-
     } catch(error) {
         console.error('Activities error:', error);
     }
@@ -1889,6 +2240,8 @@ async function loadRecentActivities() {
    RECENT PAYMENTS
 ============================================================ */
 window.loadRecentPayments = async function() {
+    if (!CAN_VIEW_PAYMENTS) return;
+
     const container = document.getElementById('recentPayments');
     if (!container) return;
 
@@ -1915,7 +2268,6 @@ window.loadRecentPayments = async function() {
         }
 
         renderRecentPayments(Array.isArray(data.payments) ? data.payments : []);
-
     } catch(error) {
         console.error('[Recent Payments]', error);
         container.innerHTML = `
@@ -1987,11 +2339,7 @@ function renderRecentPayments(payments) {
 function formatPaymentCurrency(amount) {
     const value = Number(amount) || 0;
     try {
-        return new Intl.NumberFormat('en-UG', {
-            style: 'currency',
-            currency: 'UGX',
-            maximumFractionDigits: 0
-        }).format(value);
+        return new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', maximumFractionDigits: 0 }).format(value);
     } catch {
         return 'UGX ' + Math.round(value).toLocaleString();
     }
@@ -2001,11 +2349,7 @@ function formatPaymentDate(dateString) {
     if (!dateString) return '—';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return String(dateString);
-    return date.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-    });
+    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function getPaymentInitials(name) {
@@ -2029,15 +2373,115 @@ function escapeHtml(value) {
 }
 
 /* ============================================================
-   FORMAT MONEY
+   SECRETARY SNAPSHOT & ADMISSIONS
+============================================================ */
+async function loadSecretarySnapshot() {
+    if (!(IS_EMPLOYEE && USER_ROLE === 'secretary')) return;
+
+    try {
+        const data = await fetchWithRetry('/dashboard/api/secretary/snapshot');
+        if (!data.success) return;
+
+        const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setText('secStudentCount', data.students ?? '—');
+        setText('secEmployeeCount', data.employees ?? '—');
+        setText('secMessageCount', data.messages ?? '—');
+        setText('secPendingTasks', data.pending_tasks ?? '—');
+    } catch (e) {
+        console.error('Secretary snapshot error:', e);
+    }
+}
+
+async function loadRecentAdmissions() {
+    if (!(IS_EMPLOYEE && USER_ROLE === 'secretary')) return;
+
+    const container = document.getElementById('recentAdmissions');
+    if (!container) return;
+
+    try {
+        const data = await fetchWithRetry('/dashboard/api/secretary/recent-admissions');
+        if (!data.success || !data.students || !data.students.length) {
+            container.innerHTML = `<div class="text-center text-[#94a3b8] text-xs py-6">No recent admissions</div>`;
+            return;
+        }
+
+        container.innerHTML = data.students.map(s => `
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-[#f8fafc] mb-2">
+                <div class="w-9 h-9 rounded-lg bg-[#f5f3ff] flex items-center justify-center text-[#7c3aed] font-bold text-xs">
+                    ${escapeHtml(getPaymentInitials(s.name))}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs font-bold text-[#17233d] truncate">${escapeHtml(s.name)}</div>
+                    <div class="text-[10px] text-[#94a3b8]">${escapeHtml(s.class_name || 'No class')} • ${formatPaymentDate(s.created_at)}</div>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error('Recent admissions error:', e);
+    }
+}
+
+/* ============================================================
+   LIBRARIAN SNAPSHOT & BORROWINGS
+============================================================ */
+async function loadLibrarianSnapshot() {
+    if (!(IS_EMPLOYEE && USER_ROLE === 'librarian')) return;
+
+    try {
+        const data = await fetchWithRetry('/dashboard/api/librarian/snapshot');
+        if (!data.success) return;
+
+        const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setText('libTotalBooks', data.total_books ?? '—');
+        setText('libBorrowed', data.borrowed ?? '—');
+        setText('libOverdue', data.overdue ?? '—');
+        setText('libResources', data.resources ?? '—');
+        setText('libraryItemsKpi', data.total_books ?? '—');
+        setText('libraryBorrowedKpi', data.borrowed ?? '—');
+    } catch (e) {
+        console.error('Librarian snapshot error:', e);
+    }
+}
+
+async function loadRecentBorrowings() {
+    if (!(IS_EMPLOYEE && USER_ROLE === 'librarian')) return;
+
+    const container = document.getElementById('recentBorrowings');
+    const activity = document.getElementById('libraryActivityList');
+    if (!container && !activity) return;
+
+    try {
+        const data = await fetchWithRetry('/dashboard/api/librarian/recent-borrowings');
+        const rows = data.borrowings || [];
+
+        const html = !rows.length
+            ? `<div class="text-center text-[#94a3b8] text-xs py-6">No recent borrowings</div>`
+            : rows.map(b => `
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-[#f8fafc] mb-2">
+                    <div class="w-9 h-9 rounded-lg bg-[#ecfeff] flex items-center justify-center text-[#0891b2]">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs font-bold text-[#17233d] truncate">${escapeHtml(b.book_title || 'Untitled')}</div>
+                        <div class="text-[10px] text-[#94a3b8] truncate">${escapeHtml(b.student_name || 'Unknown')} • ${formatPaymentDate(b.borrowed_at)}</div>
+                    </div>
+                </div>
+            `).join('');
+
+        if (container) container.innerHTML = html;
+        if (activity) activity.innerHTML = html;
+    } catch (e) {
+        console.error('Recent borrowings error:', e);
+    }
+}
+
+/* ============================================================
+   FORMAT HELPERS
 ============================================================ */
 function money(value) {
     return 'UGX ' + Number(value || 0).toLocaleString();
 }
 
-/* ============================================================
-   FORMAT DATE
-============================================================ */
 function formatDate(dateString) {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return '';
@@ -2056,14 +2500,16 @@ function formatDate(dateString) {
 }
 
 /* ============================================================
-   INITIALIZE
+   INITIALIZE — role-aware
 ============================================================ */
 document.addEventListener('DOMContentLoaded', function() {
     setDefaultDates();
     refreshDashboard();
-    loadRecentPayments();
 
-    // Chart tab switching
+    if (CAN_VIEW_PAYMENTS) {
+        loadRecentPayments();
+    }
+
     document.querySelectorAll('.erp-chart-tab').forEach(tab => {
         tab.addEventListener('click', function() {
             document.querySelectorAll('.erp-chart-tab').forEach(t => {

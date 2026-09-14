@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}Role Manager - LunserkERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .role-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .role-tab {
+        padding: 10px 18px; border-radius: 12px; border: 1px solid #e8edf5;
+        background: #fff; color: #475569; font-weight: 700; font-size: 12px;
+        cursor: pointer; transition: all .2s ease;
+    }
+    .role-tab:hover { border-color: #bfdbfe; background: #f8fbff; }
+    .role-tab.active {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: #fff; border-color: #1d4ed8;
+        box-shadow: 0 6px 18px -4px rgba(37,99,235,.4);
+    }
+    .perm-card {
+        background: #fff; border: 1px solid #e8edf5; border-radius: 16px;
+        padding: 22px; margin-bottom: 16px;
+    }
+    .perm-row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 0; border-bottom: 1px solid #f1f5f9;
+    }
+    .perm-row:last-child { border-bottom: 0; }
+    .perm-label { font-size: 13px; font-weight: 600; color: #1e293b; }
+    .perm-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .perm-switch {
+        position: relative; display: inline-block; width: 44px; height: 24px;
+    }
+    .perm-switch input { opacity: 0; width: 0; height: 0; }
+    .perm-slider {
+        position: absolute; cursor: pointer; inset: 0;
+        background: #cbd5e1; border-radius: 999px; transition: .2s;
+    }
+    .perm-slider::before {
+        content: ""; position: absolute; width: 18px; height: 18px;
+        left: 3px; top: 3px; background: white; border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0,0,0,.15); transition: .2s;
+    }
+    .perm-switch input:checked + .perm-slider { background: #2563eb; }
+    .perm-switch input:checked + .perm-slider::before { transform: translateX(20px); }
+    .perm-switch.disabled { opacity: .4; pointer-events: none; }
+    .save-bar {
+        position: sticky; bottom: 20px; z-index: 100;
+        background: rgba(255,255,255,.95); backdrop-filter: blur(12px);
+        border: 1px solid #e8edf5; border-radius: 14px;
+        padding: 14px 20px; display: flex; align-items: center;
+        justify-content: space-between; gap: 12px;
+        box-shadow: 0 12px 35px -8px rgba(15,23,42,.12);
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff;
+        border: 0; border-radius: 10px; padding: 10px 20px;
+        font-weight: 700; font-size: 12px; cursor: pointer;
+    }
+    .btn-light {
+        background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+        border-radius: 10px; padding: 10px 18px;
+        font-weight: 700; font-size: 12px; cursor: pointer;
+    }
+    .save-toast {
+        position: fixed; bottom: 30px; right: 30px; z-index: 9999;
+        background: #16a66a; color: #fff; padding: 12px 20px;
+        border-radius: 12px; font-weight: 600; font-size: 13px;
+        box-shadow: 0 12px 35px -8px rgba(22,166,106,.5);
+        transform: translateY(100px); opacity: 0;
+        transition: all .3s cubic-bezier(.34,1.2,.64,1);
+    }
+    .save-toast.show { transform: translateY(0); opacity: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="erp-dashboard" style="padding: 28px; max-width: 1200px; margin: 0 auto;">
+
+    <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-extrabold text-[#17233d]">Role Manager</h1>
+            <p class="text-[#718096] text-sm mt-1.5">
+                Control what each role can see in the sidebar and access in the system.
+            </p>
+        </div>
+    </div>
+
+    <!-- Role tabs -->
+    <div class="role-tabs" id="roleTabs">
+        {% for r in editable_roles %}
+        <button class="role-tab {% if loop.first %}active{% endif %}"
+                data-role="{{ r.role }}">
+            <i class="fas fa-user-tag mr-1"></i> {{ r.display_name }}
+        </button>
+        {% endfor %}
+    </div>
+
+    <!-- Role editor -->
+    <div id="roleEditor">
+        <div class="perm-card">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-extrabold text-[#17233d]" id="editorRoleName">—</h2>
+                    <p class="text-xs text-[#94a3b8] mt-1" id="editorRoleDesc">—</p>
+                </div>
+                <span class="text-[10px] font-bold text-[#2563eb] bg-[#eff6ff] px-3 py-1.5 rounded-lg" id="editorRoleBadge">
+                    —
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                <div>
+                    <label class="text-[11px] font-bold text-[#475569] block mb-1">Display Name</label>
+                    <input id="displayNameInput" type="text"
+                           class="w-full border border-[#e8edf5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2563eb]">
+                </div>
+                <div>
+                    <label class="text-[11px] font-bold text-[#475569] block mb-1">Description</label>
+                    <input id="descriptionInput" type="text"
+                           class="w-full border border-[#e8edf5] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2563eb]">
+                </div>
+            </div>
+        </div>
+
+        <div class="perm-card">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-extrabold text-[#17233d]">Menu Visibility</h3>
+                <span class="text-[10px] text-[#94a3b8]">Toggle which modules appear in the sidebar</span>
+            </div>
+            <div id="menuList">
+                {% for m in editable_menus %}
+                <div class="perm-row" data-menu="{{ m.key }}">
+                    <div>
+                        <div class="perm-label">
+                            <i class="fas {{ m.icon }} text-[#94a3b8] mr-2"></i>{{ m.label }}
+                        </div>
+                        <div class="perm-sub">Sidebar module</div>
+                    </div>
+                    <label class="perm-switch">
+                        <input type="checkbox" data-menu-input="{{ m.key }}">
+                        <span class="perm-slider"></span>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="save-bar">
+            <div>
+                <div class="text-xs font-bold text-[#17233d]" id="saveStatus">No changes yet</div>
+                <div class="text-[10px] text-[#94a3b8]">Changes apply immediately after save.</div>
+            </div>
+            <div class="flex gap-2">
+                <button class="btn-light" id="resetBtn">
+                    <i class="fas fa-undo"></i> Reset to Defaults
+                </button>
+                <button class="btn-primary" id="saveBtn">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="save-toast" id="saveToast">✓ Saved</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const roles = {{ editable_roles|tojson }};
+    const menus = {{ editable_menus|tojson }};
+
+    let currentRole = roles[0]?.role;
+    let dirty = false;
+
+    const tabs        = document.querySelectorAll('.role-tab');
+    const menuInputs  = () => document.querySelectorAll('[data-menu-input]');
+    const dispInput   = document.getElementById('displayNameInput');
+    const descInput   = document.getElementById('descriptionInput');
+    const editorName  = document.getElementById('editorRoleName');
+    const editorDesc  = document.getElementById('editorRoleDesc');
+    const editorBadge = document.getElementById('editorRoleBadge');
+    const saveStatus  = document.getElementById('saveStatus');
+    const saveBtn     = document.getElementById('saveBtn');
+    const resetBtn    = document.getElementById('resetBtn');
+    const saveToast   = document.getElementById('saveToast');
+
+    function findRole(role) { return roles.find(r => r.role === role); }
+
+    function markDirty() {
+        dirty = true;
+        saveStatus.textContent = 'Unsaved changes';
+        saveStatus.style.color = '#f59e0b';
+    }
+
+    function clearDirty() {
+        dirty = false;
+        saveStatus.textContent = 'No changes yet';
+        saveStatus.style.color = '#17233d';
+    }
+
+    function loadRole(role) {
+        const r = findRole(role);
+        if (!r) return;
+        currentRole = role;
+
+        editorName.textContent = r.display_name;
+        editorDesc.textContent = r.description;
+        editorBadge.textContent = r.role.toUpperCase();
+        dispInput.value = r.display_name;
+        descInput.value = r.description;
+
+        // Menu overrides
+        menuInputs().forEach(inp => {
+            const key = inp.getAttribute('data-menu-input');
+            const override = r.menu_overrides?.[key];
+            if (override === undefined || override === null) {
+                // Not configured — reflect default: allowed for this role?
+                inp.checked = true;   // show ON by default (owner decides)
+                inp.indeterminate = true;
+            } else {
+                inp.checked = !!override;
+                inp.indeterminate = false;
+            }
+        });
+
+        clearDirty();
+    }
+
+    // Tab switching
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            if (dirty && !confirm('You have unsaved changes. Discard them?')) return;
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            loadRole(tab.dataset.role);
+        });
+    });
+
+    // Dirty tracking
+    menuInputs().forEach(inp => {
+        inp.addEventListener('change', () => {
+            inp.indeterminate = false;
+            markDirty();
+        });
+    });
+    dispInput.addEventListener('input', markDirty);
+    descInput.addEventListener('input', markDirty);
+
+    // Save
+    saveBtn.addEventListener('click', async () => {
+        const menu_overrides = {};
+        menuInputs().forEach(inp => {
+            if (inp.indeterminate) return;   // leave unset
+            menu_overrides[inp.getAttribute('data-menu-input')] = inp.checked;
+        });
+
+        const payload = {
+            display_name: dispInput.value.trim() || null,
+            description:  descInput.value.trim() || null,
+            menu_overrides,
+            route_overrides: {},   // reserved for future use
+        };
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        try {
+            const res = await fetch(`/roles/api/${currentRole}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                credentials: 'same-origin',
+            });
+            const data = await res.json();
+            if (data.success) {
+                const r = findRole(currentRole);
+                r.display_name = dispInput.value.trim() || r.display_name;
+                r.description  = descInput.value.trim() || r.description;
+                r.menu_overrides = menu_overrides;
+
+                editorName.textContent = r.display_name;
+                editorDesc.textContent = r.description;
+
+                // Update tab label
+                const activeTab = document.querySelector('.role-tab.active');
+                activeTab.innerHTML = `<i class="fas fa-user-tag mr-1"></i> ${r.display_name}`;
+
+                clearDirty();
+                showToast('✓ Saved — refresh to see sidebar changes');
+            } else {
+                alert(data.message || 'Save failed');
+            }
+        } catch (e) {
+            alert('Save failed: ' + e.message);
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+        }
+    });
+
+    // Reset
+    resetBtn.addEventListener('click', async () => {
+        if (!confirm(`Reset ${currentRole} to system defaults?`)) return;
+        try {
+            const res = await fetch(`/roles/api/${currentRole}/reset`, {
+                method: 'POST',
+                credentials: 'same-origin',
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('✓ Reset — refresh the page');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                alert(data.message || 'Reset failed');
+            }
+        } catch (e) {
+            alert('Reset failed: ' + e.message);
+        }
+    });
+
+    function showToast(msg) {
+        saveToast.textContent = msg;
+        saveToast.classList.add('show');
+        setTimeout(() => saveToast.classList.remove('show'), 2500);
+    }
+
+    // Initial load
+    if (currentRole) loadRole(currentRole);
+})();
+</script>
+{% endblock %}

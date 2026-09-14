@@ -30,7 +30,7 @@ def login_required(f):
 
 
 @fee_reports_bp.route('/')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def index():
     """Fee Reports Dashboard"""
     user = session.get('user')
@@ -65,7 +65,7 @@ def index():
 
 
 @fee_reports_bp.route('/daily-collection', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_daily_collection():
     """Get daily collection report"""
     user = session.get('user')
@@ -143,7 +143,7 @@ def get_daily_collection():
 
 
 @fee_reports_bp.route('/balance-report', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_balance_report():
     """Get fees balance report"""
     user = session.get('user')
@@ -234,7 +234,7 @@ def get_balance_report():
 
 
 @fee_reports_bp.route('/general-report', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_general_report():
     """Get general fees report with statistics"""
     user = session.get('user')
@@ -303,7 +303,7 @@ def get_general_report():
 
 
 @fee_reports_bp.route('/send-reminders', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def send_fee_reminders():
     """Send fee reminders to students with balance"""
     user = session.get('user')
@@ -457,7 +457,7 @@ Thank you."""
 
 
 @fee_reports_bp.route('/export-excel', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def export_to_excel():
     """Export report data to Excel"""
     user = session.get('user')

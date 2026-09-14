@@ -174,6 +174,7 @@
             padding: 6px 12px;
             border-radius: 6px;
             font-size: 13px;
+            display: block;
         }
         .sub-menu a:hover {
             color: #fff;
@@ -470,13 +471,11 @@
         [x-cloak] { display: none !important; }
 
         /* ============================================================ */
-        /* Menu Themes - All Orange focused, no blue */
+        /* Menu Themes - Role-based color coding */
         /* ============================================================ */
 
         /* Attendance menu - Emerald theme */
-        .menu-attendance .nav-group-btn {
-            color: rgba(255,255,255,0.7);
-        }
+        .menu-attendance .nav-group-btn { color: rgba(255,255,255,0.7); }
         .menu-attendance .nav-group-btn:hover {
             background: rgba(16,185,129,0.12);
             color: #34d399;
@@ -489,14 +488,10 @@
             background: linear-gradient(135deg, #10b981, #059669);
             color: #fff;
         }
-        .menu-attendance .sub-menu {
-            border-left-color: rgba(16,185,129,0.25);
-        }
+        .menu-attendance .sub-menu { border-left-color: rgba(16,185,129,0.25); }
 
         /* Exams&ReportCards menu - Orange theme */
-        .menu-exams .nav-group-btn {
-            color: rgba(255,255,255,0.7);
-        }
+        .menu-exams .nav-group-btn { color: rgba(255,255,255,0.7); }
         .menu-exams .nav-group-btn:hover {
             background: rgba(249,115,22,0.12);
             color: #f97316;
@@ -509,14 +504,10 @@
             background: linear-gradient(135deg, #f97316, #ea580c);
             color: #fff;
         }
-        .menu-exams .sub-menu {
-            border-left-color: rgba(249,115,22,0.25);
-        }
+        .menu-exams .sub-menu { border-left-color: rgba(249,115,22,0.25); }
 
         /* Reporting menu - Violet theme */
-        .menu-reporting .nav-group-btn {
-            color: rgba(255,255,255,0.7);
-        }
+        .menu-reporting .nav-group-btn { color: rgba(255,255,255,0.7); }
         .menu-reporting .nav-group-btn:hover {
             background: rgba(139,92,246,0.12);
             color: #a78bfa;
@@ -529,9 +520,39 @@
             background: linear-gradient(135deg, #8b5cf6, #7c3aed);
             color: #fff;
         }
-        .menu-reporting .sub-menu {
-            border-left-color: rgba(139,92,246,0.25);
+        .menu-reporting .sub-menu { border-left-color: rgba(139,92,246,0.25); }
+
+        /* Accounts menu - Amber theme */
+        .menu-accounts .nav-group-btn { color: rgba(255,255,255,0.7); }
+        .menu-accounts .nav-group-btn:hover {
+            background: rgba(245,158,11,0.12);
+            color: #fbbf24;
         }
+        .menu-accounts .nav-icon-chip {
+            background: rgba(245,158,11,0.12);
+            color: #fbbf24;
+        }
+        .menu-accounts .nav-item-active .nav-icon-chip {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+        }
+        .menu-accounts .sub-menu { border-left-color: rgba(245,158,11,0.25); }
+
+        /* Library menu - Cyan theme */
+        .menu-library .nav-group-btn { color: rgba(255,255,255,0.7); }
+        .menu-library .nav-group-btn:hover {
+            background: rgba(6,182,212,0.12);
+            color: #22d3ee;
+        }
+        .menu-library .nav-icon-chip {
+            background: rgba(6,182,212,0.12);
+            color: #22d3ee;
+        }
+        .menu-library .nav-item-active .nav-icon-chip {
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            color: #fff;
+        }
+        .menu-library .sub-menu { border-left-color: rgba(6,182,212,0.25); }
 
         .sub-menu a.nav-item-active {
             color: #f97316 !important;
@@ -549,6 +570,33 @@
             color: #a78bfa !important;
             background: rgba(139,92,246,0.08) !important;
         }
+        .menu-accounts .sub-menu a.nav-item-active {
+            color: #fbbf24 !important;
+            background: rgba(245,158,11,0.08) !important;
+        }
+        .menu-library .sub-menu a.nav-item-active {
+            color: #22d3ee !important;
+            background: rgba(6,182,212,0.08) !important;
+        }
+
+        /* Role badge in sidebar */
+        .role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .role-badge.owner { background: rgba(249,115,22,0.2); color: #fb923c; }
+        .role-badge.accountant { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .role-badge.teacher { background: rgba(16,185,129,0.2); color: #34d399; }
+        .role-badge.librarian { background: rgba(6,182,212,0.2); color: #22d3ee; }
+        .role-badge.secretary { background: rgba(139,92,246,0.2); color: #a78bfa; }
+        .role-badge.support_staff { background: rgba(148,163,184,0.2); color: #94a3b8; }
     </style>
 
     {% block extra_css %}{% endblock %}
@@ -619,271 +667,82 @@
                 </button>
             </div>
 
+            {# ============================================================ #}
+            {# DYNAMIC ROLE-BASED NAVIGATION #}
+            {# ============================================================ #}
+            {% set user_role = session.user.role if (session and session.user and session.user.is_employee) else 'owner' %}
+            {% set is_employee = session.user.is_employee if (session and session.user) else False %}
+            {% set nav_items = nav_for_role(institute_id, user_role, is_employee) %}
+
             <!-- Navigation Menu -->
-            <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto sidebar-scroll" x-data="{
-                activeMenu: '{{ request.endpoint.split(".")[-1] if request.endpoint else "dashboard" }}',
-                openMenus: {
-                    settings: false,
-                    classes: false,
-                    subjects: false,
-                    students: false,
-                    employees: false,
-                    accounts: false,
-                    fees: false,
-                    salary: false,
-                    reporting: false,
-                    attendance: false,
-                    exams: false
-                },
-                toggleMenu(menu) {
-                    this.openMenus[menu] = !this.openMenus[menu];
-                }
-            }">
-                <!-- Dashboard -->
-                <a href="{{ url_for('dashboard.index') }}"
-                    :class="{'nav-item-active': activeMenu === 'dashboard'}"
-                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                    <span class="nav-icon-chip"><i class="fas fa-chart-line text-base"></i></span>
-                    <span class="font-medium">Dashboard</span>
-                </a>
-
-                <!-- Study Resources -->
-                <a href="{{ url_for('studyresource.index') }}"
-                    :class="{'nav-item-active': activeMenu === 'resources'}"
-                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                    <span class="nav-icon-chip"><i class="fas fa-book-open text-base"></i></span>
-                    <span class="font-medium">Study Resources</span>
-                </a>
-
-                <!-- General Settings -->
-                <div>
-                    <button @click="toggleMenu('settings')"
-                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip"><i class="fas fa-sliders-h text-base"></i></span>
-                            <span class="font-medium">General Settings</span>
+            <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto sidebar-scroll" 
+                 x-data="{
+                    activeMenu: '{{ request.endpoint.split('.')[-1] if request.endpoint else 'dashboard' }}',
+                    activeEndpoint: '{{ request.endpoint or '' }}',
+                    openMenus: {},
+                    init() {
+                        // Auto-open menu containing current route
+                        const currentEndpoint = this.activeEndpoint;
+                        {% for section in nav_items %}
+                            {% if section.submenu %}
+                                {% for item in section.submenu %}
+                                    {% if item.endpoint %}
+                                        if (currentEndpoint === '{{ item.endpoint }}') {
+                                            this.openMenus['{{ section.key }}'] = true;
+                                        }
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        {% endfor %}
+                    },
+                    toggleMenu(menu) {
+                        this.openMenus[menu] = !this.openMenus[menu];
+                    },
+                    isEndpointActive(endpoint) {
+                        return this.activeEndpoint === endpoint;
+                    }
+                 }">
+                
+                {% for section in nav_items %}
+                    {% if section.url_endpoint %}
+                        {# ===== DIRECT LINK (no submenu) ===== #}
+                        <a href="{{ url_for(section.url_endpoint) }}"
+                           :class="{'nav-item-active': isEndpointActive('{{ section.url_endpoint }}')}"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group">
+                            <span class="nav-icon-chip"><i class="fas {{ section.icon }} text-base"></i></span>
+                            <span class="font-medium">{{ section.label }}</span>
+                        </a>
+                    {% else %}
+                        {# ===== EXPANDABLE MENU WITH SUBMENU ===== #}
+                        <div class="{{ section.menu_class }}">
+                            <button @click="toggleMenu('{{ section.key }}')"
+                                    class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
+                                <div class="flex items-center gap-3">
+                                    <span class="nav-icon-chip"><i class="fas {{ section.icon }} text-base"></i></span>
+                                    <span class="font-medium">{{ section.label }}</span>
+                                </div>
+                                <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" 
+                                   :class="openMenus.{{ section.key }} ? 'rotated' : ''"></i>
+                            </button>
+                            <div x-show="openMenus.{{ section.key }}" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
+                                {% for item in section.submenu %}
+                                    {% if item.endpoint %}
+                                        <a href="{{ url_for(item.endpoint) }}" 
+                                           class="block py-1.5 px-3 text-sm rounded-lg transition-all
+                                                  {% if request.endpoint == item.endpoint %}active{% endif %}">
+                                            {{ item.label }}
+                                        </a>
+                                    {% elif item.action %}
+                                        <a href="#" @click.prevent="activeMenu = '{{ item.action }}'" 
+                                           class="block py-1.5 px-3 text-sm rounded-lg transition-all">
+                                            {{ item.label }}
+                                        </a>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
                         </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.settings ? 'rotated' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.settings" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
-                        <a href="{{ url_for('instituteProfile.profile') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Institute Profile</a>
-                        <a href="{{ url_for('auth.profile') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Profile</a>
-                        <a href="{{ url_for('sms_settings.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">SMS Settings</a>
-                        <a href="{{ url_for('whatsapp.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">WhatsApp Settings</a>
-                        <a href="{{ url_for('schoolpay.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">SchoolPay Settings</a>
-                        <a href="{{ url_for('permissions.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Permissions</a>
-                        <a href="{{ url_for('grading.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Marks Grading</a>
-                        <a href="{{ url_for('cdc_settings.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">CB Settings</a>
-                    </div>
-                </div>
-
-                <!-- Classes -->
-                <div>
-                    <button @click="toggleMenu('classes')"
-                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip"><i class="fas fa-chalkboard text-base"></i></span>
-                            <span class="font-medium">Classes</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.classes ? 'rotated' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.classes" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
-                        <a href="{{ url_for('class.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">All Classes</a>
-                        <a href="{{ url_for('class.create') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">New Class</a>
-                    </div>
-                </div>
-
-                <!-- Subjects -->
-                <div>
-                    <button @click="toggleMenu('subjects')"
-                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip"><i class="fas fa-book-open text-base"></i></span>
-                            <span class="font-medium">Subjects</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.subjects ? 'rotated' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.subjects" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
-                        <a href="{{ url_for('subjects.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Classes With Subjects</a>
-                        <a href="#" @click.prevent="activeMenu = 'assign-subjects'" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Assign Subjects</a>
-                    </div>
-                </div>
-
-                <!-- Students -->
-                <div>
-                    <button @click="toggleMenu('students')"
-                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip"><i class="fas fa-user-graduate text-base"></i></span>
-                            <span class="font-medium">Students</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.students ? 'rotated' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.students" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
-                        <a href="{{ url_for('student.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Student Management</a>
-                        <a href="{{ url_for('houses.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Student Houses</a>
-                        <a href="{{ url_for('id.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Student ID Cards</a>
-                        <a href="{{ url_for('student_list.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Print Basic List</a>
-                        <a href="{{ url_for('promote.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Promote Students</a>
-                    </div>
-                </div>
-
-                <!-- Employees -->
-                <div>
-                    <button @click="toggleMenu('employees')"
-                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip"><i class="fas fa-chalkboard-user text-base"></i></span>
-                            <span class="font-medium">Employees</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.employees ? 'rotated' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.employees" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
-                        <a href="{{ url_for('employees.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Employees Management</a>
-                    </div>
-                </div>
-
-                <!-- Accounts -->
-                <div>
-                    <button @click="toggleMenu('accounts')"
-                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip"><i class="fas fa-wallet text-base"></i></span>
-                            <span class="font-medium">Accounts</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.accounts ? 'rotated' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.accounts" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
-                        <a href="{{ url_for('accounts.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Accounts Management</a>
-                        <a href="{{ url_for('statements.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Student Statements</a>
-                        <a href="{{ url_for('accounts.expenses') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Expenses</a>
-                        <a href="{{ url_for('accounts.income') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Income</a>
-                        <a href="{{ url_for('budget.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Budget</a>
-                    </div>
-                </div>
-
-
-                  <!-- Reporting Center -->
-                <!-- Reporting Center -->
-                <div class="menu-reporting">
-                    <button @click="toggleMenu('reporting')"
-                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip"><i class="fas fa-chart-pie text-base"></i></span>
-                            <span class="font-medium">Reporting Center</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.reporting ? 'rotated' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.reporting" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
-                        <a href="{{ url_for('center.daily_collection') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Daily Collection</a>
-                        <a href="{{ url_for('center.balance_report') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Balance Report</a>
-                        <a href="{{ url_for('center.income_expense') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Income & Expenses</a>
-                        <a href="{{ url_for('center.income_statement') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Income Statement</a>
-                        <a href="{{ url_for('center.student_report') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Student Report</a>
-                        <a href="{{ url_for('center.class_report') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Class Report</a>
-                        <a href="{{ url_for('center.payment_methods') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Payment Methods</a>
-                        <a href="{{ url_for('center.ai_analysis') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">AI Analysis</a>
-                    </div>
-                </div>
-
-                <!-- Fees -->
-                <div>
-                    <button @click="toggleMenu('fees')"
-                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip"><i class="fas fa-money-bill-wave text-base"></i></span>
-                            <span class="font-medium">Fees</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.fees ? 'rotated' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.fees" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
-                        <a href="{{ url_for('fees.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Fees Management</a>
-                        <a href="{{ url_for('fees.students_without_invoices_page') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Non Invoiced Students</a>
-                        <a href="{{ url_for('collect.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Collect Fees</a>
-                        <a href="{{ url_for('requirements.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Requirements</a>
-                        <a href="{{ url_for('sync.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">School Pay</a>
-                        <a href="{{ url_for('sync.import_page') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Import SchoolPay Data</a>
-                        <a href="{{ url_for('payments_list.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Transaction List</a>
-                        <a href="{{ url_for('edit_invoice.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Edit Invoice</a>
-                        <a href="{{ url_for('collect.discounts_page') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Discounts</a>
-                    </div>
-                </div>
-
-                <!-- Salary -->
-                <div>
-                    <button @click="toggleMenu('salary')"
-                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip"><i class="fas fa-credit-card text-base"></i></span>
-                            <span class="font-medium">Salary</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.salary ? 'rotated' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.salary" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
-                        <a href="{{ url_for('salary.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Pay Salary</a>
-                    </div>
-                </div>
-
-              
-
-                <!-- Attendance -->
-                <div class="menu-attendance">
-                    <button @click="toggleMenu('attendance')"
-                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip"><i class="fas fa-fingerprint text-base"></i></span>
-                            <span class="font-medium">Attendance</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.attendance ? 'rotated' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.attendance" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
-                        <a href="{{ url_for('attendance.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Students Attendance</a>
-                        <a href="{{ url_for('staff_attendance.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Employees Attendance</a>
-                        <a href="{{ url_for('attendance_report.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Students Attendance Report</a>
-                        <a href="{{ url_for('staff_attendance_report.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Employees Attendance Report</a>
-                    </div>
-                </div>
-
-                <!-- Exams & Report Cards -->
-                <div class="menu-exams">
-                    <button @click="toggleMenu('exams')"
-                        class="nav-group-btn w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                        <div class="flex items-center gap-3">
-                            <span class="nav-icon-chip"><i class="fas fa-file-alt text-base"></i></span>
-                            <span class="font-medium">Exams & Report Cards</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 chevron" :class="openMenus.exams ? 'rotated' : ''"></i>
-                    </button>
-                    <div x-show="openMenus.exams" x-cloak class="sub-menu pl-11 mt-1 space-y-0.5">
-                        <a href="{{ url_for('exams.index') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Exams</a>
-                        <a href="{{ url_for('exams.marks') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Exam Marks</a>
-                        <a href="{{ url_for('results.r') }}" class="block py-1.5 px-3 text-sm rounded-lg transition-all">Report Cards</a>
-                    </div>
-                </div>
-
-                <!-- Messaging -->
-                <a href="{{ url_for('message.index') }}"
-                    :class="{'nav-item-active': activeMenu === 'messaging'}"
-                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                    <span class="nav-icon-chip"><i class="fas fa-comment-dots text-base"></i></span>
-                    <span class="font-medium">Messaging</span>
-                </a>
-
-                <!-- Billing -->
-                <a href="{{ url_for('billing.index') }}"
-                    :class="{'nav-item-active': activeMenu === 'billing'}"
-                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                    <span class="nav-icon-chip"><i class="fas fa-credit-card text-base"></i></span>
-                    <span class="font-medium">Billing</span>
-                </a>
-
-                <!-- International Library -->
-                <a href="{{ url_for('library.index') }}"
-                    :class="{'nav-item-active': activeMenu === 'library'}"
-                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group">
-                    <span class="nav-icon-chip"><i class="fas fa-globe-americas text-base"></i></span>
-                    <span class="font-medium">International Library</span>
-                </a>
+                    {% endif %}
+                {% endfor %}
             </nav>
 
             <!-- Footer / User Info -->
@@ -894,16 +753,38 @@
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="username truncate">
-                            {{ session.user.email.split('@')[0] if session and session.user and session.user.email else 'User' }}
+                            {{ session.user.display_name or session.user.name or (session.user.email.split('@')[0] if session and session.user and session.user.email else 'User') }}
                         </p>
-                        <p class="useremail truncate">
-                            {{ session.user.email if session and session.user and session.user.email else 'user@example.com' }}
-                        </p>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            {% if session and session.user %}
+                                {% if session.user.is_employee %}
+                                    <span class="role-badge {{ session.user.role }}">
+                                        <i class="fas fa-user-tag text-[8px]"></i>
+                                        {{ get_role_display_name(session.user.role) }}
+                                    </span>
+                                {% else %}
+                                    <span class="role-badge owner">
+                                        <i class="fas fa-crown text-[8px]"></i>
+                                        Administrator
+                                    </span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
                     </div>
                     <a href="{{ url_for('auth.logout') }}" class="logout-btn h-8 w-8 flex items-center justify-center rounded-lg transition-all" title="Logout">
                         <i class="fas fa-sign-out-alt text-sm"></i>
                     </a>
                 </div>
+                
+                {# Show role responsibilities #}
+                {% if session and session.user and session.user.is_employee %}
+                <div class="mt-3 pt-3 border-t border-white/10">
+                    <p class="text-[11px] text-white/40 leading-relaxed flex items-start gap-1.5">
+                        <i class="fas fa-info-circle mt-0.5 flex-shrink-0"></i>
+                        <span>{{ get_role_responsibilities(session.user.role) }}</span>
+                    </p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </aside>
@@ -935,13 +816,17 @@
                         </div>
                         <div class="hidden md:block">
                             <p class="text-sm font-semibold text-gray-800 group-hover:text-[#f97316] transition-colors">
-                                {{ session.user.email.split('@')[0] if session and session.user and session.user.email else 'User' }}
+                                {{ session.user.display_name or session.user.name or (session.user.email.split('@')[0] if session and session.user and session.user.email else 'User') }}
                             </p>
                             <p class="text-xs text-gray-500">
-                                {% if session.user.is_employee %}
-                                    {{ session.user.role|capitalize if session.user.role else 'Employee' }}
+                                {% if session and session.user %}
+                                    {% if session.user.is_employee %}
+                                        {{ get_role_display_name(session.user.role) }}
+                                    {% else %}
+                                        Administrator
+                                    {% endif %}
                                 {% else %}
-                                    Administrator
+                                    User
                                 {% endif %}
                             </p>
                         </div>
@@ -1059,7 +944,6 @@
             const data = JSON.parse(cached);
             const now = Date.now();
             
-            // Check if cache is still valid
             if (data.timestamp && (now - data.timestamp) < CACHE_DURATION) {
                 return data.data;
             }
@@ -1093,7 +977,6 @@
     function updateUIWithSubscriptionData(data) {
         if (!data) return;
 
-        // Handle reminder banner
         if (data.show_reminder && data.days_remaining > 0 && data.days_remaining <= 10) {
             if (reminderBanner) {
                 daysRemainingSpan.textContent = data.days_remaining;
@@ -1105,7 +988,6 @@
             }
         }
 
-        // Handle expired overlay
         if (!data.is_active) {
             showSubscriptionOverlay();
         } else if (data.is_active && subscriptionOverlay) {
@@ -1119,7 +1001,6 @@
             return;
         }
 
-        // Check cache first (unless force refresh)
         if (!forceRefresh) {
             const cachedData = getCachedSubscriptionData();
             if (cachedData) {
@@ -1129,7 +1010,6 @@
             }
         }
 
-        // No cache or force refresh - hit the server
         try {
             console.log('🔄 Fetching fresh subscription data...');
             const response = await fetch('/billing/api/subscription-status', {
@@ -1141,13 +1021,11 @@
             const data = await response.json();
 
             if (data.success) {
-                // Cache the data
                 setCachedSubscriptionData(data);
                 updateUIWithSubscriptionData(data);
             }
         } catch (error) {
             console.error('Error checking subscription:', error);
-            // If server fails, try to use stale cache
             const staleData = getCachedSubscriptionData();
             if (staleData) {
                 console.log('⚠️ Using stale cached data due to server error');
@@ -1156,13 +1034,11 @@
         }
     }
 
-    // Call this when a payment is made to refresh the cache
     function refreshSubscriptionData() {
         clearCachedSubscriptionData();
         checkSubscriptionStatus(true);
     }
 
-    // Expose refresh function globally
     window.refreshSubscriptionData = refreshSubscriptionData;
 
     function showSubscriptionOverlay() {
@@ -1476,28 +1352,24 @@
             window.studentSearch = new StudentSearch();
         }
 
-        // Initial subscription check (use cache first)
+        // Initial subscription check
         if (!isExcludedPath()) {
             setTimeout(() => checkSubscriptionStatus(false), 500);
             
-            // Check every 5 minutes (but only after cache expires)
             subscriptionCheckInterval = setInterval(() => {
                 checkSubscriptionStatus(false);
             }, CACHE_DURATION);
         }
     });
 
-    // Check subscription when page becomes visible
     document.addEventListener('visibilitychange', function() {
         if (!document.hidden && !isExcludedPath()) {
-            // Check if cache is expired
             const cached = localStorage.getItem(CACHE_KEY);
             if (cached) {
                 try {
                     const data = JSON.parse(cached);
                     const now = Date.now();
                     if ((now - data.timestamp) >= CACHE_DURATION) {
-                        // Cache expired, refresh
                         checkSubscriptionStatus(true);
                     }
                 } catch (e) {
@@ -1509,20 +1381,16 @@
         }
     });
 
-    // Refresh subscription data when returning from billing page (page was in bfcache)
     window.addEventListener('pageshow', function(event) {
         if (!isExcludedPath() && event.persisted) {
-            // If page was loaded from bfcache, refresh data
             checkSubscriptionStatus(true);
         }
     });
 
-    // Clean up on page unload
     window.addEventListener('beforeunload', function() {
         if (subscriptionCheckInterval) clearInterval(subscriptionCheckInterval);
     });
 
-    // Keyboard navigation styles
     const keyboardStyle = document.createElement('style');
     keyboardStyle.textContent = `
         .search-result-item.active-keyboard {

@@ -41,7 +41,7 @@ def login_required(f):
 
 
 @fees_bp.route('/')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def index():
     """Fees Management Dashboard"""
     user = session.get('user')
@@ -89,7 +89,7 @@ def index():
         return render_template('fees/index.html', classes=[], students=[], fee_particulars=[])
 
 @fees_bp.route('/particulars', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_particulars():
     """Get fee particulars for a class or student"""
     user = session.get('user')
@@ -123,7 +123,7 @@ def get_particulars():
     
     
 @fees_bp.route('/search-students', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def search_students():
     """Search students by name or ID with category filter"""
     user = session.get('user')
@@ -177,7 +177,7 @@ def search_students():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @fees_bp.route('/particulars/create', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_particulars():
     """Create fee particulars and generate invoices with category filtering"""
     user = session.get('user')
@@ -372,7 +372,7 @@ def generate_unique_invoice_number(institute_id, existing_numbers):
     return fallback_number
 
 @fees_bp.route('/invoices', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_invoices():
     """Get all invoices"""
     user = session.get('user')
@@ -410,7 +410,7 @@ def get_invoices():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @fees_bp.route('/invoices/<invoice_id>/pay', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def pay_invoice(invoice_id):
     """Process invoice payment"""
     user = session.get('user')
@@ -487,7 +487,7 @@ def pay_invoice(invoice_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @fees_bp.route('/students/<student_id>/invoices', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_student_invoices(student_id):
     """Get invoices for a specific student"""
     user = session.get('user')
@@ -545,7 +545,7 @@ def generate_receipt_number(institute_id):
     
     
 @fees_bp.route('/particulars/create-multiple-classes', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_particulars_multiple_classes():
     """Create fee particulars for multiple classes with category filtering"""
     user = session.get('user')
@@ -703,7 +703,7 @@ def create_particulars_multiple_classes():
 
 
 @fees_bp.route('/classes', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_classes():
     """Get all classes for the institute"""
     user = session.get('user')
@@ -762,7 +762,7 @@ def get_classes():
         return jsonify({'success': False, 'message': str(e)}), 500
     
 @fees_bp.route('/invoiced-students', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_invoiced_students():
     """Get paginated list of students with invoices and their invoice details"""
     user = session.get('user')
@@ -925,7 +925,7 @@ def get_invoiced_students():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @fees_bp.route('/invoice/<invoice_id>/details', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_invoice_details(invoice_id):
     """Get detailed invoice information for modal popup"""
     user = session.get('user')
@@ -1037,7 +1037,7 @@ def get_invoice_details(invoice_id):
 
 
 @fees_bp.route('/export-invoiced-students', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def export_invoiced_students():
     """Export invoiced students to Excel with date filtering"""
     user = session.get('user')
@@ -1231,7 +1231,7 @@ def export_invoiced_students():
     
     
 @fees_bp.route('/student-payable-summary/<student_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_student_payable_summary(student_id):
     """
     Get student's total payable amount after discounts and collection percentage
@@ -1370,7 +1370,7 @@ def get_student_payable_summary(student_id):
         return jsonify({'success': False, 'message': str(e)}), 500
     
 @fees_bp.route('/class-payable-summary/<class_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_class_payable_summary(class_id):
     """
     Get class-wise summary of total payable amounts after discounts and collection percentages
@@ -1510,7 +1510,7 @@ def get_class_payable_summary(class_id):
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 @fees_bp.route('/overall-payable-summary', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_overall_payable_summary():
     """
     Get overall summary for the entire institute
@@ -1688,7 +1688,7 @@ def get_overall_payable_summary():
         }), 500
         
 @fees_bp.route('/payable-summary/<institute_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def payable_summary_page(institute_id):
     """Render the payable summary page for a specific institute"""
     user = session.get('user')
@@ -1725,7 +1725,7 @@ def payable_summary_page(institute_id):
         
         
 @fees_bp.route('/students-without-invoices', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_students_without_invoices():
     """
     Get students who have no invoices within the selected date range
@@ -1831,7 +1831,7 @@ def get_students_without_invoices():
 
 
 @fees_bp.route('/export-students-without-invoices', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def export_students_without_invoices():
     """Export students without invoices to Excel"""
     user = session.get('user')
@@ -1956,7 +1956,7 @@ def export_students_without_invoices():
     
     
 @fees_bp.route('/students-without-invoices-page', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def students_without_invoices_page():
     """Render the students without invoices page"""
     user = session.get('user')

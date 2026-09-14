@@ -106,7 +106,7 @@ def generate_employee_id(institute_id):
     return f"EMP-{uuid.uuid4().hex[:8].upper()}"
 
 @employees_bp.route('/')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def index():
     """Employees Management Page"""
     user = session.get('user')
@@ -118,7 +118,7 @@ def index():
     return render_template('employees/index.html', institute_id=institute_id)
 
 @employees_bp.route('/api/employees', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_employees():
     """Get all employees via API"""
     user = session.get('user')
@@ -148,7 +148,7 @@ def get_employees():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employees_bp.route('/api/employees/<employee_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_employee(employee_id):
     """Get single employee details"""
     user = session.get('user')
@@ -178,7 +178,7 @@ def get_employee(employee_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employees_bp.route('/api/employees/create', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_employee():
     """Create new employee"""
     user = session.get('user')
@@ -307,7 +307,7 @@ def create_employee():
         return jsonify({'success': False, 'message': error_msg}), 500
 
 @employees_bp.route('/api/employees/update/<employee_id>', methods=['PUT'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def update_employee(employee_id):
     """Update employee details"""
     user = session.get('user')
@@ -415,7 +415,7 @@ def update_employee(employee_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employees_bp.route('/api/employees/delete/<employee_id>', methods=['DELETE'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def delete_employee(employee_id):
     """Delete employee"""
     user = session.get('user')
@@ -455,7 +455,7 @@ def delete_employee(employee_id):
     
 
 @employees_bp.route('/api/employees/toggle-status/<employee_id>', methods=['PUT'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def toggle_status(employee_id):
     """Toggle employee status (active/inactive)"""
     user = session.get('user')
@@ -484,7 +484,7 @@ def toggle_status(employee_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employees_bp.route('/api/employees/reset-password/<employee_id>', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def reset_password(employee_id):
     """Reset employee password to default (123)"""
     user = session.get('user')
@@ -517,7 +517,7 @@ def reset_password(employee_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @employees_bp.route('/api/stats', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_stats():
     """Get employee statistics"""
     user = session.get('user')
@@ -613,7 +613,7 @@ def employee_login():
 
 # Optional: Endpoint to clean up any orphaned employee_id duplicates (Admin only)
 @employees_bp.route('/api/cleanup-duplicate-ids', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def cleanup_duplicate_ids():
     """Clean up duplicate employee_ids (run this if you have duplicates)"""
     user = session.get('user')

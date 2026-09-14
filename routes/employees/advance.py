@@ -274,7 +274,7 @@ def generate_salary_receipt_number(institute_id):
 # ==================== ROUTES ====================
 
 @salary_bp.route('/')
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def index():
     """Main Salary & Advance Management Page"""
     user = session.get('user')
@@ -296,7 +296,7 @@ def index():
 # ==================== ADVANCE API ENDPOINTS ====================
 
 @salary_bp.route('/api/advance/live-search', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def live_employee_search():
     """Live search for employees"""
     user = session.get('user')
@@ -336,7 +336,7 @@ def live_employee_search():
 
 
 @salary_bp.route('/api/advance/employee/<employee_id>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_employee_advance_details(employee_id):
     """Get all advances for a specific employee"""
     user = session.get('user')
@@ -385,7 +385,7 @@ def get_employee_advance_details(employee_id):
 
 
 @salary_bp.route('/api/advance/create', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def create_advance():
     """Create a new employee advance"""
     user = session.get('user')
@@ -489,7 +489,7 @@ def create_advance():
 
 
 @salary_bp.route('/api/advance/<advance_id>/repayment', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def record_repayment(advance_id):
     """Record a manual advance repayment"""
     user = session.get('user')
@@ -574,7 +574,7 @@ def record_repayment(advance_id):
 
 
 @salary_bp.route('/api/advance/delete/<advance_id>', methods=['DELETE'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def delete_advance(advance_id):
     """Delete an advance (only if not fully repaid)"""
     user = session.get('user')
@@ -616,7 +616,7 @@ def delete_advance(advance_id):
 
 
 @salary_bp.route('/api/advance/summary', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_advance_summary():
     """Get summary of all advances"""
     user = session.get('user')
@@ -668,7 +668,7 @@ def get_advance_summary():
 # ==================== SALARY API ENDPOINTS ====================
 
 @salary_bp.route('/api/salary/employees', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def get_salary_employees():
     """Get all active employees with advance information for the selected month"""
     user = session.get('user')
@@ -778,7 +778,7 @@ def get_salary_employees():
 
 
 @salary_bp.route('/api/salary/process', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def process_salary_payments():
     """Process salary payments with proper expense tracking"""
     user = session.get('user')
@@ -994,7 +994,7 @@ def process_salary_payments():
 
 
 @salary_bp.route('/api/salary/payslip/<receipt_number>', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def print_payslip(receipt_number):
     """Generate PDF salary slip"""
     user = session.get('user')
@@ -1153,7 +1153,7 @@ def print_payslip(receipt_number):
 
 
 @salary_bp.route('/api/salary/download-pdf', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def download_salary_pdf():
     """Download salary summary as PDF"""
     user = session.get('user')

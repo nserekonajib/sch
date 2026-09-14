@@ -49,7 +49,7 @@ def login_required(f):
     return decorated_function
 
 @billing_bp.route('/')
-@owner_required
+@role_required(['owner'])
 def index():
     """Billing Dashboard"""
     try:
@@ -147,7 +147,7 @@ def index():
                               discount_12_months=DISCOUNT_12_MONTHS)
 
 @billing_bp.route('/initiate-payment', methods=['POST'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def initiate_payment():
     """Initiate payment with PesaPal"""
     try:
@@ -421,7 +421,7 @@ def ipn_handler():
     return jsonify({'status': 'success'})
 
 @billing_bp.route('/check-subscription', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def check_subscription():
     """Check subscription status via API"""
     try:
@@ -477,7 +477,7 @@ def check_subscription():
     
 
 @billing_bp.route('/api/subscription-status', methods=['GET'])
-@role_required(['owner', 'teacher', 'accountant'])
+@role_required(['owner','accountant'])
 def api_subscription_status():
     """
     API endpoint to get subscription status including days remaining.
