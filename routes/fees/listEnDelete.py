@@ -931,7 +931,7 @@ def delete_payment(payment_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @payments_bp.route('/api/bulk-delete', methods=['POST'])
-@admin_required
+@role_required(['owner'])
 def bulk_delete_payments():
     """Delete multiple payments at once (admin only)"""
     try:
