@@ -683,6 +683,15 @@
             font-size: 9px;
             padding: 2px 6px;
         }
+
+        .action-btn.delete {
+    background: #fef2f2;
+    color: #dc2626;
+}
+.action-btn.delete:hover {
+    background: #fee2e2;
+    transform: scale(1.04);
+}
     }
 </style>
 {% endblock %}
@@ -1148,6 +1157,67 @@
     </div>
 </div>
 
+<!-- ===== DELETE CONFIRMATION MODAL ===== -->
+<div id="deleteModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal-overlay" style="padding: 16px;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto transform transition-all modal-container">
+        <div class="px-4 sm:px-6 py-4 border-b border-red-100 bg-red-50 rounded-t-2xl flex items-center gap-3">
+            <div class="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-red-600 text-lg"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-red-700">Delete Student?</h3>
+                <p class="text-xs text-red-500">This action cannot be undone</p>
+            </div>
+        </div>
+
+        <div class="p-4 sm:p-6">
+            <!-- Student info -->
+            <div class="bg-gray-50 rounded-xl p-3 mb-4 flex items-center gap-3">
+                <div class="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center font-bold text-orange-600 flex-shrink-0" id="deleteAvatar">
+                    S
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-gray-800 truncate" id="deleteStudentName">—</p>
+                    <p class="text-xs text-gray-500" id="deleteStudentId">—</p>
+                </div>
+            </div>
+
+            <!-- Warning -->
+            <div class="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+                <p class="text-xs text-red-800 font-semibold mb-2">
+                    <i class="fas fa-info-circle mr-1"></i> The following will be permanently deleted:
+                </p>
+                <ul class="text-xs text-red-700 space-y-1" id="deleteRelatedList">
+                    <li><i class="fas fa-spinner fa-spin mr-1"></i> Loading related records...</li>
+                </ul>
+            </div>
+
+            <!-- Confirmation checkbox -->
+            <label class="flex items-start gap-2 mb-4 cursor-pointer select-none">
+                <input type="checkbox" id="deleteConfirmCheck" 
+                       class="mt-0.5 w-4 h-4 accent-red-600 cursor-pointer"
+                       onchange="document.getElementById('confirmDeleteBtn').disabled = !this.checked">
+                <span class="text-xs text-gray-600">
+                    I understand this will permanently delete this student and all associated data. This cannot be undone.
+                </span>
+            </label>
+
+            <!-- Actions -->
+            <div class="flex gap-3">
+                <button type="button" onclick="closeDeleteModal()" 
+                        class="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-xl text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-all">
+                    Cancel
+                </button>
+                <button type="button" id="confirmDeleteBtn" onclick="executeDeleteStudent()" disabled
+                        class="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fas fa-trash text-sm"></i>
+                    Delete Permanently
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ===== LOADING OVERLAY ===== -->
 <div id="loadingOverlay" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-2xl p-5 flex flex-col items-center shadow-2xl">
@@ -1268,84 +1338,87 @@
     }
     
     // ============================================================
-    // RENDER FUNCTIONS
-    // ============================================================
-    
-    function renderStudents() {
-        const tbody = document.getElementById('studentsTableBody');
-        if (!tbody) return;
-        
-        if (!allStudents || allStudents.length === 0) {
-            tbody.innerHTML = '';
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('noResults').style.display = 'block';
-            document.getElementById('studentCount').textContent = '0 students';
-            return;
-        }
-        
-        document.getElementById('noResults').style.display = 'none';
-        document.getElementById('studentCount').textContent = `${totalStudents} student${totalStudents !== 1 ? 's' : ''}`;
-        
-        let html = '';
-        allStudents.forEach((student, index) => {
-            const rowNum = startRowNumber + index + 1;
-            const initial = student.name ? student.name.charAt(0).toUpperCase() : 'S';
-            const avatarHtml = student.photo_url 
-                ? `<img src="${student.photo_url}" alt="" class="avatar">`
-                : `<div class="avatar">${initial}</div>`;
-            
-            const statusClass = student.status === 'active' ? 'active' : 'inactive';
-            const statusIcon = student.status === 'active' ? 'fa-check-circle' : 'fa-ban';
-            const statusText = student.status === 'active' ? 'Active' : 'Inactive';
-            
-            const categoryClass = student.category === 'Boarding' ? 'boarding' : 'day';
-            const categoryIcon = student.category === 'Boarding' ? 'fa-home' : 'fa-sun';
-            const categoryDisplay = student.category ? 
-                `<span class="category-badge ${categoryClass}"><i class="fas ${categoryIcon}"></i> ${student.category}</span>` : 
-                '<span class="text-gray-400 text-xs">N/A</span>';
-            
-            const className = student.classes?.name || 'N/A';
-            
-            html += `
-                <tr onclick="goToStudentDetails('${student.id}')">
-                    <td class="row-number">${rowNum}</td>
-                    <td>
-                        <div class="student-info">
-                            ${avatarHtml}
-                            <div class="name-id">
-                                <div class="name">${escapeHtml(student.name || 'Unnamed')}</div>
-                                <div class="student-id">#${escapeHtml(student.student_id || 'N/A')}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="class-tag"><i class="fas fa-chalkboard"></i> ${escapeHtml(className)}</span>
-                    </td>
-                    <td>${categoryDisplay}</td>
-                    <td>
-                        <span class="status-badge ${statusClass}">
-                            <i class="fas ${statusIcon}"></i> ${statusText}
-                        </span>
-                    </td>
-                    <td style="text-align:center;">
-                        <div class="action-buttons" onclick="event.stopPropagation();">
-                            <button class="action-btn edit" onclick="editStudent('${student.id}')">
-                                <i class="fas fa-pen"></i> <span>Edit</span>
-                            </button>
-                            <button class="action-btn status ${student.status === 'active' ? '' : 'active'}" 
-                                    onclick="toggleStatus('${student.id}', '${student.status}')">
-                                <i class="fas ${student.status === 'active' ? 'fa-ban' : 'fa-check-circle'}"></i>
-                                <span>${student.status === 'active' ? 'Deactivate' : 'Activate'}</span>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
-        
-        tbody.innerHTML = html;
+// RENDER FUNCTIONS
+// ============================================================
+
+function renderStudents() {
+    const tbody = document.getElementById('studentsTableBody');
+    if (!tbody) return;
+
+    if (!allStudents || allStudents.length === 0) {
+        tbody.innerHTML = '';
         document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('noResults').style.display = 'block';
+        document.getElementById('studentCount').textContent = '0 students';
+        return;
     }
+
+    document.getElementById('noResults').style.display = 'none';
+    document.getElementById('studentCount').textContent = `${totalStudents} student${totalStudents !== 1 ? 's' : ''}`;
+
+    let html = '';
+    allStudents.forEach((student, index) => {
+        const rowNum = startRowNumber + index + 1;
+        const initial = student.name ? student.name.charAt(0).toUpperCase() : 'S';
+        const avatarHtml = student.photo_url
+            ? `<img src="${student.photo_url}" alt="" class="avatar">`
+            : `<div class="avatar">${initial}</div>`;
+
+        const statusClass = student.status === 'active' ? 'active' : 'inactive';
+        const statusIcon = student.status === 'active' ? 'fa-check-circle' : 'fa-ban';
+        const statusText = student.status === 'active' ? 'Active' : 'Inactive';
+
+        const categoryClass = student.category === 'Boarding' ? 'boarding' : 'day';
+        const categoryIcon = student.category === 'Boarding' ? 'fa-home' : 'fa-sun';
+        const categoryDisplay = student.category
+            ? `<span class="category-badge ${categoryClass}"><i class="fas ${categoryIcon}"></i> ${student.category}</span>`
+            : '<span class="text-gray-400 text-xs">N/A</span>';
+
+        const className = student.classes?.name || 'N/A';
+
+        html += `
+            <tr onclick="goToStudentDetails('${student.id}')">
+                <td class="row-number">${rowNum}</td>
+                <td>
+                    <div class="student-info">
+                        ${avatarHtml}
+                        <div class="name-id">
+                            <div class="name">${escapeHtml(student.name || 'Unnamed')}</div>
+                            <div class="student-id">#${escapeHtml(student.student_id || 'N/A')}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="class-tag"><i class="fas fa-chalkboard"></i> ${escapeHtml(className)}</span>
+                </td>
+                <td>${categoryDisplay}</td>
+                <td>
+                    <span class="status-badge ${statusClass}">
+                        <i class="fas ${statusIcon}"></i> ${statusText}
+                    </span>
+                </td>
+                <td style="text-align:center;">
+                    <div class="action-buttons" onclick="event.stopPropagation();">
+                        <button class="action-btn edit" onclick="editStudent('${student.id}')" title="Edit">
+                            <i class="fas fa-pen"></i> <span>Edit</span>
+                        </button>
+                        <button class="action-btn status ${student.status === 'active' ? '' : 'active'}"
+                                onclick="toggleStatus('${student.id}', '${student.status}')" title="${student.status === 'active' ? 'Deactivate' : 'Activate'}">
+                            <i class="fas ${student.status === 'active' ? 'fa-ban' : 'fa-check-circle'}"></i>
+                            <span>${student.status === 'active' ? 'Deactivate' : 'Activate'}</span>
+                        </button>
+                        <button class="action-btn delete" onclick="confirmDeleteStudent('${student.id}')" title="Delete">
+                            <i class="fas fa-trash"></i> <span>Delete</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+    document.getElementById('loadingState').style.display = 'none';
+}
     
     function showLoading(show) {
         const loading = document.getElementById('loadingState');
@@ -1746,6 +1819,150 @@
         if (statusFilter) statusFilter.addEventListener('change', applyFiltersAndReload);
         if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMoreStudents);
     }
+
+
+    // ============================================================
+// DELETE STUDENT
+// ============================================================
+let deletingStudentId = null;
+
+async function confirmDeleteStudent(studentId) {
+    deletingStudentId = studentId;
+
+    // Reset the modal
+    document.getElementById('deleteStudentName').textContent = 'Loading...';
+    document.getElementById('deleteStudentId').textContent = '—';
+    document.getElementById('deleteAvatar').textContent = 'S';
+    document.getElementById('deleteRelatedList').innerHTML =
+        '<li><i class="fas fa-spinner fa-spin mr-1"></i> Loading related records...</li>';
+    document.getElementById('deleteConfirmCheck').checked = false;
+    document.getElementById('confirmDeleteBtn').disabled = true;
+
+    // Show modal
+    const modal = document.getElementById('deleteModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+
+    // Fetch preview
+    try {
+        const result = await fetchJSONWithRetry(`/students/${studentId}/delete-preview`);
+
+        if (!result.success) {
+            closeDeleteModal();
+            openSuccessModal('Error', result.message || 'Could not load student details');
+            return;
+        }
+
+        const s = result.student;
+        document.getElementById('deleteStudentName').textContent = s.name || 'Unnamed';
+        document.getElementById('deleteStudentId').textContent = `#${s.student_id || 'N/A'}`;
+        document.getElementById('deleteAvatar').textContent =
+            (s.name || 'S').charAt(0).toUpperCase();
+
+        // Build the "related records" list
+        const list = document.getElementById('deleteRelatedList');
+        const counts = result.counts || {};
+        const entries = Object.entries(counts).filter(([, v]) => v > 0);
+
+        if (entries.length === 0) {
+            list.innerHTML = '<li class="text-red-700"><i class="fas fa-check-circle mr-1"></i> No related records — only the student record will be removed.</li>';
+        } else {
+            const labelMap = {
+                class_enrollments: 'Class enrollments',
+                payments: 'Payments',
+                invoices: 'Invoices',
+                attendance: 'Attendance records',
+                grades: 'Grades',
+                exam_results: 'Exam results',
+                fee_structures: 'Fee records',
+                student_documents: 'Documents',
+                student_guardians: 'Guardian links',
+                report_cards: 'Report cards',
+            };
+            list.innerHTML = entries.map(([table, count]) => {
+                const label = labelMap[table] || table.replace(/_/g, ' ');
+                return `<li><i class="fas fa-times-circle mr-1"></i> <strong>${count}</strong> ${label}</li>`;
+            }).join('') +
+            `<li class="pt-1 mt-1 border-t border-red-200 font-semibold">
+                <i class="fas fa-database mr-1"></i> Total: ${result.total_related} related record(s)
+             </li>`;
+        }
+
+    } catch (e) {
+        console.error('Delete preview error:', e);
+        document.getElementById('deleteRelatedList').innerHTML =
+            '<li class="text-red-700"><i class="fas fa-exclamation-circle mr-1"></i> Could not load related record counts. You may still proceed.</li>';
+    }
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.style.overflow = '';
+    deletingStudentId = null;
+    document.getElementById('deleteConfirmCheck').checked = false;
+    document.getElementById('confirmDeleteBtn').disabled = true;
+}
+
+async function executeDeleteStudent() {
+    if (!deletingStudentId) return;
+
+    const btn = document.getElementById('confirmDeleteBtn');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+
+    // Show the global loading overlay too
+    const loading = document.getElementById('loadingOverlay');
+    loading.classList.remove('hidden');
+    loading.classList.add('flex');
+
+    try {
+        const response = await fetchWithRetry(`/students/${deletingStudentId}/delete`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const result = await response.json();
+
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+
+        if (result.success) {
+            closeDeleteModal();
+            openSuccessModal('Deleted', result.message || 'Student deleted successfully.');
+            await loadStats();
+            await applyFiltersAndReload();
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            openSuccessModal('Delete Failed', result.message || 'Could not delete student.');
+        }
+    } catch (e) {
+        console.error('Delete error:', e);
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        openSuccessModal('Error', 'Failed to delete student. Please try again.');
+    }
+}
+
+
+window.onclick = function(event) {
+    const modals = ['studentModal', 'importModal', 'schoolPayImportModal', 'successModal', 'deleteModal'];
+    modals.forEach(id => {
+        const el = document.getElementById(id);
+        if (event.target === el) {
+            if (id === 'studentModal') closeStudentModal();
+            else if (id === 'importModal') closeImportModal();
+            else if (id === 'schoolPayImportModal') closeSchoolPayImportModal();
+            else if (id === 'successModal') closeSuccessModal();
+            else if (id === 'deleteModal') closeDeleteModal();
+        }
+    });
+};
     
     // ============================================================
     // INITIALIZE

@@ -1147,3 +1147,183 @@ def import_from_school_pay():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Import failed: {str(e)}'}), 500
+    
+ 
+ # ============================================================================
+# DELETE STUDENT — cascade cleanup, batched, ordered to respect FK constraints
+# ============================================================================
+
+# Order matters! Children / leaf tables FIRST, parents LAST.
+# This is the inverse of FK dependency order.
+STUDENT_RELATED_TABLES_IN_DELETE_ORDER = [
+    # ── Leaf tables (nothing else depends on them) ──
+    'sms_log',
+    'sms_sent_log',
+    'exam_marks_history',
+    'exam_marks',
+    'attendance',
+    'payments',
+    'discounts',
+    'student_issued_items',
+    'student_promotions',
+    'student_requirements',
+    # ── Mid-level tables ──
+    'invoices',
+    'fee_particulars',
+    # ── Enrollment last (before students) ──
+    'class_enrollments',
+]
+
+
+@student_bp.route('/<student_id>/delete-preview', methods=['GET'])
+@role_required(['owner', 'accountant'])
+def delete_preview(student_id):
+    """Return counts of related records so the UI can warn the user."""
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+
+    check = supabase.table('students')\
+        .select('id, name, student_id')\
+        .eq('id', student_id)\
+        .eq('institute_id', institute_id)\
+        .execute()
+
+    if not check.data:
+        return jsonify({'success': False, 'message': 'Student not found'}), 404
+
+    student = check.data[0]
+    counts = {}
+
+    for table in STUDENT_RELATED_TABLES_IN_DELETE_ORDER:
+        try:
+            resp = supabase.table(table)\
+                .select('id', count='exact')\
+                .eq('student_id', student_id)\
+                .limit(1)\
+                .execute()
+            counts[table] = resp.count or 0
+        except Exception as e:
+            print(f"Preview: table {table} skipped: {e}")
+            counts[table] = 0
+
+    total_related = sum(counts.values())
+
+    return jsonify({
+        'success': True,
+        'student': {
+            'id': student['id'],
+            'name': student['name'],
+            'student_id': student.get('student_id'),
+        },
+        'counts': counts,
+        'total_related': total_related,
+    })
+
+
+@student_bp.route('/<student_id>/delete', methods=['DELETE'])
+@role_required(['owner', 'accountant'])
+def delete_student(student_id):
+    """Delete a student and all related records in FK-safe order.
+
+    Strategy: single DELETE per table filtered by student_id — no ID
+    pre-fetching (no N+1), one round-trip per table.
+    """
+    user = session.get('user')
+    institute_id = get_institute_id(user['id'])
+
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+
+    # Verify ownership
+    check = supabase.table('students')\
+        .select('id, name, student_id')\
+        .eq('id', student_id)\
+        .eq('institute_id', institute_id)\
+        .execute()
+
+    if not check.data:
+        return jsonify({'success': False, 'message': 'Student not found'}), 404
+
+    student = check.data[0]
+    deleted = {}
+    errors = []
+
+    # ── 1. Delete from every related table in FK-safe order ──
+    # One DELETE per table, filtered server-side by student_id.
+    for table in STUDENT_RELATED_TABLES_IN_DELETE_ORDER:
+        try:
+            # Count first so we can report how many rows went
+            count_resp = supabase.table(table)\
+                .select('id', count='exact')\
+                .eq('student_id', student_id)\
+                .limit(1)\
+                .execute()
+            row_count = count_resp.count or 0
+
+            if row_count == 0:
+                deleted[table] = 0
+                continue
+
+            # Single DELETE, filtered by student_id
+            resp = supabase.table(table)\
+                .delete()\
+                .eq('student_id', student_id)\
+                .execute()
+
+            deleted[table] = row_count
+
+        except Exception as e:
+            err_str = str(e)
+            # 404 / "does not exist" = table missing in this deployment; skip
+            if 'PGRST205' in err_str or 'does not exist' in err_str.lower():
+                deleted[table] = 0
+                continue
+            errors.append(f"{table}: {err_str}")
+            deleted[table] = 0
+
+    # ── 2. Delete the student itself ──
+    try:
+        resp = supabase.table('students')\
+            .delete()\
+            .eq('id', student_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+
+        if not resp.data:
+            # Some Supabase versions return empty on success; verify via re-select
+            verify = supabase.table('students')\
+                .select('id')\
+                .eq('id', student_id)\
+                .execute()
+            if verify.data:
+                return jsonify({
+                    'success': False,
+                    'message': 'Student record could not be deleted — likely a remaining FK reference. '
+                               'Check the "errors" field for the offending table.',
+                    'deleted_related': deleted,
+                    'errors': errors if errors else None,
+                }), 409
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to delete student record: {str(e)}',
+            'deleted_related': deleted,
+            'errors': errors if errors else None,
+        }), 500
+
+    total_related = sum(deleted.values())
+
+    return jsonify({
+        'success': True,
+        'message': (
+            f"Deleted student '{student['name']}' "
+            f"and {total_related} related record(s)."
+        ),
+        'deleted_related': deleted,
+        'total_related_deleted': total_related,
+        'errors': errors if errors else None,
+    })
