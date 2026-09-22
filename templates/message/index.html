@@ -4,164 +4,70 @@
 
 {% block extra_css %}
 <style>
-    .btn-gradient {
-        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-    }
-    .btn-gradient:hover {
-        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
-        transform: translateY(-2px);
-    }
-    .btn-whatsapp {
-        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-        color: white;
-    }
-    .btn-whatsapp:hover {
-        background: linear-gradient(135deg, #128C7E 0%, #075E54 100%);
-        transform: translateY(-2px);
-    }
-    .recipient-card {
-        transition: all 0.2s;
-        cursor: pointer;
-    }
-    .recipient-card:hover {
-        background-color: #fff7ed;
-        transform: translateX(4px);
-    }
-    .recipient-card.selected {
-        background-color: #ffedd5;
-        border-left: 3px solid #ffa500;
-    }
-    .modal-overlay {
-        animation: fadeIn 0.3s ease-out;
-    }
-    .modal-container {
-        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(50px) scale(0.95);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-    .template-badge {
-        transition: all 0.2s;
-        cursor: pointer;
-    }
-    .template-badge:hover {
-        transform: scale(1.05);
-        background-color: #ffa500 !important;
-        color: white !important;
-    }
-    .char-counter {
-        transition: all 0.2s;
-    }
-    .char-counter.warning {
-        color: #eab308;
-    }
-    .char-counter.danger {
-        color: #ef4444;
-    }
-    .search-result-item {
-        transition: all 0.2s;
-        cursor: pointer;
-    }
-    .search-result-item:hover {
-        background-color: #fff7ed;
-        transform: translateX(4px);
-    }
-    .search-highlight {
-        background-color: #fef3c7;
-        font-weight: bold;
-    }
-    .message-type-btn {
-        transition: all 0.2s;
-        border: 2px solid transparent;
-    }
-    .message-type-btn.active {
-        border-color: #ffa500;
-        background-color: #fff7ed;
-    }
-    .message-type-btn:hover {
-        transform: translateY(-2px);
-    }
-    .phone-badge {
-        background: #dbeafe;
-        color: #1e40af;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 11px;
-    }
-    .phone-badge.no-phone {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-    .file-upload-area {
-        border: 2px dashed #d1d5db;
-        border-radius: 8px;
-        padding: 20px;
-        text-align: center;
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-    .file-upload-area:hover {
-        border-color: #25D366;
-        background: #f0fdf4;
-    }
-    .file-upload-area.has-file {
-        border-color: #25D366;
-        background: #f0fdf4;
-    }
-    .file-upload-area .file-icon {
-        font-size: 32px;
-        color: #9ca3af;
-    }
-    .file-upload-area .file-name {
-        font-weight: 500;
-        color: #1f2937;
-    }
-    .file-upload-area .file-size {
-        font-size: 12px;
-        color: #6b7280;
-    }
-    .file-upload-area .remove-file {
-        color: #ef4444;
-        cursor: pointer;
-        font-size: 14px;
-    }
-    .file-upload-area .remove-file:hover {
-        color: #dc2626;
-    }
-    .pdf-preview {
-        max-height: 200px;
-        overflow: hidden;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        margin-top: 8px;
-    }
-    .pdf-preview object {
-        width: 100%;
-        height: 250px;
-    }
+    .btn-gradient { background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%); }
+    .btn-gradient:hover { background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%); transform: translateY(-2px); }
+    .btn-whatsapp { background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; }
+    .btn-whatsapp:hover { background: linear-gradient(135deg, #128C7E 0%, #075E54 100%); transform: translateY(-2px); }
+    .recipient-card { transition: all 0.2s; cursor: pointer; }
+    .recipient-card:hover { background-color: #fff7ed; transform: translateX(4px); }
+    .recipient-card.selected { background-color: #ffedd5; border-left: 3px solid #ffa500; }
+    .modal-overlay { animation: fadeIn 0.3s ease-out; }
+    .modal-container { animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(50px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .template-badge { transition: all 0.2s; cursor: pointer; }
+    .template-badge:hover { transform: scale(1.05); background-color: #ffa500 !important; color: white !important; }
+    .char-counter { transition: all 0.2s; }
+    .char-counter.warning { color: #eab308; }
+    .char-counter.danger { color: #ef4444; }
+    .sm-search-result-item { transition: all 0.2s; cursor: pointer; }
+    .sm-search-result-item:hover { background-color: #fff7ed; transform: translateX(4px); }
+    .sm-search-highlight { background-color: #fef3c7; font-weight: bold; }
+    .sm-message-type-btn { transition: all 0.2s; border: 2px solid transparent; }
+    .sm-message-type-btn.active { border-color: #ffa500; background-color: #fff7ed; }
+    .sm-message-type-btn:hover { transform: translateY(-2px); }
+    .sm-file-upload-area { border: 2px dashed #d1d5db; border-radius: 8px; padding: 20px; text-align: center; transition: all 0.3s ease; cursor: pointer; }
+    .sm-file-upload-area:hover { border-color: #25D366; background: #f0fdf4; }
+    .sm-file-upload-area.has-file { border-color: #25D366; background: #f0fdf4; }
+    .sm-file-upload-area .file-icon { font-size: 32px; color: #9ca3af; }
+    .sm-file-upload-area .file-name { font-weight: 500; color: #1f2937; }
+    .sm-file-upload-area .file-size { font-size: 12px; color: #6b7280; }
+    .sm-file-upload-area .remove-file { color: #ef4444; cursor: pointer; font-size: 14px; }
+    .sm-file-upload-area .remove-file:hover { color: #dc2626; }
+    .sm-pdf-preview { max-height: 200px; overflow: hidden; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 8px; }
+    .sm-pdf-preview object { width: 100%; height: 250px; }
+
+    /* History modal scroll */
+    .sm-history-scroll { max-height: 60vh; overflow-y: auto; }
+    .sm-history-scroll::-webkit-scrollbar { width: 8px; }
+    .sm-history-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+    .sm-history-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    .sm-history-item { border-bottom: 1px solid #f3f4f6; padding: 12px 4px; }
+    .sm-history-item:last-child { border-bottom: none; }
+    .sm-status-sent { background: #dcfce7; color: #166534; }
+    .sm-status-failed { background: #fee2e2; color: #991b1b; }
+    .sm-dup-badge { background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
-    <!-- Page Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800 mb-1">Send Message to Parents</h1>
-        <p class="text-sm text-gray-600">Compose and send SMS or WhatsApp messages to parents/guardians</p>
+    <div class="mb-6 flex justify-between items-center flex-wrap gap-3">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">Send Message to Parents</h1>
+            <p class="text-sm text-gray-600">Compose and send SMS or WhatsApp messages to parents/guardians</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="text-right">
+                <p class="text-xs text-gray-500">Balance</p>
+                <p class="text-lg font-bold text-orange-600">UGX {{ '{:,.0f}'.format(balance) }}</p>
+            </div>
+            <button onclick="SM.openHistoryModal()" class="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm flex items-center gap-2">
+                <i class="fas fa-history"></i> History
+            </button>
+        </div>
     </div>
 
-    <!-- SMS Status Alert -->
     {% if sms_settings and not sms_settings.enabled %}
     <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
         <div class="flex items-center">
@@ -169,110 +75,94 @@
             <span class="text-sm text-yellow-700">SMS is currently disabled. Please enable it in <a href="{{ url_for('sms_settings.index') }}" class="underline font-semibold">SMS Settings</a> to send messages.</span>
         </div>
     </div>
-    {% elif sms_settings and (not sms_settings.api_username or not sms_settings.api_key) %}
-    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-        <div class="flex items-center">
-            <i class="fas fa-exclamation-triangle text-yellow-400 mr-3"></i>
-            <span class="text-sm text-yellow-700">SMS API credentials not configured. Please update your <a href="{{ url_for('sms_settings.index') }}" class="underline font-semibold">SMS Settings</a>.</span>
-        </div>
-    </div>
     {% endif %}
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Panel - Recipient Selection -->
+        <!-- Left Panel -->
         <div class="lg:col-span-1">
             <div class="bg-white rounded-xl shadow-md overflow-hidden sticky top-4">
                 <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
                     <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <i class="fas fa-users text-orange-500"></i>
-                        Select Recipients
+                        <i class="fas fa-users text-orange-500"></i> Select Recipients
                     </h2>
                 </div>
                 <div class="p-5">
-                    <!-- Apply To Selection -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Send To</label>
-                        <div class="flex gap-3">
+                        <div class="flex flex-wrap gap-3">
                             <label class="flex items-center gap-2">
-                                <input type="radio" name="apply_to" value="all" checked class="text-orange-500 focus:ring-orange-500">
+                                <input type="radio" name="sm_apply_to" value="all" checked class="text-orange-500 focus:ring-orange-500">
                                 <span class="text-sm">All Students</span>
                             </label>
                             <label class="flex items-center gap-2">
-                                <input type="radio" name="apply_to" value="class" class="text-orange-500 focus:ring-orange-500">
+                                <input type="radio" name="sm_apply_to" value="class" class="text-orange-500 focus:ring-orange-500">
                                 <span class="text-sm">Specific Class</span>
                             </label>
                             <label class="flex items-center gap-2">
-                                <input type="radio" name="apply_to" value="student" class="text-orange-500 focus:ring-orange-500">
+                                <input type="radio" name="sm_apply_to" value="student" class="text-orange-500 focus:ring-orange-500">
                                 <span class="text-sm">Specific Students</span>
                             </label>
                         </div>
                     </div>
-                    
-                    <!-- Class Select (hidden by default) -->
-                    <div id="classSelectDiv" class="mb-4 hidden">
+
+                    <div id="smClassSelectDiv" class="mb-4 hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
-                        <select id="classSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <select id="smClassSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                             <option value="">-- Select Class --</option>
                             {% for class in classes %}
                             <option value="{{ class.id }}">{{ class.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    
-                    <!-- Live Student Search (hidden by default) -->
-                    <div id="studentSearchDiv" class="mb-4 hidden">
+
+                    <div id="smStudentSearchDiv" class="mb-4 hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Search Students</label>
                         <div class="relative">
                             <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
-                            <input type="text" id="studentSearchInput" 
-                                   placeholder="Type to search by name or ID..." 
+                            <input type="text" id="smStudentSearchInput" autocomplete="off"
+                                   placeholder="Type name, ID or phone number..."
                                    class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
-                            <div id="searchResults" class="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg hidden max-h-60 overflow-y-auto"></div>
+                            <div id="smSearchResults" class="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg hidden max-h-72 overflow-y-auto"></div>
                         </div>
-                        <div id="selectedStudentsList" class="mt-3 space-y-2 max-h-40 overflow-y-auto">
-                            <!-- Selected students will appear here -->
-                        </div>
+                        <div id="smSelectedStudentsList" class="mt-3 space-y-2 max-h-60 overflow-y-auto"></div>
                     </div>
-                    
-                    <!-- Load Recipients Button (for All and Class) -->
-                    <button onclick="loadRecipients()" id="loadRecipientsBtn" class="w-full btn-gradient py-2 rounded-lg text-white font-medium mt-2">
+
+                    <button onclick="SM.loadRecipients()" id="smLoadRecipientsBtn" class="w-full btn-gradient py-2 rounded-lg text-white font-medium mt-2">
                         <i class="fas fa-sync-alt"></i> Load Recipients
                     </button>
-                    
-                    <!-- Recipients Summary -->
-                    <div id="recipientsSummary" class="mt-4 hidden">
+
+                    <div id="smRecipientsSummary" class="mt-4 hidden">
                         <div class="bg-gray-50 rounded-lg p-3">
                             <p class="text-sm font-medium text-gray-700">Recipients</p>
-                            <p class="text-2xl font-bold text-orange-600" id="recipientCount">0</p>
-                            <p class="text-xs text-gray-500 mt-1" id="recipientList"></p>
-                            <p class="text-xs text-gray-500 mt-1" id="phoneSummary"></p>
+                            <p class="text-2xl font-bold text-orange-600" id="smRecipientCount">0</p>
+                            <p class="text-xs text-gray-500 mt-1" id="smRecipientList"></p>
+                            <p class="text-xs text-gray-500 mt-1" id="smPhoneSummary"></p>
+                            <p class="text-xs text-amber-600 mt-1 hidden" id="smDuplicateSummary"></p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Right Panel - Message Composition -->
+
+        <!-- Right Panel -->
         <div class="lg:col-span-2">
             <div class="bg-white rounded-xl shadow-md overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-white">
                     <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <i class="fas fa-envelope text-orange-500"></i>
-                        Compose Message
+                        <i class="fas fa-envelope text-orange-500"></i> Compose Message
                     </h2>
                 </div>
-                
+
                 <div class="p-5">
-                    <!-- Message Type Selection -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Message Type</label>
                         <div class="grid grid-cols-2 gap-3">
-                            <button onclick="setMessageType('text')" id="textTypeBtn" class="message-type-btn active p-3 rounded-lg bg-gray-50 text-center">
+                            <button onclick="SM.setMessageType('text')" id="smTextTypeBtn" class="sm-message-type-btn active p-3 rounded-lg bg-gray-50 text-center">
                                 <i class="fas fa-comment text-blue-500 text-xl mb-1"></i>
                                 <p class="text-sm font-medium">Text Message</p>
                                 <p class="text-xs text-gray-500">Send via SMS or WhatsApp</p>
                             </button>
-                            <button onclick="setMessageType('pdf')" id="pdfTypeBtn" class="message-type-btn p-3 rounded-lg bg-gray-50 text-center">
+                            <button onclick="SM.setMessageType('pdf')" id="smPdfTypeBtn" class="sm-message-type-btn p-3 rounded-lg bg-gray-50 text-center">
                                 <i class="fas fa-file-pdf text-red-500 text-xl mb-1"></i>
                                 <p class="text-sm font-medium">PDF Document</p>
                                 <p class="text-xs text-gray-500">Send via WhatsApp only</p>
@@ -280,148 +170,122 @@
                         </div>
                     </div>
 
-                    <!-- Message Type: Text -->
-                    <div id="textMessageDiv">
-                        <!-- Templates -->
+                    <div id="smTextMessageDiv">
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Quick Templates</label>
                             <div class="flex flex-wrap gap-2">
-                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('general')">
-                                    General Announcement
-                                </span>
-                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('fee')">
-                                    Fee Reminder
-                                </span>
-                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('exam')">
-                                    Exam Notification
-                                </span>
-                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('event')">
-                                    School Event
-                                </span>
-                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="applyTemplate('holiday')">
-                                    Holiday Notice
-                                </span>
+                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="SM.applyTemplate('general')">General Announcement</span>
+                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="SM.applyTemplate('fee')">Fee Reminder</span>
+                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="SM.applyTemplate('exam')">Exam Notification</span>
+                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="SM.applyTemplate('event')">School Event</span>
+                                <span class="template-badge inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm cursor-pointer" onclick="SM.applyTemplate('holiday')">Holiday Notice</span>
                             </div>
                         </div>
-                        
-                        <!-- Message Input -->
+
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                            <textarea id="messageText" rows="6" 
-                                      placeholder="Type your message here... Use {student_name} for student name"
+                            <textarea id="smMessageText" rows="6" placeholder="Type your message here... Use {student_name} for student name"
                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
                             <div class="flex justify-between mt-1">
                                 <p class="text-xs text-gray-500">Use {student_name} to insert student's name</p>
-                                <p id="charCount" class="text-xs text-gray-500 char-counter">0 / 160 characters</p>
+                                <p id="smCharCount" class="text-xs text-gray-500 char-counter">0 / 160 characters</p>
                             </div>
                         </div>
-                        
-                        <!-- Sender ID -->
+
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Sender ID</label>
-                            <input type="text" id="senderId" value="{{ sms_settings.sender_id if sms_settings else 'SCHOOL' }}" 
+                            <input type="text" id="smSenderId" value="{{ sms_settings.sender_id if sms_settings else 'SCHOOL' }}"
                                    maxlength="11" placeholder="SCHOOL"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                             <p class="text-xs text-gray-500 mt-1">Maximum 11 characters. This will appear as the sender name</p>
                         </div>
-                        
-                        <!-- Channel Selection -->
+
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Send Via</label>
                             <div class="flex gap-3">
                                 <label class="flex items-center gap-2">
-                                    <input type="radio" name="channel" value="sms" checked class="text-orange-500 focus:ring-orange-500">
+                                    <input type="radio" name="sm_channel" value="sms" checked class="text-orange-500 focus:ring-orange-500">
                                     <span class="text-sm">SMS</span>
                                 </label>
                                 <label class="flex items-center gap-2">
-                                    <input type="radio" name="channel" value="whatsapp" class="text-green-500 focus:ring-green-500">
+                                    <input type="radio" name="sm_channel" value="whatsapp" class="text-green-500 focus:ring-green-500">
                                     <span class="text-sm">WhatsApp</span>
                                 </label>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Message Type: PDF Document -->
-                    <div id="pdfMessageDiv" style="display: none;">
+                    <div id="smPdfMessageDiv" style="display: none;">
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-2">PDF Document <span class="text-red-500">*</span></label>
-                            
-                            <!-- File Upload Area -->
-                            <div id="fileUploadArea" class="file-upload-area" onclick="document.getElementById('pdfFileInput').click()">
-                                <div id="fileUploadContent">
+                            <div id="smFileUploadArea" class="sm-file-upload-area" onclick="document.getElementById('smPdfFileInput').click()">
+                                <div id="smFileUploadContent">
                                     <i class="fas fa-cloud-upload-alt file-icon"></i>
                                     <p class="mt-2 text-sm text-gray-600">Click to upload a PDF document</p>
                                     <p class="text-xs text-gray-400">or drag and drop</p>
                                 </div>
-                                <div id="fileSelectedContent" style="display: none;">
+                                <div id="smFileSelectedContent" style="display: none;">
                                     <i class="fas fa-file-pdf text-red-500 file-icon"></i>
-                                    <p class="mt-2 font-medium file-name" id="selectedFileName">document.pdf</p>
-                                    <p class="file-size" id="selectedFileSize">0 KB</p>
-                                    <button type="button" onclick="removeFile(event)" class="remove-file mt-2">
+                                    <p class="mt-2 font-medium file-name" id="smSelectedFileName">document.pdf</p>
+                                    <p class="file-size" id="smSelectedFileSize">0 KB</p>
+                                    <button type="button" onclick="SM.removeFile(event)" class="remove-file mt-2">
                                         <i class="fas fa-times-circle"></i> Remove
                                     </button>
                                 </div>
                             </div>
-                            <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;" onchange="handleFileSelect(event)">
+                            <input type="file" id="smPdfFileInput" accept=".pdf" style="display: none;" onchange="SM.handleFileSelect(event)">
                             <p class="text-xs text-gray-400 mt-1">Only PDF files are accepted. Max size: 10MB</p>
                         </div>
 
-                        <!-- PDF Preview -->
-                        <div id="pdfPreviewContainer" style="display: none;" class="mb-4">
+                        <div id="smPdfPreviewContainer" style="display: none;" class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
-                            <div class="pdf-preview">
-                                <object id="pdfPreview" data="" type="application/pdf">
-                                    <p>PDF preview not available. <a href="#" id="pdfDownloadLink" target="_blank">Download PDF</a></p>
+                            <div class="sm-pdf-preview">
+                                <object id="smPdfPreview" data="" type="application/pdf">
+                                    <p>PDF preview not available. <a href="#" id="smPdfDownloadLink" target="_blank">Download PDF</a></p>
                                 </object>
                             </div>
                         </div>
-                        
+
                         <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                             <p class="text-sm text-green-800">
                                 <i class="fas fa-info-circle mr-1"></i>
                                 The PDF will be sent via WhatsApp to each selected recipient.
                             </p>
                         </div>
-                        
+
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Additional Message (Optional)</label>
-                            <textarea id="pdfMessage" rows="3" 
-                                      placeholder="Add a message to accompany the PDF..."
+                            <textarea id="smPdfMessage" rows="3" placeholder="Add a message to accompany the PDF..."
                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
                         </div>
                     </div>
-                    
-                    <!-- Preview -->
+
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
-                        <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600" id="messagePreview">
+                        <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600" id="smMessagePreview">
                             Your message preview will appear here
                         </div>
                     </div>
-                    
-                    <!-- Send Button -->
+
                     <div class="flex gap-3 pt-4 border-t border-gray-200">
-                        <button onclick="sendMessage()" id="sendBtn" disabled
+                        <button onclick="SM.sendMessage()" id="smSendBtn" disabled
                                 class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg font-medium flex items-center justify-center gap-2">
-                            <i class="fas fa-paper-plane"></i>
-                            Send Message
+                            <i class="fas fa-paper-plane"></i> Send Message
                         </button>
-                        <button onclick="clearForm()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                            Clear
-                        </button>
+                        <button onclick="SM.clearForm()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Clear</button>
                     </div>
                 </div>
             </div>
-            
-            <!-- Message History -->
+
+            <!-- Inline recent messages preview (small) -->
             <div class="mt-6 bg-white rounded-xl shadow-md overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-200 bg-gray-50">
+                <div class="px-5 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                     <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <i class="fas fa-history text-orange-500"></i>
-                        Recent Messages
+                        <i class="fas fa-history text-orange-500"></i> Recent Messages
                     </h2>
+                    <button onclick="SM.openHistoryModal()" class="text-sm text-orange-600 hover:underline font-medium">View all</button>
                 </div>
-                <div id="messageHistory" class="p-5 max-h-60 overflow-y-auto">
+                <div id="smMessageHistory" class="p-5 max-h-60 overflow-y-auto">
                     <div class="text-center py-8 text-gray-400">Loading message history...</div>
                 </div>
             </div>
@@ -429,307 +293,420 @@
     </div>
 </div>
 
+<!-- History Modal -->
+<div id="smHistoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 transform transition-all modal-container flex flex-col" style="max-height: 90vh;">
+        <div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800">Message History</h3>
+                <p id="smHistorySummary" class="text-xs text-gray-500 mt-0.5"></p>
+            </div>
+            <button onclick="SM.closeHistoryModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <div class="px-5 py-3 border-b border-gray-200 flex gap-2 flex-wrap">
+            <div class="relative flex-1 min-w-[200px]">
+                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input type="text" id="smHistorySearch" placeholder="Search phone or message..."
+                       class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500">
+            </div>
+            <select id="smHistoryStatusFilter" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500">
+                <option value="">All statuses</option>
+                <option value="sent">Sent</option>
+                <option value="failed">Failed</option>
+            </select>
+            <select id="smHistoryPerPage" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500">
+                <option value="25">25 / page</option>
+                <option value="50" selected>50 / page</option>
+                <option value="100">100 / page</option>
+            </select>
+        </div>
+
+        <div class="sm-history-scroll flex-1 px-5" id="smHistoryBody">
+            <div class="text-center py-12 text-gray-400">Loading...</div>
+        </div>
+
+        <div class="px-5 py-3 border-t border-gray-200 flex justify-between items-center">
+            <p id="smHistoryPageInfo" class="text-sm text-gray-500"></p>
+            <div class="flex gap-2">
+                <button id="smHistoryPrevBtn" onclick="SM.changeHistoryPage(-1)" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-chevron-left"></i> Prev
+                </button>
+                <button id="smHistoryNextBtn" onclick="SM.changeHistoryPage(1)" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Success Modal -->
-<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+<div id="smSuccessModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 text-center transform transition-all modal-container">
         <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fas fa-check-circle text-3xl text-green-500"></i>
         </div>
         <h3 class="text-xl font-semibold text-gray-800 mb-2">Message Sent!</h3>
-        <p class="text-gray-600 mb-6" id="successMessage"></p>
-        <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium">
-            Continue
-        </button>
+        <p class="text-gray-600 mb-6" id="smSuccessMessage"></p>
+        <button onclick="SM.closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium">Continue</button>
     </div>
 </div>
 
 <!-- Error Modal -->
-<div id="errorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+<div id="smErrorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 text-center transform transition-all modal-container">
         <div class="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
         </div>
         <h3 class="text-xl font-semibold text-gray-800 mb-2">Error</h3>
-        <p class="text-gray-600 mb-6" id="errorMessage"></p>
-        <button onclick="closeErrorModal()" class="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">
-            Close
-        </button>
+        <p class="text-gray-600 mb-6" id="smErrorMessage"></p>
+        <button onclick="SM.closeErrorModal()" class="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">Close</button>
     </div>
 </div>
 
 <!-- Loading Overlay -->
-<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+<div id="smLoadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl p-6 flex flex-col items-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
-        <p id="loadingText" class="text-gray-700">Sending messages...</p>
-        <p id="loadingProgress" class="text-sm text-gray-500 mt-2"></p>
+        <p id="smLoadingText" class="text-gray-700">Sending messages...</p>
+        <p id="smLoadingProgress" class="text-sm text-gray-500 mt-2"></p>
     </div>
 </div>
 
 <script>
-    let currentRecipients = [];
-    let selectedStudents = new Map();
-    let searchTimeout;
-    let currentMessageType = 'text';
-    let selectedPdfBase64 = null;
-    let selectedPdfName = null;
+window.SM = (function () {
+    'use strict';
 
-    // Apply To radio change
-    document.querySelectorAll('input[name="apply_to"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            const classDiv = document.getElementById('classSelectDiv');
-            const studentSearchDiv = document.getElementById('studentSearchDiv');
-            const loadBtn = document.getElementById('loadRecipientsBtn');
-            
+    // ---------------------------------------------------------------------
+    // State
+    // ---------------------------------------------------------------------
+    var currentRecipients = [];
+    var selectedStudents = new Map();
+    var searchTimeout;
+    var currentMessageType = 'text';
+    var selectedPdfBase64 = null;
+    var selectedPdfName = null;
+    var lastLoadedDuplicates = 0;
+
+    // History state
+    var historyPage = 1;
+    var historyPerPage = 50;
+    var historySearch = '';
+    var historyStatus = '';
+    var historyTotalPages = 1;
+
+    // ---------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------
+    function $(id) { return document.getElementById(id); }
+
+    function escapeHtml(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function showError(message) {
+        $('smErrorMessage').innerHTML = message;
+        $('smErrorModal').classList.remove('hidden');
+        $('smErrorModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function showSuccess(message) {
+        $('smSuccessMessage').innerHTML = message;
+        $('smSuccessModal').classList.remove('hidden');
+        $('smSuccessModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeSuccessModal() {
+        $('smSuccessModal').classList.add('hidden');
+        $('smSuccessModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function closeErrorModal() {
+        $('smErrorModal').classList.add('hidden');
+        $('smErrorModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    // ---------------------------------------------------------------------
+    // Apply-to toggle
+    // ---------------------------------------------------------------------
+    document.querySelectorAll('input[name="sm_apply_to"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            var classDiv = $('smClassSelectDiv');
+            var studentSearchDiv = $('smStudentSearchDiv');
+            var loadBtn = $('smLoadRecipientsBtn');
+
             classDiv.classList.add('hidden');
             studentSearchDiv.classList.add('hidden');
-            
+
             if (this.value === 'class') {
                 classDiv.classList.remove('hidden');
                 loadBtn.classList.remove('hidden');
-                document.getElementById('recipientsSummary').classList.add('hidden');
+                $('smRecipientsSummary').classList.add('hidden');
                 currentRecipients = [];
-                document.getElementById('sendBtn').disabled = true;
+                $('smSendBtn').disabled = true;
             } else if (this.value === 'student') {
                 studentSearchDiv.classList.remove('hidden');
                 loadBtn.classList.add('hidden');
                 selectedStudents.clear();
                 updateSelectedStudentsDisplay();
+                currentRecipients = [];
+                $('smRecipientsSummary').classList.add('hidden');
+                validateSendButton();
+                setTimeout(function () { $('smStudentSearchInput').focus(); }, 50);
             } else {
                 loadBtn.classList.remove('hidden');
-                document.getElementById('recipientsSummary').classList.add('hidden');
+                $('smRecipientsSummary').classList.add('hidden');
                 currentRecipients = [];
-                document.getElementById('sendBtn').disabled = true;
+                $('smSendBtn').disabled = true;
             }
         });
     });
 
-    // Message Type Toggle
+    // ---------------------------------------------------------------------
+    // Message type toggle
+    // ---------------------------------------------------------------------
     function setMessageType(type) {
         currentMessageType = type;
-        document.getElementById('textTypeBtn').classList.toggle('active', type === 'text');
-        document.getElementById('pdfTypeBtn').classList.toggle('active', type === 'pdf');
-        document.getElementById('textMessageDiv').style.display = type === 'text' ? 'block' : 'none';
-        document.getElementById('pdfMessageDiv').style.display = type === 'pdf' ? 'block' : 'none';
+        $('smTextTypeBtn').classList.toggle('active', type === 'text');
+        $('smPdfTypeBtn').classList.toggle('active', type === 'pdf');
+        $('smTextMessageDiv').style.display = type === 'text' ? 'block' : 'none';
+        $('smPdfMessageDiv').style.display = type === 'pdf' ? 'block' : 'none';
         updatePreview();
         validateSendButton();
     }
 
-    // File upload handling
+    // ---------------------------------------------------------------------
+    // PDF handling
+    // ---------------------------------------------------------------------
     function handleFileSelect(event) {
-        const file = event.target.files[0];
+        var file = event.target.files[0];
         if (!file) return;
-        
-        // Validate file type
         if (file.type !== 'application/pdf') {
             showError('Please select a PDF file');
             event.target.value = '';
             return;
         }
-        
-        // Validate file size (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
             showError('File size exceeds 10MB limit');
             event.target.value = '';
             return;
         }
-        
-        const reader = new FileReader();
-        reader.onload = function(e) {
+
+        var reader = new FileReader();
+        reader.onload = function (e) {
             selectedPdfBase64 = e.target.result.split(',')[1];
             selectedPdfName = file.name;
-            
-            // Update UI
-            document.getElementById('fileUploadContent').style.display = 'none';
-            document.getElementById('fileSelectedContent').style.display = 'block';
-            document.getElementById('selectedFileName').textContent = file.name;
-            document.getElementById('selectedFileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
-            document.getElementById('fileUploadArea').classList.add('has-file');
-            
-            // Show preview
-            document.getElementById('pdfPreviewContainer').style.display = 'block';
-            document.getElementById('pdfPreview').data = URL.createObjectURL(file);
-            document.getElementById('pdfDownloadLink').href = URL.createObjectURL(file);
-            
+
+            $('smFileUploadContent').style.display = 'none';
+            $('smFileSelectedContent').style.display = 'block';
+            $('smSelectedFileName').textContent = file.name;
+            $('smSelectedFileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+            $('smFileUploadArea').classList.add('has-file');
+
+            $('smPdfPreviewContainer').style.display = 'block';
+            var url = URL.createObjectURL(file);
+            $('smPdfPreview').data = url;
+            $('smPdfDownloadLink').href = url;
+
             validateSendButton();
         };
         reader.readAsDataURL(file);
     }
-    
+
     function removeFile(event) {
         event.stopPropagation();
         selectedPdfBase64 = null;
         selectedPdfName = null;
-        document.getElementById('pdfFileInput').value = '';
-        document.getElementById('fileUploadContent').style.display = 'block';
-        document.getElementById('fileSelectedContent').style.display = 'none';
-        document.getElementById('fileUploadArea').classList.remove('has-file');
-        document.getElementById('pdfPreviewContainer').style.display = 'none';
+        $('smPdfFileInput').value = '';
+        $('smFileUploadContent').style.display = 'block';
+        $('smFileSelectedContent').style.display = 'none';
+        $('smFileUploadArea').classList.remove('has-file');
+        $('smPdfPreviewContainer').style.display = 'none';
         validateSendButton();
     }
-    
+
     function validateSendButton() {
-        const withPhone = currentRecipients.filter(r => r.phone && r.phone.length > 0);
-        let canSend = withPhone.length > 0;
-        
+        var withPhone = currentRecipients.filter(function (r) { return r.phone && r.phone.length > 0; });
+        var canSend = withPhone.length > 0;
         if (currentMessageType === 'pdf') {
             canSend = canSend && selectedPdfBase64 !== null;
         }
-        
-        document.getElementById('sendBtn').disabled = !canSend;
+        $('smSendBtn').disabled = !canSend;
     }
 
-    // Live search functionality
-    const searchInput = document.getElementById('studentSearchInput');
-    const searchResults = document.getElementById('searchResults');
-    
-    searchInput.addEventListener('input', function() {
+    // ---------------------------------------------------------------------
+    // Live student search
+    // ---------------------------------------------------------------------
+    var searchInput = $('smStudentSearchInput');
+    var searchResults = $('smSearchResults');
+
+    searchInput.addEventListener('input', function () {
         clearTimeout(searchTimeout);
-        const term = this.value.trim();
-        
-        if (term.length < 2) {
+        var term = this.value.trim();
+        if (term.length < 1) {
             searchResults.classList.add('hidden');
+            searchResults.innerHTML = '';
             return;
         }
-        
-        searchTimeout = setTimeout(() => performSearch(term), 300);
+        searchTimeout = setTimeout(function () { performSearch(term); }, 250);
     });
-    
-    async function performSearch(term) {
-        try {
-            const response = await fetch(`/send-message/api/search-students?q=${encodeURIComponent(term)}`);
-            const result = await response.json();
-            
-            if (result.success && result.students.length > 0) {
-                displaySearchResults(result.students, term);
-            } else {
-                searchResults.innerHTML = '<div class="p-3 text-center text-gray-500 text-sm">No students found</div>';
-                searchResults.classList.remove('hidden');
-            }
-        } catch (error) {
-            console.error('Search error:', error);
-            searchResults.innerHTML = '<div class="p-3 text-center text-red-500 text-sm">Search failed</div>';
+
+    searchInput.addEventListener('focus', function () {
+        var term = this.value.trim();
+        if (term.length >= 1 && searchResults.innerHTML) {
             searchResults.classList.remove('hidden');
         }
+    });
+
+    searchInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            searchResults.classList.add('hidden');
+        }
+    });
+
+    async function performSearch(term) {
+        searchResults.innerHTML = '<div class="p-3 text-center text-gray-500 text-sm"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+        searchResults.classList.remove('hidden');
+
+        try {
+            var url = '/send-message/api/search-students?q=' + encodeURIComponent(term);
+            var response = await fetch(url, { credentials: 'same-origin' });
+            var result = await response.json();
+
+            if (!result.success) {
+                searchResults.innerHTML = '<div class="p-3 text-center text-red-500 text-sm">' + escapeHtml(result.message || 'Search failed') + '</div>';
+                return;
+            }
+
+            if (result.students.length === 0) {
+                searchResults.innerHTML = '<div class="p-3 text-center text-gray-500 text-sm">No students found</div>';
+                return;
+            }
+
+            displaySearchResults(result.students, term);
+        } catch (error) {
+            console.error('Search error:', error);
+            searchResults.innerHTML = '<div class="p-3 text-center text-red-500 text-sm">Search failed: ' + escapeHtml(error.message) + '</div>';
+        }
     }
-    
+
     function displaySearchResults(students, searchTerm) {
-        const regex = new RegExp(`(${searchTerm})`, 'gi');
-        
-        searchResults.innerHTML = students.map(student => {
-            const highlightedName = student.name.replace(regex, '<span class="search-highlight">$1</span>');
-            const isSelected = selectedStudents.has(student.id);
-            const phone = student.contact_number || student.phone || '';
-            const hasPhone = phone && phone.length > 0;
-            
-            return `
-                <div class="search-result-item p-3 border-b border-gray-100 ${isSelected ? 'bg-orange-50' : ''}" 
-                     onclick="selectStudent('${student.id}', '${student.name.replace(/'/g, "\\'")}', '${student.student_id}', '${phone}')">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-sm font-medium text-gray-800">${highlightedName}</p>
-                            <p class="text-xs text-gray-500">${student.student_id} | ${student.class_name || 'N/A'}</p>
-                            <p class="text-xs ${hasPhone ? 'text-gray-600' : 'text-red-400'}">
-                                📱 ${hasPhone ? phone : 'No phone number'}
-                            </p>
-                        </div>
-                        ${isSelected ? '<i class="fas fa-check-circle text-green-500"></i>' : ''}
-                    </div>
-                </div>
-            `;
+        var regex = new RegExp('(' + searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+
+        searchResults.innerHTML = students.map(function (student) {
+            var safeName = escapeHtml(student.name);
+            var highlighted = safeName.replace(regex, '<span class="sm-search-highlight">$1</span>');
+            var isSelected = selectedStudents.has(student.id);
+            var hasPhone = !!(student.phone && student.phone.length > 0);
+            var safeStudentId = escapeHtml(student.student_id);
+            var safeClass = escapeHtml(student.class_name || 'N/A');
+            var safePhone = escapeHtml(student.phone || '');
+
+            return '<div class="sm-search-result-item p-3 border-b border-gray-100 ' + (isSelected ? 'bg-orange-50' : '') + '" ' +
+                   'onclick=\'SM.selectStudent(' + JSON.stringify(student.id) + ', ' + JSON.stringify(student.name) + ', ' + JSON.stringify(student.student_id) + ', ' + JSON.stringify(student.phone || '') + ')\'>' +
+                       '<div class="flex justify-between items-center gap-2">' +
+                           '<div class="min-w-0">' +
+                               '<p class="text-sm font-medium text-gray-800">' + highlighted + '</p>' +
+                               '<p class="text-xs text-gray-500">' + safeStudentId + ' | ' + safeClass + '</p>' +
+                               '<p class="text-xs ' + (hasPhone ? 'text-gray-600' : 'text-red-400') + '">' +
+                                   '<i class="fas fa-phone-alt mr-1"></i>' + (hasPhone ? safePhone : 'No phone number') +
+                               '</p>' +
+                           '</div>' +
+                           (isSelected ? '<i class="fas fa-check-circle text-green-500 shrink-0"></i>' : '') +
+                       '</div>' +
+                   '</div>';
         }).join('');
-        
+
         searchResults.classList.remove('hidden');
     }
-    
+
     function selectStudent(id, name, studentId, phone) {
         if (!selectedStudents.has(id)) {
-            selectedStudents.set(id, { id, name, student_id: studentId, phone: phone || '' });
+            selectedStudents.set(id, { id: id, name: name, student_id: studentId, phone: phone || '' });
             updateSelectedStudentsDisplay();
+            updateRecipientsFromSelected();
         }
-        
         searchInput.value = '';
         searchResults.classList.add('hidden');
-        updateRecipientsFromSelected();
+        searchResults.innerHTML = '';
+        searchInput.focus();
     }
-    
+
     function removeSelectedStudent(id) {
         selectedStudents.delete(id);
         updateSelectedStudentsDisplay();
         updateRecipientsFromSelected();
     }
-    
+
     function updateSelectedStudentsDisplay() {
-        const container = document.getElementById('selectedStudentsList');
-        
+        var container = $('smSelectedStudentsList');
         if (selectedStudents.size === 0) {
             container.innerHTML = '<div class="text-center py-4 text-gray-400 text-sm">No students selected. Search and select students above.</div>';
             return;
         }
-        
-        container.innerHTML = Array.from(selectedStudents.values()).map(student => {
-            const hasPhone = student.phone && student.phone.length > 0;
-            return `
-                <div class="flex items-center justify-between p-2 bg-orange-50 rounded-lg">
-                    <div>
-                        <p class="text-sm font-medium text-gray-800">${student.name}</p>
-                        <p class="text-xs text-gray-500">${student.student_id} | <span class="${hasPhone ? 'text-green-600' : 'text-red-400'}">📱 ${hasPhone ? student.phone : 'No phone'}</span></p>
-                    </div>
-                    <button onclick="removeSelectedStudent('${student.id}')" class="text-red-400 hover:text-red-600">
-                        <i class="fas fa-times-circle"></i>
-                    </button>
-                </div>
-            `;
+        container.innerHTML = Array.from(selectedStudents.values()).map(function (student) {
+            var hasPhone = student.phone && student.phone.length > 0;
+            return '<div class="flex items-center justify-between p-2 bg-orange-50 rounded-lg gap-2">' +
+                       '<div class="min-w-0">' +
+                           '<p class="text-sm font-medium text-gray-800 truncate">' + escapeHtml(student.name) + '</p>' +
+                           '<p class="text-xs text-gray-500 truncate">' +
+                               escapeHtml(student.student_id) + ' | ' +
+                               '<span class="' + (hasPhone ? 'text-green-600' : 'text-red-400') + '">' +
+                                   '<i class="fas fa-phone-alt mr-1"></i>' + (hasPhone ? escapeHtml(student.phone) : 'No phone') +
+                               '</span>' +
+                           '</p>' +
+                       '</div>' +
+                       '<button onclick="SM.removeSelectedStudent(\'' + student.id + '\')" class="text-red-400 hover:text-red-600 shrink-0">' +
+                           '<i class="fas fa-times-circle"></i>' +
+                       '</button>' +
+                   '</div>';
         }).join('');
     }
-    
+
     function updateRecipientsFromSelected() {
-        currentRecipients = Array.from(selectedStudents.values()).map(student => ({
-            id: student.id,
-            name: student.name,
-            student_id: student.student_id,
-            phone: student.phone
-        }));
-        
+        var seen = new Set();
+        var out = [];
+        var dups = 0;
+        selectedStudents.forEach(function (s) {
+            var phone = (s.phone || '').trim();
+            if (!phone) {
+                out.push({ id: s.id, name: s.name, student_id: s.student_id, phone: '' });
+                return;
+            }
+            if (seen.has(phone)) { dups++; return; }
+            seen.add(phone);
+            out.push({ id: s.id, name: s.name, student_id: s.student_id, phone: phone });
+        });
+        currentRecipients = out;
+        lastLoadedDuplicates = dups;
         updateRecipientsUI();
     }
-    
-    function updateRecipientsUI() {
-        const count = currentRecipients.length;
-        const withPhone = currentRecipients.filter(r => r.phone && r.phone.length > 0).length;
-        const withoutPhone = count - withPhone;
-        
-        document.getElementById('recipientCount').textContent = count;
-        
-        const recipientList = currentRecipients.slice(0, 5).map(r => r.name).join(', ');
-        if (count > 5) {
-            document.getElementById('recipientList').innerHTML = `${recipientList} and ${count - 5} more...`;
-        } else {
-            document.getElementById('recipientList').innerHTML = recipientList || 'No recipients';
-        }
-        
-        // Show phone summary
-        document.getElementById('phoneSummary').innerHTML = `
-            <span class="${withPhone > 0 ? 'text-green-600' : 'text-red-400'}">📱 ${withPhone} with phone</span>
-            ${withoutPhone > 0 ? `<span class="text-red-400 ml-2">⚠️ ${withoutPhone} without phone</span>` : ''}
-        `;
-        
-        document.getElementById('recipientsSummary').classList.remove('hidden');
-        validateSendButton();
-    }
-    
-    document.addEventListener('click', function(e) {
-        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+
+    document.addEventListener('click', function (e) {
+        if (searchInput && searchResults && !searchInput.contains(e.target) && !searchResults.contains(e.target)) {
             searchResults.classList.add('hidden');
         }
     });
-    
-    // Character counter
-    document.getElementById('messageText').addEventListener('input', function() {
-        const length = this.value.length;
-        const charCounter = document.getElementById('charCount');
-        charCounter.textContent = `${length} / 160 characters`;
-        
+
+    // ---------------------------------------------------------------------
+    // Char counter & preview
+    // ---------------------------------------------------------------------
+    $('smMessageText').addEventListener('input', function () {
+        var length = this.value.length;
+        var charCounter = $('smCharCount');
+        charCounter.textContent = length + ' / 160 characters';
         if (length > 160) {
             charCounter.classList.add('danger');
             charCounter.classList.remove('warning');
@@ -739,72 +716,68 @@
         } else {
             charCounter.classList.remove('warning', 'danger');
         }
-        
         updatePreview();
     });
 
-    document.getElementById('pdfMessage').addEventListener('input', updatePreview);
-    
+    $('smPdfMessage').addEventListener('input', updatePreview);
+
     function updatePreview() {
-        let message = '';
+        var message = '';
         if (currentMessageType === 'text') {
-            message = document.getElementById('messageText').value;
+            message = $('smMessageText').value;
         } else {
-            const pdfMsg = document.getElementById('pdfMessage').value;
-            const fileName = selectedPdfName || 'document.pdf';
-            message = `📄 Sending PDF: ${fileName}\n\n${pdfMsg}`;
+            var pdfMsg = $('smPdfMessage').value;
+            var fileName = selectedPdfName || 'document.pdf';
+            message = '📄 Sending PDF: ' + fileName + '\n\n' + pdfMsg;
         }
-        
-        const preview = document.getElementById('messagePreview');
+        var preview = $('smMessagePreview');
         if (message) {
-            preview.innerHTML = message.replace(/\n/g, '<br>');
+            preview.innerHTML = escapeHtml(message).replace(/\n/g, '<br>');
         } else {
             preview.innerHTML = 'Your message preview will appear here';
         }
     }
-    
+
+    // ---------------------------------------------------------------------
+    // Load recipients (all / class)
+    // ---------------------------------------------------------------------
     async function loadRecipients() {
-        const applyTo = document.querySelector('input[name="apply_to"]:checked').value;
-        let classId = null;
-        
+        var applyTo = document.querySelector('input[name="sm_apply_to"]:checked').value;
+        var classId = null;
+
         if (applyTo === 'class') {
-            classId = document.getElementById('classSelect').value;
-            if (!classId) {
-                showError('Please select a class');
-                return;
-            }
+            classId = $('smClassSelect').value;
+            if (!classId) { showError('Please select a class'); return; }
         }
-        
-        const loading = document.getElementById('loadingOverlay');
+
+        var loading = $('smLoadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
-        document.getElementById('loadingText').textContent = 'Loading recipients...';
-        document.getElementById('loadingProgress').textContent = '';
-        
+        $('smLoadingText').textContent = 'Loading recipients...';
+        $('smLoadingProgress').textContent = '';
+
         try {
-            const response = await fetch('/send-message/api/get-recipients', {
+            var response = await fetch('/send-message/api/get-recipients', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    apply_to: applyTo,
-                    class_id: classId,
-                    student_ids: []
-                })
+                credentials: 'same-origin',
+                body: JSON.stringify({ apply_to: applyTo, class_id: classId, student_ids: [] })
             });
-            
-            const result = await response.json();
-            
+            var result = await response.json();
             loading.classList.add('hidden');
             loading.classList.remove('flex');
-            
+
             if (result.success) {
-                // Map recipients to ensure phone is using contact_number
-                currentRecipients = result.recipients.map(r => ({
-                    id: r.id,
-                    name: r.name,
-                    student_id: r.student_id,
-                    phone: r.contact_number || r.phone || ''
-                }));
+                currentRecipients = result.recipients.map(function (r) {
+                    return {
+                        id: r.id,
+                        name: r.name,
+                        student_id: r.student_id,
+                        phone: r.phone || '',
+                        also_for: r.also_for || []
+                    };
+                });
+                lastLoadedDuplicates = result.duplicates_removed || 0;
                 updateRecipientsUI();
             } else {
                 showError(result.message);
@@ -815,65 +788,68 @@
             showError('Failed to load recipients: ' + error.message);
         }
     }
-    
-    function applyTemplate(type) {
-        let template = '';
-        switch(type) {
-            case 'general':
-                template = `Dear Parent/Guardian,\n\nThis is to inform you about [announcement details].\n\nFor more information, please contact the school office.\n\nThank you.`;
-                break;
-            case 'fee':
-                template = `Dear Parent/Guardian,\n\nThis is a friendly reminder that school fees for {student_name} are due. Please clear the outstanding balance to avoid any inconvenience.\n\nThank you for your cooperation.`;
-                break;
-            case 'exam':
-                template = `Dear Parent/Guardian,\n\nExaminations will begin on [date]. Please ensure {student_name} is well prepared and attends all papers.\n\nBest regards.`;
-                break;
-            case 'event':
-                template = `Dear Parent/Guardian,\n\nYou are cordially invited to the [event name] on [date] at [time]. Your presence will be greatly appreciated.\n\nThank you.`;
-                break;
-            case 'holiday':
-                template = `Dear Parent/Guardian,\n\nThe school will be closed from [start date] to [end date] for [holiday name]. School will resume on [resume date].\n\nHappy Holidays!`;
-                break;
+
+    function updateRecipientsUI() {
+        var count = currentRecipients.length;
+        var withPhone = currentRecipients.filter(function (r) { return r.phone && r.phone.length > 0; }).length;
+        var withoutPhone = count - withPhone;
+
+        $('smRecipientCount').textContent = withPhone;
+
+        var list = currentRecipients.filter(function (r) { return r.phone; }).slice(0, 5).map(function (r) { return r.name; }).join(', ');
+        if (withPhone > 5) {
+            $('smRecipientList').innerHTML = escapeHtml(list) + ' and ' + (withPhone - 5) + ' more...';
+        } else {
+            $('smRecipientList').innerHTML = escapeHtml(list) || 'No recipients';
         }
-        document.getElementById('messageText').value = template;
+
+        $('smPhoneSummary').innerHTML =
+            '<span class="' + (withPhone > 0 ? 'text-green-600' : 'text-red-400') + '"><i class="fas fa-phone-alt mr-1"></i>' + withPhone + ' unique phone number(s)</span>' +
+            (withoutPhone > 0 ? '<span class="text-red-400 ml-2">⚠️ ' + withoutPhone + ' without phone</span>' : '');
+
+        var dupEl = $('smDuplicateSummary');
+        if (lastLoadedDuplicates > 0) {
+            dupEl.textContent = '♻️ ' + lastLoadedDuplicates + ' duplicate phone number(s) skipped';
+            dupEl.classList.remove('hidden');
+        } else {
+            dupEl.classList.add('hidden');
+        }
+
+        $('smRecipientsSummary').classList.remove('hidden');
+        validateSendButton();
+    }
+
+    // ---------------------------------------------------------------------
+    // Templates
+    // ---------------------------------------------------------------------
+    function applyTemplate(type) {
+        var template = '';
+        switch (type) {
+            case 'general': template = 'Dear Parent/Guardian,\n\nThis is to inform you about [announcement details].\n\nFor more information, please contact the school office.\n\nThank you.'; break;
+            case 'fee': template = 'Dear Parent/Guardian,\n\nThis is a friendly reminder that school fees for {student_name} are due. Please clear the outstanding balance to avoid any inconvenience.\n\nThank you for your cooperation.'; break;
+            case 'exam': template = 'Dear Parent/Guardian,\n\nExaminations will begin on [date]. Please ensure {student_name} is well prepared and attends all papers.\n\nBest regards.'; break;
+            case 'event': template = 'Dear Parent/Guardian,\n\nYou are cordially invited to the [event name] on [date] at [time]. Your presence will be greatly appreciated.\n\nThank you.'; break;
+            case 'holiday': template = 'Dear Parent/Guardian,\n\nThe school will be closed from [start date] to [end date] for [holiday name]. School will resume on [resume date].\n\nHappy Holidays!'; break;
+        }
+        $('smMessageText').value = template;
+        $('smMessageText').dispatchEvent(new Event('input'));
         updatePreview();
     }
-    
-    // Helper function to format phone number
-    function formatPhoneNumber(phone) {
-        if (!phone) return '';
-        // Remove any non-digit characters
-        let cleaned = phone.replace(/\D/g, '');
-        // If it starts with 0, remove it
-        if (cleaned.startsWith('0')) {
-            cleaned = cleaned.substring(1);
-        }
-        // If it doesn't start with 256, add it
-        if (!cleaned.startsWith('256')) {
-            cleaned = '256' + cleaned;
-        }
-        return cleaned;
-    }
-    
+
+    // ---------------------------------------------------------------------
+    // Send
+    // ---------------------------------------------------------------------
     async function sendMessage() {
-        const withPhone = currentRecipients.filter(r => r.phone && r.phone.length > 0);
-        
-        if (withPhone.length === 0) {
-            showError('No recipients with phone numbers available.');
-            return;
-        }
+        var withPhone = currentRecipients.filter(function (r) { return r.phone && r.phone.length > 0; });
+        if (withPhone.length === 0) { showError('No recipients with phone numbers available.'); return; }
+        if (currentMessageType === 'pdf' && !selectedPdfBase64) { showError('Please select a PDF file to send.'); return; }
 
-        if (currentMessageType === 'pdf' && !selectedPdfBase64) {
-            showError('Please select a PDF file to send.');
-            return;
-        }
-
-        const loading = document.getElementById('loadingOverlay');
+        var loading = $('smLoadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
-        document.getElementById('loadingText').textContent = 'Sending messages...';
-        document.getElementById('loadingProgress').textContent = `0 / ${withPhone.length}`;
-        
+        $('smLoadingText').textContent = 'Sending messages...';
+        $('smLoadingProgress').textContent = '0 / ' + withPhone.length;
+
         try {
             if (currentMessageType === 'text') {
                 await sendTextMessage(withPhone, loading);
@@ -886,12 +862,12 @@
             showError('Failed to send message: ' + error.message);
         }
     }
-    
+
     async function sendTextMessage(recipients, loading) {
-        const message = document.getElementById('messageText').value.trim();
-        const senderId = document.getElementById('senderId').value.trim();
-        const channel = document.querySelector('input[name="channel"]:checked').value;
-        
+        var message = $('smMessageText').value.trim();
+        var senderId = $('smSenderId').value.trim();
+        var channel = document.querySelector('input[name="sm_channel"]:checked').value;
+
         if (!message) {
             showError('Please enter a message');
             loading.classList.add('hidden');
@@ -901,90 +877,55 @@
 
         try {
             if (channel === 'sms') {
-                // Send via SMS
-                const response = await fetch('/send-message/api/send', {
+                var response = await fetch('/send-message/api/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        recipients: recipients,
-                        message: message,
-                        sender_id: senderId || 'SCHOOL'
-                    })
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ recipients: recipients, message: message, sender_id: senderId || 'SCHOOL' })
                 });
-                
-                const result = await response.json();
-                
+                var result = await response.json();
                 loading.classList.add('hidden');
                 loading.classList.remove('flex');
-                
+
                 if (result.success) {
                     showSuccess(result.message);
                     clearForm();
-                    loadMessageHistory();
+                    loadRecentHistory();
                 } else {
                     showError(result.message);
                 }
             } else {
-                // Send via WhatsApp text - with timeout handling
-                let successCount = 0;
-                let failCount = 0;
-                let total = recipients.length;
-                
-                for (let i = 0; i < recipients.length; i++) {
-                    const recipient = recipients[i];
-                    document.getElementById('loadingProgress').textContent = `${i + 1} / ${total}`;
-                    
-                    if (!recipient.phone) {
-                        failCount++;
-                        continue;
-                    }
-                    
-                    const formattedPhone = formatPhoneNumber(recipient.phone);
-                    const personalizedMessage = message.replace(/{student_name}/g, recipient.name);
-                    
+                var successCount = 0, failCount = 0;
+                var total = recipients.length;
+                for (var i = 0; i < recipients.length; i++) {
+                    var recipient = recipients[i];
+                    $('smLoadingProgress').textContent = (i + 1) + ' / ' + total;
+                    if (!recipient.phone) { failCount++; continue; }
+                    var formattedPhone = recipient.phone.replace(/\D/g, '').replace(/^0/, '256');
+                    var personalized = message.replace(/{student_name}/g, recipient.name);
                     try {
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 30000);
-                        
-                        const response = await fetch('/whatsapp-integration/api/send-message', {
+                        var controller = new AbortController();
+                        var t = setTimeout(function () { controller.abort(); }, 30000);
+                        var r = await fetch('/whatsapp-integration/api/send-message', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                phone_number: formattedPhone,
-                                message: personalizedMessage
-                            }),
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ phone_number: formattedPhone, message: personalized }),
                             signal: controller.signal
                         });
-                        
-                        clearTimeout(timeoutId);
-                        const result = await response.json();
-                        
-                        if (result.success) {
-                            successCount++;
-                        } else {
-                            failCount++;
-                            console.error('WhatsApp send failed for', recipient.name, result);
-                        }
-                    } catch (err) {
-                        if (err.name === 'AbortError') {
-                            console.error('Timeout for', recipient.name);
-                            failCount++;
-                        } else {
-                            failCount++;
-                            console.error('Error sending to', recipient.name, err);
-                        }
-                    }
+                        clearTimeout(t);
+                        var j = await r.json();
+                        if (j.success) successCount++; else failCount++;
+                    } catch (err) { failCount++; }
                 }
-                
                 loading.classList.add('hidden');
                 loading.classList.remove('flex');
-                
                 if (successCount > 0) {
-                    showSuccess(`✅ ${successCount} WhatsApp messages sent successfully${failCount > 0 ? `, ${failCount} failed` : ''}`);
+                    showSuccess('✅ ' + successCount + ' WhatsApp messages sent' + (failCount > 0 ? ', ' + failCount + ' failed' : ''));
                     clearForm();
-                    loadMessageHistory();
+                    loadRecentHistory();
                 } else {
-                    showError(`Failed to send any WhatsApp messages. ${failCount} failed.`);
+                    showError('Failed to send any WhatsApp messages. ' + failCount + ' failed.');
                 }
             }
         } catch (error) {
@@ -993,165 +934,265 @@
             showError('Failed to send: ' + error.message);
         }
     }
-    
+
     async function sendPdfMessages(recipients, loading) {
-        const message = document.getElementById('pdfMessage').value.trim();
-        let successCount = 0;
-        let failCount = 0;
-        let total = recipients.length;
-        
-        for (let i = 0; i < recipients.length; i++) {
-            const recipient = recipients[i];
-            document.getElementById('loadingProgress').textContent = `${i + 1} / ${total}`;
-            
-            if (!recipient.phone) {
-                failCount++;
-                continue;
-            }
-            
-            const formattedPhone = formatPhoneNumber(recipient.phone);
-            
+        var message = $('smPdfMessage').value.trim();
+        var successCount = 0, failCount = 0;
+        var total = recipients.length;
+
+        for (var i = 0; i < recipients.length; i++) {
+            var recipient = recipients[i];
+            $('smLoadingProgress').textContent = (i + 1) + ' / ' + total;
+            if (!recipient.phone) { failCount++; continue; }
+            var formattedPhone = recipient.phone.replace(/\D/g, '').replace(/^0/, '256');
             try {
-                // Send PDF via WhatsApp API
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000);
-                
-                const response = await fetch('/whatsapp-integration/api/send-pdf', {
+                var controller = new AbortController();
+                var t = setTimeout(function () { controller.abort(); }, 60000);
+                var response = await fetch('/whatsapp-integration/api/send-pdf', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                     body: JSON.stringify({
                         phone_number: formattedPhone,
                         pdf_base64: selectedPdfBase64,
                         filename: selectedPdfName || 'document.pdf',
-                        message: message || `Dear ${recipient.name}, please find the attached document.`
+                        message: message || ('Dear ' + recipient.name + ', please find the attached document.')
                     }),
                     signal: controller.signal
                 });
-                
-                clearTimeout(timeoutId);
-                const result = await response.json();
-                
-                if (result.success) {
-                    successCount++;
-                } else {
-                    failCount++;
-                    console.error('PDF send failed for', recipient.name, result);
-                }
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    console.error('Timeout for PDF send', recipient.name);
-                } else {
-                    console.error('Error sending PDF to', recipient.name, error);
-                }
-                failCount++;
-            }
+                clearTimeout(t);
+                var result = await response.json();
+                if (result.success) successCount++; else failCount++;
+            } catch (err) { failCount++; }
         }
-        
+
         loading.classList.add('hidden');
         loading.classList.remove('flex');
-        
-        let summary = `✅ ${successCount} PDFs sent successfully`;
-        if (failCount > 0) summary += `, ❌ ${failCount} failed`;
-        
+
+        var summary = '✅ ' + successCount + ' PDFs sent successfully';
+        if (failCount > 0) summary += ', ❌ ' + failCount + ' failed';
         if (successCount > 0) {
             showSuccess(summary);
             clearForm();
-            loadMessageHistory();
+            loadRecentHistory();
         } else {
             showError('Failed to send any PDFs');
         }
     }
-    
-    function showSuccess(message) {
-        document.getElementById('successMessage').innerHTML = message;
-        document.getElementById('successModal').classList.remove('hidden');
-        document.getElementById('successModal').classList.add('flex');
-        document.body.style.overflow = 'hidden';
-    }
-    
-    async function loadMessageHistory() {
+
+    // ---------------------------------------------------------------------
+    // Modals
+    // ---------------------------------------------------------------------
+    window.addEventListener('click', function (event) {
+        if (event.target === $('smSuccessModal')) closeSuccessModal();
+        if (event.target === $('smErrorModal')) closeErrorModal();
+        if (event.target === $('smHistoryModal')) closeHistoryModal();
+    });
+
+    // ---------------------------------------------------------------------
+    // Recent history (small inline)
+    // ---------------------------------------------------------------------
+    async function loadRecentHistory() {
         try {
-            const response = await fetch('/send-message/api/message-history');
-            const result = await response.json();
-            
-            const container = document.getElementById('messageHistory');
-            
+            var response = await fetch('/send-message/api/message-history?page=1&per_page=5', { credentials: 'same-origin' });
+            var result = await response.json();
+            var container = $('smMessageHistory');
+
             if (result.success && result.logs.length > 0) {
-                container.innerHTML = result.logs.map(log => `
-                    <div class="border-b border-gray-100 py-3 last:border-0">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <p class="text-sm text-gray-800">${log.message.substring(0, 100)}${log.message.length > 100 ? '...' : ''}</p>
-                                <p class="text-xs text-gray-500 mt-1">Sent to ${log.recipient_count} recipient(s)</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-xs text-gray-400">${new Date(log.created_at).toLocaleString()}</p>
-                                <span class="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs mt-1">${log.channel || 'SMS'}</span>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
+                container.innerHTML = result.logs.map(function (log) {
+                    var statusCls = log.status === 'sent' ? 'sm-status-sent' : 'sm-status-failed';
+                    var when = log.sent_at ? new Date(log.sent_at).toLocaleString() : '';
+                    var who = log.student_name
+                        ? escapeHtml(log.student_name) + ' (' + escapeHtml(log.student_id || '') + ')'
+                        : escapeHtml(log.phone_number || '');
+                    var msg = (log.message || '').substring(0, 100);
+                    return '<div class="border-b border-gray-100 py-3 last:border-0">' +
+                               '<div class="flex justify-between items-start gap-3">' +
+                                   '<div class="flex-1 min-w-0">' +
+                                       '<p class="text-sm text-gray-800 truncate">' + escapeHtml(msg) + ((log.message || '').length > 100 ? '...' : '') + '</p>' +
+                                       '<p class="text-xs text-gray-500 mt-1 truncate">To: ' + who + ' &middot; ' + escapeHtml(log.phone_number || '') + '</p>' +
+                                   '</div>' +
+                                   '<div class="text-right shrink-0">' +
+                                       '<span class="inline-block px-2 py-0.5 rounded text-xs font-medium ' + statusCls + '">' + escapeHtml(log.status || '') + '</span>' +
+                                       '<p class="text-xs text-gray-400 mt-1">' + escapeHtml(when) + '</p>' +
+                                   '</div>' +
+                               '</div>' +
+                           '</div>';
+                }).join('');
             } else {
                 container.innerHTML = '<div class="text-center py-8 text-gray-400">No message history found</div>';
             }
         } catch (error) {
             console.error('Error loading history:', error);
-            document.getElementById('messageHistory').innerHTML = '<div class="text-center py-8 text-gray-400">Failed to load history</div>';
+            $('smMessageHistory').innerHTML = '<div class="text-center py-8 text-gray-400">Failed to load history</div>';
         }
     }
-    
+
+    // ---------------------------------------------------------------------
+    // Full history modal
+    // ---------------------------------------------------------------------
+    function openHistoryModal() {
+        $('smHistoryModal').classList.remove('hidden');
+        $('smHistoryModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        historyPage = 1;
+        loadHistoryPage();
+    }
+
+    function closeHistoryModal() {
+        $('smHistoryModal').classList.add('hidden');
+        $('smHistoryModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    $('smHistorySearch').addEventListener('input', function () {
+        var self = this;
+        clearTimeout(self._t);
+        self._t = setTimeout(function () {
+            historySearch = self.value.trim();
+            historyPage = 1;
+            loadHistoryPage();
+        }, 300);
+    });
+
+    $('smHistoryStatusFilter').addEventListener('change', function () {
+        historyStatus = this.value;
+        historyPage = 1;
+        loadHistoryPage();
+    });
+
+    $('smHistoryPerPage').addEventListener('change', function () {
+        historyPerPage = parseInt(this.value, 10) || 50;
+        historyPage = 1;
+        loadHistoryPage();
+    });
+
+    function changeHistoryPage(delta) {
+        var newPage = historyPage + delta;
+        if (newPage < 1 || newPage > historyTotalPages) return;
+        historyPage = newPage;
+        loadHistoryPage();
+    }
+
+    async function loadHistoryPage() {
+        var body = $('smHistoryBody');
+        body.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+
+        try {
+            var params = new URLSearchParams({
+                page: historyPage,
+                per_page: historyPerPage
+            });
+            if (historySearch) params.set('search', historySearch);
+            if (historyStatus) params.set('status', historyStatus);
+
+            var response = await fetch('/send-message/api/message-history?' + params.toString(), { credentials: 'same-origin' });
+            var result = await response.json();
+
+            if (!result.success) {
+                body.innerHTML = '<div class="text-center py-12 text-red-500">Failed to load history</div>';
+                return;
+            }
+
+            historyTotalPages = result.pagination.total_pages || 1;
+
+            var s = result.summary || {};
+            $('smHistorySummary').textContent =
+                (s.total_sent || 0) + ' sent · ' + (s.total_failed || 0) + ' failed · UGX ' + (s.total_cost || 0).toLocaleString();
+
+            if (!result.logs.length) {
+                body.innerHTML = '<div class="text-center py-12 text-gray-400">No messages found</div>';
+            } else {
+                body.innerHTML = result.logs.map(function (log) {
+                    var statusCls = log.status === 'sent' ? 'sm-status-sent' : 'sm-status-failed';
+                    var when = log.sent_at ? new Date(log.sent_at).toLocaleString() : '';
+                    var who = log.student_name
+                        ? escapeHtml(log.student_name) + ' (' + escapeHtml(log.student_id || '') + ')'
+                        : 'Unknown';
+                    var cost = (log.cost || 0).toLocaleString();
+                    var seg = log.segments || 0;
+                    return '<div class="sm-history-item">' +
+                               '<div class="flex justify-between items-start gap-3">' +
+                                   '<div class="flex-1 min-w-0">' +
+                                       '<div class="flex items-center gap-2 mb-1 flex-wrap">' +
+                                           '<span class="inline-block px-2 py-0.5 rounded text-xs font-medium ' + statusCls + '">' + escapeHtml(log.status || '') + '</span>' +
+                                           '<span class="text-xs text-gray-500">' + escapeHtml(log.phone_number || '') + '</span>' +
+                                           (seg > 0 ? '<span class="text-xs text-gray-400">· ' + seg + ' seg</span>' : '') +
+                                           (cost > 0 ? '<span class="text-xs text-gray-400">· UGX ' + cost + '</span>' : '') +
+                                       '</div>' +
+                                       '<p class="text-sm text-gray-800 whitespace-pre-wrap break-words">' + escapeHtml(log.message || '') + '</p>' +
+                                       '<p class="text-xs text-gray-500 mt-1">To: ' + who + '</p>' +
+                                       (log.error_message ? '<p class="text-xs text-red-500 mt-1">Error: ' + escapeHtml(log.error_message) + '</p>' : '') +
+                                   '</div>' +
+                                   '<div class="text-right shrink-0">' +
+                                       '<p class="text-xs text-gray-400">' + escapeHtml(when) + '</p>' +
+                                   '</div>' +
+                               '</div>' +
+                           '</div>';
+                }).join('');
+            }
+
+            $('smHistoryPageInfo').textContent =
+                'Page ' + result.pagination.page + ' of ' + result.pagination.total_pages + ' · ' + result.pagination.total + ' total';
+
+            $('smHistoryPrevBtn').disabled = result.pagination.page <= 1;
+            $('smHistoryNextBtn').disabled = !result.pagination.has_more;
+        } catch (err) {
+            console.error('History load error:', err);
+            body.innerHTML = '<div class="text-center py-12 text-red-500">Error loading history: ' + escapeHtml(err.message) + '</div>';
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Clear form
+    // ---------------------------------------------------------------------
     function clearForm() {
-        document.getElementById('messageText').value = '';
-        document.getElementById('pdfMessage').value = '';
-        document.getElementById('senderId').value = 'SCHOOL';
-        document.getElementById('recipientsSummary').classList.add('hidden');
+        $('smMessageText').value = '';
+        $('smPdfMessage').value = '';
+        $('smSenderId').value = 'SCHOOL';
+        $('smRecipientsSummary').classList.add('hidden');
         currentRecipients = [];
         selectedStudents.clear();
+        lastLoadedDuplicates = 0;
         updateSelectedStudentsDisplay();
-        
-        // Clear PDF
+        updatePreview();
+
         selectedPdfBase64 = null;
         selectedPdfName = null;
-        document.getElementById('pdfFileInput').value = '';
-        document.getElementById('fileUploadContent').style.display = 'block';
-        document.getElementById('fileSelectedContent').style.display = 'none';
-        document.getElementById('fileUploadArea').classList.remove('has-file');
-        document.getElementById('pdfPreviewContainer').style.display = 'none';
-        
-        document.getElementById('sendBtn').disabled = true;
-        updatePreview();
-    }
-    
-    function closeSuccessModal() {
-        document.getElementById('successModal').classList.add('hidden');
-        document.getElementById('successModal').classList.remove('flex');
-        document.body.style.overflow = '';
-    }
-    
-    function closeErrorModal() {
-        document.getElementById('errorModal').classList.add('hidden');
-        document.getElementById('errorModal').classList.remove('flex');
-        document.body.style.overflow = '';
-    }
-    
-    function showError(message) {
-        document.getElementById('errorMessage').innerHTML = message;
-        document.getElementById('errorModal').classList.remove('hidden');
-        document.getElementById('errorModal').classList.add('flex');
-        document.body.style.overflow = 'hidden';
-    }
-    
-    window.onclick = function(event) {
-        const successModal = document.getElementById('successModal');
-        const errorModal = document.getElementById('errorModal');
-        if (event.target === successModal) closeSuccessModal();
-        if (event.target === errorModal) closeErrorModal();
-    };
-    
-    // Load message history on page load
-    loadMessageHistory();
+        $('smPdfFileInput').value = '';
+        $('smFileUploadContent').style.display = 'block';
+        $('smFileSelectedContent').style.display = 'none';
+        $('smFileUploadArea').classList.remove('has-file');
+        $('smPdfPreviewContainer').style.display = 'none';
 
-    // Load initial recipients (All Students)
-    setTimeout(loadRecipients, 500);
+        $('smSendBtn').disabled = true;
+    }
+
+    // ---------------------------------------------------------------------
+    // Initial load
+    // ---------------------------------------------------------------------
+    loadRecentHistory();
+    setTimeout(loadRecipients, 400);
+
+    // ---------------------------------------------------------------------
+    // Public API
+    // ---------------------------------------------------------------------
+    return {
+        setMessageType: setMessageType,
+        handleFileSelect: handleFileSelect,
+        removeFile: removeFile,
+        selectStudent: selectStudent,
+        removeSelectedStudent: removeSelectedStudent,
+        loadRecipients: loadRecipients,
+        applyTemplate: applyTemplate,
+        sendMessage: sendMessage,
+        clearForm: clearForm,
+        openHistoryModal: openHistoryModal,
+        closeHistoryModal: closeHistoryModal,
+        changeHistoryPage: changeHistoryPage,
+        closeSuccessModal: closeSuccessModal,
+        closeErrorModal: closeErrorModal
+    };
+})();
 </script>
 {% endblock %}
