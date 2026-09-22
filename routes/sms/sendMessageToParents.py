@@ -577,7 +577,6 @@ def send_message():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-
 @message_bp.route('/api/message-history', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def get_message_history():
@@ -599,9 +598,9 @@ def get_message_history():
         search = (request.args.get('search') or '').strip()
         status_filter = (request.args.get('status') or '').strip().lower()
 
-        # Base query
+        # Base query - NO join, fetch only sms_log fields
         query = supabase.table('sms_log') \
-            .select('*, students(name, student_id)', count='exact') \
+            .select('*', count='exact') \
             .eq('institute_id', institute_id)
 
         if status_filter in ('sent', 'failed'):
@@ -609,7 +608,6 @@ def get_message_history():
 
         if search:
             safe = search.replace('%', '').replace('_', '').replace(',', '')
-            # Search on phone or message (student name search handled client-side since it's a join)
             query = query.or_(f"phone_number.ilike.%{safe}%,message.ilike.%{safe}%")
 
         offset = (page - 1) * per_page
@@ -618,9 +616,28 @@ def get_message_history():
         logs = response.data if response.data else []
         total_count = getattr(response, 'count', None) or 0
 
+        # ------------------------------------------------------------------
+        # Batch-fetch student names for the logs on this page
+        # ------------------------------------------------------------------
+        student_ids = list({log.get('student_id') for log in logs if log.get('student_id')})
+        students_map = {}
+        if student_ids:
+            try:
+                students_resp = supabase.table('students') \
+                    .select('id, name, student_id') \
+                    .in_('id', student_ids) \
+                    .execute()
+                for s in (students_resp.data or []):
+                    students_map[s['id']] = {
+                        'name': s.get('name'),
+                        'student_id': s.get('student_id')
+                    }
+            except Exception as e:
+                print(f"Error batch-fetching students: {e}")
+
         formatted_logs = []
         for log in logs:
-            student_info = log.get('students') or {}
+            student_info = students_map.get(log.get('student_id'), {})
             formatted_logs.append({
                 'id': log.get('id'),
                 'phone_number': log.get('phone_number'),
@@ -635,27 +652,44 @@ def get_message_history():
                 'sent_at': log.get('sent_at')
             })
 
+        # ------------------------------------------------------------------
         # Summary stats (all-time, not filtered by search/page)
-        stats_sent_resp = supabase.table('sms_log') \
-            .select('id', count='exact') \
-            .eq('institute_id', institute_id) \
-            .eq('status', 'sent') \
-            .execute()
-        stats_failed_resp = supabase.table('sms_log') \
-            .select('id', count='exact') \
-            .eq('institute_id', institute_id) \
-            .eq('status', 'failed') \
-            .execute()
+        # ------------------------------------------------------------------
+        try:
+            stats_sent_resp = supabase.table('sms_log') \
+                .select('id', count='exact') \
+                .eq('institute_id', institute_id) \
+                .eq('status', 'sent') \
+                .execute()
+            total_sent = getattr(stats_sent_resp, 'count', 0) or 0
+        except Exception as e:
+            print(f"Error counting sent: {e}")
+            total_sent = 0
 
-        total_sent = getattr(stats_sent_resp, 'count', 0) or 0
-        total_failed = getattr(stats_failed_resp, 'count', 0) or 0
+        try:
+            stats_failed_resp = supabase.table('sms_log') \
+                .select('id', count='exact') \
+                .eq('institute_id', institute_id) \
+                .eq('status', 'failed') \
+                .execute()
+            total_failed = getattr(stats_failed_resp, 'count', 0) or 0
+        except Exception as e:
+            print(f"Error counting failed: {e}")
+            total_failed = 0
 
-        cost_resp = supabase.table('sms_log') \
-            .select('cost') \
-            .eq('institute_id', institute_id) \
-            .eq('status', 'sent') \
-            .execute()
-        total_cost = sum((log.get('cost') or 0) for log in (cost_resp.data or []))
+        try:
+            cost_resp = supabase.table('sms_log') \
+                .select('cost') \
+                .eq('institute_id', institute_id) \
+                .eq('status', 'sent') \
+                .execute()
+            total_cost = sum(
+                float(log.get('cost') or 0)
+                for log in (cost_resp.data or [])
+            )
+        except Exception as e:
+            print(f"Error summing cost: {e}")
+            total_cost = 0
 
         has_more = (offset + len(formatted_logs)) < total_count
 
@@ -675,6 +709,7 @@ def get_message_history():
                 'total_cost': total_cost
             }
         })
+
     except Exception as e:
         print(f"Error getting message history: {e}")
         import traceback
@@ -685,7 +720,6 @@ def get_message_history():
             'pagination': {'page': 1, 'per_page': 50, 'total': 0, 'total_pages': 1, 'has_more': False},
             'summary': {'total_sent': 0, 'total_failed': 0, 'total_cost': 0}
         })
-
 
 @message_bp.route('/api/get-balance', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
