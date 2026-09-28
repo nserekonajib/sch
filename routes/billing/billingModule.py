@@ -1,5 +1,6 @@
 # billingModule.py - Updated with dynamic pricing, discounts, and correct date handling
 # FIXED: When paid, start_date is updated to the date paid and expiry to the after period paid
+# NEW: UNLIMITED subscription support via .env (UNLIMITED=true → 400-year subscription)
 
 from routes.permissions.permissions import role_required
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
@@ -26,6 +27,11 @@ BASE_PRICE = float(os.getenv('SUBSCRIPTION_PRICE', 50000))  # Default 50,000 UGX
 DISCOUNT_6_MONTHS = float(os.getenv('DISCOUNT_6_MONTHS', 0.10))  # 10% discount
 DISCOUNT_12_MONTHS = float(os.getenv('DISCOUNT_12_MONTHS', 0.15))  # 15% discount
 
+# 🔥 UNLIMITED subscription flag (for special institutes)
+UNLIMITED_SUBSCRIPTION = os.getenv('UNLIMITED', 'false').strip().lower() == 'true'
+UNLIMITED_YEARS = 400
+
+
 def calculate_price(months):
     """Calculate price based on months with discounts"""
     if months == 6:
@@ -35,7 +41,75 @@ def calculate_price(months):
     else:
         return BASE_PRICE * months
 
+
+def ensure_unlimited_subscription(institute_id):
+    """
+    If UNLIMITED=true in environment, ensure this institute has a
+    subscription that expires ~400 years from now.
+    Returns the subscription dict (with start_date & expiry_date) or None.
+    """
+    if not UNLIMITED_SUBSCRIPTION or not institute_id:
+        return None
+
+    current_date = datetime.now().date()
+    # 400 years ≈ 365 * 400 days (leap days not critical here)
+    far_future = current_date + timedelta(days=365 * UNLIMITED_YEARS)
+
+    try:
+        sub_response = supabase.table('organization_billing')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .execute()
+
+        if sub_response.data:
+            existing = sub_response.data[0]
+            existing_expiry = existing.get('expiry_date')
+
+            # If already far enough in future, don't touch it
+            if existing_expiry:
+                if isinstance(existing_expiry, str):
+                    existing_expiry_dt = datetime.strptime(existing_expiry, '%Y-%m-%d').date()
+                else:
+                    existing_expiry_dt = existing_expiry
+                if existing_expiry_dt >= far_future - timedelta(days=1):
+                    return existing
+
+            # Otherwise upgrade it
+            supabase.table('organization_billing')\
+                .update({
+                    'expiry_date': far_future.isoformat(),
+                    'status': 'active',
+                    'updated_at': datetime.now().isoformat()
+                })\
+                .eq('institute_id', institute_id)\
+                .execute()
+
+            print(f"♾️  Unlimited subscription extended for {institute_id} → {far_future}")
+            return {
+                'start_date': existing.get('start_date', current_date.isoformat()),
+                'expiry_date': far_future.isoformat()
+            }
+        else:
+            # Create a brand new "unlimited" subscription
+            sub_data = {
+                'id': str(uuid.uuid4()),
+                'institute_id': institute_id,
+                'start_date': current_date.isoformat(),
+                'expiry_date': far_future.isoformat(),
+                'status': 'active',
+                'created_at': datetime.now().isoformat()
+            }
+            supabase.table('organization_billing').insert(sub_data).execute()
+            print(f"♾️  Unlimited subscription CREATED for {institute_id} → {far_future}")
+            return {'start_date': current_date.isoformat(), 'expiry_date': far_future.isoformat()}
+
+    except Exception as e:
+        print(f"⚠️  ensure_unlimited_subscription failed: {e}")
+        return None
+
+
 billing_bp = Blueprint('billing', __name__, url_prefix='/billing')
+
 
 def login_required(f):
     @wraps(f)
@@ -47,6 +121,7 @@ def login_required(f):
             return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
     return decorated_function
+
 
 @billing_bp.route('/')
 @role_required(['owner'])
@@ -81,6 +156,9 @@ def index():
                                   discount_6_months=DISCOUNT_6_MONTHS,
                                   discount_12_months=DISCOUNT_12_MONTHS)
         
+        # 🔥 NEW: auto-provision unlimited subscription if enabled
+        ensure_unlimited_subscription(institute_id)
+
         # Get subscription from organization_billing
         sub_response = supabase.table('organization_billing')\
             .select('*')\
@@ -145,6 +223,7 @@ def index():
                               price_12_months=price_12_months,
                               discount_6_months=DISCOUNT_6_MONTHS,
                               discount_12_months=DISCOUNT_12_MONTHS)
+
 
 @billing_bp.route('/initiate-payment', methods=['POST'])
 @role_required(['owner','accountant'])
@@ -230,6 +309,7 @@ def initiate_payment():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 # ============================================================================
 # 🔥 FIXED: Helper function to update subscription with correct dates
 # ============================================================================
@@ -308,6 +388,7 @@ def update_subscription(institute_id, months):
         print(f"✅ New subscription created: start={start_date}, expiry={expiry_date}")
         return {'start_date': start_date, 'expiry_date': expiry_date}
 
+
 # ============================================================================
 # 🔥 FIXED: Payment Callback - Updates dates correctly
 # ============================================================================
@@ -369,6 +450,7 @@ def payment_callback():
     
     return redirect(url_for('billing.index'))
 
+
 # ============================================================================
 # 🔥 FIXED: IPN Handler - Updates dates correctly
 # ============================================================================
@@ -420,6 +502,7 @@ def ipn_handler():
     
     return jsonify({'status': 'success'})
 
+
 @billing_bp.route('/check-subscription', methods=['GET'])
 @role_required(['owner','accountant'])
 def check_subscription():
@@ -435,6 +518,9 @@ def check_subscription():
         if not institute_id:
             return jsonify({'success': False, 'message': 'Institute ID not found'}), 400
         
+        # 🔥 NEW: auto-provision unlimited subscription if enabled
+        ensure_unlimited_subscription(institute_id)
+
         sub_response = supabase.table('organization_billing')\
             .select('*')\
             .eq('institute_id', institute_id)\
@@ -474,7 +560,7 @@ def check_subscription():
     except Exception as e:
         print(f"Error checking subscription: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-    
+
 
 @billing_bp.route('/api/subscription-status', methods=['GET'])
 @role_required(['owner','accountant'])
@@ -506,6 +592,9 @@ def api_subscription_status():
                 'expiry_date': None
             }), 200
         
+        # 🔥 NEW: auto-provision unlimited subscription if enabled
+        ensure_unlimited_subscription(institute_id)
+
         sub_response = supabase.table('organization_billing')\
             .select('*')\
             .eq('institute_id', institute_id)\
