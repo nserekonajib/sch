@@ -106,7 +106,19 @@ def calculate_student_balance(student_id, institute_id):
         print(f"Error calculating balance for student {student_id}: {e}")
         return 0
 
-
+def get_student_ids_for_class(class_id, institute_id=None):
+    """Return list of student UUIDs belonging to a class (optionally scoped to an institute)."""
+    try:
+        query = supabase.table('students').select('id').eq('class_id', class_id)
+        if institute_id:
+            query = query.eq('institute_id', institute_id)
+        response = query.execute()
+        return [s['id'] for s in (response.data or [])]
+    except Exception as e:
+        print(f"Error fetching students for class {class_id}: {e}")
+        return []
+    
+    
 @payments_bp.route('/')
 @role_required(['owner', 'teacher', 'accountant', 'admin'])
 def index():
@@ -132,7 +144,6 @@ def index():
     return render_template('payments/list.html', 
                          is_admin=is_admin,
                          institute=institute)
-
 @payments_bp.route('/api/list', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant', 'admin'])
 def get_payments():
@@ -142,7 +153,7 @@ def get_payments():
         user_email = user.get('email', '')
         admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
         is_admin = user_email in admin_emails
-        
+
         # Get query parameters
         page = int(request.args.get('page', 1))
         per_page = int(request.args.get('per_page', 20))
@@ -151,7 +162,8 @@ def get_payments():
         end_date = request.args.get('end_date')
         payment_method = request.args.get('payment_method', '')
         whatsapp_status = request.args.get('whatsapp_status', '')
-        
+        class_id = request.args.get('class_id', '').strip()  # <-- NEW
+
         # Get institute ID for filtering
         institute_id = None
         if not is_admin:
@@ -167,30 +179,44 @@ def get_payments():
                 })
         else:
             institute_id = request.args.get('institute_id', '')
-        
+
         # Build the base query - get payments first
         query = supabase.table('payments')\
             .select('*')\
             .order('payment_date', desc=True)
-        
+
         # Apply institute filter
         if institute_id:
             query = query.eq('institute_id', institute_id)
-        
+
         # Apply date filters
         if start_date:
             query = query.gte('payment_date', start_date)
         if end_date:
             query = query.lte('payment_date', end_date)
-        
+
         # Apply payment method filter
         if payment_method:
             query = query.eq('payment_method', payment_method)
-        
+
         # Apply WhatsApp status filter
         if whatsapp_status:
             query = query.eq('whatsapp_status', whatsapp_status)
-        
+
+        # Apply class filter
+        if class_id:
+            class_student_ids = get_student_ids_for_class(class_id, institute_id or None)
+            if not class_student_ids:
+                return jsonify({
+                    'success': True,
+                    'payments': [],
+                    'total': 0,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': 0
+                })
+            query = query.in_('student_id', class_student_ids)
+
         # Apply search filter
         if search:
             # Search for students matching the search term
@@ -198,20 +224,20 @@ def get_payments():
                 .select('id')\
                 .ilike('name', f'%{search}%')\
                 .execute()
-            
+
             student_ids = [s['id'] for s in student_search.data] if student_search.data else []
-            
+
             # Also search by student_id (display ID)
             student_id_search = supabase.table('students')\
                 .select('id')\
                 .ilike('student_id', f'%{search}%')\
                 .execute()
-            
+
             if student_id_search.data:
                 for s in student_id_search.data:
                     if s['id'] not in student_ids:
                         student_ids.append(s['id'])
-            
+
             # Get payment IDs from student matches
             payment_ids_from_students = []
             if student_ids:
@@ -222,18 +248,18 @@ def get_payments():
                         .execute()
                     if student_payments.data:
                         payment_ids_from_students.extend([p['id'] for p in student_payments.data])
-            
+
             # Also search by receipt number
             receipt_search = supabase.table('payments')\
                 .select('id')\
                 .ilike('receipt_number', f'%{search}%')\
                 .execute()
-            
+
             receipt_ids = [p['id'] for p in receipt_search.data] if receipt_search.data else []
-            
+
             # Combine all matching payment IDs
             all_matching_ids = list(set(receipt_ids + payment_ids_from_students))
-            
+
             if all_matching_ids:
                 query = query.in_('id', all_matching_ids)
             else:
@@ -245,28 +271,28 @@ def get_payments():
                     'per_page': per_page,
                     'total_pages': 0
                 })
-        
+
         # Get total count
         count_response = query.execute()
         total_count = len(count_response.data) if count_response.data else 0
-        
+
         # Apply pagination
         offset = (page - 1) * per_page
         query = query.range(offset, offset + per_page - 1)
         response = query.execute()
         payments = response.data if response.data else []
-        
+
         # Collect all student UUIDs from payments
         student_uuids = []
         for payment in payments:
             student_uuid = payment.get('student_id')
             if student_uuid and student_uuid not in student_uuids:
                 student_uuids.append(student_uuid)
-        
+
         # ============================================================
         # 🔥 OPTIMIZATION: BULK FETCH all data in parallel
         # ============================================================
-        
+
         # 1. Fetch all students data in one query
         students_map = {}
         if student_uuids:
@@ -274,28 +300,28 @@ def get_payments():
                 .select('id, name, student_id, contact_number, class_id')\
                 .in_('id', student_uuids)\
                 .execute()
-            
+
             if student_resp.data:
                 for student in student_resp.data:
                     students_map[student['id']] = student
-        
+
         # 2. Fetch all classes data
         class_ids = []
         for student in students_map.values():
             if student.get('class_id') and student['class_id'] not in class_ids:
                 class_ids.append(student['class_id'])
-        
+
         classes_map = {}
         if class_ids:
             class_resp = supabase.table('classes')\
                 .select('id, name')\
                 .in_('id', class_ids)\
                 .execute()
-            
+
             if class_resp.data:
                 for cls in class_resp.data:
                     classes_map[cls['id']] = cls
-        
+
         # 3. 🔥 OPTIMIZATION: BULK calculate balances for ALL students at once
         student_balances = {}
         if student_uuids and institute_id:
@@ -305,7 +331,7 @@ def get_payments():
                 .eq('institute_id', institute_id)\
                 .in_('student_id', student_uuids)\
                 .execute()
-            
+
             # Group invoices by student
             invoices_by_student = {}
             for inv in (invoices_response.data or []):
@@ -314,14 +340,14 @@ def get_payments():
                     if sid not in invoices_by_student:
                         invoices_by_student[sid] = []
                     invoices_by_student[sid].append(inv)
-            
+
             # Get ALL payments for ALL students in one query
             payments_response = supabase.table('payments')\
                 .select('student_id, amount')\
                 .eq('institute_id', institute_id)\
                 .in_('student_id', student_uuids)\
                 .execute()
-            
+
             # Group payments by student
             payments_by_student = {}
             for p in (payments_response.data or []):
@@ -330,14 +356,14 @@ def get_payments():
                     if sid not in payments_by_student:
                         payments_by_student[sid] = []
                     payments_by_student[sid].append(p)
-            
+
             # Get ALL discounts for ALL students in one query
             discounts_response = supabase.table('discounts')\
                 .select('student_id, discount_amount')\
                 .eq('institute_id', institute_id)\
                 .in_('student_id', student_uuids)\
                 .execute()
-            
+
             # Group discounts by student
             discounts_by_student = {}
             for d in (discounts_response.data or []):
@@ -346,13 +372,13 @@ def get_payments():
                     if sid not in discounts_by_student:
                         discounts_by_student[sid] = []
                     discounts_by_student[sid].append(d)
-            
+
             # Calculate balance for each student
             for student_uuid in student_uuids:
                 total_invoiced = 0.0
                 total_paid = 0.0
                 total_discount = 0.0
-                
+
                 # Sum invoices
                 for inv in invoices_by_student.get(student_uuid, []):
                     try:
@@ -361,7 +387,7 @@ def get_payments():
                             total_invoiced += amount
                     except (ValueError, TypeError):
                         continue
-                
+
                 # Sum payments
                 for p in payments_by_student.get(student_uuid, []):
                     try:
@@ -370,7 +396,7 @@ def get_payments():
                             total_paid += amount
                     except (ValueError, TypeError):
                         continue
-                
+
                 # Sum discounts
                 for d in discounts_by_student.get(student_uuid, []):
                     try:
@@ -379,14 +405,14 @@ def get_payments():
                             total_discount += amount
                     except (ValueError, TypeError):
                         continue
-                
+
                 # Calculate balance
                 balance = total_invoiced - total_paid - total_discount
                 if balance < 0:
                     balance = 0
-                
+
                 student_balances[student_uuid] = balance
-        
+
         # Get institute name
         institute_name = ''
         if institute_id:
@@ -396,30 +422,30 @@ def get_payments():
                 .execute()
             if inst_resp.data:
                 institute_name = inst_resp.data[0].get('institute_name', '')
-        
+
         # Build formatted payments with pre-calculated balances
         formatted_payments = []
         for payment in payments:
             student_uuid = payment.get('student_id')
             student = students_map.get(student_uuid, {})
-            
+
             # Get class name from student's class_id
             class_name = 'N/A'
             if student.get('class_id'):
                 class_name = classes_map.get(student['class_id'], {}).get('name', 'N/A')
-            
+
             phone_number = student.get('contact_number', '')
-            
+
             # Get pre-calculated balance
             current_balance = student_balances.get(student_uuid, 0)
-            
+
             if current_balance > 0:
                 balance_status = 'due'
             elif current_balance < 0:
                 balance_status = 'credit'
             else:
                 balance_status = 'paid'
-            
+
             formatted_payments.append({
                 'id': payment.get('id'),
                 'receipt_number': payment.get('receipt_number'),
@@ -436,7 +462,7 @@ def get_payments():
                 'whatsapp_status': payment.get('whatsapp_status', ''),
                 'whatsapp_sent_at': payment.get('whatsapp_sent_at')
             })
-        
+
         return jsonify({
             'success': True,
             'payments': formatted_payments,
@@ -445,7 +471,7 @@ def get_payments():
             'per_page': per_page,
             'total_pages': (total_count + per_page - 1) // per_page if total_count else 0
         })
-        
+
     except Exception as e:
         print(f"Error getting payments: {e}")
         import traceback
@@ -600,8 +626,6 @@ def get_recent_payments():
             'success': False,
             'message': str(e)
         }), 500
-
-
 @payments_bp.route('/api/export', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant', 'admin'])
 def export_payments():
@@ -611,18 +635,19 @@ def export_payments():
         user_email = user.get('email', '')
         admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
         is_admin = user_email in admin_emails
-        
+
         data = request.get_json()
         export_format = data.get('format', 'excel')
         start_date = data.get('start_date')
         end_date = data.get('end_date')
         payment_method = data.get('payment_method', '')
         search = data.get('search', '').strip()
-        
+        class_id = (data.get('class_id') or '').strip()  # <-- NEW
+
         # Get institute ID for filtering
         institute_id = None
         institute = None
-        
+
         if not is_admin:
             institute_id = get_institute_id(user['id'])
             if institute_id:
@@ -642,23 +667,32 @@ def export_payments():
                     .execute()
                 if inst_response.data:
                     institute = inst_response.data[0]
-        
+
         # Build query
         query = supabase.table('payments')\
             .select('*, students(name, student_id, classes(name)), institutes(institute_name, institute_code)')\
             .order('payment_date', desc=True)
-        
+
         # Apply institute filter
         if institute_id:
             query = query.eq('institute_id', institute_id)
-        
+
         if start_date:
             query = query.gte('payment_date', start_date)
         if end_date:
             query = query.lte('payment_date', end_date)
         if payment_method:
             query = query.eq('payment_method', payment_method)
-        
+
+        # Apply class filter
+        if class_id:
+            class_student_ids = get_student_ids_for_class(class_id, institute_id or None)
+            if class_student_ids:
+                query = query.in_('student_id', class_student_ids)
+            else:
+                # No students in that class → force empty result
+                query = query.eq('id', '00000000-0000-0000-0000-000000000000')
+
         # Apply search filter
         if search:
             # First, try to search by receipt number directly
@@ -666,9 +700,9 @@ def export_payments():
                 .select('id')\
                 .ilike('receipt_number', f'%{search}%')\
                 .execute()
-            
+
             receipt_ids = [p['id'] for p in receipt_search.data] if receipt_search.data else []
-            
+
             # Search for students matching the search term
             student_ids = []
             if institute_id:
@@ -677,22 +711,22 @@ def export_payments():
                     .eq('institute_id', institute_id)\
                     .ilike('name', f'%{search}%')\
                     .execute()
-                
+
                 if student_search.data:
                     student_ids.extend([s['id'] for s in student_search.data])
-                
+
                 # Also search by student_id
                 student_id_search = supabase.table('students')\
                     .select('id')\
                     .eq('institute_id', institute_id)\
                     .ilike('student_id', f'%{search}%')\
                     .execute()
-                
+
                 if student_id_search.data:
                     for s in student_id_search.data:
                         if s['id'] not in student_ids:
                             student_ids.append(s['id'])
-            
+
             # Get payment IDs from student matches
             payment_ids_from_students = []
             if student_ids:
@@ -703,19 +737,19 @@ def export_payments():
                         .execute()
                     if student_payments.data:
                         payment_ids_from_students.extend([p['id'] for p in student_payments.data])
-            
+
             # Combine all matching payment IDs
             all_matching_ids = list(set(receipt_ids + payment_ids_from_students))
-            
+
             if all_matching_ids:
                 query = query.in_('id', all_matching_ids)
             else:
                 # No matches found
                 query = query.eq('id', '00000000-0000-0000-0000-000000000000')
-        
+
         response = query.execute()
         payments = response.data if response.data else []
-        
+
         # Prepare data for export
         export_data = []
         for payment in payments:
@@ -723,10 +757,10 @@ def export_payments():
             student_id = payment.get('student_id')
             payment_institute_id = payment.get('institute_id')
             current_balance = 0
-            
+
             if student_id and payment_institute_id:
                 current_balance = calculate_student_balance(student_id, payment_institute_id)
-            
+
             export_data.append({
                 'Receipt Number': payment['receipt_number'],
                 'Payment Date': payment['payment_date'],
@@ -742,25 +776,25 @@ def export_payments():
                 'Notes': payment.get('notes', ''),
                 'Created At': payment.get('created_at', '')
             })
-        
+
         # Create DataFrame
         df = pd.DataFrame(export_data)
-        
+
         # Format currency columns
         if 'Amount Paid (UGX)' in df.columns and not df.empty:
             df['Amount Paid (UGX)'] = df['Amount Paid (UGX)'].apply(lambda x: f"{x:,.0f}")
         if 'Current Balance (UGX)' in df.columns and not df.empty:
             df['Current Balance (UGX)'] = df['Current Balance (UGX)'].apply(lambda x: f"{x:,.0f}")
-        
+
         # Generate file
         institute_name = institute.get('institute_name', 'all_institutes') if institute else 'all_institutes'
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        
+
         if export_format == 'csv':
             output = io.StringIO()
             df.to_csv(output, index=False)
             output.seek(0)
-            
+
             return send_file(
                 io.BytesIO(output.getvalue().encode('utf-8')),
                 mimetype='text/csv',
@@ -771,7 +805,7 @@ def export_payments():
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name='Payments', index=False)
-                
+
                 if not df.empty:
                     # Auto-adjust column widths
                     worksheet = writer.sheets['Payments']
@@ -786,7 +820,7 @@ def export_payments():
                                 pass
                         adjusted_width = min(max_length + 2, 50)
                         worksheet.column_dimensions[column_letter].width = adjusted_width
-            
+
             output.seek(0)
             return send_file(
                 output,
@@ -794,13 +828,12 @@ def export_payments():
                 as_attachment=True,
                 download_name=f'payments_{institute_name}_{timestamp}.xlsx'
             )
-        
+
     except Exception as e:
         print(f"Error exporting payments: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
-    
     
 @payments_bp.route('/api/delete/<payment_id>', methods=['DELETE'])
 @role_required(['owner'])
@@ -2365,4 +2398,41 @@ def get_payment_for_edit(payment_id):
         
     except Exception as e:
         print(f"Error getting payment for edit: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+    
+@payments_bp.route('/api/classes', methods=['GET'])
+@role_required(['owner', 'teacher', 'accountant', 'admin'])
+def get_classes_for_filter():
+    """Get list of classes for the class filter dropdown (institute scoped)"""
+    try:
+        user = session.get('user')
+        user_email = user.get('email', '')
+        admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
+        is_admin = user_email in admin_emails
+
+        # Admin can pass institute_id; everyone else is locked to their institute
+        if is_admin:
+            institute_id = request.args.get('institute_id', '').strip()
+        else:
+            institute_id = get_institute_id(user['id'])
+            if not institute_id:
+                return jsonify({'success': True, 'classes': []})
+
+        try:
+            query = supabase.table('classes').select('id, name')
+            if institute_id:
+                query = query.eq('institute_id', institute_id)
+            response = query.order('name').execute()
+            classes = response.data or []
+        except Exception as inner:
+            # Fallback: classes table may not have institute_id
+            print(f"Class filter fallback: {inner}")
+            response = supabase.table('classes').select('id, name').order('name').execute()
+            classes = response.data or []
+
+        return jsonify({'success': True, 'classes': classes})
+
+    except Exception as e:
+        print(f"Error getting classes: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
