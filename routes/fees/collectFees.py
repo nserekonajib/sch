@@ -820,72 +820,82 @@ def process_payment():
 # ==================== FIXED: generate_receipt_pdf with CORRECT balance ====================
 def generate_receipt_pdf(institute, student, payment, total_due):
     """
-    Generate PDF receipt for WhatsApp sending - FIXED balance calculation
-    
-    Args:
-        institute (dict): Institute details
-        student (dict): Student details
-        payment (dict): Payment details
-        total_due (float): Correct total balance (calculated with ALL payments)
-    
-    Returns:
-        BytesIO: PDF buffer
+    Generate PDF receipt sized for MP-58Mini thermal printer.
+    Larger fonts + taller page for better readability.
     """
     try:
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=(80*mm, 180*mm),
-                                rightMargin=5*mm, leftMargin=5*mm,
-                                topMargin=5*mm, bottomMargin=5*mm)
-        
+        # 58mm paper, 48mm printable width (5mm margins each side)
+        # Taller page so content isn't cramped
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=(58 * mm, 260 * mm),
+            rightMargin=5 * mm,
+            leftMargin=5 * mm,
+            topMargin=4 * mm,
+            bottomMargin=4 * mm
+        )
+
         story = []
         styles = getSampleStyleSheet()
-        
-        title_style = ParagraphStyle(
-            'Title',
-            parent=styles['Normal'],
-            fontSize=12,
-            alignment=1,
-            spaceAfter=5,
+
+        # ---- Styles tuned for MP-58Mini (bigger + bolder) ----
+        shop_name_style = ParagraphStyle(
+            'ShopName', parent=styles['Normal'],
+            fontSize=13, alignment=1, spaceAfter=3,
+            fontName='Helvetica-Bold', leading=16
+        )
+        header_style = ParagraphStyle(
+            'Header', parent=styles['Normal'],
+            fontSize=9, alignment=1, spaceAfter=2, leading=12
+        )
+        receipt_title_style = ParagraphStyle(
+            'ReceiptTitle', parent=styles['Normal'],
+            fontSize=12, alignment=1, spaceAfter=3, spaceBefore=2,
+            fontName='Helvetica-Bold', leading=15
+        )
+        normal_style = ParagraphStyle(
+            'Normal', parent=styles['Normal'],
+            fontSize=10, alignment=0, spaceAfter=2, leading=13
+        )
+        center_style = ParagraphStyle(
+            'Center', parent=styles['Normal'],
+            fontSize=10, alignment=1, spaceAfter=2, leading=13
+        )
+        amount_style = ParagraphStyle(
+            'Amount', parent=styles['Normal'],
+            fontSize=12, alignment=0, spaceAfter=3, leading=15,
             fontName='Helvetica-Bold'
         )
-        
-        normal_style = ParagraphStyle(
-            'Normal',
-            parent=styles['Normal'],
-            fontSize=9,
-            alignment=0,
-            spaceAfter=3
+        divider_style = ParagraphStyle(
+            'Divider', parent=styles['Normal'],
+            fontSize=9, alignment=1, spaceAfter=2, leading=11
         )
-        
-        center_style = ParagraphStyle(
-            'Center',
-            parent=styles['Normal'],
-            fontSize=9,
-            alignment=1,
-            spaceAfter=3
-        )
-        
-        # Helper function to safely get string values
+
         def safe_str(value, default=''):
-            """Safely convert value to string, handling None"""
             if value is None:
                 return default
             return str(value)
-        
-        # Institute Header - FIXED: ensure all values are strings
-        story.append(Paragraph(safe_str(institute.get('institute_name', 'School Name')), title_style))
-        story.append(Paragraph(safe_str(institute.get('target_line', '')), center_style))
-        story.append(Paragraph(safe_str(institute.get('address', '')), center_style))
-        story.append(Paragraph(f"Tel: {safe_str(institute.get('phone_number', ''))}", center_style))
-        story.append(Spacer(1, 5))
-        
-        # Receipt Title
-        story.append(Paragraph("=" * 35, normal_style))
-        story.append(Paragraph("FEE PAYMENT RECEIPT", title_style))
-        story.append(Paragraph("=" * 35, normal_style))
-        story.append(Spacer(1, 5))
-        
-        # Receipt Details - FIXED: ensure all values are strings
+
+        # ---- Institute header ----
+        story.append(Paragraph(safe_str(institute.get('institute_name', 'School Name')), shop_name_style))
+
+        for field in ('target_line', 'address'):
+            val = safe_str(institute.get(field, ''))
+            if val:
+                story.append(Paragraph(val, header_style))
+
+        phone = safe_str(institute.get('phone_number', ''))
+        if phone:
+            story.append(Paragraph(f"Tel: {phone}", header_style))
+
+        story.append(Spacer(1, 4))
+        story.append(Paragraph("-" * 28, divider_style))
+        story.append(Paragraph("FEE PAYMENT RECEIPT", receipt_title_style))
+        story.append(Paragraph("-" * 28, divider_style))
+        story.append(Spacer(1, 4))
+
+        # ---- Receipt details table ----
         student_name = safe_str(student.get('name', 'N/A'))
         student_id = safe_str(student.get('student_id', 'N/A'))
         class_name = student.get('classes', {}).get('name', 'N/A') if student.get('classes') else 'N/A'
@@ -893,84 +903,79 @@ def generate_receipt_pdf(institute, student, payment, total_due):
         fee_month = safe_str(payment.get('fee_month', 'N/A'))
         receipt_number = safe_str(payment.get('receipt_number', 'N/A'))
         payment_date = safe_str(payment.get('payment_date', 'N/A'))
-        
+
+        # Row per line for easier reading on narrow paper
         receipt_data = [
             ['Receipt No:', receipt_number],
             ['Date:', payment_date],
-            ['', ''],
-            ['Student Name:', student_name],
+            ['Student:', student_name],
             ['Student ID:', student_id],
             ['Class:', class_name],
             ['Fee Month:', fee_month],
         ]
-        
-        t = Table(receipt_data, colWidths=[30*mm, 40*mm])
+
+        # 20mm + 28mm = 48mm usable
+        t = Table(receipt_data, colWidths=[20 * mm, 28 * mm])
         t.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('ALIGN', (0, 0), (0, -1), 'LEFT'),
             ('ALIGN', (1, 0), (1, -1), 'LEFT'),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
         ]))
         story.append(t)
         story.append(Spacer(1, 5))
-        
-        # Amount - 🔥 FIXED: Use total_due passed from caller
-        story.append(Paragraph("-" * 35, normal_style))
-        
-        # Format balance display
+
+        # ---- Amount section ----
+        story.append(Paragraph("-" * 28, divider_style))
+        story.append(Spacer(1, 3))
+
         amount_paid = float(payment.get('amount', 0))
         payment_method = safe_str(payment.get('payment_method', 'CASH')).upper()
-        
+
         if total_due < 0:
             balance_display = f"Credit: UGX {abs(total_due):,.0f}"
         elif total_due == 0:
             balance_display = "Balance: FULLY PAID"
         else:
-            balance_display = f"Balance Due: UGX {total_due:,.0f}"
-        
-        amount_data = [
-            ['Amount Paid:', f"UGX {amount_paid:,.0f}"],
-            ['Payment Method:', payment_method],
-            [balance_display, '']
-        ]
-        
-        t2 = Table(amount_data, colWidths=[30*mm, 40*mm])
-        t2.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        story.append(t2)
-        
-        # Notes - FIXED: ensure notes is a string
+            balance_display = f"Balance: UGX {total_due:,.0f}"
+
+        story.append(Paragraph(f"Amount Paid:", amount_style))
+        story.append(Paragraph(f"UGX {amount_paid:,.0f}", amount_style))
+        story.append(Spacer(1, 2))
+        story.append(Paragraph(f"Method: {payment_method}", normal_style))
+        story.append(Spacer(1, 2))
+        story.append(Paragraph(balance_display, amount_style))
+
+        # ---- Notes ----
         notes = payment.get('notes')
         if notes:
-            story.append(Spacer(1, 5))
+            story.append(Spacer(1, 3))
             story.append(Paragraph(f"Notes: {safe_str(notes)}", normal_style))
-        
-        story.append(Paragraph("-" * 35, normal_style))
-        
-        # Footer
-        story.append(Spacer(1, 8))
+
+        story.append(Spacer(1, 4))
+        story.append(Paragraph("-" * 28, divider_style))
+
+        # ---- Footer ----
+        story.append(Spacer(1, 5))
         story.append(Paragraph("Thank you for your payment!", center_style))
-        story.append(Paragraph("This is a computer generated receipt", center_style))
-        story.append(Paragraph("No signature required", center_style))
-        
+        story.append(Paragraph("Computer generated receipt", center_style))
+        story.append(Spacer(1, 8))  # extra space so cutter doesn't clip text
+
         doc.build(story)
         buffer.seek(0)
         return buffer
-        
+
     except Exception as e:
         print(f"Error generating PDF: {e}")
         import traceback
         traceback.print_exc()
         return None
-    
     
     
 @collect_bp.route('/apply-discount', methods=['POST'])
