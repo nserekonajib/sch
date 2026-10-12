@@ -194,7 +194,7 @@ function drawInfoGrid(doc, ctx, startY) {
   const rows = [
     ['STUDENT NAME', student.name || '-', 'STUDENT ID', student.studentId || '-'],
     ['CLASS', student.class || '-', 'GENDER', student.gender || '-'],
-    ['TERM/YEAR', term.termYear || '-', 'POSITION', formatPosition(student)],
+    ['TERM/YEAR', term.termYear || '-'],
     ['DIVISION', student.division || '-'],
   ];
 
