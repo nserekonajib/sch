@@ -1228,44 +1228,46 @@ def print_receipt(receipt_number):
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-def generate_unique_receipt_number(institute_id, existing_numbers):
-    """Generate unique receipt number with retry logic"""
-    max_attempts = 10
-    attempts = 0
+def generate_unique_receipt_number(institute_id, existing_numbers=None):
+    """
+    Generate a unique random 12-digit numeric receipt number.
     
-    while attempts < max_attempts:
+    Format: 12 random digits, e.g. 847293105628
+    
+    Uniqueness is enforced per institute via a DB lookup before returning.
+    """
+    if existing_numbers is None:
+        existing_numbers = set()
+
+    max_attempts = 20
+
+    for attempt in range(max_attempts):
         try:
-            year = datetime.now().strftime('%Y')
-            month = datetime.now().strftime('%m')
-            
-            random_component = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-            
-            response = supabase.table('payments')\
-                .select('id', count='exact')\
+            # Random 12-digit number: 100000000000 – 999999999999
+            receipt_number = str(random.randint(100000000000, 999999999999))
+
+            # Skip if already in the caller's in-memory set
+            if receipt_number in existing_numbers:
+                continue
+
+            # Check uniqueness in the DB for this institute
+            check_response = supabase.table('payments')\
+                .select('id')\
                 .eq('institute_id', institute_id)\
-                .gte('created_at', f"{year}-{month}-01")\
+                .eq('receipt_number', receipt_number)\
                 .execute()
-            
-            count = (response.count or 0) + 1
-            receipt_number = f"RCP-{year}{month}-{random_component}-{str(count).zfill(3)}"
-            
-            if receipt_number not in existing_numbers:
+
+            if not check_response.data:
                 return receipt_number
-                
+
+            # Collision → retry with a new random number
+            print(f"Receipt number collision on {receipt_number}, retrying...")
+
         except Exception as e:
-            print(f"Error generating receipt number (attempt {attempts + 1}): {e}")
-        
-        attempts += 1
-        import time
-        time.sleep(0.1)
-    
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
-    fallback_number = f"RCP-{timestamp}"
-    
-    if fallback_number in existing_numbers:
-        fallback_number = f"RCP-{timestamp}-{random.randint(1000, 9999)}"
-    
-    return fallback_number
+            print(f"Error generating receipt number (attempt {attempt + 1}): {e}")
+
+    # Ultimate fallback: timestamp-based 12 digits (still numeric, still unique enough)
+    return datetime.now().strftime('%y%m%d%H%M%S')
 
 @collect_bp.route('/resend-receipt/<receipt_number>', methods=['POST'])
 @login_required

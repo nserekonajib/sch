@@ -1,6 +1,6 @@
 from routes.permissions.permissions import role_required
 # employees.py - Employee Management Blueprint (Fixed - No separate users table)
-from flask import Blueprint, render_template, request, jsonify, session, send_file
+from flask import Blueprint, redirect, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
 import os
 import uuid
@@ -57,53 +57,38 @@ def login_required(f):
 #         return None
 
 def generate_employee_id(institute_id):
-    """Generate unique employee ID with proper uniqueness check"""
-    year = datetime.now().strftime('%Y')
-    max_attempts = 10
+    """
+    Generate a unique random 12-digit numeric employee ID.
     
+    Format: 12 random digits, e.g. 483920174563
+    
+    Uniqueness is enforced per institute via a DB lookup before returning.
+    """
+    max_attempts = 20
+
     for attempt in range(max_attempts):
         try:
-            # Get count of employees this year for this institute
-            response = supabase.table('employees')\
-                .select('employee_id', count='exact')\
-                .eq('institute_id', institute_id)\
-                .like('employee_id', f'EMP-{year}-%')\
-                .execute()
-            
-            # Get the maximum sequence number
-            max_seq = 0
-            if response.data:
-                for emp in response.data:
-                    emp_id = emp.get('employee_id', '')
-                    if emp_id and '-' in emp_id:
-                        try:
-                            seq = int(emp_id.split('-')[-1])
-                            if seq > max_seq:
-                                max_seq = seq
-                        except (ValueError, IndexError):
-                            continue
-            
-            next_seq = max_seq + 1
-            employee_id = f"EMP-{year}-{str(next_seq).zfill(4)}"
-            
-            # Double-check that this ID doesn't exist (just to be safe)
+            # Random 12-digit number: 100000000000 – 999999999999
+            employee_id = str(random.randint(100000000000, 999999999999))
+
+            # Check uniqueness within this institute
             check_response = supabase.table('employees')\
                 .select('id')\
                 .eq('employee_id', employee_id)\
                 .eq('institute_id', institute_id)\
                 .execute()
-            
+
             if not check_response.data:
                 return employee_id
-            
+
+            # Collision → retry with a new random number
+            print(f"Collision on {employee_id}, retrying...")
+
         except Exception as e:
             print(f"Error generating employee ID (attempt {attempt + 1}): {e}")
-            # Fallback to timestamp-based ID if there's an error
-            if attempt == max_attempts - 1:
-                return f"EMP-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
-    
-    # Ultimate fallback: use UUID
-    return f"EMP-{uuid.uuid4().hex[:8].upper()}"
+
+    # Ultimate fallback: timestamp-based 12 digits (still numeric, still unique enough)
+    return datetime.now().strftime('%y%m%d%H%M%S')
 
 @employees_bp.route('/')
 @role_required(['owner','accountant'])
@@ -661,3 +646,107 @@ def cleanup_duplicate_ids():
     except Exception as e:
         print(f"Error cleaning up duplicates: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+    
+@employees_bp.route('/change-password', methods=['GET'])
+@role_required(['accountant','teacher','librarian','secretary','support_staff','other'])
+def change_password_page():
+    """Render the change password page for employees"""
+    user = session.get('user')
+    
+    if not user:
+        return redirect('/login')
+    
+    # Check if user is an employee
+    if not user.get('is_employee'):
+        return redirect('/dashboard')
+    
+    return render_template(
+        'employees/change_password.html',
+        user=user
+    )
+
+
+@employees_bp.route('/api/change-password', methods=['POST'])
+@login_required
+def change_password():
+    """Change employee password"""
+    user = session.get('user')
+    
+    if not user:
+        return jsonify({'success': False, 'message': 'Please login'}), 401
+    
+    try:
+        data = request.get_json()
+        current_password = data.get('current_password', '')
+        new_password = data.get('new_password', '')
+        confirm_password = data.get('confirm_password', '')
+        
+        # Validation
+        if not current_password or not new_password or not confirm_password:
+            return jsonify({
+                'success': False,
+                'message': 'All password fields are required'
+            }), 400
+        
+        if new_password != confirm_password:
+            return jsonify({
+                'success': False,
+                'message': 'New passwords do not match'
+            }), 400
+        
+        if len(new_password) < 3:
+            return jsonify({
+                'success': False,
+                'message': 'Password must be at least 3 characters'
+            }), 400
+        
+        # Get employee from database
+        employee_response = supabase.table('employees')\
+            .select('*')\
+            .eq('id', user['id'])\
+            .execute()
+        
+        if not employee_response.data:
+            return jsonify({
+                'success': False,
+                'message': 'Employee not found'
+            }), 404
+        
+        employee = employee_response.data[0]
+        
+        # Verify current password
+        if not check_password_hash(employee.get('password_hash', ''), current_password):
+            return jsonify({
+                'success': False,
+                'message': 'Current password is incorrect'
+            }), 400
+        
+        # Update password
+        new_password_hash = generate_password_hash(new_password)
+        
+        update_result = supabase.table('employees')\
+            .update({
+                'password_hash': new_password_hash,
+                'updated_at': datetime.now().isoformat()
+            })\
+            .eq('id', user['id'])\
+            .execute()
+        
+        if not update_result.data:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to update password'
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'message': 'Password changed successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error changing password: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500

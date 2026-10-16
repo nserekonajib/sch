@@ -13,6 +13,11 @@ ALL_SECTIONS = {
         'url_endpoint': 'studyresource.index',
         'roles': ['owner', 'teacher', 'librarian']
     },
+    'employee pswd': {
+        'label': 'Change Password', 'icon': 'fa-key',
+        'url_endpoint': 'employees.change_password_page',
+        'roles': ['accountant', 'teacher', 'librarian', 'secretary', 'support_staff']
+    },
     'general_settings': {
         'label': 'General Settings', 'icon': 'fa-sliders-h',
         'roles': ['owner'],
@@ -22,6 +27,7 @@ ALL_SECTIONS = {
             {'label': 'SMS Settings', 'endpoint': 'sms_settings.index'},
             {'label': 'WhatsApp Settings', 'endpoint': 'whatsapp.index'},
             {'label': 'SchoolPay Settings', 'endpoint': 'schoolpay.index'},
+            
           
             {'label': 'Role Manager', 'endpoint': 'roles.index'},   # NEW
             {'label': 'Marks Grading', 'endpoint': 'grading.index'},

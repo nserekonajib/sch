@@ -9,11 +9,26 @@
     <meta name="author" content="Lunserk Inc.">
     <title>Lunserk ERP - {% block title %}School Management System{% endblock %}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='n.png') }}">
-    <!-- Tailwind CSS CDN + Font Awesome + Google Fonts -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    
+
+
+<!-- Local Tailwind CSS -->
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/tailwind.min.css') }}">
+
+<!-- Local Font Awesome -->
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+
+<!-- Local Inter font -->
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='vendor/inter/index.css') }}">
+
+<!-- Local Chart.js -->
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+
     <script>
     window.addEventListener("DOMContentLoaded", function () {
         if (window.tailwind) {
@@ -858,7 +873,7 @@
 </div>
 
 <!-- Scripts -->
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script defer src="{{ url_for('static', filename='js/alpine.min.js') }}"></script>
 <script>
     // ==================== SIDEBAR TOGGLE ====================
     const sidebar = document.getElementById('sidebar');
