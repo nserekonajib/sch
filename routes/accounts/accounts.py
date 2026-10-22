@@ -636,7 +636,6 @@ def create_expense():
         print(f"Error creating expense: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-
 @accounts_bp.route('/transactions', methods=['GET'])
 @role_required(['owner','accountant'])
 def get_transactions():
@@ -677,12 +676,14 @@ def get_transactions():
                 'type': 'fees',
                 'type_label': 'School Fees',
                 'date': payment['payment_date'],
+                'account_id': None,                                   # ✅ ADDED (fees have no chart account)
                 'account_name': 'School Fees Collection',
                 'student_name': payment['students']['name'] if payment.get('students') else 'N/A',
                 'amount': float(payment['amount']),
                 'payment_method': payment['payment_method'],
                 'reference': payment['receipt_number'],
                 'description': f"Fees payment from {payment['students']['name'] if payment.get('students') else 'Student'}",
+                'vendor': '',                                         # ✅ ADDED
                 'created_at': payment['created_at']
             })
         
@@ -693,11 +694,13 @@ def get_transactions():
                 'type': 'income',
                 'type_label': 'Other Income',
                 'date': income['transaction_date'],
+                'account_id': income.get('account_id'),               # ✅ ADDED
                 'account_name': income['chart_of_accounts']['account_name'] if income.get('chart_of_accounts') else 'N/A',
                 'amount': float(income['amount']),
                 'payment_method': income['payment_method'],
                 'reference': income.get('reference_number', ''),
                 'description': income.get('description', ''),
+                'vendor': income.get('vendor', ''),                   # ✅ ADDED
                 'created_at': income['created_at']
             })
         
@@ -708,11 +711,13 @@ def get_transactions():
                 'type': 'expense',
                 'type_label': 'Expense',
                 'date': expense['transaction_date'],
+                'account_id': expense.get('account_id'),              # ✅ ADDED (fixes category filter)
                 'account_name': expense['chart_of_accounts']['account_name'] if expense.get('chart_of_accounts') else 'N/A',
                 'amount': float(expense['amount']),
                 'payment_method': expense['payment_method'],
                 'reference': expense.get('reference_number', ''),
                 'description': expense.get('description', ''),
+                'vendor': expense.get('vendor', ''),                  # ✅ ADDED (matches UI table column)
                 'created_at': expense['created_at']
             })
         
@@ -724,7 +729,73 @@ def get_transactions():
     except Exception as e:
         print(f"Error getting transactions: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+@accounts_bp.route('/expenses/list', methods=['GET'])
+@role_required(['owner','accountant'])
+def list_expenses_paginated():
+    """Paginated + filtered list of expense transactions"""
+    institute = get_institute_from_session()
+    if not institute:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
 
+    try:
+        page = max(int(request.args.get('page', 1)), 1)
+        per_page = min(max(int(request.args.get('per_page', 20)), 1), 100)
+        start_date = request.args.get('start_date') or None
+        end_date = request.args.get('end_date') or None
+        account_id = request.args.get('account_id') or None
+
+        query = supabase.table('expense_transactions')\
+            .select('*, chart_of_accounts(account_name, account_code)', count='exact')\
+            .eq('institute_id', institute['id'])
+
+        if start_date:
+            query = query.gte('transaction_date', start_date)
+        if end_date:
+            query = query.lte('transaction_date', end_date)
+        if account_id:
+            query = query.eq('account_id', account_id)
+
+        offset = (page - 1) * per_page
+        response = query.order('transaction_date', desc=True)\
+            .range(offset, offset + per_page - 1)\
+            .execute()
+
+        rows = response.data or []
+        total = response.count or 0
+
+        items = [{
+            'id': r['id'],
+            'account_id': r.get('account_id'),
+            'account_name': (r.get('chart_of_accounts') or {}).get('account_name', 'N/A'),
+            'account_code': (r.get('chart_of_accounts') or {}).get('account_code', ''),
+            'amount': float(r['amount']),
+            'date': r['transaction_date'],
+            'payment_method': r.get('payment_method', ''),
+            'reference': r.get('reference_number', ''),
+            'description': r.get('description', ''),
+            'vendor': r.get('vendor', ''),
+        } for r in rows]
+
+        total_pages = (total + per_page - 1) // per_page
+
+        return jsonify({
+            'success': True,
+            'expenses': items,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'total_pages': total_pages,
+                'has_next': page < total_pages,
+                'has_prev': page > 1,
+            }
+        })
+    except Exception as e:
+        print(f"Error listing expenses: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+    
 @accounts_bp.route('/account-report/<account_id>', methods=['POST'])
 @role_required(['owner','accountant'])
 def get_account_report(account_id):

@@ -19,7 +19,8 @@ SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Node.js API URL
-REPORT_API_URL = os.getenv('REPORT_API_URL', ' http://d44cgg048cgckw4kwo4osw4k.195.200.15.127.sslip.io')
+REPORT_API_URL = os.getenv('REPORT_API_URL')
+print(f"REPORT_API_URL: {REPORT_API_URL}")
 
 # Create blueprint WITHOUT url_prefix - will be set when registering
 results_bp = Blueprint('results', __name__)

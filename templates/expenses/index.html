@@ -1,176 +1,58 @@
-<!-- templates/expenses/index.html - Complete with Edit and Retry Logic -->
+<!-- templates/expenses/index.html - Paginated + Filtered -->
 {% extends "base.html" %}
 
 {% block title %}Expense Management - Lunserk ERP{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Base & Utility Styles */
-    .stat-card {
-        transition: all 0.2s ease;
-        cursor: pointer;
-    }
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
-    }
-    .btn-gradient {
-        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-    }
-    .btn-gradient:hover {
-        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
-        transform: translateY(-2px);
-    }
-    .btn-danger {
-        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-    }
-    .btn-danger:hover {
-        background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
-        transform: translateY(-2px);
-    }
-    .btn-warning {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    }
-    .btn-warning:hover {
-        background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
-        transform: translateY(-2px);
-    }
-    .modal-overlay {
-        animation: fadeIn 0.3s ease-out;
-    }
-    .modal-container {
-        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(50px) scale(0.95);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-    .expense-row {
-        background-color: #fef2f2;
-        transition: all 0.2s;
-    }
-    .expense-row:hover {
-        background-color: #fee2e2;
-        transform: translateX(2px);
-    }
-    .expense-badge {
-        background-color: #fecaca;
-        color: #991b1b;
-    }
-    .tab-active {
-        background-color: #ffa500;
-        color: white;
-    }
-    .tab-inactive {
-        background-color: #f3f4f6;
-        color: #6b7280;
-    }
-    .tab-inactive:hover {
-        background-color: #e5e7eb;
-    }
+    .stat-card { transition: all 0.2s ease; cursor: pointer; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); }
+    .btn-gradient { background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%); }
+    .btn-gradient:hover { background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%); transform: translateY(-2px); }
+    .btn-danger { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
+    .btn-danger:hover { background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%); transform: translateY(-2px); }
+    .btn-warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .btn-warning:hover { background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); transform: translateY(-2px); }
+    .modal-overlay { animation: fadeIn 0.3s ease-out; }
+    .modal-container { animation: slideUp 0.4s cubic-bezier(0.34,1.2,0.64,1); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(50px) scale(0.95);} to { opacity: 1; transform: translateY(0) scale(1);} }
+    .expense-row { background-color: #fef2f2; transition: all 0.2s; }
+    .expense-row:hover { background-color: #fee2e2; transform: translateX(2px); }
+    .tab-active { background-color: #ffa500; color: white; }
+    .tab-inactive { background-color: #f3f4f6; color: #6b7280; }
+    .tab-inactive:hover { background-color: #e5e7eb; }
 
-    /* Responsive Table to Card Styles */
     @media (max-width: 768px) {
-        .responsive-table thead {
-            display: none;
-        }
+        .responsive-table thead { display: none; }
         .responsive-table tbody tr {
-            display: block;
-            margin-bottom: 1rem;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.75rem;
-            background: white;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            position: relative;
+            display: block; margin-bottom: 1rem;
+            border: 1px solid #e5e7eb; border-radius: 0.75rem;
+            background: white; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); position: relative;
         }
         .responsive-table tbody td {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid #f3f4f6;
-            text-align: right;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.75rem 1rem; border-bottom: 1px solid #f3f4f6; text-align: right;
         }
-        .responsive-table tbody td:last-child {
-            border-bottom: none;
-        }
+        .responsive-table tbody td:last-child { border-bottom: none; }
         .responsive-table tbody td::before {
-            content: attr(data-label);
-            font-weight: 600;
-            font-size: 0.75rem;
-            color: #6b7280;
-            text-align: left;
-            flex: 1;
+            content: attr(data-label); font-weight: 600; font-size: 0.75rem;
+            color: #6b7280; text-align: left; flex: 1;
         }
-        .responsive-table tbody td > * {
-            flex: 2;
-            text-align: right;
-        }
-        .action-buttons {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: flex-end;
-        }
+        .responsive-table tbody td > * { flex: 2; text-align: right; }
+        .action-buttons { display: flex; gap: 0.5rem; justify-content: flex-end; }
     }
-
     @media (max-width: 480px) {
-        .stat-card p.text-lg {
-            font-size: 1rem;
-        }
-        .tab-button {
-            padding: 0.5rem 0.75rem;
-            font-size: 0.75rem;
-        }
-        .modal-container {
-            max-width: 95%;
-        }
+        .stat-card p.text-lg { font-size: 1rem; }
+        .tab-button { padding: 0.5rem 0.75rem; font-size: 0.75rem; }
+        .modal-container { max-width: 95%; }
     }
 
     .expense-category {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 9999px;
-        background-color: #fee2e2;
-        color: #991b1b;
-        display: inline-block;
+        font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 9999px;
+        background-color: #fee2e2; color: #991b1b; display: inline-block;
     }
-
-    .filter-bar {
-        background: white;
-        border-radius: 0.75rem;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    }
-
-    /* Toast Notification */
-    .toast-notification {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 1000;
-        animation: slideInRight 0.3s ease-out;
-    }
-    @keyframes slideInRight {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
+    .filter-bar { background: white; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.5rem; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); }
 </style>
 {% endblock %}
 
@@ -211,12 +93,12 @@
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
-                <input type="date" id="filterStartDate" 
+                <input type="date" id="filterStartDate"
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">End Date</label>
-                <input type="date" id="filterEndDate" 
+                <input type="date" id="filterEndDate"
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
             </div>
             <div>
@@ -258,8 +140,7 @@
                     All Expense Transactions
                 </h2>
                 <button onclick="openExpenseModal()" class="btn-danger px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-white text-xs sm:text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center">
-                    <i class="fas fa-plus"></i>
-                    Add Expense
+                    <i class="fas fa-plus"></i> Add Expense
                 </button>
             </div>
             <div class="p-4 sm:p-5" id="expenseListContainer">
@@ -276,8 +157,7 @@
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
             <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-red-50 to-white">
                 <h2 class="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <i class="fas fa-chart-pie text-red-600"></i>
-                    Expenses by Category
+                    <i class="fas fa-chart-pie text-red-600"></i> Expenses by Category
                 </h2>
             </div>
             <div class="p-4 sm:p-5" id="categoriesContainer">
@@ -294,8 +174,7 @@
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
             <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-red-50 to-white">
                 <h2 class="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <i class="fas fa-clock text-red-600"></i>
-                    Recent Expenses (Last 30 Days)
+                    <i class="fas fa-clock text-red-600"></i> Recent Expenses (Last 30 Days)
                 </h2>
             </div>
             <div class="p-4 sm:p-5" id="recentContainer">
@@ -328,12 +207,12 @@
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Amount (UGX) *</label>
-                    <input type="number" id="expenseAmount" step="0.01" required 
+                    <input type="number" id="expenseAmount" step="0.01" required
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Expense Date *</label>
-                    <input type="date" id="expenseDate" required 
+                    <input type="date" id="expenseDate" required
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                 </div>
                 <div class="mb-4">
@@ -347,17 +226,17 @@
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Reference Number</label>
-                    <input type="text" id="expenseReference" 
+                    <input type="text" id="expenseReference"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Vendor/Payee</label>
-                    <input type="text" id="expenseVendor" 
+                    <input type="text" id="expenseVendor"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <textarea id="expenseDescription" rows="2" 
+                    <textarea id="expenseDescription" rows="2"
                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm"></textarea>
                 </div>
                 <div class="flex gap-3">
@@ -382,15 +261,11 @@
                 <i class="fas fa-times text-lg"></i>
             </button>
         </div>
-        <div class="p-5" id="expenseDetailContent">
-            <!-- Dynamic content -->
-        </div>
+        <div class="p-5" id="expenseDetailContent"></div>
         <div class="px-5 py-4 border-t border-gray-200 flex gap-3">
-            <button onclick="closeExpenseDetailModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                Close
-            </button>
+            <button onclick="closeExpenseDetailModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Close</button>
             <button id="editFromDetailBtn" class="flex-1 px-4 py-2 btn-warning text-white rounded-lg font-medium">
-                <i class="fas fa-edit"></i> Edit Expense
+                <i class="fas fa-edit"></i> Edit
             </button>
             <button id="deleteFromDetailBtn" class="flex-1 px-4 py-2 btn-danger text-white rounded-lg font-medium">
                 <i class="fas fa-trash"></i> Delete
@@ -407,9 +282,7 @@
         </div>
         <h3 class="text-xl font-semibold text-gray-800 mb-2">Success!</h3>
         <p class="text-gray-600 mb-6" id="successMessage">Operation completed successfully</p>
-        <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium">
-            Continue
-        </button>
+        <button onclick="closeSuccessModal()" class="btn-gradient px-6 py-2 rounded-lg text-white font-medium">Continue</button>
     </div>
 </div>
 
@@ -422,12 +295,8 @@
         <h3 class="text-xl font-semibold text-gray-800 mb-2">Confirm Delete</h3>
         <p class="text-gray-600 mb-6" id="deleteConfirmMessage">Are you sure you want to delete this expense?</p>
         <div class="flex gap-3">
-            <button onclick="closeDeleteConfirmModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                Cancel
-            </button>
-            <button id="confirmDeleteBtn" class="flex-1 px-4 py-2 btn-danger text-white rounded-lg font-medium">
-                Delete
-            </button>
+            <button onclick="closeDeleteConfirmModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            <button id="confirmDeleteBtn" class="flex-1 px-4 py-2 btn-danger text-white rounded-lg font-medium">Delete</button>
         </div>
     </div>
 </div>
@@ -440,520 +309,337 @@
     </div>
 </div>
 
-<!-- Toast Container -->
 <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
 <script>
+    // ================= State =================
     let currentTab = 'list';
-    let currentFilters = {
-        start_date: '',
-        end_date: '',
-        category_id: ''
-    };
+    let currentFilters = { start_date: '', end_date: '', category_id: '' };
+    let currentPage = 1;
+    const perPage = 20;
     let currentExpenseId = null;
     let pendingDeleteId = null;
 
-    // ============ API HELPER WITH RETRY LOGIC ============
+    // ================= API Helper =================
     async function apiCallWithRetry(url, options, maxRetries = 4, delay = 1000) {
         let lastError;
-        
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                console.log(`API Call Attempt ${attempt}/${maxRetries}: ${url}`);
-                
                 const response = await fetch(url, options);
-                
-                if (response.ok) {
-                    console.log(`API Call succeeded on attempt ${attempt}`);
-                    return await response.json();
-                }
-                
-                // If response is not ok, try to get error message
+                if (response.ok) return await response.json();
                 const errorData = await response.json().catch(() => ({}));
                 lastError = new Error(errorData.message || `HTTP ${response.status}`);
-                
-                // Don't retry on client errors (4xx except 429)
-                if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-                    console.log(`Client error ${response.status}, not retrying`);
-                    throw lastError;
-                }
-                
-            } catch (error) {
-                lastError = error;
-                console.log(`Attempt ${attempt} failed:`, error.message);
-            }
-            
-            // If not last attempt, wait before retrying
-            if (attempt < maxRetries) {
-                const waitTime = delay * Math.pow(2, attempt - 1); // Exponential backoff
-                console.log(`Waiting ${waitTime}ms before retry ${attempt + 1}...`);
-                await new Promise(resolve => setTimeout(resolve, waitTime));
-            }
+                if (response.status >= 400 && response.status < 500 && response.status !== 429) throw lastError;
+            } catch (error) { lastError = error; }
+            if (attempt < maxRetries) await new Promise(r => setTimeout(r, delay * Math.pow(2, attempt - 1)));
         }
-        
-        console.error(`All ${maxRetries} attempts failed`);
         throw lastError;
     }
 
-    // Show toast notification
+    // ================= Toast =================
     function showToast(message, type = 'success') {
-        const toastContainer = document.getElementById('toastContainer');
-        const toast = document.createElement('div');
-        toast.className = `bg-${type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue'}-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in`;
-        toast.innerHTML = `
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
-            <span>${message}</span>
-        `;
-        toastContainer.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        const c = document.getElementById('toastContainer');
+        const t = document.createElement('div');
+        t.className = `bg-${type === 'success' ? 'green' : type === 'error' ? 'red' : 'blue'}-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2`;
+        t.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i><span>${message}</span>`;
+        c.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
     }
 
-    // Load expense statistics
+    function cleanAccountName(name) {
+        if (!name) return '';
+        return name.replace(/\s*\([^)]*\)/g, '').trim();
+    }
+
+    // ================= Stats (from full /transactions) =================
     async function loadExpenseStats() {
         try {
             const result = await apiCallWithRetry('/accounts/transactions', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+                method: 'GET', headers: { 'Content-Type': 'application/json' }
             });
-            
-            if (result.success) {
-                const expenses = result.transactions.filter(t => t.type === 'expense');
-                const total = expenses.reduce((sum, t) => sum + t.amount, 0);
-                
-                const today = new Date().toISOString().split('T')[0];
-                const todayExpenses = expenses.filter(t => t.date === today);
-                const todayTotal = todayExpenses.reduce((sum, t) => sum + t.amount, 0);
-                
-                const now = new Date();
-                const startOfWeek = new Date(now);
-                startOfWeek.setDate(now.getDate() - now.getDay());
-                const weekExpenses = expenses.filter(t => new Date(t.date) >= startOfWeek);
-                const weekTotal = weekExpenses.reduce((sum, t) => sum + t.amount, 0);
-                
-                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                const monthExpenses = expenses.filter(t => new Date(t.date) >= startOfMonth);
-                const monthTotal = monthExpenses.reduce((sum, t) => sum + t.amount, 0);
-                
-                const uniqueDays = new Set(expenses.map(t => t.date)).size;
-                const avgDaily = uniqueDays > 0 ? total / uniqueDays : 0;
-                
-                document.getElementById('statTotalExpenses').textContent = `UGX ${total.toLocaleString()}`;
-                document.getElementById('statMonthlyExpenses').textContent = `UGX ${monthTotal.toLocaleString()}`;
-                document.getElementById('statWeeklyExpenses').textContent = `UGX ${weekTotal.toLocaleString()}`;
-                document.getElementById('statDailyExpenses').textContent = `UGX ${todayTotal.toLocaleString()}`;
-                document.getElementById('statAvgDaily').textContent = `UGX ${Math.round(avgDaily).toLocaleString()}`;
-            }
-        } catch (error) {
-            console.error('Error loading stats:', error);
-            showToast('Failed to load statistics', 'error');
+            if (!result.success) return;
+            const expenses = result.transactions.filter(t => t.type === 'expense');
+            const total = expenses.reduce((s, t) => s + t.amount, 0);
+            const today = new Date().toISOString().split('T')[0];
+            const todayTotal = expenses.filter(t => t.date === today).reduce((s, t) => s + t.amount, 0);
+            const now = new Date();
+            const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay());
+            const weekTotal = expenses.filter(t => new Date(t.date) >= startOfWeek).reduce((s, t) => s + t.amount, 0);
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const monthTotal = expenses.filter(t => new Date(t.date) >= startOfMonth).reduce((s, t) => s + t.amount, 0);
+            const uniqueDays = new Set(expenses.map(t => t.date)).size;
+            const avgDaily = uniqueDays > 0 ? total / uniqueDays : 0;
+            document.getElementById('statTotalExpenses').textContent = `UGX ${total.toLocaleString()}`;
+            document.getElementById('statMonthlyExpenses').textContent = `UGX ${monthTotal.toLocaleString()}`;
+            document.getElementById('statWeeklyExpenses').textContent = `UGX ${weekTotal.toLocaleString()}`;
+            document.getElementById('statDailyExpenses').textContent = `UGX ${todayTotal.toLocaleString()}`;
+            document.getElementById('statAvgDaily').textContent = `UGX ${Math.round(avgDaily).toLocaleString()}`;
+        } catch (e) {
+            console.error('Error loading stats:', e);
         }
     }
 
-    function cleanAccountName(accountName) {
-        if (!accountName) return '';
-        let cleaned = accountName.replace(/\s*\([^)]*\)/g, '');
-        cleaned = cleaned.trim();
-        return cleaned;
-    }
-
+    // ================= Expense Accounts (for modal) =================
     async function loadExpenseAccounts() {
         try {
             const result = await apiCallWithRetry('/accounts/chart-of-accounts', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+                method: 'GET', headers: { 'Content-Type': 'application/json' }
             });
-            
-            if (result.success) {
-                const expenseAccounts = result.accounts.expense || [];
-                const select = document.getElementById('expenseAccountId');
-                select.innerHTML = '<option value="">Select Expense Account</option>';
-                
-                expenseAccounts.forEach(account => {
-                    const cleanName = cleanAccountName(account.account_name);
-                    select.innerHTML += `<option value="${account.id}">${cleanName}</option>`;
-                });
-            }
-        } catch (error) {
-            console.error('Error loading expense accounts:', error);
-            showToast('Failed to load expense accounts', 'error');
-        }
+            if (!result.success) return;
+            const select = document.getElementById('expenseAccountId');
+            select.innerHTML = '<option value="">Select Expense Account</option>';
+            (result.accounts.expense || []).forEach(a => {
+                select.innerHTML += `<option value="${a.id}">${cleanAccountName(a.account_name)}</option>`;
+            });
+        } catch (e) { showToast('Failed to load expense accounts', 'error'); }
     }
 
+    // ================= Category Filter Dropdown =================
     async function loadCategoriesForFilter() {
         try {
             const result = await apiCallWithRetry('/accounts/chart-of-accounts', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+                method: 'GET', headers: { 'Content-Type': 'application/json' }
             });
-            
-            if (result.success) {
-                const expenseAccounts = result.accounts.expense || [];
-                const select = document.getElementById('filterCategory');
-                
-                expenseAccounts.forEach(account => {
-                    const cleanName = cleanAccountName(account.account_name);
-                    select.innerHTML += `<option value="${account.id}">${cleanName}</option>`;
-                });
-            }
-        } catch (error) {
-            console.error('Error loading categories:', error);
-        }
+            if (!result.success) return;
+            const select = document.getElementById('filterCategory');
+            select.innerHTML = '<option value="">All Categories</option>';
+            (result.accounts.expense || []).forEach(a => {
+                select.innerHTML += `<option value="${a.id}">${cleanAccountName(a.account_name)}</option>`;
+            });
+        } catch (e) { console.error('Category load failed', e); }
     }
 
-    async function loadExpenses() {
+    // ================= Paginated Expense List =================
+    async function loadExpenses(page = 1) {
+        currentPage = page;
+        const container = document.getElementById('expenseListContainer');
+        container.innerHTML = `
+            <div class="text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                <p class="text-sm text-gray-500 mt-2">Loading expenses...</p>
+            </div>`;
+
+        const params = new URLSearchParams({ page: currentPage, per_page: perPage });
+        if (currentFilters.start_date) params.set('start_date', currentFilters.start_date);
+        if (currentFilters.end_date)   params.set('end_date', currentFilters.end_date);
+        if (currentFilters.category_id) params.set('account_id', currentFilters.category_id);
+
         try {
-            const result = await apiCallWithRetry('/accounts/transactions', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+            const result = await apiCallWithRetry(`/accounts/expenses/list?${params.toString()}`, {
+                method: 'GET', headers: { 'Content-Type': 'application/json' }
             });
-            
-            if (result.success) {
-                let expenses = result.transactions.filter(t => t.type === 'expense');
-                
-                if (currentFilters.start_date) {
-                    expenses = expenses.filter(t => t.date >= currentFilters.start_date);
-                }
-                if (currentFilters.end_date) {
-                    expenses = expenses.filter(t => t.date <= currentFilters.end_date);
-                }
-                if (currentFilters.category_id) {
-                    expenses = expenses.filter(t => t.account_id == currentFilters.category_id);
-                }
-                
-                const container = document.getElementById('expenseListContainer');
-                
-                if (expenses.length > 0) {
-                    container.innerHTML = `
-                        <div class="overflow-x-auto">
-                            <table class="responsive-table min-w-full divide-y divide-gray-200">
-                                <thead>
-                                    <tr class="bg-gray-50">
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Category</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Vendor/Payee</th>
-                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Amount</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Payment Method</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200">
-                                    ${expenses.map(exp => `
-                                        <tr class="hover:bg-gray-50 expense-row" data-expense-id="${exp.id}">
-                                            <td data-label="Date" class="px-4 py-3 text-sm text-gray-600">${exp.date}</td>
-                                            <td data-label="Category" class="px-4 py-3 text-sm">
-                                                <span class="expense-category">${cleanAccountName(exp.account_name)}</span>
-                                            </td>
-                                            <td data-label="Vendor/Payee" class="px-4 py-3 text-sm text-gray-800">${exp.vendor || '-'}</td>
-                                            <td data-label="Amount" class="px-4 py-3 text-sm text-right text-red-600 font-medium">
-                                                UGX ${exp.amount.toLocaleString()}
-                                            </td>
-                                            <td data-label="Payment Method" class="px-4 py-3 text-sm text-gray-600 capitalize">${exp.payment_method}</td>
-                                            <td data-label="Actions" class="px-4 py-3 text-sm">
-                                                <div class="action-buttons">
-                                                    <button onclick="editExpense('${exp.id}')" 
-                                                            class="text-orange-600 hover:text-orange-800 mr-2" title="Edit">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button onclick="deleteExpense('${exp.id}')" 
-                                                            class="text-red-600 hover:text-red-800" title="Delete">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="mt-4 p-3 bg-gray-50 rounded-lg text-right">
-                            <strong>Total Expenses: UGX ${expenses.reduce((sum, t) => sum + t.amount, 0).toLocaleString()}</strong>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">No expenses found for the selected filters</p></div>';
-                }
+
+            if (!result.success) {
+                container.innerHTML = `<div class="text-center py-8"><p class="text-red-500">${result.message || 'Failed to load expenses'}</p></div>`;
+                return;
             }
-        } catch (error) {
-            console.error('Error loading expenses:', error);
+
+            const expenses = result.expenses || [];
+            const pg = result.pagination || { page: 1, total_pages: 1, total: 0, has_next: false, has_prev: false };
+
+            if (expenses.length === 0) {
+                container.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">No expenses found for the selected filters</p></div>';
+                return;
+            }
+
+            const pageTotal = expenses.reduce((s, t) => s + t.amount, 0);
+            const from = (pg.page - 1) * pg.per_page + 1;
+            const to = Math.min(pg.page * pg.per_page, pg.total);
+
+            container.innerHTML = `
+                <div class="overflow-x-auto">
+                    <table class="responsive-table min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Category</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Vendor/Payee</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Amount</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Payment Method</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            ${expenses.map(exp => `
+                                <tr class="hover:bg-gray-50 expense-row" data-expense-id="${exp.id}">
+                                    <td data-label="Date" class="px-4 py-3 text-sm text-gray-600">${exp.date}</td>
+                                    <td data-label="Category" class="px-4 py-3 text-sm">
+                                        <span class="expense-category">${cleanAccountName(exp.account_name)}</span>
+                                    </td>
+                                    <td data-label="Vendor/Payee" class="px-4 py-3 text-sm text-gray-800">${exp.vendor || '-'}</td>
+                                    <td data-label="Amount" class="px-4 py-3 text-sm text-right text-red-600 font-medium">
+                                        UGX ${exp.amount.toLocaleString()}
+                                    </td>
+                                    <td data-label="Payment Method" class="px-4 py-3 text-sm text-gray-600 capitalize">${exp.payment_method}</td>
+                                    <td data-label="Actions" class="px-4 py-3 text-sm">
+                                        <div class="action-buttons">
+                                            <button onclick="editExpense('${exp.id}')" class="text-orange-600 hover:text-orange-800 mr-2" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button onclick="deleteExpense('${exp.id}')" class="text-red-600 hover:text-red-800" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4 flex flex-col sm:flex-row justify-between items-center gap-3 bg-gray-50 rounded-lg p-3">
+                    <div class="text-sm text-gray-700">
+                        Showing <strong>${from}–${to}</strong> of <strong>${pg.total}</strong>
+                        &nbsp;•&nbsp; Page total: <strong class="text-red-600">UGX ${pageTotal.toLocaleString()}</strong>
+                    </div>
+                    <div class="flex gap-2">
+                        <button ${pg.has_prev ? '' : 'disabled'} onclick="loadExpenses(${pg.page - 1})"
+                                class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm ${pg.has_prev ? 'hover:bg-white text-gray-700' : 'text-gray-300 cursor-not-allowed'}">
+                            <i class="fas fa-chevron-left"></i> Prev
+                        </button>
+                        <span class="px-3 py-1.5 text-sm text-gray-600">${pg.page} / ${pg.total_pages}</span>
+                        <button ${pg.has_next ? '' : 'disabled'} onclick="loadExpenses(${pg.page + 1})"
+                                class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm ${pg.has_next ? 'hover:bg-white text-gray-700' : 'text-gray-300 cursor-not-allowed'}">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        } catch (e) {
+            console.error('Error loading expenses:', e);
+            container.innerHTML = '<div class="text-center py-8"><p class="text-red-500">Failed to load expenses. Please try again.</p></div>';
             showToast('Failed to load expenses', 'error');
         }
     }
 
-    async function editExpense(expenseId) {
-        const loading = document.getElementById('loadingOverlay');
-        loading.classList.remove('hidden');
-        loading.classList.add('flex');
-        
-        try {
-            const result = await apiCallWithRetry(`/accounts/expense/${expenseId}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (result.success) {
-                const expense = result.expense;
-                
-                // Set form values
-                document.getElementById('expenseId').value = expense.id;
-                document.getElementById('expenseAccountId').value = expense.account_id;
-                document.getElementById('expenseAmount').value = expense.amount;
-                document.getElementById('expenseDate').value = expense.transaction_date;
-                document.getElementById('expensePaymentMethod').value = expense.payment_method;
-                document.getElementById('expenseReference').value = expense.reference_number || '';
-                document.getElementById('expenseVendor').value = expense.vendor || '';
-                document.getElementById('expenseDescription').value = expense.description || '';
-                
-                // Change modal title
-                document.getElementById('expenseModalTitle').textContent = 'Edit Expense';
-                
-                // Open modal
-                document.getElementById('expenseModal').classList.remove('hidden');
-                document.getElementById('expenseModal').classList.add('flex');
-                document.body.style.overflow = 'hidden';
-            } else {
-                showToast(result.message || 'Failed to load expense', 'error');
-            }
-        } catch (error) {
-            console.error('Error loading expense for edit:', error);
-            showToast('Failed to load expense details', 'error');
-        } finally {
-            loading.classList.add('hidden');
-            loading.classList.remove('flex');
-        }
-    }
-
-    async function deleteExpense(expenseId) {
-        pendingDeleteId = expenseId;
-        document.getElementById('deleteConfirmMessage').textContent = 'Are you sure you want to delete this expense? This action cannot be undone.';
-        document.getElementById('deleteConfirmModal').classList.remove('hidden');
-        document.getElementById('deleteConfirmModal').classList.add('flex');
-        document.body.style.overflow = 'hidden';
-    }
-
-    async function confirmDelete() {
-        if (!pendingDeleteId) return;
-        
-        const loading = document.getElementById('loadingOverlay');
-        loading.classList.remove('hidden');
-        loading.classList.add('flex');
-        
-        try {
-            const result = await apiCallWithRetry(`/accounts/expense/delete/${pendingDeleteId}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (result.success) {
-                showToast(result.message, 'success');
-                closeDeleteConfirmModal();
-                
-                // Reload all data
-                await loadExpenseStats();
-                await loadExpenses();
-                await loadExpensesByCategory();
-                await loadRecentExpenses();
-            } else {
-                showToast(result.message || 'Failed to delete expense', 'error');
-            }
-        } catch (error) {
-            console.error('Error deleting expense:', error);
-            showToast('Failed to delete expense', 'error');
-        } finally {
-            loading.classList.add('hidden');
-            loading.classList.remove('flex');
-            pendingDeleteId = null;
-        }
-    }
-
-    function closeDeleteConfirmModal() {
-        document.getElementById('deleteConfirmModal').classList.add('hidden');
-        document.getElementById('deleteConfirmModal').classList.remove('flex');
-        document.body.style.overflow = '';
-        pendingDeleteId = null;
-    }
-
+    // ================= By Category Tab (client-side from /transactions) =================
     async function loadExpensesByCategory() {
         try {
             const result = await apiCallWithRetry('/accounts/transactions', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+                method: 'GET', headers: { 'Content-Type': 'application/json' }
             });
-            
-            if (result.success) {
-                const expenses = result.transactions.filter(t => t.type === 'expense');
-                
-                const grouped = {};
-                expenses.forEach(exp => {
-                    if (!grouped[exp.account_id]) {
-                        grouped[exp.account_id] = {
-                            account_name: cleanAccountName(exp.account_name),
-                            total: 0,
-                            count: 0
-                        };
-                    }
-                    grouped[exp.account_id].total += exp.amount;
-                    grouped[exp.account_id].count++;
-                });
-                
-                const container = document.getElementById('categoriesContainer');
-                const totalAll = expenses.reduce((sum, t) => sum + t.amount, 0);
-                
-                if (Object.keys(grouped).length > 0) {
-                    let html = '<div class="space-y-4">';
-                    
-                    for (const [accountId, data] of Object.entries(grouped)) {
-                        const percentage = totalAll > 0 ? (data.total / totalAll) * 100 : 0;
-                        html += `
-                            <div class="border rounded-lg p-4">
-                                <div class="flex justify-between items-center mb-2">
-                                    <h3 class="font-semibold text-gray-800">${data.account_name}</h3>
-                                    <span class="text-sm text-gray-600">${data.count} transaction(s)</span>
-                                </div>
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-red-600 font-bold">UGX ${data.total.toLocaleString()}</span>
-                                    <span class="text-sm text-gray-500">${percentage.toFixed(1)}% of total</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="bg-red-500 rounded-full h-2" style="width: ${percentage}%"></div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    
-                    html += `
-                        <div class="mt-4 p-3 bg-gray-50 rounded-lg">
-                            <strong>Total All Expenses: UGX ${totalAll.toLocaleString()}</strong>
-                        </div>
-                    `;
-                    html += '</div>';
-                    container.innerHTML = html;
-                } else {
-                    container.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">No expense transactions found</p></div>';
-                }
+            if (!result.success) return;
+            const expenses = result.transactions.filter(t => t.type === 'expense');
+            const grouped = {};
+            expenses.forEach(exp => {
+                const key = exp.account_id || '__none__';
+                if (!grouped[key]) grouped[key] = { account_name: cleanAccountName(exp.account_name), total: 0, count: 0 };
+                grouped[key].total += exp.amount;
+                grouped[key].count++;
+            });
+            const container = document.getElementById('categoriesContainer');
+            const totalAll = expenses.reduce((s, t) => s + t.amount, 0);
+            if (Object.keys(grouped).length === 0) {
+                container.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">No expense transactions found</p></div>';
+                return;
             }
-        } catch (error) {
-            console.error('Error loading categories:', error);
-        }
+            let html = '<div class="space-y-4">';
+            for (const data of Object.values(grouped)) {
+                const pct = totalAll > 0 ? (data.total / totalAll) * 100 : 0;
+                html += `
+                    <div class="border rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-semibold text-gray-800">${data.account_name}</h3>
+                            <span class="text-sm text-gray-600">${data.count} transaction(s)</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-red-600 font-bold">UGX ${data.total.toLocaleString()}</span>
+                            <span class="text-sm text-gray-500">${pct.toFixed(1)}% of total</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-red-500 rounded-full h-2" style="width: ${pct}%"></div>
+                        </div>
+                    </div>`;
+            }
+            html += `<div class="mt-4 p-3 bg-gray-50 rounded-lg"><strong>Total All Expenses: UGX ${totalAll.toLocaleString()}</strong></div></div>`;
+            container.innerHTML = html;
+        } catch (e) { console.error('Error loading categories:', e); }
     }
 
+    // ================= Recent Tab =================
     async function loadRecentExpenses() {
         try {
             const result = await apiCallWithRetry('/accounts/transactions', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+                method: 'GET', headers: { 'Content-Type': 'application/json' }
             });
-            
-            if (result.success) {
-                const now = new Date();
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(now.getDate() - 30);
-                
-                const recentExpenses = result.transactions.filter(t => 
-                    t.type === 'expense' && new Date(t.date) >= thirtyDaysAgo
-                ).sort((a, b) => new Date(b.date) - new Date(a.date));
-                
-                const container = document.getElementById('recentContainer');
-                
-                if (recentExpenses.length > 0) {
-                    container.innerHTML = `
-                        <div class="overflow-x-auto">
-                            <table class="responsive-table min-w-full divide-y divide-gray-200">
-                                <thead>
-                                    <tr class="bg-gray-50">
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Category</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
-                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Amount</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Payment Method</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200">
-                                    ${recentExpenses.map(exp => `
-                                        <tr class="hover:bg-gray-50 expense-row">
-                                            <td data-label="Date" class="px-4 py-3 text-sm text-gray-600">${exp.date}</td>
-                                            <td data-label="Category" class="px-4 py-3 text-sm">
-                                                <span class="expense-category">${cleanAccountName(exp.account_name)}</span>
-                                            </td>
-                                            <td data-label="Description" class="px-4 py-3 text-sm text-gray-500">${exp.description || '-'}</td>
-                                            <td data-label="Amount" class="px-4 py-3 text-sm text-right text-red-600 font-medium">
-                                                UGX ${exp.amount.toLocaleString()}
-                                            </td>
-                                            <td data-label="Payment Method" class="px-4 py-3 text-sm text-gray-600 capitalize">${exp.payment_method}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="mt-4 p-3 bg-gray-50 rounded-lg text-right">
-                            <strong>Total (Last 30 Days): UGX ${recentExpenses.reduce((sum, t) => sum + t.amount, 0).toLocaleString()}</strong>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">No recent expenses found</p></div>';
-                }
+            if (!result.success) return;
+            const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const recent = result.transactions
+                .filter(t => t.type === 'expense' && new Date(t.date) >= thirtyDaysAgo)
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+            const container = document.getElementById('recentContainer');
+            if (recent.length === 0) {
+                container.innerHTML = '<div class="text-center py-8"><p class="text-gray-500">No recent expenses found</p></div>';
+                return;
             }
-        } catch (error) {
-            console.error('Error loading recent expenses:', error);
-        }
+            container.innerHTML = `
+                <div class="overflow-x-auto">
+                    <table class="responsive-table min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Category</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">Amount</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Payment Method</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            ${recent.map(exp => `
+                                <tr class="hover:bg-gray-50 expense-row">
+                                    <td data-label="Date" class="px-4 py-3 text-sm text-gray-600">${exp.date}</td>
+                                    <td data-label="Category" class="px-4 py-3 text-sm"><span class="expense-category">${cleanAccountName(exp.account_name)}</span></td>
+                                    <td data-label="Description" class="px-4 py-3 text-sm text-gray-500">${exp.description || '-'}</td>
+                                    <td data-label="Amount" class="px-4 py-3 text-sm text-right text-red-600 font-medium">UGX ${exp.amount.toLocaleString()}</td>
+                                    <td data-label="Payment Method" class="px-4 py-3 text-sm text-gray-600 capitalize">${exp.payment_method}</td>
+                                </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4 p-3 bg-gray-50 rounded-lg text-right">
+                    <strong>Total (Last 30 Days): UGX ${recent.reduce((s, t) => s + t.amount, 0).toLocaleString()}</strong>
+                </div>`;
+        } catch (e) { console.error('Error loading recent:', e); }
     }
 
+    // ================= Filters & Tabs =================
     function applyFilters() {
         currentFilters.start_date = document.getElementById('filterStartDate').value;
         currentFilters.end_date = document.getElementById('filterEndDate').value;
         currentFilters.category_id = document.getElementById('filterCategory').value;
-        loadExpenses();
+        loadExpenses(1);
     }
-
     function resetFilters() {
         document.getElementById('filterStartDate').value = '';
         document.getElementById('filterEndDate').value = '';
         document.getElementById('filterCategory').value = '';
         currentFilters = { start_date: '', end_date: '', category_id: '' };
-        loadExpenses();
+        loadExpenses(1);
     }
-
     function showTab(tab) {
         currentTab = tab;
-        
-        const tabs = ['list', 'categories', 'recent'];
-        tabs.forEach(t => {
+        ['list', 'categories', 'recent'].forEach(t => {
             const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
             const content = document.getElementById(`${t}Tab`);
-            if (t === tab) {
-                btn.classList.remove('tab-inactive');
-                btn.classList.add('tab-active');
-                content.classList.remove('hidden');
-            } else {
-                btn.classList.remove('tab-active');
-                btn.classList.add('tab-inactive');
-                content.classList.add('hidden');
-            }
+            if (t === tab) { btn.classList.remove('tab-inactive'); btn.classList.add('tab-active'); content.classList.remove('hidden'); }
+            else { btn.classList.remove('tab-active'); btn.classList.add('tab-inactive'); content.classList.add('hidden'); }
         });
-        
-        if (tab === 'list') loadExpenses();
+        if (tab === 'list') loadExpenses(1);
         else if (tab === 'categories') loadExpensesByCategory();
         else if (tab === 'recent') loadRecentExpenses();
     }
 
+    // ================= Modal helpers =================
     function openExpenseModal() {
-        // Reset form
         document.getElementById('expenseForm').reset();
         document.getElementById('expenseId').value = '';
         document.getElementById('expenseModalTitle').textContent = 'Add Expense';
-        
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('expenseDate').value = today;
-        
+        document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
         loadExpenseAccounts();
         document.getElementById('expenseModal').classList.remove('hidden');
         document.getElementById('expenseModal').classList.add('flex');
         document.body.style.overflow = 'hidden';
     }
-
     function closeExpenseModal() {
         document.getElementById('expenseModal').classList.add('hidden');
         document.getElementById('expenseModal').classList.remove('flex');
@@ -961,31 +647,91 @@
         document.getElementById('expenseForm').reset();
         document.getElementById('expenseId').value = '';
     }
-
     function closeExpenseDetailModal() {
         document.getElementById('expenseDetailModal').classList.add('hidden');
         document.getElementById('expenseDetailModal').classList.remove('flex');
         document.body.style.overflow = '';
         currentExpenseId = null;
     }
-
     function closeSuccessModal() {
         document.getElementById('successModal').classList.add('hidden');
         document.getElementById('successModal').classList.remove('flex');
         document.body.style.overflow = '';
     }
+    function closeDeleteConfirmModal() {
+        document.getElementById('deleteConfirmModal').classList.add('hidden');
+        document.getElementById('deleteConfirmModal').classList.remove('flex');
+        document.body.style.overflow = '';
+        pendingDeleteId = null;
+    }
 
-    // Form Submission (Add/Edit)
+    // ================= Edit / Delete =================
+    async function editExpense(expenseId) {
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden'); loading.classList.add('flex');
+        try {
+            await loadExpenseAccounts(); // ensure options exist
+            const result = await apiCallWithRetry(`/accounts/expense/${expenseId}`, {
+                method: 'GET', headers: { 'Content-Type': 'application/json' }
+            });
+            if (!result.success) { showToast(result.message || 'Failed to load expense', 'error'); return; }
+            const expense = result.expense;
+            document.getElementById('expenseId').value = expense.id;
+            document.getElementById('expenseAccountId').value = expense.account_id;
+            document.getElementById('expenseAmount').value = expense.amount;
+            document.getElementById('expenseDate').value = expense.transaction_date;
+            document.getElementById('expensePaymentMethod').value = expense.payment_method;
+            document.getElementById('expenseReference').value = expense.reference_number || '';
+            document.getElementById('expenseVendor').value = expense.vendor || '';
+            document.getElementById('expenseDescription').value = expense.description || '';
+            document.getElementById('expenseModalTitle').textContent = 'Edit Expense';
+            document.getElementById('expenseModal').classList.remove('hidden');
+            document.getElementById('expenseModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        } catch (e) {
+            showToast('Failed to load expense details', 'error');
+        } finally {
+            loading.classList.add('hidden'); loading.classList.remove('flex');
+        }
+    }
+    function deleteExpense(expenseId) {
+        pendingDeleteId = expenseId;
+        document.getElementById('deleteConfirmMessage').textContent = 'Are you sure you want to delete this expense? This action cannot be undone.';
+        document.getElementById('deleteConfirmModal').classList.remove('hidden');
+        document.getElementById('deleteConfirmModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    async function confirmDelete() {
+        if (!pendingDeleteId) return;
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden'); loading.classList.add('flex');
+        try {
+            const result = await apiCallWithRetry(`/accounts/expense/delete/${pendingDeleteId}`, {
+                method: 'DELETE', headers: { 'Content-Type': 'application/json' }
+            });
+            if (result.success) {
+                showToast(result.message, 'success');
+                closeDeleteConfirmModal();
+                await refreshAll();
+            } else {
+                showToast(result.message || 'Failed to delete expense', 'error');
+            }
+        } catch (e) {
+            showToast('Failed to delete expense', 'error');
+        } finally {
+            loading.classList.add('hidden'); loading.classList.remove('flex');
+            pendingDeleteId = null;
+        }
+    }
+    document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+
+    // ================= Form submit =================
     document.getElementById('expenseForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         const loading = document.getElementById('loadingOverlay');
-        loading.classList.remove('hidden');
-        loading.classList.add('flex');
-        
+        loading.classList.remove('hidden'); loading.classList.add('flex');
         const expenseId = document.getElementById('expenseId').value;
         const isEdit = expenseId !== '';
-        
         const data = {
             account_id: document.getElementById('expenseAccountId').value,
             amount: parseFloat(document.getElementById('expenseAmount').value),
@@ -995,59 +741,50 @@
             description: document.getElementById('expenseDescription').value,
             vendor: document.getElementById('expenseVendor').value
         };
-        
         const url = isEdit ? `/accounts/expense/update/${expenseId}` : '/accounts/expense/create';
         const method = isEdit ? 'PUT' : 'POST';
-        
         try {
             const result = await apiCallWithRetry(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
             });
-            
             if (result.success) {
                 closeExpenseModal();
                 showToast(result.message, 'success');
-                
-                // Reload all data
-                await loadExpenseStats();
-                await loadExpenses();
-                await loadExpensesByCategory();
-                await loadRecentExpenses();
+                await refreshAll();
             } else {
                 showToast(result.message || `Failed to ${isEdit ? 'update' : 'create'} expense`, 'error');
             }
-        } catch (error) {
-            console.error('Error saving expense:', error);
+        } catch (e) {
             showToast(`Failed to ${isEdit ? 'update' : 'create'} expense. Please try again.`, 'error');
         } finally {
-            loading.classList.add('hidden');
-            loading.classList.remove('flex');
+            loading.classList.add('hidden'); loading.classList.remove('flex');
         }
     });
 
-    // Set up delete confirmation button
-    document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+    // Refresh whatever the current tab needs
+    async function refreshAll() {
+        await loadExpenseStats();
+        if (currentTab === 'list') await loadExpenses(currentPage);
+        else if (currentTab === 'categories') await loadExpensesByCategory();
+        else if (currentTab === 'recent') await loadRecentExpenses();
+    }
 
-    // Close modals on outside click
+    // Outside click close
     window.onclick = function(event) {
-        const expenseModal = document.getElementById('expenseModal');
-        const expenseDetailModal = document.getElementById('expenseDetailModal');
-        const successModal = document.getElementById('successModal');
-        const deleteConfirmModal = document.getElementById('deleteConfirmModal');
-        
-        if (event.target === expenseModal) closeExpenseModal();
-        if (event.target === expenseDetailModal) closeExpenseDetailModal();
-        if (event.target === successModal) closeSuccessModal();
-        if (event.target === deleteConfirmModal) closeDeleteConfirmModal();
+        ['expenseModal', 'expenseDetailModal', 'successModal', 'deleteConfirmModal'].forEach(id => {
+            const el = document.getElementById(id);
+            if (event.target === el) {
+                if (id === 'expenseModal') closeExpenseModal();
+                if (id === 'expenseDetailModal') closeExpenseDetailModal();
+                if (id === 'successModal') closeSuccessModal();
+                if (id === 'deleteConfirmModal') closeDeleteConfirmModal();
+            }
+        });
     };
 
-    // Initialize
+    // ================= Init =================
     loadExpenseStats();
-    loadExpenses();
-    loadExpensesByCategory();
-    loadRecentExpenses();
     loadCategoriesForFilter();
+    loadExpenses(1);  // only current tab needs immediate data
 </script>
 {% endblock %}
