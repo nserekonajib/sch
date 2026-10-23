@@ -1,4 +1,4 @@
-<!-- templates/results/index.html - Updated with Term and Year Filters -->
+<!-- templates/results/index.html - Toggle Fixed -->
 {% extends "base.html" %}
 
 {% block title %}Generate Report Card - Lunserk ERP{% endblock %}
@@ -12,141 +12,131 @@
         background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
         transform: translateY(-2px);
     }
-    .btn-outline {
-        background: transparent;
-        border: 2px solid #ffa500;
-        color: #ffa500;
-    }
-    .btn-outline:hover {
-        background: #ffa500;
-        color: white;
-    }
-    .tab-active {
-        background-color: #ffa500;
-        color: white;
-    }
-    .tab-inactive {
-        background-color: #f3f4f6;
-        color: #6b7280;
-    }
-    .tab-inactive:hover {
-        background-color: #e5e7eb;
-    }
-    .exam-checkbox {
-        transition: all 0.2s;
-    }
-    .exam-checkbox:hover {
-        transform: scale(1.02);
-        background-color: #fff7ed;
-    }
+    .tab-active { background-color: #ffa500; color: white; }
+    .tab-inactive { background-color: #f3f4f6; color: #6b7280; }
+    .tab-inactive:hover { background-color: #e5e7eb; }
+    .exam-checkbox { transition: all 0.2s; }
+    .exam-checkbox:hover { transform: scale(1.02); background-color: #fff7ed; }
+
     .loader {
         border: 3px solid #f3f3f3;
         border-top: 3px solid #ffa500;
         border-radius: 50%;
-        width: 40px;
-        height: 40px;
+        width: 40px; height: 40px;
         animation: spin 1s linear infinite;
     }
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
-    .progress-bar {
-        transition: width 0.3s ease;
-    }
-    
+    .progress-bar { transition: width 0.3s ease; }
+
     /* Searchable select styles */
-    .searchable-select {
-        position: relative;
-        width: 100%;
-    }
+    .searchable-select { position: relative; width: 100%; }
     .searchable-select-input {
-        width: 100%;
-        padding: 0.5rem;
-        padding-left: 2rem;
-        border: 1px solid #d1d5db;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        background-color: white;
+        width: 100%; padding: 0.5rem; padding-left: 2rem;
+        border: 1px solid #d1d5db; border-radius: 0.5rem;
+        cursor: pointer; background-color: white;
     }
     .searchable-select-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: white;
-        border: 1px solid #d1d5db;
-        border-radius: 0.5rem;
-        margin-top: 0.25rem;
-        max-height: 300px;
-        overflow-y: auto;
-        z-index: 50;
-        display: none;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        position: absolute; top: 100%; left: 0; right: 0;
+        background: white; border: 1px solid #d1d5db;
+        border-radius: 0.5rem; margin-top: 0.25rem;
+        max-height: 300px; overflow-y: auto; z-index: 50;
+        display: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
     }
-    .searchable-select-dropdown.show {
-        display: block;
-    }
+    .searchable-select-dropdown.show { display: block; }
     .searchable-select-search {
-        padding: 0.5rem;
-        border-bottom: 1px solid #e5e7eb;
-        position: sticky;
-        top: 0;
-        background: white;
+        padding: 0.5rem; border-bottom: 1px solid #e5e7eb;
+        position: sticky; top: 0; background: white;
     }
     .searchable-select-search input {
-        width: 100%;
-        padding: 0.5rem;
-        border: 1px solid #d1d5db;
-        border-radius: 0.375rem;
+        width: 100%; padding: 0.5rem;
+        border: 1px solid #d1d5db; border-radius: 0.375rem;
         font-size: 0.875rem;
     }
     .searchable-select-option {
-        padding: 0.5rem 1rem;
-        cursor: pointer;
+        padding: 0.5rem 1rem; cursor: pointer;
         transition: background-color 0.2s;
     }
-    .searchable-select-option:hover {
-        background-color: #fff7ed;
-    }
-    .searchable-select-option.selected {
-        background-color: #ffa500;
-        color: white;
-    }
+    .searchable-select-option:hover { background-color: #fff7ed; }
     .searchable-select-loading {
-        padding: 0.5rem;
-        text-align: center;
-        color: #6b7280;
+        padding: 0.5rem; text-align: center; color: #6b7280;
     }
+
     .api-status {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        z-index: 1000;
+        position: fixed; bottom: 20px; right: 20px;
+        padding: 8px 16px; border-radius: 20px;
+        font-size: 12px; font-weight: 600; z-index: 1000;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-    .api-status.online {
-        background: #10b981;
-        color: white;
+    .api-status.online   { background: #10b981; color: white; }
+    .api-status.offline  { background: #ef4444; color: white; }
+    .api-status.checking { background: #f59e0b; color: white; }
+
+    /* ====== FIXED TOGGLE SWITCH ====== */
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 52px;
+        height: 28px;
+        flex-shrink: 0;
+        cursor: pointer;
     }
-    .api-status.offline {
-        background: #ef4444;
-        color: white;
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+        position: absolute;
     }
-    .api-status.checking {
-        background: #f59e0b;
-        color: white;
+    .toggle-slider {
+        position: absolute;
+        inset: 0;
+        background-color: #ef4444;   /* RED when OFF */
+        border-radius: 28px;
+        transition: background-color 0.25s ease;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.15);
     }
+    .toggle-slider::before {
+        content: "";
+        position: absolute;
+        height: 22px;
+        width: 22px;
+        left: 3px;
+        top: 3px;
+        background-color: #ffffff;
+        border-radius: 50%;
+        transition: transform 0.25s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-switch input:checked + .toggle-slider {
+        background-color: #10b981;   /* GREEN when ON */
+    }
+    .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(24px);
+    }
+    .toggle-switch input:focus + .toggle-slider {
+        outline: 2px solid #ffa500;
+        outline-offset: 2px;
+    }
+
+    /* Status pill next to toggle */
+    .toggle-status {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+        letter-spacing: 0.5px;
+        min-width: 34px;
+        text-align: center;
+        transition: all 0.2s;
+    }
+    .toggle-status.on  { background: #d1fae5; color: #065f46; }
+    .toggle-status.off { background: #fee2e2; color: #991b1b; }
+
     .filter-section {
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        background: white; border-radius: 12px; padding: 20px;
+        margin-bottom: 20px; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1);
     }
 </style>
 {% endblock %}
@@ -158,7 +148,6 @@
         <p class="text-sm text-gray-600">Generate individual or class-wise report cards from marksheets</p>
     </div>
 
-    <!-- API Status -->
     <div id="apiStatus" class="api-status checking">
         <i class="fas fa-circle-notch fa-spin"></i> Checking API...
     </div>
@@ -179,7 +168,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Select Student *</label>
-                    <div class="searchable-select" id="studentSearchable">
+                    <div class="searchable-select">
                         <div class="relative">
                             <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm z-10"></i>
                             <div class="searchable-select-input" id="studentSelectTrigger">
@@ -188,10 +177,8 @@
                         </div>
                         <div class="searchable-select-dropdown" id="studentDropdown">
                             <div class="searchable-select-search">
-                                <input type="text" 
-                                       id="studentSearchInput" 
-                                       placeholder="Search by name or ID..." 
-                                       autocomplete="off">
+                                <input type="text" id="studentSearchInput"
+                                       placeholder="Search by name or ID..." autocomplete="off">
                             </div>
                             <div id="studentOptions">
                                 <div class="searchable-select-loading">Type to search...</div>
@@ -283,21 +270,74 @@
         </div>
     </div>
 
+    <!-- Report Card Options -->
+    <div id="reportOptionsSection" class="bg-white rounded-xl shadow-md p-6 mb-6 hidden">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <i class="fas fa-sliders-h text-orange-500"></i>
+            Report Card Options
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <!-- Show Position toggle -->
+            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <div class="flex items-start gap-3">
+                    <div class="h-10 w-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-trophy text-orange-500"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-800">Show Position</p>
+                        <p class="text-xs text-gray-500">Include class position and out-of total</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="statusPosition" class="toggle-status on">ON</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="togglePosition" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Show Comments toggle -->
+            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <div class="flex items-start gap-3">
+                    <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-comment-dots text-blue-500"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-800">Show Comments</p>
+                        <p class="text-xs text-gray-500">Include class & head teacher remarks</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="statusComments" class="toggle-status on">ON</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggleComments" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <p class="text-xs text-gray-400 mt-3">
+            <i class="fas fa-info-circle"></i>
+            Toggles apply only to the current generation — nothing is saved to the database.
+        </p>
+    </div>
+
     <!-- Generate Buttons -->
     <div class="flex flex-wrap justify-center gap-4">
-        <button onclick="generateReportCard()" id="generateBtn" 
+        <button onclick="generateReportCard()" id="generateBtn"
                 class="btn-gradient px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-lg">
             <i class="fas fa-file-pdf"></i>
             Generate Report Card
         </button>
-        <button onclick="generateClassReportCard()" id="generateClassBtn" 
+        <button onclick="generateClassReportCard()" id="generateClassBtn"
                 class="btn-gradient px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-lg hidden">
             <i class="fas fa-file-pdf"></i>
             Generate Class Report Cards
         </button>
     </div>
 
-    <!-- Info Box -->
     <div class="mt-4 bg-blue-50 rounded-lg p-4 border border-blue-200">
         <div class="flex items-start gap-3">
             <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
@@ -306,7 +346,6 @@
                 <p class="text-xs text-blue-600 mt-1">
                     Report cards are generated from <strong>marksheets</strong> that are created when you save marks for a specific term.
                     Only marks entered for the selected term and year will appear in the report card.
-                    If no marks are found, you will be prompted to enter marks first.
                 </p>
             </div>
         </div>
@@ -314,8 +353,8 @@
 </div>
 
 <!-- Progress Modal -->
-<div id="progressModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
-    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 transform transition-all modal-container">
+<div id="progressModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
         <div class="text-center">
             <div class="loader mx-auto mb-4"></div>
             <h3 class="text-lg font-semibold text-gray-800 mb-2" id="progressTitle">Generating Report Card</h3>
@@ -329,8 +368,8 @@
 </div>
 
 <!-- Error Modal -->
-<div id="errorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
-    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 text-center transform transition-all modal-container">
+<div id="errorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 text-center">
         <div class="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fas fa-exclamation-triangle text-2xl text-red-500"></i>
         </div>
@@ -344,10 +383,7 @@
 
 <script>
     let currentMode = 'single';
-    let searchTimeout;
-    let currentSearchTerm = '';
-    
-    // Check API health on page load
+
     async function checkApiHealth() {
         const statusEl = document.getElementById('apiStatus');
         try {
@@ -359,15 +395,13 @@
             } else {
                 statusEl.className = 'api-status offline';
                 statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Report API Offline';
-                statusEl.title = data.error || 'API not available';
             }
         } catch (error) {
             statusEl.className = 'api-status offline';
             statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Report API Offline';
         }
     }
-    
-    // Initialize searchable select
+
     const studentSearchable = {
         trigger: document.getElementById('studentSelectTrigger'),
         dropdown: document.getElementById('studentDropdown'),
@@ -375,93 +409,68 @@
         optionsContainer: document.getElementById('studentOptions'),
         selectedIdInput: document.getElementById('selectedStudentId'),
         selectedTextSpan: document.getElementById('selectedStudentText'),
-        
+
         init() {
             this.trigger.addEventListener('click', () => this.toggle());
             this.searchInput.addEventListener('input', (e) => this.search(e.target.value));
-            
             document.addEventListener('click', (e) => {
-                if (!this.trigger.contains(e.target) && !this.dropdown.contains(e.target)) {
-                    this.close();
-                }
+                if (!this.trigger.contains(e.target) && !this.dropdown.contains(e.target)) this.close();
             });
-            
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && this.dropdown.classList.contains('show')) {
-                    this.close();
-                }
+                if (e.key === 'Escape' && this.dropdown.classList.contains('show')) this.close();
             });
         },
-        
-        toggle() {
-            if (this.dropdown.classList.contains('show')) {
-                this.close();
-            } else {
-                this.open();
-            }
-        },
-        
+        toggle() { this.dropdown.classList.contains('show') ? this.close() : this.open(); },
         open() {
             this.dropdown.classList.add('show');
             this.searchInput.value = '';
             this.search('');
             this.searchInput.focus();
         },
-        
-        close() {
-            this.dropdown.classList.remove('show');
-        },
-        
+        close() { this.dropdown.classList.remove('show'); },
         async search(query) {
-            currentSearchTerm = query;
             this.optionsContainer.innerHTML = '<div class="searchable-select-loading">Searching...</div>';
-            
             try {
                 const response = await fetch(`/students/search?q=${encodeURIComponent(query)}`);
                 const data = await response.json();
-                
-                if (data.success && data.students && data.students.length > 0) {
-                    this.renderOptions(data.students);
-                } else {
-                    this.optionsContainer.innerHTML = '<div class="searchable-select-loading">No students found</div>';
-                }
+                if (data.success && data.students && data.students.length > 0) this.renderOptions(data.students);
+                else this.optionsContainer.innerHTML = '<div class="searchable-select-loading">No students found</div>';
             } catch (error) {
-                console.error('Search error:', error);
                 this.optionsContainer.innerHTML = '<div class="searchable-select-loading">Error searching students</div>';
             }
         },
-        
         renderOptions(students) {
-            if (students.length === 0) {
-                this.optionsContainer.innerHTML = '<div class="searchable-select-loading">No students found</div>';
-                return;
-            }
-            
-            const optionsHtml = students.map(student => `
+            this.optionsContainer.innerHTML = students.map(student => `
                 <div class="searchable-select-option" data-id="${student.id}" data-name="${student.name} (${student.student_id}) - ${student.classes?.name || 'N/A'}">
                     <div class="font-medium">${student.name}</div>
                     <div class="text-xs text-gray-500">ID: ${student.student_id} | Class: ${student.classes?.name || 'N/A'}</div>
                 </div>
             `).join('');
-            
-            this.optionsContainer.innerHTML = optionsHtml;
-            
             this.optionsContainer.querySelectorAll('.searchable-select-option').forEach(option => {
-                option.addEventListener('click', () => {
-                    const id = option.dataset.id;
-                    const name = option.dataset.name;
-                    this.select(id, name);
-                });
+                option.addEventListener('click', () => this.select(option.dataset.id, option.dataset.name));
             });
         },
-        
         select(id, name) {
             this.selectedIdInput.value = id;
             this.selectedTextSpan.textContent = name;
             this.close();
         }
     };
-    
+
+    // ===== Toggle status pill updater =====
+    function updateToggleStatus() {
+        const posOn = document.getElementById('togglePosition').checked;
+        const comOn = document.getElementById('toggleComments').checked;
+
+        const posPill = document.getElementById('statusPosition');
+        posPill.textContent = posOn ? 'ON' : 'OFF';
+        posPill.className = `toggle-status ${posOn ? 'on' : 'off'}`;
+
+        const comPill = document.getElementById('statusComments');
+        comPill.textContent = comOn ? 'ON' : 'OFF';
+        comPill.className = `toggle-status ${comOn ? 'on' : 'off'}`;
+    }
+
     function switchTab(tab) {
         currentMode = tab;
         const singleTab = document.getElementById('singleTab');
@@ -470,7 +479,8 @@
         const tabClass = document.getElementById('tabClass');
         const generateBtn = document.getElementById('generateBtn');
         const generateClassBtn = document.getElementById('generateClassBtn');
-        
+        const reportOptionsSection = document.getElementById('reportOptionsSection');
+
         if (tab === 'single') {
             singleTab.classList.remove('hidden');
             classTab.classList.add('hidden');
@@ -480,6 +490,7 @@
             tabClass.classList.remove('tab-active');
             generateBtn.classList.remove('hidden');
             generateClassBtn.classList.add('hidden');
+            reportOptionsSection.classList.add('hidden');
         } else {
             singleTab.classList.add('hidden');
             classTab.classList.remove('hidden');
@@ -489,53 +500,37 @@
             tabSingle.classList.remove('tab-active');
             generateBtn.classList.add('hidden');
             generateClassBtn.classList.remove('hidden');
+            reportOptionsSection.classList.remove('hidden');
+            updateToggleStatus(); // refresh pill labels when visible
         }
     }
-    
+
     function getSelectedExams() {
         const selected = [];
-        document.querySelectorAll('.exam-cb:checked').forEach(cb => {
-            selected.push(cb.value);
-        });
+        document.querySelectorAll('.exam-cb:checked').forEach(cb => selected.push(cb.value));
         return selected;
     }
-    
+
     async function generateReportCard() {
         const studentId = document.getElementById('selectedStudentId').value;
         const term = document.getElementById('termSelect').value;
         const year = document.getElementById('yearSelect').value;
         const selectedExams = getSelectedExams();
-        
-        if (!studentId) {
-            showError('Please search and select a student');
-            return;
-        }
-        
-        if (selectedExams.length === 0) {
-            showError('Please select at least one exam');
-            return;
-        }
-        
-        if (!term) {
-            showError('Please select the term');
-            return;
-        }
-        
+
+        if (!studentId) return showError('Please search and select a student');
+        if (selectedExams.length === 0) return showError('Please select at least one exam');
+        if (!term) return showError('Please select the term');
+
         showProgress('Generating Report Card', 'Fetching marks from marksheets...');
         updateProgress(10, 'Fetching marks...', `Term: ${term}, Year: ${year}`);
-        
+
         try {
             const response = await fetch('/results/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    student_id: studentId,
-                    exam_ids: selectedExams,
-                    term: term,
-                    year: year
-                })
+                body: JSON.stringify({ student_id: studentId, exam_ids: selectedExams, term: term, year: year })
             });
-            
+
             if (response.ok) {
                 updateProgress(100, 'Complete!', 'Downloading report card...');
                 const blob = await response.blob();
@@ -559,31 +554,24 @@
             showError('Failed to generate report card: ' + error.message);
         }
     }
-    
+
     async function generateClassReportCard() {
         const classId = document.getElementById('classSelect').value;
         const term = document.getElementById('classTermSelect').value;
         const year = document.getElementById('classYearSelect').value;
         const selectedExams = getSelectedExams();
-        
-        if (!classId) {
-            showError('Please select a class');
-            return;
-        }
-        
-        if (selectedExams.length === 0) {
-            showError('Please select at least one exam');
-            return;
-        }
-        
-        if (!term) {
-            showError('Please select the term');
-            return;
-        }
-        
+        const includePosition = document.getElementById('togglePosition').checked;
+        const includeComments = document.getElementById('toggleComments').checked;
+
+        if (!classId) return showError('Please select a class');
+        if (selectedExams.length === 0) return showError('Please select at least one exam');
+        if (!term) return showError('Please select the term');
+
+        console.log('Toggles → include_position:', includePosition, '| include_comments:', includeComments);
+
         showProgress('Generating Class Report Cards', 'Fetching marks from marksheets...');
         updateProgress(10, 'Fetching marks...', `Term: ${term}, Year: ${year}`);
-        
+
         try {
             const response = await fetch('/results/generate-class', {
                 method: 'POST',
@@ -592,10 +580,12 @@
                     class_id: classId,
                     exam_ids: selectedExams,
                     term: term,
-                    year: year
+                    year: year,
+                    include_position: includePosition,
+                    include_comments: includeComments
                 })
             });
-            
+
             if (response.ok) {
                 updateProgress(100, 'Complete!', 'Downloading merged report cards...');
                 const blob = await response.blob();
@@ -619,9 +609,9 @@
             showError('Failed to generate class report cards: ' + error.message);
         }
     }
-    
+
     let progressInterval;
-    
+
     function showProgress(title, message) {
         const modal = document.getElementById('progressModal');
         document.getElementById('progressTitle').textContent = title;
@@ -631,23 +621,20 @@
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         document.body.style.overflow = 'hidden';
-        
         let progress = 0;
         progressInterval = setInterval(() => {
             progress += 5;
-            if (progress <= 90) {
-                document.getElementById('progressBar').style.width = progress + '%';
-            }
+            if (progress <= 90) document.getElementById('progressBar').style.width = progress + '%';
         }, 300);
     }
-    
+
     function updateProgress(percent, message, detail) {
         if (progressInterval) clearInterval(progressInterval);
         document.getElementById('progressBar').style.width = percent + '%';
         document.getElementById('progressMessage').textContent = message;
         document.getElementById('progressDetail').textContent = detail || '';
     }
-    
+
     function closeProgress() {
         if (progressInterval) clearInterval(progressInterval);
         const modal = document.getElementById('progressModal');
@@ -655,38 +642,39 @@
         modal.classList.remove('flex');
         document.body.style.overflow = '';
     }
-    
+
     function closeErrorModal() {
         document.getElementById('errorModal').classList.add('hidden');
         document.getElementById('errorModal').classList.remove('flex');
         document.body.style.overflow = '';
     }
-    
+
     function showError(message) {
         document.getElementById('errorMessage').textContent = message;
         document.getElementById('errorModal').classList.remove('hidden');
         document.getElementById('errorModal').classList.add('flex');
         document.body.style.overflow = 'hidden';
     }
-    
+
     window.onclick = function(event) {
-        const errorModal = document.getElementById('errorModal');
-        const progressModal = document.getElementById('progressModal');
-        if (event.target === errorModal) closeErrorModal();
-        if (event.target === progressModal) closeProgress();
+        if (event.target === document.getElementById('errorModal')) closeErrorModal();
+        if (event.target === document.getElementById('progressModal')) closeProgress();
     };
-    
+
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
         studentSearchable.init();
         checkApiHealth();
         setInterval(checkApiHealth, 30000);
-        
-        // Auto-select first exam if available
+
+        // Wire toggle change listeners
+        document.getElementById('togglePosition').addEventListener('change', updateToggleStatus);
+        document.getElementById('toggleComments').addEventListener('change', updateToggleStatus);
+        updateToggleStatus(); // set initial pill state
+
+        // Auto-select first exam
         const firstExam = document.querySelector('.exam-cb');
-        if (firstExam) {
-            firstExam.checked = true;
-        }
+        if (firstExam) firstExam.checked = true;
     });
 </script>
 {% endblock %}

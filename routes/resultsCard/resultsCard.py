@@ -414,9 +414,15 @@ def index():
         import traceback
         traceback.print_exc()
         return render_template('results/index.html', exams=[], classes=[], students=[], institute=None)
+def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading_settings,
+                                    term=None, year=None,
+                                    include_position=True, include_comments=True):
+    """Build student report data with division calculation and proper fields.
 
-def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading_settings, term=None, year=None):
-    """Build student report data with division calculation and proper fields"""
+    Args:
+        include_position (bool): If False, omit position/outOf from each student.
+        include_comments (bool): If False, omit classTeacherComment/headTeacherComment.
+    """
     try:
         # Get students
         students_response = supabase.table('students')\
@@ -424,27 +430,27 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
             .in_('id', student_ids)\
             .eq('institute_id', institute_id)\
             .execute()
-        
+
         students = {s['id']: s for s in (students_response.data or [])}
         if not students:
             return {}
-        
+
         class_ids = list(set([s.get('class_id') for s in students.values() if s.get('class_id')]))
-        
+
         # Get subjects with their names
         subjects_response = supabase.table('class_subjects')\
             .select('*, subjects(id, name)')\
             .in_('class_id', class_ids)\
             .eq('institute_id', institute_id)\
             .execute()
-        
+
         subjects_by_class = {}
         for subj in (subjects_response.data or []):
             class_id = subj['class_id']
             if class_id not in subjects_by_class:
                 subjects_by_class[class_id] = []
             subjects_by_class[class_id].append(subj)
-        
+
         # Get marksheets for term/year
         marksheet_ids = []
         for exam_id in exam_ids:
@@ -457,13 +463,13 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                 .order('generated_at', desc=True)\
                 .limit(1)\
                 .execute()
-            
+
             if marksheet_response.data:
                 marksheet_ids.append(marksheet_response.data[0]['id'])
-        
+
         if not marksheet_ids:
             return {}
-        
+
         # Get marks for all students
         marks_response = supabase.table('exam_marks')\
             .select('*')\
@@ -472,12 +478,12 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
             .in_('marksheet_id', marksheet_ids)\
             .eq('institute_id', institute_id)\
             .execute()
-        
+
         marks_lookup = {}
         for mark in (marks_response.data or []):
             key = (mark['student_id'], mark['exam_id'], mark['subject_id'])
             marks_lookup[key] = float(mark['obtained_marks'])
-        
+
         # Get exams
         exams_response = supabase.table('exams')\
             .select('*')\
@@ -486,13 +492,13 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
             .execute()
         exams = exams_response.data if exams_response.data else []
         exam_names = [exam['exam_name'] for exam in exams]
-        
+
         # Build subject max marks
         subject_max_marks = {}
         for class_id, subjects in subjects_by_class.items():
             for subj in subjects:
                 subject_max_marks[(class_id, subj['subject_id'])] = float(subj['marks'])
-        
+
         # Get all students for position calculation
         all_students_response = supabase.table('students')\
             .select('id, name, class_id')\
@@ -500,14 +506,14 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
             .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .execute()
-        
+
         students_by_class = {}
         for s in (all_students_response.data or []):
             class_id = s['class_id']
             if class_id not in students_by_class:
                 students_by_class[class_id] = []
             students_by_class[class_id].append(s)
-        
+
         # Get all marks for position calculation
         all_student_ids = [s['id'] for s in (all_students_response.data or [])]
         all_marks_response = supabase.table('exam_marks')\
@@ -517,50 +523,50 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
             .in_('marksheet_id', marksheet_ids)\
             .eq('institute_id', institute_id)\
             .execute()
-        
+
         position_marks_lookup = {}
         for mark in (all_marks_response.data or []):
             key = (mark['student_id'], mark['exam_id'], mark['subject_id'])
             position_marks_lookup[key] = float(mark['obtained_marks'])
-        
+
         # Build data for each student
         result = {}
-        
+
         for student_id, student in students.items():
             class_id = student.get('class_id')
             if not class_id:
                 continue
-            
+
             subjects = subjects_by_class.get(class_id, [])
             if not subjects:
                 continue
-            
+
             subject_results = []
             subject_grades = {}
             subject_scores = {}  # Store scores for totals
-            
+
             for subject in subjects:
                 subject_name = subject['subjects']['name'] if subject.get('subjects') else 'N/A'
                 subject_id = subject['subject_id']
                 max_marks = float(subject['marks'])
-                
+
                 scores = {}
                 total_obtained = 0
                 total_possible = 0
-                
+
                 for exam in exams:
                     exam_id = exam['id']
                     exam_name = exam['exam_name']
                     key = (student_id, exam_id, subject_id)
                     obtained = marks_lookup.get(key)
-                    
+
                     if obtained is not None:
                         scores[exam_name] = obtained
                         total_obtained += obtained
                         total_possible += max_marks
                     else:
                         scores[exam_name] = 0
-                
+
                 if total_possible > 0:
                     subject_average = (total_obtained / total_possible) * 100
                     subject_grade, status, grade_data = get_grade_from_percentage(subject_average, grading_settings)
@@ -569,15 +575,15 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                     subject_grade = 'F9'
                     status = 'Fail'
                     grade_data = None
-                
+
                 subject_grades[subject_name] = subject_grade
-                
+
                 # Get ALL data from DB for this grade
                 grade_data = get_grade_data_from_db(subject_grade, grading_settings)
-                
+
                 # The remarks/status is the 'status' column from the exam_grading table
                 remarks = grade_data.get('status', 'No remarks')
-                
+
                 subject_results.append({
                     'name': subject_name,
                     'scores': scores,
@@ -585,17 +591,17 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                     'grade': subject_grade,
                     'remarks': remarks  # This is the status from exam_grading table!
                 })
-            
+
             # Calculate aggregate
             aggregate = calculate_aggregate(subject_grades)
-            
+
             # Determine division
             division, requirements, explanation = determine_division(aggregate, subject_grades)
-            
+
             # Generate dynamic comments (or use DB comments if available)
             class_comment = generate_class_teacher_comment(division, aggregate, subject_grades)
             head_comment = generate_head_teacher_comment(division, aggregate, subject_grades)
-            
+
             # Get requirements from DB for this division/grade
             # We'll collect requirements from all grades
             all_requirements = []
@@ -603,48 +609,48 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                 grade_data = get_grade_data_from_db(grade_name, grading_settings)
                 if grade_data.get('requirements'):
                     all_requirements.append(grade_data.get('requirements'))
-            
+
             # If we have requirements from DB, use them; otherwise use division requirements
             db_requirements = ', '.join(set(all_requirements)) if all_requirements else ', '.join(requirements)
-            
+
             # Calculate position
             class_students = students_by_class.get(class_id, [])
             class_percentages = []
-            
+
             for class_student in class_students:
                 student_total = 0
                 student_possible = 0
-                
+
                 for subject in subjects:
                     subject_id = subject['subject_id']
                     max_marks = float(subject['marks'])
-                    
+
                     for exam in exams:
                         exam_id = exam['id']
                         key = (class_student['id'], exam_id, subject_id)
                         obtained = position_marks_lookup.get(key)
-                        
+
                         if obtained is not None:
                             student_total += obtained
                             student_possible += max_marks
-                
+
                 percentage = (student_total / student_possible * 100) if student_possible > 0 else 0
                 class_percentages.append({
                     'student_id': class_student['id'],
                     'name': class_student['name'],
                     'percentage': percentage
                 })
-            
+
             class_percentages.sort(key=lambda x: x['percentage'], reverse=True)
-            
+
             position = 1
             for idx, cp in enumerate(class_percentages, 1):
                 if cp['student_id'] == student_id:
                     position = idx
                     break
-            
+
             total_students = len(class_percentages)
-            
+
             # Build exam totals
             exam_totals = {}
             for exam in exams:
@@ -653,21 +659,19 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                 for subject in subject_results:
                     exam_total += subject['scores'].get(exam_name, 0)
                 exam_totals[exam_name] = exam_total
-            
+
             overall_avg = sum(exam_totals.values()) / (len(exams) * len(subjects)) if exams and subjects else 0
-            
+
             class_name = student.get('classes', {}).get('name') if student.get('classes') else 'N/A'
-            
-            # Build the final student data with ALL required fields
-            result[student_id] = {
+
+            # Build the final student data with base fields
+            entry = {
                 'name': student.get('name', 'N/A'),
                 'studentId': student.get('student_id', 'N/A'),
                 'class': class_name,
                 'gender': student.get('gender', 'N/A'),
                 'division': division,
                 'aggregates': aggregate,
-                'position': position,
-                'outOf': total_students,
                 'photoUrl': student.get('photo_url', ''),
                 'subjects': subject_results,
                 'totals': {
@@ -675,36 +679,49 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                     'avg': round(overall_avg, 1),
                     'grade': division
                 },
-                'classTeacherComment': class_comment,
-                'headTeacherComment': head_comment,
-                'requirements': db_requirements  # Requirements from DB or division requirements
+                'requirements': db_requirements
             }
-        
+
+            # ✅ NEW: conditionally include position
+            if include_position:
+                entry['position'] = position
+                entry['outOf'] = total_students
+
+            # ✅ NEW: conditionally include comments
+            if include_comments:
+                entry['classTeacherComment'] = class_comment
+                entry['headTeacherComment'] = head_comment
+
+            result[student_id] = entry
+
         return result
-        
+
     except Exception as e:
         print(f"Error building batch student data: {e}")
         import traceback
         traceback.print_exc()
         return {}
-
 @results_bp.route('/generate-class', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def generate_class_results():
     """Generate merged PDF for entire class"""
     user = session.get('user')
     institute_id = get_institute_id_func(user['id'])
-    
+
     if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
-    
+
     try:
         data = request.get_json()
         class_id = data.get('class_id')
         exam_ids = data.get('exam_ids', [])
         term = data.get('term', '').strip()
         year = data.get('year', datetime.now().year)
-        
+
+        # ✅ NEW: toggle flags (default True to preserve existing behaviour)
+        include_position = bool(data.get('include_position', True))
+        include_comments = bool(data.get('include_comments', True))
+
         # Get next term from database
         next_term_data = get_next_term_from_db(institute_id)
         if next_term_data:
@@ -714,18 +731,19 @@ def generate_class_results():
         else:
             # Fallback to user-provided or default
             next_term = data.get('next_term', 'To be announced')
-        
+
         print(f"Generate class request: class_id={class_id}, exam_ids={exam_ids}, term={term}, year={year}, next_term={next_term}")
-        
+        print(f"Toggles: include_position={include_position}, include_comments={include_comments}")
+
         if not class_id:
             return jsonify({'success': False, 'message': 'Please select a class'}), 400
-        
+
         if not exam_ids:
             return jsonify({'success': False, 'message': 'Please select at least one exam'}), 400
-        
+
         if not term:
             return jsonify({'success': False, 'message': 'Please enter the term'}), 400
-        
+
         # Get students
         students_response = supabase.table('students')\
             .select('id, name, student_id')\
@@ -734,61 +752,64 @@ def generate_class_results():
             .eq('status', 'active')\
             .order('name')\
             .execute()
-        
+
         students = students_response.data if students_response.data else []
-        
+
         if not students:
             return jsonify({'success': False, 'message': 'No active students found in this class'}), 404
-        
+
         student_ids = [s['id'] for s in students]
-        
+
         # Get grading settings with comments
         grading_response = supabase.table('exam_grading')\
             .select('*')\
             .eq('institute_id', institute_id)\
             .order('min_percentage', desc=True)\
             .execute()
-        
+
         grading = grading_response.data if grading_response.data else []
-        
+
         # Get institute details
         institute_response = supabase.table('institutes')\
             .select('*')\
             .eq('id', institute_id)\
             .execute()
-        
+
         institute = institute_response.data[0] if institute_response.data else {}
-        
+
         # Get exam names
         exams_response = supabase.table('exams')\
             .select('exam_name')\
             .in_('id', exam_ids)\
             .eq('institute_id', institute_id)\
             .execute()
-        
+
         exam_names = [exam['exam_name'] for exam in (exams_response.data or [])]
-        
+
         # Build student data
+        # ✅ NEW: pass toggles through
         students_data_dict = build_student_report_data_batch(
-            student_ids, exam_ids, institute_id, grading, term, year
+            student_ids, exam_ids, institute_id, grading, term, year,
+            include_position=include_position,
+            include_comments=include_comments
         )
-        
+
         students_data = []
         failed_students = []
-        
+
         for student in students:
             student_data = students_data_dict.get(student['id'])
             if student_data:
                 students_data.append(student_data)
             else:
                 failed_students.append(student['name'])
-        
+
         if not students_data:
             return jsonify({
-                'success': False, 
+                'success': False,
                 'message': f'No marks found for term "{term}" in year {year}. Please ensure marks have been entered for this term.'
             }), 500
-        
+
         # Build payload for Node.js API - with ALL required fields
         payload = {
             'school': {
@@ -807,13 +828,20 @@ def generate_class_results():
             'exams': exam_names,
             'students': students_data
         }
-        
+
+        # ✅ OPTIONAL: expose flags to Node.js template in case it renders conditionally
+        # Comment out if your Node.js template doesn't read this.
+        payload['options'] = {
+            'includePosition': include_position,
+            'includeComments': include_comments
+        }
+
         print(f"Sending to API: {len(students_data)} students, {len(exam_names)} exams")
         print(f"Next term from DB: {next_term}")
         if students_data:
             print(f"Sample student data keys: {students_data[0].keys()}")
             print(f"Sample subject data: {students_data[0]['subjects'][0] if students_data[0]['subjects'] else 'No subjects'}")
-        
+
         # Call Node.js API
         try:
             response = requests.post(
@@ -822,43 +850,43 @@ def generate_class_results():
                 timeout=300,
                 headers={'Content-Type': 'application/json'}
             )
-            
+
             if response.status_code != 200:
                 print(f"API error: {response.status_code}")
                 print(f"Response: {response.text[:500]}")
                 return jsonify({
-                    'success': False, 
+                    'success': False,
                     'message': f'Report API error: {response.status_code} - {response.text[:200]}'
                 }), 500
-            
+
             pdf_buffer = io.BytesIO(response.content)
             pdf_buffer.seek(0)
-            
+
             class_response = supabase.table('classes')\
                 .select('name')\
                 .eq('id', class_id)\
                 .eq('institute_id', institute_id)\
                 .execute()
-            
+
             class_name = class_response.data[0]['name'] if class_response.data else 'Class'
-            
+
             return send_file(
                 pdf_buffer,
                 as_attachment=True,
                 download_name=f"report_cards_{class_name}_{term}_{year}.pdf",
                 mimetype='application/pdf'
             )
-            
+
         except requests.exceptions.ConnectionError:
             print(f"Connection error to {REPORT_API_URL}")
             return jsonify({
-                'success': False, 
+                'success': False,
                 'message': 'Report API is not available. Please ensure the Node.js service is running.'
             }), 503
         except requests.exceptions.Timeout:
             print("Request timeout")
             return jsonify({
-                'success': False, 
+                'success': False,
                 'message': 'Report generation timed out. Please try with fewer students or exams.'
             }), 504
         except Exception as e:
@@ -866,10 +894,10 @@ def generate_class_results():
             import traceback
             traceback.print_exc()
             return jsonify({
-                'success': False, 
+                'success': False,
                 'message': f'Error generating report: {str(e)}'
             }), 500
-        
+
     except Exception as e:
         print(f"Error generating class results: {e}")
         import traceback

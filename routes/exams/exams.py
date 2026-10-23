@@ -1241,3 +1241,420 @@ def get_history_dates():
     except Exception as e:
         print(f"Error getting history dates: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+    
+# ==================== EXPORT ASSESSMENT (EXCEL) ====================
+@exams_bp.route('/api/assessment/excel', methods=['POST'])
+@role_required(['owner', 'teacher', 'accountant'])
+def export_assessment_excel():
+    """Export a class assessment sheet to Excel.
+
+    Layout:
+        NAME | SUBJ1 | SUBJ1 AGG | SUBJ2 | SUBJ2 AGG | ... |
+        TOTAL MARKS | AVERAGE | TOTAL AGGREGATES | DIVISION | POSITION
+
+    Grading matches resultsCard.py:
+    - grade determined from percentage using exam_grading table
+    - points from GRADE_POINTS mapping (D1=1 ... F9=9)
+    - aggregate = sum of per-subject points
+    - division follows Uganda O-Level rules
+    """
+    user = session.get('user')
+    institute_id = get_institute(user['id'])
+
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+
+    try:
+        data = request.get_json()
+        class_id = data.get('class_id')
+        exam_ids = data.get('exam_ids', [])
+        term = (data.get('term') or '').strip()
+        year = data.get('year', datetime.now().year)
+
+        if not class_id:
+            return jsonify({'success': False, 'message': 'Class is required'}), 400
+        if not exam_ids:
+            return jsonify({'success': False, 'message': 'At least one exam is required'}), 400
+        if not term:
+            return jsonify({'success': False, 'message': 'Term is required'}), 400
+
+        GRADE_POINTS = {
+            'D1': 1, 'D2': 2, 'C3': 3, 'C4': 4,
+            'C5': 5, 'C6': 6, 'P7': 7, 'P8': 8, 'F9': 9
+        }
+
+        # -------- Grading settings (same table resultsCard.py uses) --------
+        grading_resp = supabase.table('exam_grading')\
+            .select('*')\
+            .eq('institute_id', institute_id)\
+            .order('min_percentage', desc=True)\
+            .execute()
+        grading_settings = grading_resp.data if grading_resp.data else []
+
+        if not grading_settings:
+            return jsonify({
+                'success': False,
+                'message': 'Grading settings not configured. Please set up grades first.'
+            }), 400
+
+        def grade_from_pct(pct):
+            for g in grading_settings:
+                lo = float(g['min_percentage'])
+                hi = float(g['max_percentage'])
+                if lo <= pct <= hi:
+                    return g['grade_name']
+            return 'F9'
+
+        def determine_division(aggregate, subj_grades):
+            names = list(subj_grades.keys())
+            has_f9 = any(g == 'F9' for g in subj_grades.values())
+            has_english = any('english' in n.lower() for n in names)
+            has_math = any('math' in n.lower() for n in names)
+            english_passed = all(
+                g != 'F9' for n, g in subj_grades.items() if 'english' in n.lower()
+            )
+            math_passed = all(
+                g != 'F9' for n, g in subj_grades.items() if 'math' in n.lower()
+            )
+            passed = sum(1 for g in subj_grades.values() if g != 'F9')
+
+            if 4 <= aggregate <= 12:
+                if (not has_f9) and all(g not in ['P7', 'P8'] for g in subj_grades.values()):
+                    return 'Division 1'
+                return 'Division 2'
+            elif 13 <= aggregate <= 23:
+                if not has_english and not has_math:
+                    return 'Division 2'
+                if has_english and has_math and english_passed and math_passed:
+                    return 'Division 2'
+                return 'Division 3'
+            elif 24 <= aggregate <= 29:
+                return 'Division 3'
+            elif 30 <= aggregate <= 34:
+                return 'Division 4' if passed >= 2 else 'Ungraded'
+            else:
+                return 'Ungraded'
+
+        # -------- Class + Institute --------
+        cls_resp = supabase.table('classes')\
+            .select('*')\
+            .eq('id', class_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        if not cls_resp.data:
+            return jsonify({'success': False, 'message': 'Class not found'}), 404
+        class_info = cls_resp.data[0]
+
+        inst_resp = supabase.table('institutes')\
+            .select('*')\
+            .eq('id', institute_id)\
+            .execute()
+        institute = inst_resp.data[0] if inst_resp.data else {}
+
+        # -------- Students --------
+        students_resp = supabase.table('students')\
+            .select('id, name, student_id')\
+            .eq('class_id', class_id)\
+            .eq('institute_id', institute_id)\
+            .eq('status', 'active')\
+            .order('name')\
+            .execute()
+        students = students_resp.data if students_resp.data else []
+        if not students:
+            return jsonify({'success': False, 'message': 'No active students in this class'}), 404
+
+        student_ids = [s['id'] for s in students]
+
+        # -------- Subjects --------
+        subs_resp = supabase.table('class_subjects')\
+            .select('*, subjects!inner(name)')\
+            .eq('class_id', class_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        subjects = subs_resp.data if subs_resp.data else []
+        if not subjects:
+            return jsonify({'success': False, 'message': 'No subjects assigned to this class'}), 404
+
+        # -------- Marksheets for the term/year --------
+        marksheet_ids = []
+        for exam_id in exam_ids:
+            ms = supabase.table('exam_marksheets')\
+                .select('id')\
+                .eq('exam_id', exam_id)\
+                .eq('class_id', class_id)\
+                .eq('institute_id', institute_id)\
+                .eq('academic_year', str(year))\
+                .eq('term', term)\
+                .order('generated_at', desc=True)\
+                .limit(1)\
+                .execute()
+            if ms.data:
+                marksheet_ids.append(ms.data[0]['id'])
+
+        if not marksheet_ids:
+            return jsonify({
+                'success': False,
+                'message': f'No marksheets found for {term} {year}. Please save marks first.'
+            }), 404
+
+        # -------- All marks --------
+        marks_resp = supabase.table('exam_marks')\
+            .select('student_id, subject_id, exam_id, obtained_marks')\
+            .in_('student_id', student_ids)\
+            .in_('exam_id', exam_ids)\
+            .in_('marksheet_id', marksheet_ids)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        marks = marks_resp.data if marks_resp.data else []
+
+        marks_lookup = {}
+        for m in marks:
+            key = (m['student_id'], m['subject_id'], m['exam_id'])
+            marks_lookup[key] = float(m['obtained_marks'])
+
+        # -------- Build per-student data --------
+        student_data = []
+
+        for student in students:
+            subject_results = []
+            subj_grades = {}
+            total_obtained = 0.0
+            total_possible = 0.0
+            total_aggregate = 0
+            any_marks_for_student = False
+
+            for subj in subjects:
+                subj_id = subj['subject_id']
+                subj_name = subj['subjects']['name'] if subj.get('subjects') else 'N/A'
+                max_marks = float(subj['marks'])
+
+                subj_obtained = 0.0
+                subj_possible = 0.0
+                has_any = False
+
+                for exam_id in exam_ids:
+                    val = marks_lookup.get((student['id'], subj_id, exam_id))
+                    if val is not None:
+                        subj_obtained += val
+                        subj_possible += max_marks
+                        has_any = True
+                        any_marks_for_student = True
+
+                pct = (subj_obtained / subj_possible * 100.0) if subj_possible > 0 else 0.0
+                grade = grade_from_pct(pct) if has_any else 'F9'
+                points = GRADE_POINTS.get(grade, 9)
+
+                subject_results.append({
+                    'name': subj_name,
+                    'marks': round(subj_obtained, 1),
+                    'max': round(subj_possible, 1),
+                    'percentage': round(pct, 1),
+                    'grade': grade,
+                    'points': points,
+                    'has_marks': has_any
+                })
+
+                subj_grades[subj_name] = grade
+                total_obtained += subj_obtained
+                total_possible += subj_possible
+                total_aggregate += points
+
+            average_pct = (total_obtained / total_possible * 100.0) if total_possible > 0 else 0.0
+            division = determine_division(total_aggregate, subj_grades)
+
+            student_data.append({
+                'id': student['id'],
+                'name': student['name'],
+                'student_id': student['student_id'],
+                'subjects': subject_results,
+                'total_marks': round(total_obtained, 1),
+                'total_max': round(total_possible, 1),
+                'average': round(average_pct, 1),
+                'aggregate': total_aggregate,
+                'division': division,
+                'position': 0,
+                'any_marks': any_marks_for_student
+            })
+
+        # -------- Positions (aggregate asc = best; tie-break by avg desc) --------
+        ranked = sorted(student_data, key=lambda x: (x['aggregate'], -x['average']))
+        for idx, sd in enumerate(ranked, 1):
+            sd['position'] = idx
+
+        # -------- Build columns --------
+        columns = ['NAME']
+        for subj in subjects:
+            subj_name = subj['subjects']['name'] if subj.get('subjects') else 'N/A'
+            columns.append(subj_name)
+            columns.append(f'{subj_name} AGG')
+        columns.extend(['TOTAL MARKS', 'AVERAGE', 'TOTAL AGGREGATES', 'DIVISION', 'POSITION'])
+
+        # -------- Build rows (keep alphabetical name order) --------
+        rows = []
+        for sd in student_data:
+            row = [sd['name']]
+            for sr in sd['subjects']:
+                row.append(sr['marks'])
+                row.append(sr['points'])
+            row.append(f"{sd['total_marks']}/{sd['total_max']}")
+            row.append(f"{sd['average']}%")
+            row.append(sd['aggregate'])
+            row.append(sd['division'])
+            row.append(sd['position'])
+            rows.append(row)
+
+        df = pd.DataFrame(rows, columns=columns)
+
+        # -------- Excel --------
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Assessment', index=False, startrow=3)
+
+            wb = writer.book
+            ws = writer.sheets['Assessment']
+
+            # Style palette
+            header_font = Font(name='Calibri', size=11, bold=True, color='FFFFFF')
+            name_fill = PatternFill('solid', start_color='1e3a5f', end_color='1e3a5f')
+            subj_fill = PatternFill('solid', start_color='ea580c', end_color='ea580c')
+            agg_fill = PatternFill('solid', start_color='dc2626', end_color='dc2626')
+            sum_fill = PatternFill('solid', start_color='059669', end_color='059669')
+            alt_fill = PatternFill('solid', start_color='f8fafc', end_color='f8fafc')
+            header_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            center = Alignment(horizontal='center', vertical='center')
+            left = Alignment(horizontal='left', vertical='center')
+            thin = Border(
+                left=Side(style='thin'), right=Side(style='thin'),
+                top=Side(style='thin'), bottom=Side(style='thin')
+            )
+
+            # Title + info
+            n_cols = len(columns)
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=n_cols)
+            title = ws.cell(row=1, column=1,
+                            value=institute.get('institute_name', 'SCHOOL NAME'))
+            title.font = Font(name='Calibri', size=16, bold=True, color='1e3a5f')
+            title.alignment = Alignment(horizontal='center', vertical='center')
+            ws.row_dimensions[1].height = 30
+
+            ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=n_cols)
+            exam_names_resp = supabase.table('exams')\
+                .select('exam_name')\
+                .in_('id', exam_ids)\
+                .eq('institute_id', institute_id)\
+                .execute()
+            exam_names = [e['exam_name'] for e in (exam_names_resp.data or [])]
+            info = (f"ASSESSMENT SHEET  |  Class: {class_info['name']}  |  "
+                    f"Term: {term}  |  Year: {year}  |  "
+                    f"Exams: {', '.join(exam_names) if exam_names else '—'}  |  "
+                    f"Date: {datetime.now().strftime('%d %B, %Y')}")
+            info_cell = ws.cell(row=2, column=1, value=info)
+            info_cell.font = Font(name='Calibri', size=10, italic=True, color='4b5563')
+            info_cell.alignment = Alignment(horizontal='center', vertical='center')
+
+            # Header row (row 4 because startrow=3)
+            header_row = 4
+            n_subj_cols = len(subjects) * 2
+            for col_idx in range(1, n_cols + 1):
+                cell = ws.cell(row=header_row, column=col_idx)
+                cell.font = header_font
+                cell.alignment = header_align
+                cell.border = thin
+                if col_idx == 1:
+                    cell.fill = name_fill
+                elif 2 <= col_idx <= 1 + n_subj_cols:
+                    # even offset from col 2 → subject name; odd → AGG
+                    if (col_idx - 2) % 2 == 0:
+                        cell.fill = subj_fill
+                    else:
+                        cell.fill = agg_fill
+                else:
+                    cell.fill = sum_fill
+            ws.row_dimensions[header_row].height = 30
+
+            # Data rows
+            first_data_row = header_row + 1
+            for r_idx in range(first_data_row, first_data_row + len(rows)):
+                for c_idx in range(1, n_cols + 1):
+                    cell = ws.cell(row=r_idx, column=c_idx)
+                    cell.border = thin
+                    cell.alignment = left if c_idx == 1 else center
+                    if r_idx % 2 == 0:
+                        cell.fill = alt_fill
+
+            # Column widths
+            for c_idx in range(1, n_cols + 1):
+                col_letter = get_column_letter(c_idx)
+                header_val = columns[c_idx - 1]
+                max_len = max(len(str(header_val)) + 2, 10)
+                for row_val in rows:
+                    max_len = max(max_len, len(str(row_val[c_idx - 1])) + 2)
+                ws.column_dimensions[col_letter].width = min(max_len, 20)
+
+            ws.freeze_panes = ws.cell(row=first_data_row, column=2)
+
+            # -------- Summary sheet --------
+            if student_data:
+                div_counts = {}
+                for sd in student_data:
+                    div_counts[sd['division']] = div_counts.get(sd['division'], 0) + 1
+
+                aggs = [sd['aggregate'] for sd in student_data]
+                avgs = [sd['average'] for sd in student_data]
+
+                summary_rows = [
+                    ('Class', class_info['name']),
+                    ('Term', term),
+                    ('Year', year),
+                    ('Exams Included', ', '.join(exam_names) if exam_names else '—'),
+                    ('Total Students', len(student_data)),
+                    ('Total Subjects', len(subjects)),
+                    ('Class Average %', f"{sum(avgs)/len(avgs):.1f}%"),
+                    ('Best Aggregate', min(aggs)),
+                    ('Worst Aggregate', max(aggs)),
+                    ('Average Aggregate', f"{sum(aggs)/len(aggs):.1f}"),
+                    ('Division 1', div_counts.get('Division 1', 0)),
+                    ('Division 2', div_counts.get('Division 2', 0)),
+                    ('Division 3', div_counts.get('Division 3', 0)),
+                    ('Division 4', div_counts.get('Division 4', 0)),
+                    ('Ungraded',   div_counts.get('Ungraded', 0)),
+                ]
+                summary_df = pd.DataFrame(summary_rows, columns=['Metric', 'Value'])
+                summary_df.to_excel(writer, sheet_name='Summary', index=False)
+
+                sum_ws = writer.sheets['Summary']
+                sum_ws.column_dimensions['A'].width = 28
+                sum_ws.column_dimensions['B'].width = 40
+                for c in (1, 2):
+                    hc = sum_ws.cell(row=1, column=c)
+                    hc.font = header_font
+                    hc.fill = name_fill
+                    hc.alignment = header_align
+                    hc.border = thin
+                for r in range(2, 2 + len(summary_rows)):
+                    for c in (1, 2):
+                        cc = sum_ws.cell(row=r, column=c)
+                        cc.border = thin
+                        cc.alignment = left if c == 1 else Alignment(horizontal='left', vertical='center')
+
+        output.seek(0)
+        safe_class = class_info['name'].replace(' ', '_').replace('/', '-')
+        safe_term = term.replace(' ', '_')
+        filename = (
+            f"ASSESSMENT_{safe_class}_{safe_term}_{year}_"
+            f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        )
+
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except Exception as e:
+        print(f"Error exporting assessment: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
