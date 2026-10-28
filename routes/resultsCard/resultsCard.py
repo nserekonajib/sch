@@ -1,4 +1,5 @@
 # resultsCard.py - Fixed with Proper Data Sending using DB fields
+# + Best-4-Subjects Aggregate/Division Rule (when >4 subjects)
 import uuid
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
@@ -39,6 +40,10 @@ GRADE_POINTS = {
     'C5': 5, 'C6': 6, 'P7': 7, 'P8': 8, 'F9': 9
 }
 
+# Number of best subjects to use when a student has more subjects than this
+BEST_SUBJECTS_COUNT = 4
+
+
 def get_grade_from_percentage(percentage, grading_settings):
     """Get grade based on percentage from database settings"""
     for grade in grading_settings:
@@ -48,12 +53,30 @@ def get_grade_from_percentage(percentage, grading_settings):
             return grade['grade_name'], grade.get('status', ''), grade
     return 'F9', 'Fail', None
 
+
 def calculate_aggregate(subject_grades):
     """Calculate aggregate from subject grades"""
     total_points = 0
     for grade in subject_grades.values():
         total_points += GRADE_POINTS.get(grade, 9)
     return total_points
+
+
+def get_best_subjects(subject_grades, count=BEST_SUBJECTS_COUNT):
+    """
+    Return the best N subjects (lowest grade points = best grades).
+    - If the student has <= count subjects, return all of them unchanged.
+    - Otherwise, return only the top `count` subjects ordered by grade points.
+    """
+    if len(subject_grades) <= count:
+        return dict(subject_grades)
+
+    sorted_items = sorted(
+        subject_grades.items(),
+        key=lambda item: GRADE_POINTS.get(item[1], 9)
+    )
+    return dict(sorted_items[:count])
+
 
 def get_grade_data_from_db(grade_name, grading_settings):
     """
@@ -76,6 +99,7 @@ def get_grade_data_from_db(grade_name, grading_settings):
         'head_teacher_comment': '',
         'requirements': ''
     }
+
 
 def determine_division(aggregate, subject_grades):
     """
@@ -188,6 +212,7 @@ def determine_division(aggregate, subject_grades):
     
     return division, requirements, explanation
 
+
 def generate_class_teacher_comment(division, aggregate, subject_grades):
     """Generate dynamic class teacher comment"""
     passed = sum(1 for grade in subject_grades.values() if grade != 'F9')
@@ -247,6 +272,7 @@ def generate_class_teacher_comment(division, aggregate, subject_grades):
     
     return ' '.join(comments)
 
+
 def generate_head_teacher_comment(division, aggregate, subject_grades):
     """Generate dynamic head teacher comment"""
     comments = []
@@ -300,6 +326,7 @@ def generate_head_teacher_comment(division, aggregate, subject_grades):
     
     return ' '.join(comments)
 
+
 def get_next_term_from_db(institute_id):
     """Get next term settings from database"""
     try:
@@ -315,6 +342,7 @@ def get_next_term_from_db(institute_id):
         print(f"Error fetching next term: {e}")
         return None
 
+
 def format_next_term_date(date_str):
     """Format date string nicely"""
     if not date_str or date_str == 'To be announced':
@@ -325,10 +353,12 @@ def format_next_term_date(date_str):
     except:
         return date_str
 
+
 @results_bp.route('/r', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def r():
     return render_template('results/index2.html')
+
 
 @results_bp.route('/')
 @role_required(['owner', 'teacher', 'accountant'])
@@ -414,6 +444,8 @@ def index():
         import traceback
         traceback.print_exc()
         return render_template('results/index.html', exams=[], classes=[], students=[], institute=None)
+
+
 def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading_settings,
                                     term=None, year=None,
                                     include_position=True, include_comments=True):
@@ -422,6 +454,11 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
     Args:
         include_position (bool): If False, omit position/outOf from each student.
         include_comments (bool): If False, omit classTeacherComment/headTeacherComment.
+
+    Note:
+        When a student has more than BEST_SUBJECTS_COUNT subjects, the aggregate
+        and division are computed from the BEST 4 subjects only (lowest points).
+        Individual subject rows still show ALL subjects.
     """
     try:
         # Get students
@@ -592,13 +629,20 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                     'remarks': remarks  # This is the status from exam_grading table!
                 })
 
-            # Calculate aggregate
-            aggregate = calculate_aggregate(subject_grades)
+            # ✅ Best-4 rule: if > BEST_SUBJECTS_COUNT subjects, use best N for aggregate/division
+            subjects_for_calc = get_best_subjects(subject_grades, BEST_SUBJECTS_COUNT)
+            is_best_four = len(subject_grades) > BEST_SUBJECTS_COUNT
 
-            # Determine division
-            division, requirements, explanation = determine_division(aggregate, subject_grades)
+            # Aggregate from best subjects (or all if <= N)
+            aggregate = calculate_aggregate(subjects_for_calc)
 
-            # Generate dynamic comments (or use DB comments if available)
+            # Division determined from best subjects (or all if <= N)
+            division, requirements, explanation = determine_division(
+                aggregate, subjects_for_calc
+            )
+
+            # Generate dynamic comments using the FULL subject_grades so all weak
+            # subjects are still mentioned in the feedback.
             class_comment = generate_class_teacher_comment(division, aggregate, subject_grades)
             head_comment = generate_head_teacher_comment(division, aggregate, subject_grades)
 
@@ -679,15 +723,24 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                     'avg': round(overall_avg, 1),
                     'grade': division
                 },
-                'requirements': db_requirements
+                'requirements': db_requirements,
+
+                # ✅ Best-4 rule metadata (safe for Node template to optionally render)
+                'aggregateBasedOn': (
+                    f"Best {len(subjects_for_calc)} of {len(subject_grades)} subjects"
+                    if is_best_four else
+                    f"All {len(subject_grades)} subjects"
+                ),
+                'bestSubjectsUsed': list(subjects_for_calc.keys()) if is_best_four else None,
+                'totalSubjects': len(subject_grades),
             }
 
-            # ✅ NEW: conditionally include position
+            # ✅ Conditionally include position
             if include_position:
                 entry['position'] = position
                 entry['outOf'] = total_students
 
-            # ✅ NEW: conditionally include comments
+            # ✅ Conditionally include comments
             if include_comments:
                 entry['classTeacherComment'] = class_comment
                 entry['headTeacherComment'] = head_comment
@@ -701,6 +754,8 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
         import traceback
         traceback.print_exc()
         return {}
+
+
 @results_bp.route('/generate-class', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def generate_class_results():
@@ -718,7 +773,7 @@ def generate_class_results():
         term = data.get('term', '').strip()
         year = data.get('year', datetime.now().year)
 
-        # ✅ NEW: toggle flags (default True to preserve existing behaviour)
+        # ✅ Toggle flags (default True to preserve existing behaviour)
         include_position = bool(data.get('include_position', True))
         include_comments = bool(data.get('include_comments', True))
 
@@ -787,7 +842,6 @@ def generate_class_results():
         exam_names = [exam['exam_name'] for exam in (exams_response.data or [])]
 
         # Build student data
-        # ✅ NEW: pass toggles through
         students_data_dict = build_student_report_data_batch(
             student_ids, exam_ids, institute_id, grading, term, year,
             include_position=include_position,
@@ -817,7 +871,7 @@ def generate_class_results():
                 'tagline': institute.get('target_line', 'Excellence in Education'),
                 'address': institute.get('address', ''),
                 'phone': institute.get('phone_number', ''),
-                'motto': institute.get('footer_motto', 'Foundation for your digital ambitions'),
+                'motto': institute.get('target_line', 'Foundation for your digital ambitions'),
                 'logoUrl': institute.get('logo_url', '')
             },
             'term': {
@@ -829,11 +883,12 @@ def generate_class_results():
             'students': students_data
         }
 
-        # ✅ OPTIONAL: expose flags to Node.js template in case it renders conditionally
-        # Comment out if your Node.js template doesn't read this.
+        # ✅ Expose flags to Node.js template
         payload['options'] = {
             'includePosition': include_position,
-            'includeComments': include_comments
+            'includeComments': include_comments,
+            'useBestFourRule': True,               # ✅ Best-4 rule active
+            'bestSubjectsCount': BEST_SUBJECTS_COUNT
         }
 
         print(f"Sending to API: {len(students_data)} students, {len(exam_names)} exams")
@@ -903,6 +958,7 @@ def generate_class_results():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @results_bp.route('/api/next-term', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
