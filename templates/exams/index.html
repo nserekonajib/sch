@@ -1,70 +1,34 @@
-<!-- templates/exams/index.html - Updated with Term and Year -->
 {% extends "base.html" %}
-
 {% block title %}Exams - Lunserk ERP{% endblock %}
 
 {% block extra_css %}
 <style>
-    .btn-gradient {
-        background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-    }
-    .btn-gradient:hover {
-        background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
-        transform: translateY(-2px);
-    }
-    .modal-overlay {
-        animation: fadeIn 0.3s ease-out;
-    }
-    .modal-container {
-        animation: slideUp 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(50px) scale(0.95);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-    .status-published {
-        background-color: #d1fae5;
-        color: #065f46;
-    }
-    .status-draft {
-        background-color: #fef3c7;
-        color: #d97706;
-    }
-    .filter-bar {
-        background: white;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 20px;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-    }
+    .btn-gradient { background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%); }
+    .btn-gradient:hover { background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%); transform: translateY(-2px); }
+    .modal-overlay { animation: fadeIn .3s ease-out; }
+    .modal-container { animation: slideUp .4s cubic-bezier(.34,1.2,.64,1); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(50px) scale(.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .status-published { background-color: #d1fae5; color: #065f46; }
+    .status-draft { background-color: #fef3c7; color: #d97706; }
+    .filter-bar { background: white; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 1px 3px 0 rgba(0,0,0,.1); }
+    .action-btn { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; transition: all .15s; }
+    .action-btn:hover { background: #f3f4f6; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
-    <!-- Page Header -->
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-800 mb-1">Exams</h1>
             <p class="text-sm text-gray-600">Create and manage examinations by term and year</p>
         </div>
         <button onclick="openCreateModal()" class="btn-gradient px-5 py-2.5 rounded-lg text-white font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
-            <i class="fas fa-plus-circle"></i>
-            Create New Exam
+            <i class="fas fa-plus-circle"></i> Create New Exam
         </button>
     </div>
 
-    <!-- Filter Bar -->
     <div class="filter-bar">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -73,7 +37,7 @@
                     <option value="">All Years</option>
                     <option value="2024">2024</option>
                     <option value="2025">2025</option>
-                    <option value="2026" selected>2026</option>
+                    <option value="2026">2026</option>
                     <option value="2027">2027</option>
                     <option value="2028">2028</option>
                 </select>
@@ -98,7 +62,6 @@
         </div>
     </div>
 
-    <!-- Exams Table -->
     <div class="bg-white rounded-xl shadow-md overflow-hidden">
         <div class="overflow-x-auto">
             <table id="examsTable" class="min-w-full divide-y divide-gray-200">
@@ -134,7 +97,7 @@
         <form id="createExamForm" class="p-5">
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Examination Name <span class="text-red-500">*</span></label>
-                <input type="text" name="exam_name" required placeholder="e.g., BEGINNING OF TERM (BOT)" 
+                <input type="text" name="exam_name" required placeholder="e.g., BEGINNING OF TERM (BOT)"
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
             </div>
             <div class="grid grid-cols-2 gap-4 mb-4">
@@ -169,12 +132,12 @@
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Total Marks <span class="text-red-500">*</span></label>
-                    <input type="number" name="total_marks" required step="0.01" placeholder="e.g., 100" 
+                    <input type="number" name="total_marks" required step="0.01" placeholder="e.g., 100"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Exam Date <span class="text-red-500">*</span></label>
-                    <input type="date" name="exam_date" required 
+                    <input type="date" name="exam_date" required
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
                 </div>
             </div>
@@ -190,6 +153,73 @@
     </div>
 </div>
 
+<!-- ===================== EDIT EXAM MODAL ===================== -->
+<div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all modal-container">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-800">Edit Exam</h3>
+            <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <form id="editExamForm" class="p-5">
+            <input type="hidden" id="edit_exam_id">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Examination Name <span class="text-red-500">*</span></label>
+                <input type="text" id="edit_exam_name" required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year <span class="text-red-500">*</span></label>
+                    <select id="edit_academic_year" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Term <span class="text-red-500">*</span></label>
+                    <select id="edit_term" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Total Marks <span class="text-red-500">*</span></label>
+                    <input type="number" id="edit_total_marks" required step="0.01" min="0.01"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Exam Date <span class="text-red-500">*</span></label>
+                    <input type="date" id="edit_exam_date" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+            </div>
+            <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p class="text-xs text-blue-700">
+                    <i class="fas fa-info-circle"></i>
+                    The class cannot be changed here (marks are tied to it). Total marks can be increased at any time;
+                    it can only be <strong>reduced</strong> if no existing mark exceeds the new value.
+                </p>
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="button" onclick="closeEditModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-4 py-2 btn-gradient text-white rounded-lg text-sm font-medium">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Success Modal -->
 <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
     <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 p-5 text-center transform transition-all modal-container">
@@ -197,7 +227,7 @@
             <i class="fas fa-check-circle text-2xl text-green-500"></i>
         </div>
         <h3 class="text-lg font-semibold text-gray-800 mb-1">Success!</h3>
-        <p class="text-sm text-gray-500 mb-4" id="successMessage">Exam created successfully</p>
+        <p class="text-sm text-gray-500 mb-4" id="successMessage">Done</p>
         <button onclick="closeSuccessModal()" class="btn-gradient px-5 py-1.5 rounded-lg text-white text-sm font-medium">
             Continue
         </button>
@@ -218,20 +248,20 @@
     async function loadExams() {
         const year = document.getElementById('yearFilter').value;
         const term = document.getElementById('termFilter').value;
-        
+
         let url = '/exams/api/exams';
         let params = [];
         if (year) params.push(`academic_year=${year}`);
         if (term) params.push(`term=${encodeURIComponent(term)}`);
         if (params.length) url += '?' + params.join('&');
-        
+
         const tbody = document.getElementById('examsTableBody');
         tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-8 text-center"><div class="loader mx-auto"></div><p class="mt-2">Loading exams...</p></td></tr>';
-        
+
         try {
             const response = await fetch(url);
             const data = await response.json();
-            
+
             if (data.success) {
                 allExams = data.exams;
                 renderExams(allExams);
@@ -246,7 +276,7 @@
 
     function renderExams(exams) {
         const tbody = document.getElementById('examsTableBody');
-        
+
         if (exams.length === 0) {
             tbody.innerHTML = `
                 <tr>
@@ -258,34 +288,54 @@
             `;
             return;
         }
-        
+
         tbody.innerHTML = exams.map(exam => `
             <tr>
                 <td class="px-6 py-4 text-sm font-medium text-gray-900">${escapeHtml(exam.exam_name)}</td>
-                <td class="px-6 py-4 text-sm text-gray-500">${exam.classes ? exam.classes.name : 'N/A'}</td>
-                <td class="px-6 py-4 text-sm text-gray-500">${exam.total_marks || 'N/A'}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${exam.classes ? escapeHtml(exam.classes.name) : 'N/A'}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${fmtMarks(exam.total_marks) || 'N/A'}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${exam.term || 'N/A'}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${exam.academic_year || 'N/A'}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">${formatDate(exam.exam_date)}</td>
                 <td class="px-6 py-4 text-center">
-                    <button onclick="togglePublish('${exam.id}', ${exam.is_published})" 
+                    <button onclick="togglePublish('${exam.id}', ${exam.is_published})"
                             class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${exam.is_published ? 'status-published' : 'status-draft'}">
                         <i class="fas ${exam.is_published ? 'fa-eye' : 'fa-eye-slash'}"></i>
                         ${exam.is_published ? 'Published' : 'Draft'}
                     </button>
                 </td>
                 <td class="px-6 py-4 text-center">
-                    <div class="flex items-center justify-center gap-2">
-                        <a href="{{ url_for('exams.marks') }}?exam_id=${exam.id}" class="text-blue-600 hover:text-blue-800 transition-colors">
-                            <i class="fas fa-edit"></i>
+                    <div class="flex items-center justify-center gap-1">
+                        <button data-exam-id="${exam.id}" class="edit-exam-btn action-btn text-orange-500 hover:text-orange-700" title="Edit exam">
+                            <i class="fas fa-pen text-sm"></i>
+                        </button>
+                        <a href="{{ url_for('exams.marks') }}?exam_id=${exam.id}" class="action-btn text-blue-600 hover:text-blue-800" title="Enter marks">
+                            <i class="fas fa-edit text-sm"></i>
                         </a>
-                        <button onclick="deleteExam('${exam.id}', '${escapeHtml(exam.exam_name)}')" class="text-red-600 hover:text-red-800 transition-colors">
-                            <i class="fas fa-trash-alt"></i>
+                        <button data-exam-id="${exam.id}" class="delete-exam-btn action-btn text-red-600 hover:text-red-800" title="Delete exam">
+                            <i class="fas fa-trash-alt text-sm"></i>
                         </button>
                     </div>
                 </td>
             </tr>
         `).join('');
+
+        // Wire up event handlers (avoids quote-escaping issues with inline onclick)
+        tbody.querySelectorAll('.edit-exam-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const id = this.dataset.examId;
+                const exam = allExams.find(e => e.id === id);
+                if (exam) openEditModal(exam);
+            });
+        });
+
+        tbody.querySelectorAll('.delete-exam-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const id = this.dataset.examId;
+                const exam = allExams.find(e => e.id === id);
+                if (exam) deleteExam(id, exam.exam_name);
+            });
+        });
     }
 
     function formatDate(dateString) {
@@ -294,15 +344,19 @@
         return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
+    function fmtMarks(n) {
+        if (n === null || n === undefined || n === '') return '';
+        const num = Number(n);
+        return Number.isInteger(num) ? String(num) : String(n);
+    }
+
     function escapeHtml(text) {
         const div = document.createElement('div');
-        div.textContent = text;
+        div.textContent = text ?? '';
         return div.innerHTML;
     }
 
-    function applyFilters() {
-        loadExams();
-    }
+    function applyFilters() { loadExams(); }
 
     function clearFilters() {
         document.getElementById('yearFilter').value = '';
@@ -310,6 +364,7 @@
         loadExams();
     }
 
+    /* ---------- Create modal ---------- */
     function openCreateModal() {
         document.getElementById('createModal').classList.remove('hidden');
         document.getElementById('createModal').classList.add('flex');
@@ -317,25 +372,23 @@
         const today = new Date().toISOString().split('T')[0];
         document.querySelector('input[name="exam_date"]').value = today;
     }
-    
     function closeCreateModal() {
         document.getElementById('createModal').classList.add('hidden');
         document.getElementById('createModal').classList.remove('flex');
         document.body.style.overflow = '';
         document.getElementById('createExamForm').reset();
     }
-    
-    document.getElementById('createExamForm').addEventListener('submit', async function(e) {
+
+    document.getElementById('createExamForm').addEventListener('submit', async function (e) {
         e.preventDefault();
-        
         const formData = new FormData(this);
         const data = {};
         formData.forEach((value, key) => { data[key] = value; });
-        
+
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
-        
+
         try {
             const response = await fetch('/exams/api/exams/create', {
                 method: 'POST',
@@ -343,10 +396,9 @@
                 body: JSON.stringify(data)
             });
             const result = await response.json();
-            
             loading.classList.add('hidden');
             loading.classList.remove('flex');
-            
+
             if (result.success) {
                 closeCreateModal();
                 document.getElementById('successMessage').textContent = result.message;
@@ -364,12 +416,82 @@
             showMessage('Failed to create exam', 'error');
         }
     });
-    
+
+    /* ---------- Edit modal ---------- */
+    function openEditModal(exam) {
+        document.getElementById('edit_exam_id').value = exam.id || '';
+        document.getElementById('edit_exam_name').value = exam.exam_name || '';
+        document.getElementById('edit_academic_year').value = exam.academic_year || String(new Date().getFullYear());
+        document.getElementById('edit_term').value = exam.term || 'Term 1';
+        document.getElementById('edit_total_marks').value = fmtMarks(exam.total_marks) || '';
+        document.getElementById('edit_exam_date').value = exam.exam_date || '';
+
+        document.getElementById('editModal').classList.remove('hidden');
+        document.getElementById('editModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeEditModal() {
+        document.getElementById('editModal').classList.add('hidden');
+        document.getElementById('editModal').classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    document.getElementById('editExamForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const examId = document.getElementById('edit_exam_id').value;
+        const payload = {
+            exam_name: document.getElementById('edit_exam_name').value.trim(),
+            academic_year: document.getElementById('edit_academic_year').value,
+            term: document.getElementById('edit_term').value,
+            total_marks: document.getElementById('edit_total_marks').value,
+            exam_date: document.getElementById('edit_exam_date').value
+        };
+
+        if (!payload.exam_name) { showMessage('Exam name is required', 'error'); return; }
+        if (!payload.exam_date) { showMessage('Exam date is required', 'error'); return; }
+        const tm = parseFloat(payload.total_marks);
+        if (isNaN(tm) || tm <= 0) { showMessage('Total marks must be greater than 0', 'error'); return; }
+
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+
+        try {
+            const response = await fetch(`/exams/api/exams/${examId}/edit`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+
+            if (result.success) {
+                closeEditModal();
+                document.getElementById('successMessage').textContent = result.message;
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                loadExams();
+                setTimeout(() => closeSuccessModal(), 1800);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            console.error(error);
+            showMessage('Failed to update exam', 'error');
+        }
+    });
+
+    /* ---------- Publish / delete ---------- */
     async function togglePublish(examId, currentStatus) {
         const loading = document.getElementById('loadingOverlay');
         loading.classList.remove('hidden');
         loading.classList.add('flex');
-        
+
         try {
             const response = await fetch(`/exams/api/exams/${examId}/toggle-publish`, {
                 method: 'PUT',
@@ -377,10 +499,9 @@
                 body: JSON.stringify({ is_published: !currentStatus })
             });
             const result = await response.json();
-            
             loading.classList.add('hidden');
             loading.classList.remove('flex');
-            
+
             if (result.success) {
                 showMessage(result.message, 'success');
                 loadExams();
@@ -393,43 +514,41 @@
             showMessage('Failed to update status', 'error');
         }
     }
-    
+
     async function deleteExam(examId, examName) {
-        if (confirm(`Are you sure you want to delete "${examName}"? This will also delete all associated marks.`)) {
-            const loading = document.getElementById('loadingOverlay');
-            loading.classList.remove('hidden');
-            loading.classList.add('flex');
-            
-            try {
-                const response = await fetch(`/exams/api/exams/${examId}`, { method: 'DELETE' });
-                const result = await response.json();
-                
-                loading.classList.add('hidden');
-                loading.classList.remove('flex');
-                
-                if (result.success) {
-                    showMessage(result.message, 'success');
-                    loadExams();
-                } else {
-                    showMessage(result.message, 'error');
-                }
-            } catch (error) {
-                loading.classList.add('hidden');
-                loading.classList.remove('flex');
-                showMessage('Failed to delete exam', 'error');
+        if (!confirm(`Are you sure you want to delete "${examName}"? This will also delete all associated marks.`)) return;
+
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex');
+
+        try {
+            const response = await fetch(`/exams/api/exams/${examId}`, { method: 'DELETE' });
+            const result = await response.json();
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+
+            if (result.success) {
+                showMessage(result.message, 'success');
+                loadExams();
+            } else {
+                showMessage(result.message, 'error');
             }
+        } catch (error) {
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            showMessage('Failed to delete exam', 'error');
         }
     }
-    
+
     function closeSuccessModal() {
         document.getElementById('successModal').classList.add('hidden');
         document.getElementById('successModal').classList.remove('flex');
         document.body.style.overflow = '';
     }
-    
+
     function showMessage(message, type) {
-        const flashContainer = document.getElementById('flashMessages');
-        if (!flashContainer) {
+        if (!document.getElementById('flashMessages')) {
             const container = document.createElement('div');
             container.id = 'flashMessages';
             container.className = 'flash-messages';
@@ -437,23 +556,27 @@
         }
         const flashMsg = document.createElement('div');
         flashMsg.className = `flash-message ${type}`;
-        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span></div>`;
+        flashMsg.innerHTML = `<div class="flex items-center gap-2"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${escapeHtml(message)}</span></div>`;
         document.getElementById('flashMessages').appendChild(flashMsg);
         setTimeout(() => { flashMsg.style.opacity = '0'; setTimeout(() => flashMsg.remove(), 300); }, 3000);
     }
-    
-    window.onclick = function(event) {
-        const modal = document.getElementById('createModal');
+
+    window.onclick = function (event) {
+        const createModal = document.getElementById('createModal');
+        const editModal = document.getElementById('editModal');
         const successModal = document.getElementById('successModal');
-        if (event.target === modal) closeCreateModal();
+        if (event.target === createModal) closeCreateModal();
+        if (event.target === editModal) closeEditModal();
         if (event.target === successModal) closeSuccessModal();
     };
-    
-    // Load exams on page load with default year
-    document.addEventListener('DOMContentLoaded', function() {
-        // Set default year to current year
+
+    document.addEventListener('DOMContentLoaded', function () {
         const currentYear = new Date().getFullYear();
-        document.getElementById('yearFilter').value = currentYear;
+        const yearSelect = document.getElementById('yearFilter');
+        // Only select current year if it's one of the available options
+        if ([...yearSelect.options].some(o => o.value === String(currentYear))) {
+            yearSelect.value = currentYear;
+        }
         loadExams();
     });
 </script>

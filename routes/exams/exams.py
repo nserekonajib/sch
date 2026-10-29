@@ -1658,3 +1658,110 @@ def export_assessment_excel():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+@exams_bp.route('/api/exams/<exam_id>/edit', methods=['PUT'])
+@role_required(['owner', 'teacher', 'accountant'])
+def edit_exam(exam_id):
+    """
+    Edit an existing exam's name / date / term / year / total_marks.
+
+    Notes:
+    - class_id is intentionally NOT editable (marks are bound to the exam's class).
+    - If `total_marks` is reduced, we reject when any existing mark exceeds the new total.
+    """
+    user = session.get('user')
+    institute_id = get_institute(user['id'])
+
+    if not institute_id:
+        return jsonify({'success': False, 'message': 'Institute not found'}), 400
+
+    try:
+        data = request.get_json() or {}
+
+        # Fetch existing exam (must belong to this institute)
+        existing = supabase.table('exams')\
+            .select('*')\
+            .eq('id', exam_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+
+        if not existing.data:
+            return jsonify({'success': False, 'message': 'Exam not found'}), 404
+
+        current = existing.data[0]
+
+        # ---- Validate incoming fields ----
+        exam_name = (data.get('exam_name') or '').strip()
+        exam_date = data.get('exam_date')
+        academic_year = data.get('academic_year')
+        term = data.get('term')
+
+        if not exam_name:
+            return jsonify({'success': False, 'message': 'Exam name is required'}), 400
+        if not exam_date:
+            return jsonify({'success': False, 'message': 'Exam date is required'}), 400
+        if not academic_year:
+            return jsonify({'success': False, 'message': 'Academic year is required'}), 400
+        if not term:
+            return jsonify({'success': False, 'message': 'Term is required'}), 400
+
+        # ---- total_marks (optional; defaults to current) ----
+        try:
+            new_total = float(data.get('total_marks', current['total_marks']))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Invalid total marks'}), 400
+
+        if new_total <= 0:
+            return jsonify({'success': False, 'message': 'Total marks must be greater than 0'}), 400
+
+        # ---- Safety: cannot lower total_marks below existing max mark ----
+        old_total = float(current['total_marks'])
+        if new_total < old_total:
+            max_resp = supabase.table('exam_marks')\
+                .select('obtained_marks')\
+                .eq('exam_id', exam_id)\
+                .eq('institute_id', institute_id)\
+                .order('obtained_marks', desc=True)\
+                .limit(1)\
+                .execute()
+            if max_resp.data:
+                max_existing = float(max_resp.data[0]['obtained_marks'])
+                if max_existing > new_total:
+                    return jsonify({
+                        'success': False,
+                        'message': (
+                            f'Cannot reduce total marks to {new_total:g}. '
+                            f'Existing marks go up to {max_existing:g}. '
+                            f'Please adjust the marks first.'
+                        )
+                    }), 400
+
+        # ---- Update ----
+        update_data = {
+            'exam_name': exam_name,
+            'exam_date': exam_date,
+            'academic_year': academic_year,
+            'term': term,
+            'total_marks': new_total,
+            'updated_at': datetime.now().isoformat()
+        }
+
+        result = supabase.table('exams')\
+            .update(update_data)\
+            .eq('id', exam_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+
+        if result.data:
+            return jsonify({
+                'success': True,
+                'message': 'Exam updated successfully',
+                'exam': result.data[0]
+            })
+        return jsonify({'success': False, 'message': 'Failed to update exam'}), 500
+
+    except Exception as e:
+        print(f"Error editing exam: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
