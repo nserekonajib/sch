@@ -1,6 +1,9 @@
 # resultsCard.py - Fixed with Proper Data Sending using DB fields
-# + Best-4-Subjects Aggregate/Division Rule (when >4 subjects)
+# + Best-4-Subjects Rule (when >4 subjects)
+# + SPECIAL CORE-4 Rule for P1 / P2 / P3 classes
+#   (English, Mathematics, Literacy 2, Religious Education – must all exist)
 import uuid
+import re
 from flask import Blueprint, render_template, request, jsonify, session, send_file
 from supabase import create_client, Client
 import os
@@ -26,6 +29,7 @@ print(f"REPORT_API_URL: {REPORT_API_URL}")
 # Create blueprint WITHOUT url_prefix - will be set when registering
 results_bp = Blueprint('results', __name__)
 
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -34,15 +38,195 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 # Grade-to-Points mapping
 GRADE_POINTS = {
-    'D1': 1, 'D2': 2, 'C3': 3, 'C4': 4, 
+    'D1': 1, 'D2': 2, 'C3': 3, 'C4': 4,
     'C5': 5, 'C6': 6, 'P7': 7, 'P8': 8, 'F9': 9
 }
 
 # Number of best subjects to use when a student has more subjects than this
 BEST_SUBJECTS_COUNT = 4
 
+# ============================================================
+#  P1 / P2 / P3 handling – CORE 4 SUBJECTS
+# ============================================================
+
+CORE_4_LABELS = ['English', 'Mathematics', 'Literacy 2', 'Religious Education']
+
+
+def normalize_class_name(name):
+    """Lowercase, strip dots/spaces/dashes/underscores – used for P1-P3 detection."""
+    if not name:
+        return ''
+    return re.sub(r'[\.\s\-_]+', '', str(name)).lower()
+
+
+def is_p1_p2_p3_class(class_name):
+    """
+    Return True for P1, P2, P3 (and common spellings: Primary 1, Pri 1,
+    Primary One, P.1, P-1, P 1, PRIMARY ONE, etc.).
+    Handles trailing suffixes like 'P1A', 'Primary 1 Blue'.
+    """
+    if not class_name:
+        return False
+    norm = normalize_class_name(class_name)
+
+    patterns = [
+        ('p', '1'), ('p', '2'), ('p', '3'),
+        ('primary', '1'), ('primary', '2'), ('primary', '3'),
+        ('pri', '1'), ('pri', '2'), ('pri', '3'),
+        ('primary', 'one'), ('primary', 'two'), ('primary', 'three'),
+        ('pri', 'one'), ('pri', 'two'), ('pri', 'three'),
+    ]
+
+    for prefix, number in patterns:
+        key = prefix + number
+        if norm.startswith(key):
+            rest = norm[len(key):]
+            # avoid P10, P11, Primary 10 etc.
+            if not rest or not rest[0].isdigit():
+                return True
+    return False
+
+
+def normalize_subject_name(name):
+    """Lowercase, convert dots/dashes/parens/quotes to spaces, collapse spaces."""
+    if not name:
+        return ''
+    norm = str(name).lower()
+    norm = re.sub(r'[\.\-\_\'\(\)]', ' ', norm)
+    norm = re.sub(r'\s+', ' ', norm).strip()
+    return norm
+
+
+def is_english_subject(name):
+    if not name:
+        return False
+    norm = normalize_subject_name(name)
+    first = norm.split(' ')[0]
+    return first in ('english', 'eng') or norm.startswith('english')
+
+
+def is_math_subject(name):
+    if not name:
+        return False
+    norm = normalize_subject_name(name)
+    first = norm.split(' ')[0]
+    return first in ('mathematics', 'maths', 'math') or 'mathemat' in norm
+
+
+def is_literacy2_subject(name):
+    if not name:
+        return False
+    norm = normalize_subject_name(name)
+    # Remove all spaces so "lit 2" == "lit2" == "literacy 2"
+    compact = norm.replace(' ', '')
+    patterns = {
+        'literacy2', 'literacyii', 'literacytwo',
+        'lit2', 'litii', 'littwo',
+    }
+    return compact in patterns or any(compact.startswith(p) for p in patterns)
+
+
+def is_re_subject(name):
+    if not name:
+        return False
+    norm = normalize_subject_name(name)  # lowercase, dots → spaces
+    if norm in ('re', 'r e', 'religious education', 'religious ed',
+                'religious educ', 'religious studies'):
+        return True
+    if norm.startswith('religious'):
+        return True
+    # word-boundary match on original e.g. "R.E.", "R.E", "R E"
+    if re.search(r'\bR\s*\.?\s*E\s*\.?\b', str(name), re.IGNORECASE):
+        return True
+    return False
+
+
+def find_core_4_in_subject_grades(subject_grades):
+    """
+    Given {subject_name: grade} for a student, find the 4 P1-P3 core subjects.
+
+    Returns:
+        (found_dict, missing_labels)
+        - found_dict: {original_subject_name: grade} for the ones found
+        - missing_labels: list of human-readable labels for missing subjects
+    """
+    eng = math = lit = re_sub = None
+
+    for name, grade in subject_grades.items():
+        if eng is None and is_english_subject(name):
+            eng = (name, grade)
+        elif math is None and is_math_subject(name):
+            math = (name, grade)
+        elif lit is None and is_literacy2_subject(name):
+            lit = (name, grade)
+        elif re_sub is None and is_re_subject(name):
+            re_sub = (name, grade)
+
+    found = {}
+    missing = []
+
+    if eng is not None:
+        found[eng[0]] = eng[1]
+    else:
+        missing.append('English')
+
+    if math is not None:
+        found[math[0]] = math[1]
+    else:
+        missing.append('Mathematics')
+
+    if lit is not None:
+        found[lit[0]] = lit[1]
+    else:
+        missing.append('Literacy 2')
+
+    if re_sub is not None:
+        found[re_sub[0]] = re_sub[1]
+    else:
+        missing.append('Religious Education')
+
+    return found, missing
+
+
+def validate_p1_p3_class_subjects(class_id, institute_id):
+    """
+    Fetch the class_subjects list for a P1-P3 class and return the list of
+    missing core subjects (empty list if all 4 are present).
+    """
+    try:
+        resp = supabase.table('class_subjects')\
+            .select('*, subjects(id, name)')\
+            .eq('class_id', class_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+
+        names = []
+        for row in (resp.data or []):
+            subj = row.get('subjects')
+            if subj and isinstance(subj, dict) and subj.get('name'):
+                names.append(subj['name'])
+
+        missing = []
+        if not any(is_english_subject(n) for n in names):
+            missing.append('English')
+        if not any(is_math_subject(n) for n in names):
+            missing.append('Mathematics')
+        if not any(is_literacy2_subject(n) for n in names):
+            missing.append('Literacy 2')
+        if not any(is_re_subject(n) for n in names):
+            missing.append('Religious Education')
+        return missing
+    except Exception as e:
+        print(f"Error validating P1-P3 class subjects: {e}")
+        return ['Unknown error validating subjects']
+
+
+# ============================================================
+#  Grade / Aggregate helpers
+# ============================================================
 
 def get_grade_from_percentage(percentage, grading_settings):
     """Get grade based on percentage from database settings"""
@@ -80,14 +264,14 @@ def get_best_subjects(subject_grades, count=BEST_SUBJECTS_COUNT):
 
 def get_grade_data_from_db(grade_name, grading_settings):
     """
-    Get ALL grade data from DB including status (remarks), 
+    Get ALL grade data from DB including status (remarks),
     class_teacher_comment, head_teacher_comment, and requirements
     """
     for grade in grading_settings:
         if grade['grade_name'] == grade_name:
             return {
                 'grade_name': grade.get('grade_name', ''),
-                'status': grade.get('status', ''),  # This is the REMARKS!
+                'status': grade.get('status', ''),
                 'class_teacher_comment': grade.get('class_teacher_comment', ''),
                 'head_teacher_comment': grade.get('head_teacher_comment', ''),
                 'requirements': grade.get('requirements', '')
@@ -106,43 +290,38 @@ def determine_division(aggregate, subject_grades):
     Determine division based on aggregate and subject performance
     Returns: (division, requirements, explanation)
     """
-    # Get subject names
     subject_names = list(subject_grades.keys())
-    
-    # Check for F9 in any subject
+
     has_f9 = any(grade == 'F9' for grade in subject_grades.values())
     f9_subjects = [name for name, grade in subject_grades.items() if grade == 'F9']
-    
-    # Check if English and Math exist and are passed
+
     has_english = any('english' in name.lower() for name in subject_names)
     has_mathematics = any('math' in name.lower() or 'mathematics' in name.lower() for name in subject_names)
-    
+
     english_passed = True
     math_passed = True
-    
+
     if has_english:
         for name, grade in subject_grades.items():
             if 'english' in name.lower():
                 if grade == 'F9':
                     english_passed = False
                 break
-    
+
     if has_mathematics:
         for name, grade in subject_grades.items():
             if 'math' in name.lower() or 'mathematics' in name.lower():
                 if grade == 'F9':
                     math_passed = False
                 break
-    
-    # Count passed subjects (non-F9)
+
     passed_subjects = sum(1 for grade in subject_grades.values() if grade != 'F9')
     total_subjects = len(subject_grades)
-    
-    # Determine division
+
     division = None
     requirements = []
     explanation = []
-    
+
     # Division 1: 4-12 points, all subjects credit (C6 or better), no F9
     if 4 <= aggregate <= 12:
         all_passed = all(grade not in ['F9', 'P7', 'P8'] for grade in subject_grades.values())
@@ -152,7 +331,6 @@ def determine_division(aggregate, subject_grades):
             requirements.append('No F9 in any subject')
             explanation.append('Excellent performance across all subjects')
         else:
-            # Demoted to Division 2
             division = 'Division 2'
             if has_f9:
                 requirements.append(f'Failed subject(s): {", ".join(f9_subjects)}')
@@ -160,8 +338,7 @@ def determine_division(aggregate, subject_grades):
             else:
                 requirements.append('Some subjects below C6 level')
                 explanation.append('Not all subjects at Credit level')
-    
-    # Division 2: 13-23 points, pass English and Math
+
     elif 13 <= aggregate <= 23:
         if has_english and has_mathematics:
             if english_passed and math_passed:
@@ -182,14 +359,12 @@ def determine_division(aggregate, subject_grades):
             if not has_mathematics:
                 requirements.append('Mathematics not available in results')
             explanation.append('Core subjects not available')
-    
-    # Division 3: 24-29 points
+
     elif 24 <= aggregate <= 29:
         division = 'Division 3'
         requirements.append('Basic pass levels in core subjects')
         explanation.append('Basic pass achievement')
-    
-    # Division 4: 30-34 points, must pass at least 2 subjects
+
     elif 30 <= aggregate <= 34:
         if passed_subjects >= 2:
             division = 'Division 4'
@@ -199,8 +374,7 @@ def determine_division(aggregate, subject_grades):
             division = 'Ungraded'
             requirements.append(f'Passed only {passed_subjects} subject(s) - need at least 2')
             explanation.append('Insufficient passes for certificate')
-    
-    # Division U: 35-36 points or fails all subjects
+
     else:
         division = 'Ungraded'
         if passed_subjects == 0:
@@ -209,7 +383,7 @@ def determine_division(aggregate, subject_grades):
         else:
             requirements.append(f'Passed only {passed_subjects} subject(s)')
             explanation.append('Does not qualify for a certificate')
-    
+
     return division, requirements, explanation
 
 
@@ -218,9 +392,9 @@ def generate_class_teacher_comment(division, aggregate, subject_grades):
     passed = sum(1 for grade in subject_grades.values() if grade != 'F9')
     failed = len(subject_grades) - passed
     f9_subjects = [name for name, grade in subject_grades.items() if grade == 'F9']
-    
+
     comments = []
-    
+
     if 'Division 1' in division:
         comments.append(" EXCEPTIONAL PERFORMANCE! ")
         comments.append("The student has demonstrated outstanding mastery across all subjects. ")
@@ -230,7 +404,7 @@ def generate_class_teacher_comment(division, aggregate, subject_grades):
             comments.append("Excellent work - maintain this high level of commitment.")
         else:
             comments.append("Very good performance - continue striving for excellence.")
-    
+
     elif 'Division 2' in division:
         comments.append(" GOOD ACADEMIC PROGRESS. ")
         if failed > 0:
@@ -240,7 +414,7 @@ def generate_class_teacher_comment(division, aggregate, subject_grades):
             comments.append("Close to Division 1 - keep pushing!")
         else:
             comments.append("Steady improvement will lead to better results.")
-    
+
     elif 'Division 3' in division:
         comments.append(" SATISFACTORY PERFORMANCE. ")
         if failed > 2:
@@ -248,28 +422,26 @@ def generate_class_teacher_comment(division, aggregate, subject_grades):
         comments.append("Focus on strengthening weak areas.")
         if failed <= 2:
             comments.append("With more effort, can achieve Division 2.")
-    
+
     elif 'Division 4' in division:
         comments.append(" MINIMUM PASS LEVEL ACHIEVED. ")
         if failed >= 2:
             comments.append(f"Passed only {passed} subject(s) - considerable improvement needed in {failed} subject(s). ")
         comments.append("Urgent attention required to improve performance.")
-    
-    else:  # Ungraded
+
+    else:
         comments.append(" PERFORMANCE BELOW MINIMUM REQUIREMENTS. ")
         comments.append("Requires immediate intervention and academic support. ")
         comments.append("Please ensure regular attendance and increased effort in all subjects.")
-    
-    # Add specific subject notes
+
     if f9_subjects:
         comments.append(f"Needs focused support in: {', '.join(f9_subjects)}.")
-    
-    # Add encouragement based on best subjects
-    best_subjects = [name for name, grade in subject_grades.items() 
-                    if grade in ['D1', 'D2', 'C3']]
+
+    best_subjects = [name for name, grade in subject_grades.items()
+                     if grade in ['D1', 'D2', 'C3']]
     if best_subjects and len(best_subjects) >= 2:
         comments.append(f"Shows particular strength in {', '.join(best_subjects[:2])}.")
-    
+
     return ' '.join(comments)
 
 
@@ -279,7 +451,7 @@ def generate_head_teacher_comment(division, aggregate, subject_grades):
     f9_subjects = [name for name, grade in subject_grades.items() if grade == 'F9']
     passed = sum(1 for grade in subject_grades.values() if grade != 'F9')
     total = len(subject_grades)
-    
+
     if 'Division 1' in division:
         comments.append(" EXCELLENT ACHIEVEMENT: ")
         if aggregate <= 6:
@@ -291,7 +463,7 @@ def generate_head_teacher_comment(division, aggregate, subject_grades):
         else:
             comments.append("Good performance with strong subject mastery. ")
             comments.append("Encouraged to maintain this standard.")
-    
+
     elif 'Division 2' in division:
         comments.append(" GOOD ACADEMIC STANDING: ")
         comments.append("The student has performed well and shown competence in core subjects. ")
@@ -299,31 +471,30 @@ def generate_head_teacher_comment(division, aggregate, subject_grades):
             comments.append("With additional effort, can achieve Division 1 next term. ")
         else:
             comments.append("Steady progress is noted. Continue working hard.")
-    
+
     elif 'Division 3' in division:
         comments.append(" SATISFACTORY: ")
         comments.append("Basic standards have been met. ")
         comments.append("Areas of weakness should be identified and addressed promptly.")
-    
+
     elif 'Division 4' in division:
         comments.append(" ATTENTION REQUIRED: ")
         comments.append("Performance is at minimum pass level. ")
         comments.append("Structured support and intervention are recommended.")
-    
-    else:  # Ungraded
+
+    else:
         comments.append(" URGENT ACADEMIC INTERVENTION NEEDED: ")
         comments.append("The student has not met the minimum requirements. ")
         comments.append("A comprehensive academic support plan should be developed.")
-    
-    # Add specific advice
+
     if f9_subjects:
         comments.append(f"Special attention needed in: {', '.join(f9_subjects)}.")
-    
+
     if passed >= 2:
         comments.append(f"Passed {passed} out of {total} subjects.")
-    
+
     comments.append("We believe in every student's potential for growth and excellence.")
-    
+
     return ' '.join(comments)
 
 
@@ -334,7 +505,7 @@ def get_next_term_from_db(institute_id):
             .select('*')\
             .eq('institute_id', institute_id)\
             .execute()
-        
+
         if response.data:
             return response.data[0]
         return None
@@ -366,79 +537,69 @@ def index():
     """Results page"""
     user = session.get('user')
     institute_id = get_institute_id_func(user['id'])
-    
+
     if not institute_id:
         return render_template('results/index.html', exams=[], classes=[], students=[], institute=None)
-    
+
     try:
-        # Get institute details
         institute_response = supabase.table('institutes')\
             .select('*')\
             .eq('id', institute_id)\
             .execute()
-        
+
         institute = institute_response.data[0] if institute_response.data else {}
-        
-        # Get all exams with class info
+
         exams_response = supabase.table('exams')\
             .select('*, classes(name)')\
             .eq('institute_id', institute_id)\
             .order('created_at', desc=True)\
             .execute()
-        
         exams = exams_response.data if exams_response.data else []
-        
-        # Get all classes
+
         classes_response = supabase.table('classes')\
             .select('*')\
             .eq('institute_id', institute_id)\
             .order('name')\
             .execute()
-        
         classes = classes_response.data if classes_response.data else []
-        
-        # Get distinct terms
+
         terms_response = supabase.table('exam_marksheets')\
             .select('term')\
             .eq('institute_id', institute_id)\
             .execute()
         terms = sorted(set([t['term'] for t in terms_response.data if t.get('term')])) if terms_response.data else []
-        
-        # Get distinct years
+
         years_response = supabase.table('exam_marksheets')\
             .select('academic_year')\
             .eq('institute_id', institute_id)\
             .execute()
         years = sorted(set([y['academic_year'] for y in years_response.data if y.get('academic_year')])) if years_response.data else []
-        
-        # Get students
+
         students_response = supabase.table('students')\
             .select('id, name, student_id, class_id, classes(name), photo_url, gender, status')\
             .eq('institute_id', institute_id)\
             .eq('status', 'active')\
             .order('name')\
             .execute()
-        
         students = students_response.data if students_response.data else []
-        
+
         for student in students:
             if student.get('classes') and isinstance(student['classes'], dict):
                 student['class_name'] = student['classes'].get('name', 'N/A')
             else:
                 student['class_name'] = 'N/A'
-        
-        # Get next term settings
+
         next_term = get_next_term_from_db(institute_id)
-        
-        return render_template('results/index.html', 
-                             exams=exams, 
-                             classes=classes, 
-                             students=students, 
-                             institute=institute,
-                             terms=terms,
-                             years=years,
-                             next_term=next_term)
-        
+
+        return render_template('results/index.html',
+                               exams=exams,
+                               classes=classes,
+                               students=students,
+                               institute=institute,
+                               terms=terms,
+                               years=years,
+                               next_term=next_term)
+
     except Exception as e:
         print(f"Error loading results page: {e}")
         import traceback
@@ -451,17 +612,21 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                                     include_position=True, include_comments=True):
     """Build student report data with division calculation and proper fields.
 
-    Args:
-        include_position (bool): If False, omit position/outOf from each student.
-        include_comments (bool): If False, omit classTeacherComment/headTeacherComment.
+    Rules:
+    ----------
+    • P1 / P2 / P3 classes (any common spelling):
+        Aggregate & Division are computed from EXACTLY 4 core subjects:
+        English, Mathematics, Literacy 2, Religious Education.
+        (Presence of all 4 is validated upstream in generate_class_results.)
+    • Other classes:
+        If the student has more than BEST_SUBJECTS_COUNT subjects, the
+        aggregate & division use the BEST 4 subjects (lowest points).
+        Otherwise all subjects are used.
 
-    Note:
-        When a student has more than BEST_SUBJECTS_COUNT subjects, the aggregate
-        and division are computed from the BEST 4 subjects only (lowest points).
-        Individual subject rows still show ALL subjects.
+    All subjects are still shown in the subject table regardless of rule.
+    Comments use the FULL subject list so every weakness is mentioned.
     """
     try:
-        # Get students
         students_response = supabase.table('students')\
             .select('*, classes(id, name)')\
             .in_('id', student_ids)\
@@ -474,7 +639,6 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
 
         class_ids = list(set([s.get('class_id') for s in students.values() if s.get('class_id')]))
 
-        # Get subjects with their names
         subjects_response = supabase.table('class_subjects')\
             .select('*, subjects(id, name)')\
             .in_('class_id', class_ids)\
@@ -488,7 +652,6 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                 subjects_by_class[class_id] = []
             subjects_by_class[class_id].append(subj)
 
-        # Get marksheets for term/year
         marksheet_ids = []
         for exam_id in exam_ids:
             marksheet_response = supabase.table('exam_marksheets')\
@@ -507,7 +670,6 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
         if not marksheet_ids:
             return {}
 
-        # Get marks for all students
         marks_response = supabase.table('exam_marks')\
             .select('*')\
             .in_('student_id', student_ids)\
@@ -521,7 +683,6 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
             key = (mark['student_id'], mark['exam_id'], mark['subject_id'])
             marks_lookup[key] = float(mark['obtained_marks'])
 
-        # Get exams
         exams_response = supabase.table('exams')\
             .select('*')\
             .in_('id', exam_ids)\
@@ -530,13 +691,11 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
         exams = exams_response.data if exams_response.data else []
         exam_names = [exam['exam_name'] for exam in exams]
 
-        # Build subject max marks
         subject_max_marks = {}
         for class_id, subjects in subjects_by_class.items():
             for subj in subjects:
                 subject_max_marks[(class_id, subj['subject_id'])] = float(subj['marks'])
 
-        # Get all students for position calculation
         all_students_response = supabase.table('students')\
             .select('id, name, class_id')\
             .in_('class_id', class_ids)\
@@ -551,7 +710,6 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                 students_by_class[class_id] = []
             students_by_class[class_id].append(s)
 
-        # Get all marks for position calculation
         all_student_ids = [s['id'] for s in (all_students_response.data or [])]
         all_marks_response = supabase.table('exam_marks')\
             .select('student_id, subject_id, exam_id, obtained_marks')\
@@ -566,7 +724,6 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
             key = (mark['student_id'], mark['exam_id'], mark['subject_id'])
             position_marks_lookup[key] = float(mark['obtained_marks'])
 
-        # Build data for each student
         result = {}
 
         for student_id, student in students.items():
@@ -580,7 +737,6 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
 
             subject_results = []
             subject_grades = {}
-            subject_scores = {}  # Store scores for totals
 
             for subject in subjects:
                 subject_name = subject['subjects']['name'] if subject.get('subjects') else 'N/A'
@@ -615,10 +771,7 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
 
                 subject_grades[subject_name] = subject_grade
 
-                # Get ALL data from DB for this grade
                 grade_data = get_grade_data_from_db(subject_grade, grading_settings)
-
-                # The remarks/status is the 'status' column from the exam_grading table
                 remarks = grade_data.get('status', 'No remarks')
 
                 subject_results.append({
@@ -626,38 +779,55 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                     'scores': scores,
                     'avg': round(subject_average, 1),
                     'grade': subject_grade,
-                    'remarks': remarks  # This is the status from exam_grading table!
+                    'remarks': remarks
                 })
 
-            # ✅ Best-4 rule: if > BEST_SUBJECTS_COUNT subjects, use best N for aggregate/division
-            subjects_for_calc = get_best_subjects(subject_grades, BEST_SUBJECTS_COUNT)
-            is_best_four = len(subject_grades) > BEST_SUBJECTS_COUNT
+            # ----- Decide which subjects feed aggregate / division -----
+            class_name = student.get('classes', {}).get('name') if student.get('classes') else 'N/A'
+            is_p1_p3 = is_p1_p2_p3_class(class_name)
 
-            # Aggregate from best subjects (or all if <= N)
+            if is_p1_p3:
+                # CORE 4 rule
+                core_subjects, missing_core = find_core_4_in_subject_grades(subject_grades)
+                if missing_core:
+                    print(f"WARNING: Student '{student.get('name')}' in {class_name} "
+                          f"is missing core subjects: {missing_core}")
+                subjects_for_calc = core_subjects
+                is_best_four = False
+                aggregate_based_on = (
+                    "Core 4 subjects: English, Mathematics, Literacy 2, Religious Education"
+                    if not missing_core else
+                    f"Core 4 subjects (missing: {', '.join(missing_core)})"
+                )
+            else:
+                # Best-4 rule (or all if <= 4)
+                subjects_for_calc = get_best_subjects(subject_grades, BEST_SUBJECTS_COUNT)
+                is_best_four = len(subject_grades) > BEST_SUBJECTS_COUNT
+                aggregate_based_on = (
+                    f"Best {len(subjects_for_calc)} of {len(subject_grades)} subjects"
+                    if is_best_four else
+                    f"All {len(subject_grades)} subjects"
+                )
+
             aggregate = calculate_aggregate(subjects_for_calc)
 
-            # Division determined from best subjects (or all if <= N)
             division, requirements, explanation = determine_division(
                 aggregate, subjects_for_calc
             )
 
-            # Generate dynamic comments using the FULL subject_grades so all weak
-            # subjects are still mentioned in the feedback.
+            # Comments receive FULL subject_grades so all weak subjects are mentioned
             class_comment = generate_class_teacher_comment(division, aggregate, subject_grades)
             head_comment = generate_head_teacher_comment(division, aggregate, subject_grades)
 
-            # Get requirements from DB for this division/grade
-            # We'll collect requirements from all grades
             all_requirements = []
             for grade_name in set(subject_grades.values()):
                 grade_data = get_grade_data_from_db(grade_name, grading_settings)
                 if grade_data.get('requirements'):
                     all_requirements.append(grade_data.get('requirements'))
 
-            # If we have requirements from DB, use them; otherwise use division requirements
             db_requirements = ', '.join(set(all_requirements)) if all_requirements else ', '.join(requirements)
 
-            # Calculate position
+            # ---------------- Position calculation -----------------
             class_students = students_by_class.get(class_id, [])
             class_percentages = []
 
@@ -695,7 +865,6 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
 
             total_students = len(class_percentages)
 
-            # Build exam totals
             exam_totals = {}
             for exam in exams:
                 exam_name = exam['exam_name']
@@ -706,9 +875,6 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
 
             overall_avg = sum(exam_totals.values()) / (len(exams) * len(subjects)) if exams and subjects else 0
 
-            class_name = student.get('classes', {}).get('name') if student.get('classes') else 'N/A'
-
-            # Build the final student data with base fields
             entry = {
                 'name': student.get('name', 'N/A'),
                 'studentId': student.get('student_id', 'N/A'),
@@ -725,22 +891,21 @@ def build_student_report_data_batch(student_ids, exam_ids, institute_id, grading
                 },
                 'requirements': db_requirements,
 
-                # ✅ Best-4 rule metadata (safe for Node template to optionally render)
-                'aggregateBasedOn': (
-                    f"Best {len(subjects_for_calc)} of {len(subject_grades)} subjects"
-                    if is_best_four else
-                    f"All {len(subject_grades)} subjects"
-                ),
-                'bestSubjectsUsed': list(subjects_for_calc.keys()) if is_best_four else None,
+                # Metadata for Node.js template (optional rendering)
+                'aggregateBasedOn': aggregate_based_on,
+                'bestSubjectsUsed': list(subjects_for_calc.keys())
+                                    if (is_best_four or is_p1_p3) else None,
                 'totalSubjects': len(subject_grades),
+                'isPrimaryLowerClass': is_p1_p3,
+                'coreSubjectsMissing': (
+                    find_core_4_in_subject_grades(subject_grades)[1] if is_p1_p3 else []
+                ),
             }
 
-            # ✅ Conditionally include position
             if include_position:
                 entry['position'] = position
                 entry['outOf'] = total_students
 
-            # ✅ Conditionally include comments
             if include_comments:
                 entry['classTeacherComment'] = class_comment
                 entry['headTeacherComment'] = head_comment
@@ -773,22 +938,15 @@ def generate_class_results():
         term = data.get('term', '').strip()
         year = data.get('year', datetime.now().year)
 
-        # ✅ Toggle flags (default True to preserve existing behaviour)
         include_position = bool(data.get('include_position', True))
         include_comments = bool(data.get('include_comments', True))
 
-        # Get next term from database
         next_term_data = get_next_term_from_db(institute_id)
         if next_term_data:
-            # Use next_term_date from database
             next_term_date = next_term_data.get('next_term_date')
             next_term = format_next_term_date(next_term_date)
         else:
-            # Fallback to user-provided or default
             next_term = data.get('next_term', 'To be announced')
-
-        print(f"Generate class request: class_id={class_id}, exam_ids={exam_ids}, term={term}, year={year}, next_term={next_term}")
-        print(f"Toggles: include_position={include_position}, include_comments={include_comments}")
 
         if not class_id:
             return jsonify({'success': False, 'message': 'Please select a class'}), 400
@@ -799,7 +957,33 @@ def generate_class_results():
         if not term:
             return jsonify({'success': False, 'message': 'Please enter the term'}), 400
 
-        # Get students
+        # ---- Fetch class name EARLY (needed for P1-P3 validation) ----
+        class_response = supabase.table('classes')\
+            .select('name')\
+            .eq('id', class_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+        class_name = class_response.data[0]['name'] if class_response.data else 'Class'
+
+        # ---- P1 / P2 / P3 CORE-4 SUBJECT PRE-VALIDATION ----
+        if is_p1_p2_p3_class(class_name):
+            missing_core = validate_p1_p3_class_subjects(class_id, institute_id)
+            if missing_core:
+                return jsonify({
+                    'success': False,
+                    'message': (
+                        f"Cannot generate report for {class_name}. "
+                        f"The following mandatory core subjects are missing from this class: "
+                        f"{', '.join(missing_core)}. "
+                        f"Please add them to the class subjects before generating results."
+                    )
+                }), 400
+
+        print(f"Generate class request: class_id={class_id}, class_name={class_name}, "
+              f"exam_ids={exam_ids}, term={term}, year={year}, next_term={next_term}")
+        print(f"Toggles: include_position={include_position}, include_comments={include_comments}")
+
+        # Students
         students_response = supabase.table('students')\
             .select('id, name, student_id')\
             .eq('class_id', class_id)\
@@ -815,33 +999,27 @@ def generate_class_results():
 
         student_ids = [s['id'] for s in students]
 
-        # Get grading settings with comments
         grading_response = supabase.table('exam_grading')\
             .select('*')\
             .eq('institute_id', institute_id)\
             .order('min_percentage', desc=True)\
             .execute()
-
         grading = grading_response.data if grading_response.data else []
 
-        # Get institute details
         institute_response = supabase.table('institutes')\
             .select('*')\
             .eq('id', institute_id)\
             .execute()
-
         institute = institute_response.data[0] if institute_response.data else {}
 
-        # Get exam names
         exams_response = supabase.table('exams')\
             .select('exam_name')\
             .in_('id', exam_ids)\
             .eq('institute_id', institute_id)\
             .execute()
-
         exam_names = [exam['exam_name'] for exam in (exams_response.data or [])]
 
-        # Build student data
+        # Build per-student data
         students_data_dict = build_student_report_data_batch(
             student_ids, exam_ids, institute_id, grading, term, year,
             include_position=include_position,
@@ -861,10 +1039,10 @@ def generate_class_results():
         if not students_data:
             return jsonify({
                 'success': False,
-                'message': f'No marks found for term "{term}" in year {year}. Please ensure marks have been entered for this term.'
+                'message': f'No marks found for term "{term}" in year {year}. '
+                           f'Please ensure marks have been entered for this term.'
             }), 500
 
-        # Build payload for Node.js API - with ALL required fields
         payload = {
             'school': {
                 'name': institute.get('institute_name', 'Academic Institute'),
@@ -876,28 +1054,25 @@ def generate_class_results():
             },
             'term': {
                 'termYear': f'{term} {year}',
-                'nextTermBegins': next_term,  # Now from database!
+                'nextTermBegins': next_term,
                 'reportTitle': 'Academic Report Card'
             },
             'exams': exam_names,
             'students': students_data
         }
 
-        # ✅ Expose flags to Node.js template
         payload['options'] = {
             'includePosition': include_position,
             'includeComments': include_comments,
-            'useBestFourRule': True,               # ✅ Best-4 rule active
-            'bestSubjectsCount': BEST_SUBJECTS_COUNT
+            'useBestFourRule': True,
+            'bestSubjectsCount': BEST_SUBJECTS_COUNT,
+            'useP1P3CoreRule': is_p1_p2_p3_class(class_name),
+            'p1p3CoreSubjects': CORE_4_LABELS
         }
 
         print(f"Sending to API: {len(students_data)} students, {len(exam_names)} exams")
         print(f"Next term from DB: {next_term}")
-        if students_data:
-            print(f"Sample student data keys: {students_data[0].keys()}")
-            print(f"Sample subject data: {students_data[0]['subjects'][0] if students_data[0]['subjects'] else 'No subjects'}")
 
-        # Call Node.js API
         try:
             response = requests.post(
                 f"{REPORT_API_URL}/generate-report-cards",
@@ -916,14 +1091,6 @@ def generate_class_results():
 
             pdf_buffer = io.BytesIO(response.content)
             pdf_buffer.seek(0)
-
-            class_response = supabase.table('classes')\
-                .select('name')\
-                .eq('id', class_id)\
-                .eq('institute_id', institute_id)\
-                .execute()
-
-            class_name = class_response.data[0]['name'] if class_response.data else 'Class'
 
             return send_file(
                 pdf_buffer,
@@ -966,21 +1133,20 @@ def save_next_term():
     """Save next term settings"""
     user = session.get('user')
     institute_id = get_institute_id_func(user['id'])
-    
+
     if not institute_id:
         return jsonify({'success': False, 'message': 'Institute not found'}), 400
-    
+
     try:
         data = request.get_json()
         next_term_date = data.get('next_term_date')
         next_term_text = data.get('next_term_text', 'To be announced')
-        
-        # Check if exists
+
         existing = supabase.table('next_term_settings')\
             .select('id')\
             .eq('institute_id', institute_id)\
             .execute()
-        
+
         if existing.data:
             result = supabase.table('next_term_settings')\
                 .update({
@@ -1001,12 +1167,12 @@ def save_next_term():
                     'updated_at': datetime.now().isoformat()
                 })\
                 .execute()
-        
+
         if result.data:
             return jsonify({'success': True, 'message': 'Next term settings saved successfully'})
         else:
             return jsonify({'success': False, 'message': 'Failed to save settings'}), 500
-            
+
     except Exception as e:
         print(f"Error saving next term: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
