@@ -1,5 +1,5 @@
 from routes.permissions.permissions import role_required
-# assignSubjectsToClass.py - with subject editing + safe add (no forced recreate)
+# assignSubjectsToClass.py - auto-merge duplicate names, no forced recreate
 from flask import Blueprint, render_template, request, jsonify, session
 from supabase import create_client, Client
 import os
@@ -27,10 +27,104 @@ def login_required(f):
     return decorated_function
 
 
+# ------------------------------------------------------------------
+#  Helpers
+# ------------------------------------------------------------------
+def _fmt_marks(value):
+    """Return int when whole (500.0 → 500), else float (100.5 → 100.5)."""
+    try:
+        f = float(value)
+        return int(f) if f == int(f) else f
+    except (TypeError, ValueError):
+        return value
+
+
+def _find_collision_subjects(institute_id, current_subject_id, new_name):
+    """
+    Return IDs of OTHER subjects in the same institute whose name matches
+    `new_name` (case-insensitive). Falls back to exact match if ilike fails.
+    """
+    try:
+        resp = supabase.table('subjects')\
+            .select('id')\
+            .eq('institute_id', institute_id)\
+            .ilike('name', new_name)\
+            .neq('id', current_subject_id)\
+            .execute()
+        return [r['id'] for r in (resp.data or [])]
+    except Exception as e:
+        print(f"ilike collision lookup failed, using eq: {e}")
+        try:
+            resp = supabase.table('subjects')\
+                .select('id')\
+                .eq('institute_id', institute_id)\
+                .eq('name', new_name)\
+                .neq('id', current_subject_id)\
+                .execute()
+            return [r['id'] for r in (resp.data or [])]
+        except Exception as e2:
+            print(f"eq collision lookup failed too: {e2}")
+            return []
+
+
+def _merge_collision_subject(institute_id, current_subject_id, collision_subject_id):
+    """
+    Merge a colliding subject into the current one:
+      - Transfer class_subjects from collision → current
+      - If both exist in same class, keep current, delete collision's row
+      - Delete the collision subject record
+    Returns the number of class assignments merged (int).
+    """
+    merged = 0
+    try:
+        usage = supabase.table('class_subjects')\
+            .select('id, class_id')\
+            .eq('subject_id', collision_subject_id)\
+            .execute()
+
+        current_usage = supabase.table('class_subjects')\
+            .select('id, class_id')\
+            .eq('subject_id', current_subject_id)\
+            .execute()
+        current_class_ids = {r['class_id'] for r in (current_usage.data or [])}
+
+        for row in (usage.data or []):
+            if row['class_id'] in current_class_ids:
+                # Duplicate in same class → drop the collision copy
+                supabase.table('class_subjects')\
+                    .delete()\
+                    .eq('id', row['id'])\
+                    .execute()
+            else:
+                # Move the class assignment to the current subject
+                supabase.table('class_subjects')\
+                    .update({
+                        'subject_id': current_subject_id,
+                        'updated_at': datetime.now().isoformat()
+                    })\
+                    .eq('id', row['id'])\
+                    .execute()
+                merged += 1
+
+        # Remove the now-redundant subject record
+        supabase.table('subjects')\
+            .delete()\
+            .eq('id', collision_subject_id)\
+            .eq('institute_id', institute_id)\
+            .execute()
+
+        return merged
+    except Exception as e:
+        print(f"Error merging collision subject {collision_subject_id}: {e}")
+        return merged
+
+
+# ------------------------------------------------------------------
+#  Page
+# ------------------------------------------------------------------
 @subjects_bp.route('/')
 @role_required(['owner', 'teacher', 'accountant'])
 def index():
-    """Classes With Subjects Page"""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
 
@@ -54,8 +148,10 @@ def index():
             .execute()
         subjects_data = subjects_response.data if subjects_response.data else []
 
-        # Manually fetch teacher info
         for subject in subjects_data:
+            # Clean marks for display
+            if subject.get('marks') is not None:
+                subject['marks'] = _fmt_marks(subject['marks'])
             if subject.get('teacher_id'):
                 teacher_response = supabase.table('employees')\
                     .select('id, name, employee_id, photo_url')\
@@ -67,10 +163,7 @@ def index():
         classes_data = []
         for class_item in classes:
             class_subjects = [s for s in subjects_data if s.get('class_id') == class_item['id']]
-            classes_data.append({
-                'class': class_item,
-                'subjects': class_subjects
-            })
+            classes_data.append({'class': class_item, 'subjects': class_subjects})
 
         teachers_response = supabase.table('employees')\
             .select('id, name, employee_id, photo_url')\
@@ -93,6 +186,9 @@ def index():
         return render_template('subjects/index.html', classes_data=[], teachers=[], institute_id=institute_id)
 
 
+# ------------------------------------------------------------------
+#  APIs
+# ------------------------------------------------------------------
 @subjects_bp.route('/api/teachers/search', methods=['GET'])
 @role_required(['owner', 'teacher', 'accountant'])
 def search_teachers():
@@ -157,6 +253,8 @@ def get_class_subjects():
         subjects = response.data if response.data else []
 
         for subject in subjects:
+            if subject.get('marks') is not None:
+                subject['marks'] = _fmt_marks(subject['marks'])
             if subject.get('teacher_id'):
                 teacher_response = supabase.table('employees')\
                     .select('id, name, employee_id')\
@@ -174,19 +272,7 @@ def get_class_subjects():
 @subjects_bp.route('/api/assign', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def assign_subjects():
-    """
-    Add / update subjects for a class.
-
-    Each item may contain:
-        name              (required)
-        marks             (required, > 0)
-        teacher_id        (required)
-        subject_id        (optional)  – present when editing an existing subject
-        class_subject_id  (optional)  – present when editing an existing class assignment
-
-    Only the subjects present in the submission are created/updated.
-    Class-subject rows that are NOT in the submission are removed.
-    """
+    """Batch add / update subjects for a class with auto-merge on name collision."""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     if not institute_id:
@@ -212,6 +298,7 @@ def assign_subjects():
 
         assigned_count = 0
         updated_count = 0
+        merged_count = 0
         kept_ids = set()
         errors = []
 
@@ -238,18 +325,11 @@ def assign_subjects():
                     errors.append(f"Please select a teacher for subject: {subject_name}")
                     continue
 
-                # ---------------- UPDATE EXISTING ----------------
+                # ---------- UPDATE EXISTING (with merge on rename collision) ----------
                 if subject_id and class_subject_id and class_subject_id in existing_by_id:
-                    # Renaming: guard against collision with another subject in this institute
-                    collision = supabase.table('subjects')\
-                        .select('id')\
-                        .eq('institute_id', institute_id)\
-                        .eq('name', subject_name)\
-                        .neq('id', subject_id)\
-                        .execute()
-                    if collision.data:
-                        errors.append(f'A subject named "{subject_name}" already exists')
-                        continue
+                    collision_ids = _find_collision_subjects(institute_id, subject_id, subject_name)
+                    for cid in collision_ids:
+                        merged_count += _merge_collision_subject(institute_id, subject_id, cid)
 
                     supabase.table('subjects')\
                         .update({'name': subject_name, 'updated_at': datetime.now().isoformat()})\
@@ -270,16 +350,21 @@ def assign_subjects():
                     updated_count += 1
                     continue
 
-                # ---------------- CREATE / ATTACH ----------------
-                # Reuse subject if it already exists by name, else create it
-                subject_response = supabase.table('subjects')\
+                # ---------- CREATE / ATTACH ----------
+                # Reuse by case-insensitive name if it already exists
+                existing_subject = supabase.table('subjects')\
                     .select('*')\
-                    .eq('name', subject_name)\
                     .eq('institute_id', institute_id)\
+                    .ilike('name', subject_name)\
                     .execute()
 
-                if subject_response.data:
-                    new_subject_id = subject_response.data[0]['id']
+                if existing_subject.data:
+                    new_subject_id = existing_subject.data[0]['id']
+                    # If extra orphan rows exist with the same name, merge them too
+                    for extra in existing_subject.data[1:]:
+                        merged_count += _merge_collision_subject(
+                            institute_id, new_subject_id, extra['id']
+                        )
                 else:
                     new_subject_id = str(uuid.uuid4())
                     supabase.table('subjects').insert({
@@ -290,7 +375,6 @@ def assign_subjects():
                         'updated_at': datetime.now().isoformat()
                     }).execute()
 
-                # Already assigned to this class?
                 existing_match = next(
                     (row for row in existing if row['subject_id'] == new_subject_id),
                     None
@@ -337,6 +421,8 @@ def assign_subjects():
             parts.append(f"{assigned_count} added")
         if updated_count:
             parts.append(f"{updated_count} updated")
+        if merged_count:
+            parts.append(f"{merged_count} merged")
         if deleted_count:
             parts.append(f"{deleted_count} removed")
         summary = ", ".join(parts) if parts else "No changes"
@@ -346,6 +432,7 @@ def assign_subjects():
             'message': f'Done — {summary}',
             'assigned': assigned_count,
             'updated': updated_count,
+            'merged': merged_count,
             'deleted': deleted_count,
             'errors': errors if errors else None
         })
@@ -360,7 +447,7 @@ def assign_subjects():
 @subjects_bp.route('/api/subject/update', methods=['POST'])
 @role_required(['owner', 'teacher', 'accountant'])
 def update_subject():
-    """Quick-edit one subject's name / marks / teacher (used by the pencil modal)."""
+    """Quick-edit one subject — auto-merges duplicates on rename collision."""
     user = session.get('user')
     institute_id = get_institute_id(user['id'])
     if not institute_id:
@@ -386,17 +473,7 @@ def update_subject():
         if marks <= 0:
             return jsonify({'success': False, 'message': 'Invalid marks'}), 400
 
-        # Collision check
-        collision = supabase.table('subjects')\
-            .select('id')\
-            .eq('institute_id', institute_id)\
-            .eq('name', new_name)\
-            .neq('id', subject_id)\
-            .execute()
-        if collision.data:
-            return jsonify({'success': False, 'message': f'A subject named "{new_name}" already exists'}), 400
-
-        # Verify the class_subject belongs to this institute + subject
+        # Verify ownership
         cs_response = supabase.table('class_subjects')\
             .select('id, subject_id')\
             .eq('id', class_subject_id)\
@@ -406,14 +483,19 @@ def update_subject():
         if not cs_response.data:
             return jsonify({'success': False, 'message': 'Subject assignment not found'}), 404
 
-        # Rename subject (global for the institute – every class using it will show the new name)
+        # ---- Auto-merge any collision ----
+        collision_ids = _find_collision_subjects(institute_id, subject_id, new_name)
+        merged_count = 0
+        for cid in collision_ids:
+            merged_count += _merge_collision_subject(institute_id, subject_id, cid)
+
+        # ---- Rename + update ----
         supabase.table('subjects')\
             .update({'name': new_name, 'updated_at': datetime.now().isoformat()})\
             .eq('id', subject_id)\
             .eq('institute_id', institute_id)\
             .execute()
 
-        # Update marks + teacher for this class
         supabase.table('class_subjects')\
             .update({
                 'marks': marks,
@@ -423,7 +505,11 @@ def update_subject():
             .eq('id', class_subject_id)\
             .execute()
 
-        return jsonify({'success': True, 'message': 'Subject updated successfully'})
+        msg = 'Subject updated successfully'
+        if merged_count:
+            msg += f' ({merged_count} duplicate subject{"s" if merged_count > 1 else ""} merged)'
+
+        return jsonify({'success': True, 'message': msg, 'merged': merged_count})
 
     except Exception as e:
         print(f"Error updating subject: {e}")
